@@ -1,0 +1,296 @@
+.cvb-preview {
+  background: #F0EBE2;
+  overflow-y: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 20px;
+}
+
+.cv-paper {
+  width: 100%;
+  max-width: 520px;
+  background: #FFF;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.15);
+  border-radius: 2px;
+  font-family: 'Cabinet Grotesk', sans-serif;
+  color: #1A1510;
+  min-height: 100%;
+}
+
+.cvp-header {
+  background: #1A1510;
+  padding: 28px 30px;
+}
+
+.cvp-name {
+  font-family: 'Fraunces', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: #F5F0E8;
+  letter-spacing: -0.5px;
+}
+
+.cvp-role {
+  font-size: 13px;
+  color: #C0A070;
+  margin-top: 4px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.cvp-contacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin-top: 14px;
+}
+
+.cvp-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #888;
+  margin-right: 16px;
+  margin-top: 6px;
+}
+
+.cvp-body {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+}
+
+.cvp-left {
+  background: #F5F0E8;
+  padding: 22px 18px;
+  border-right: 2px solid #E0D8CC;
+}
+
+.cvp-right {
+  padding: 22px;
+}
+
+.cvp-sec-title {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 10px;
+  padding-bottom: 5px;
+  border-bottom: 2px solid;
+}
+
+.cvp-sec-title.rust {
+  color: var(--rust);
+  border-color: var(--rust);
+}
+
+.cvp-sec-title.ink {
+  color: var(--ink2);
+  border-color: var(--ink2);
+}
+
+.cvp-section {
+  margin-bottom: 18px;
+}
+
+.cvp-skill-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+
+.cvp-skill-name {
+  font-size: 11.5px;
+  color: #3D342A;
+  font-weight: 500;
+}
+
+.cvp-skill-bar-bg {
+  width: 70px;
+  height: 4px;
+  background: #D9D0C0;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.cvp-skill-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+}
+
+.f-sage {
+  background: var(--sage);
+}
+
+.f-rust {
+  background: var(--rust);
+}
+
+.f-amber {
+  background: var(--amber);
+}
+
+.cvp-lang-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.cvp-lang-name {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #3D342A;
+}
+
+.cvp-lang-lvl {
+  font-size: 10px;
+  color: #888;
+}
+
+.cvp-edu {
+  margin-bottom: 10px;
+}
+
+.cvp-edu-school {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1A1510;
+}
+
+.cvp-edu-major {
+  font-size: 11px;
+  color: var(--ink3);
+}
+
+.cvp-edu-year {
+  font-size: 10px;
+  color: #888;
+  margin-top: 2px;
+}
+
+.cvp-award {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 8px;
+  align-items: flex-start;
+}
+
+.cvp-award-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--rust);
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+
+.cvp-award-text {
+  font-size: 11.5px;
+  color: #3D342A;
+  line-height: 1.5;
+}
+
+.cvp-ref-item {
+  margin-bottom: 10px;
+}
+
+.cvp-ref-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1A1510;
+}
+
+.cvp-ref-pos {
+  font-size: 11px;
+  color: var(--ink3);
+}
+
+.cvp-ref-co {
+  font-size: 11px;
+  color: var(--rust);
+}
+
+.cvp-summary {
+  font-size: 12px;
+  color: #5A4A3A;
+  line-height: 1.7;
+  margin-bottom: 14px;
+}
+
+.cvp-exp {
+  margin-bottom: 14px;
+}
+
+.cvp-exp-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1A1510;
+}
+
+.cvp-exp-co {
+  font-size: 11.5px;
+  color: var(--rust);
+  font-weight: 600;
+}
+
+.cvp-exp-date {
+  font-size: 10.5px;
+  color: #888;
+  margin-top: 1px;
+}
+
+.cvp-exp-desc {
+  font-size: 11.5px;
+  color: #5A4A3A;
+  margin-top: 5px;
+  line-height: 1.65;
+}
+
+.cvp-proj {
+  margin-bottom: 12px;
+}
+
+.cvp-proj-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #1A1510;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.cvp-proj-link {
+  font-size: 10px;
+  color: var(--teal);
+  background: #D8EFF4;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.cvp-proj-desc {
+  font-size: 11.5px;
+  color: #5A4A3A;
+  margin-top: 4px;
+  line-height: 1.6;
+}
+
+.cvp-proj-tech {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.cvp-tech-tag {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: #F5F0E8;
+  color: #6B5E50;
+  border: 1px solid #D9D0C0;
+}

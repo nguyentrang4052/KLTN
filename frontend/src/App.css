@@ -1,0 +1,16 @@
+.app {
+  min-height: 100vh;
+}
+
+/* .screen-container {
+  padding-top: 48px;
+} */
+
+.screen {
+  display: none;
+  min-height: calc(100vh - 48px);
+}
+
+.screen.active {
+  display: block;
+}

@@ -1,0 +1,194 @@
+.app-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.app-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.astat {
+  padding: 18px 20px;
+}
+
+.astat-n {
+  font-family: 'Fraunces', serif;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.astat-l {
+  font-size: 11px;
+  color: var(--ink4);
+  margin-top: 3px;
+}
+
+.kanban {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.k-col {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.k-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.k-title {
+  font-family: 'Fraunces', serif;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.k-count {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink3);
+}
+
+.k-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 9px;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.k-card:hover {
+  border-color: var(--border2);
+  transform: translateY(-1px);
+}
+
+.k-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+
+.k-logo {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: #FFF;
+}
+
+.k-company {
+  font-size: 11px;
+  color: var(--ink4);
+}
+
+.auto-lbl {
+  margin-left: auto;
+  color: var(--sage);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+}
+
+.k-job {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.k-meta {
+  font-size: 11px;
+  color: var(--ink4);
+}
+
+.k-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid var(--border);
+  font-size: 10.5px;
+}
+
+.platform-badge {
+  font-size: 10px !important;
+}
+
+.k-offer {
+  margin-top: 9px;
+}
+
+.offer-badge {
+  font-size: 11px !important;
+  margin-bottom: 7px;
+  display: inline-block;
+}
+
+.offer-actions {
+  display: flex;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.accept-btn {
+  flex: 1;
+  font-size: 11px;
+}
+
+/* Logo colors */
+.l-fpt {
+  background: linear-gradient(135deg, #D0392A, #E05A40);
+}
+
+.l-vng {
+  background: linear-gradient(135deg, #1565C0, #1E88E5);
+}
+
+.l-momo {
+  background: linear-gradient(135deg, #880E4F, #C2185B);
+}
+
+.l-tiki {
+  background: linear-gradient(135deg, #1A73E8, #4285F4);
+}
+
+.l-shopee {
+  background: linear-gradient(135deg, #D84315, #F4511E);
+}
+
+.l-grab {
+  background: linear-gradient(135deg, #1B5E20, #2E7D32);
+}
+
+.l-zalo {
+  background: linear-gradient(135deg, #0D47A1, #1565C0);
+}
+
+.l-vnpay {
+  background: linear-gradient(135deg, #00695C, #00897B);
+}

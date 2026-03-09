@@ -1,0 +1,139 @@
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.jcard {
+  padding: 16px 18px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.jcard:hover {
+  border-color: var(--border2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+.jcard-top {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.co-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 15px;
+  flex-shrink: 0;
+  color: #FFF;
+}
+
+.l-fpt {
+  background: linear-gradient(135deg, #D0392A, #E05A40);
+}
+
+.l-vng {
+  background: linear-gradient(135deg, #1565C0, #1E88E5);
+}
+
+.l-momo {
+  background: linear-gradient(135deg, #880E4F, #C2185B);
+}
+
+.l-tiki {
+  background: linear-gradient(135deg, #1A73E8, #4285F4);
+}
+
+.l-shopee {
+  background: linear-gradient(135deg, #D84315, #F4511E);
+}
+
+.l-grab {
+  background: linear-gradient(135deg, #1B5E20, #2E7D32);
+}
+
+.l-zalo {
+  background: linear-gradient(135deg, #0D47A1, #1565C0);
+}
+
+.l-vnpay {
+  background: linear-gradient(135deg, #00695C, #00897B);
+}
+
+.jcard-info {
+  flex: 1;
+}
+
+.jcard-title {
+  font-family: 'Fraunces', serif;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+
+.jcard-co {
+  font-size: 12px;
+  color: var(--ink3);
+  margin-bottom: 8px;
+}
+
+.jcard-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.jtag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 5px;
+  background: var(--bg2);
+  color: var(--ink3);
+  border: 1px solid var(--border);
+}
+
+.platform-badge {
+  font-size: 10px !important;
+}
+
+.jcard-match {
+  text-align: right;
+}
+
+.match-n {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.match-l {
+  font-size: 10px;
+  color: var(--ink4);
+}
+
+.jcard-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.salary {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--amber);
+}
+
+.jcard-actions {
+  display: flex;
+  gap: 7px;
+}

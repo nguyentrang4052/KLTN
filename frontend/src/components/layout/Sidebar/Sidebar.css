@@ -1,0 +1,108 @@
+/* Sidebar */
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--ink);
+  display: flex;
+  flex-direction: column;
+  padding: 16px 10px;
+  gap: 2px;
+  overflow-y: auto;
+}
+
+.sb-logo {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--amber2);
+  padding: 8px 12px 20px;
+  letter-spacing: -0.5px;
+}
+
+.sb-logo span {
+  color: var(--rust2);
+}
+
+.sb-section {
+  font-size: 10px;
+  color: #555;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  padding: 12px 12px 4px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #aaa;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.18s;
+}
+
+.nav-item:hover {
+  background: #1e1a16;
+  color: #ddd;
+}
+
+.nav-item.active {
+  background: var(--rust);
+  color: #fff;
+}
+
+.nav-icon {
+  font-size: 15px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.nav-badge {
+  margin-left: auto;
+  background: var(--amber);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.sb-user {
+  margin-top: auto;
+  padding: 10px 12px;
+  border: 1px solid #2a2420;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.av {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--rust), var(--amber));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.av-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ddd;
+}
+
+.av-role {
+  font-size: 10px;
+  color: #666;
+}

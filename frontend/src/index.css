@@ -1,0 +1,124 @@
+/* ═══════════════════════════════════════════════════════════════
+   NghềVN — Global Styles & CSS Variables
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Colors */
+  --bg: #f5f0e8;
+  --bg2: #ede7d9;
+  --bg3: #e4ddd0;
+  --surface: #fdfaf5;
+  --surface2: #f7f2e9;
+  --border: #d9d0c0;
+  --border2: #c8bda8;
+  --ink: #1a1510;
+  --ink2: #3d342a;
+  --ink3: #6b5e50;
+  --ink4: #9a8d80;
+  --rust: #c0412a;
+  --rust2: #e05a40;
+  --amber: #d4820a;
+  --amber2: #f0a020;
+  --sage: #3a6b4a;
+  --sage2: #4e8e62;
+  --teal: #1e6b7a;
+  --teal2: #2a8fa0;
+  --indigo: #3a3e8a;
+  --sand: #c4a882;
+  --cream: #fff8ee;
+}
+
+/* Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 14px;
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Cabinet Grotesk', sans-serif;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography */
+.serif {
+  font-family: 'Fraunces', serif;
+}
+
+.mono {
+  font-family: 'Kode Mono', monospace;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border2);
+  border-radius: 3px;
+}
+
+/* Utility classes */
+.w100 {
+  width: 100%;
+}
+.mt10 {
+  margin-top: 10px;
+}
+.mt14 {
+  margin-top: 14px;
+}
+
+/* Animations */
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes pFill {
+  from {
+    width: 0;
+  }
+}
+
+/* Screen transitions */
+.screen {
+  display: none;
+  padding-top: 20px;
+  min-height: 100vh;
+}
+
+.screen.active {
+  display: block;
+}
+
+/* App layout */
+.app-layout {
+  display: flex;
+  height: calc(100vh - 48px);
+  overflow: hidden;
+}
+
+/* Main scroll area */
+.main-scroll {
+  flex: 1;
+  overflow-y: auto;
+  height: calc(100vh - 104px);
+}

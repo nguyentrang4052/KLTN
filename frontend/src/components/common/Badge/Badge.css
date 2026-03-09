@@ -1,0 +1,45 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.b-rust {
+  background: #FDE8E4;
+  color: var(--rust);
+  border: 1px solid #F5C5BC;
+}
+
+.b-amber {
+  background: #FEF0D0;
+  color: var(--amber);
+  border: 1px solid #F5D890;
+}
+
+.b-sage {
+  background: #E0F0E6;
+  color: var(--sage);
+  border: 1px solid #B0D9BC;
+}
+
+.b-teal {
+  background: #D8EFF4;
+  color: var(--teal);
+  border: 1px solid #A0D4E0;
+}
+
+.b-indigo {
+  background: #E4E5F8;
+  color: var(--indigo);
+  border: 1px solid #B8BAE8;
+}
+
+.b-gray {
+  background: var(--bg3);
+  color: var(--ink3);
+  border: 1px solid var(--border2);
+}
