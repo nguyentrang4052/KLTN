@@ -15,7 +15,7 @@ function App() {
   const [activeScreen, setActiveScreen] = useState('s1')
 
   const screens = {
-    s1: <LandingScreen />,
+    s1: <LandingScreen onNavigate={setActiveScreen} />,
     s2: <DashboardScreen />,
     s3: <JobSearchScreen />,
     s4: <JobDetailScreen />,

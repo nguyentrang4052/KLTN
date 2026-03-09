@@ -1,4 +1,4 @@
-.btn {
+/* .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -75,4 +75,121 @@
   padding: 0;
   border-radius: 8px;
   font-size: 16px;
+} */
+
+
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+  border: none;
+  white-space: nowrap;
+}
+
+/* === VARIANTS === */
+.btn-rust {
+  background: var(--rust);
+  color: #FFF;
+}
+
+.btn-rust:hover {
+  background: var(--rust2);
+  transform: translateY(-1px);
+}
+
+.btn-amber {
+  background: var(--amber);
+  color: #FFF;
+}
+
+.btn-amber:hover {
+  background: var(--amber2);
+}
+
+.btn-sage {
+  background: var(--sage);
+  color: #FFF;
+}
+
+.btn-sage:hover {
+  background: var(--sage2);
+}
+
+.btn-teal {
+  background: var(--teal);
+  color: #FFF;
+}
+
+/* === OUTLINE BASE === */
+.btn-outline {
+  background: transparent;
+  border: 1.5px solid var(--border2);
+  color: var(--ink3);
+}
+
+.btn-outline:hover {
+  border-color: var(--rust);
+  color: var(--rust);
+}
+
+/* === LANDING PAGE SPECIAL === */
+/* Nút đăng nhập trên nền đen */
+.btn-landing-outline {
+  background: transparent;
+  border: 1.5px solid #444;
+  color: #AAA;
+}
+
+.btn-landing-outline:hover {
+  border-color: #888;
+  color: #FFF;
+}
+
+/* Nút "Xem demo" trên nền đen */
+.btn-landing-outline2 {
+  background: transparent;
+  border: 1.5px solid #444;
+  color: #888;
+}
+
+.btn-landing-outline2:hover {
+  border-color: #888;
+  color: #FFF;
+}
+
+/* === SIZES === */
+.btn-sm {
+  padding: 6px 13px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+.btn-lg {
+  padding: 11px 24px;
+  font-size: 14px;
+}
+
+/* === ICON BUTTON === */
+.btn-icon {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+/* === DISABLED === */
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
 }
