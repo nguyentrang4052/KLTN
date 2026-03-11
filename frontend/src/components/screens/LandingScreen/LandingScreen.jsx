@@ -1,6 +1,6 @@
 import './LandingScreen.css'
 
-function LandingScreen() {
+function LandingScreen({ onGoLogin }) {
   const features = [
     { icon: '🔍', bg: '#FDE8E4', title: 'Tổng hợp đa nền tảng', desc: 'Tự động thu thập việc làm từ 15+ nguồn lớn nhất. Cập nhật realtime, không bỏ sót cơ hội nào.' },
     { icon: '🧠', bg: '#FEF0D0', title: 'AI học theo hành vi', desc: 'Phân tích click, lưu tin, apply để hiểu sở thích của bạn và đề xuất ngày càng chính xác hơn.' },
@@ -21,7 +21,7 @@ function LandingScreen() {
       <div className="landing">
         <div className="land-noise"></div>
         <div className="land-glow"></div>
-        
+
         <nav className="land-nav">
           <div className="land-logo">Nghề<span>VN</span></div>
           <div className="land-links">
@@ -29,8 +29,8 @@ function LandingScreen() {
             <a href="#">Cách hoạt động</a>
             <a href="#">Giá cả</a>
             <a href="#">Blog</a>
-            <button className="btn btn-outline btn-sm land-btn-outline">Đăng nhập</button>
-            <button className="btn btn-rust btn-sm">Bắt đầu miễn phí →</button>
+            <button className="btn btn-outline btn-sm land-btn-outline" onClick={onGoLogin}>Đăng nhập</button>
+            <button className="btn btn-rust btn-sm" onClick={onGoLogin}>Bắt đầu miễn phí →</button>
           </div>
         </nav>
 
@@ -58,7 +58,7 @@ function LandingScreen() {
               </div>
             </div>
           </div>
-          
+
           <div className="hero-right">
             <div className="hero-card">
               <div className="hero-card-title">🤖 AI đề xuất cho bạn hôm nay</div>

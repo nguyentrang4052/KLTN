@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import './App.css'
 import ScreenNav from './components/layout/ScreenNav/ScreenNav'
-import LandingScreen from './components/screens//LandingScreen/LandingScreen'
+import LandingScreen from './components/screens/LandingScreen/LandingScreen'
 import DashboardScreen from './components/screens/DashboardScreen/DashboardScreen'
 import JobSearchScreen from './components/screens/JobSearchScreen/JobSearchScreen'
 import JobDetailScreen from './components/screens/JobDetailScreen/JobDetailScreen'
@@ -10,12 +10,26 @@ import CVBuilderScreen from './components/screens/CVBuilderScreen/CVBuilderScree
 import ApplicationsScreen from './components/screens/ApplicationsScreen/ApplicationsScreen'
 import ProfileScreen from './components/screens/ProfileScreen/ProfileScreen'
 import NotificationsScreen from './components/screens/NotificationsScreen/NotificationsScreen'
+import Login from './components/screens/Login/Login'
+import Register from './components/screens/Register/Register'
+import ForgotPassword from './components/screens/ForgotPassword/ForgotPassword'
 
 function App() {
   const [activeScreen, setActiveScreen] = useState('s1')
 
+  // Auth screens — không hiện ScreenNav
+  if (activeScreen === 'login')
+    return <Login
+      onGoRegister={() => setActiveScreen('register')}
+      onGoForgot={() => setActiveScreen('forgot')}
+    />
+  if (activeScreen === 'register')
+    return <Register onGoLogin={() => setActiveScreen('login')} />
+  if (activeScreen === 'forgot')
+    return <ForgotPassword onGoLogin={() => setActiveScreen('login')} />
+
   const screens = {
-    s1: <LandingScreen />,
+    s1: <LandingScreen onGoLogin={() => setActiveScreen('login')} />,
     s2: <DashboardScreen />,
     s3: <JobSearchScreen />,
     s4: <JobDetailScreen />,
