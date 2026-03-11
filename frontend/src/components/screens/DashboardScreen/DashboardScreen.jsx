@@ -3,9 +3,10 @@ import Sidebar from '../../layout/Sidebar/Sidebar'
 import Topbar from '../../layout/Topbar/Topbar'
 import JobCard from '../../common/JobCard/JobCard'
 import Badge from '../../common/Badge/Badge'
+import Button from '../../common/Button/Button'
 import { jobData } from '../../../data/mockData'
 
-function DashboardScreen() {
+function DashboardScreen({onNavigate}) {
   const metrics = [
     { label: 'Việc phù hợp hôm nay', value: 247, color: 'var(--rust)', trend: '↑ +38', trendLabel: 'so với hôm qua' },
     { label: 'Đã nộp tháng này', value: 14, color: 'var(--sage)', trend: '3', trendLabel: 'chờ phản hồi' },
@@ -14,17 +15,13 @@ function DashboardScreen() {
   ]
 
   return (
-    <div id="s2" className="screen active">
+    <div id="s2">
       <div className="app-layout">
-        <Sidebar activeItem="dashboard" badgeCounts={{ search: 247, notifications: 5 }} />
+        <Sidebar activeItem="dashboard" badgeCounts={{ search: 247, notifications: 5 }} onNavigate={onNavigate}/>
         
         <div className="main-content">
           <Topbar title="Tổng quan hôm nay">
-            <div className="ai-pill">
-              <div className="ai-dot"></div>
-              AI đang học từ bạn
-            </div>
-            <button className="btn btn-rust btn-sm">+ Tạo CV</button>
+            <Button className="btn btn-rust btn-sm" onClick={() => onNavigate?.('s6')}>+ Tạo CV </Button>
           </Topbar>
 
           <div className="main-scroll">

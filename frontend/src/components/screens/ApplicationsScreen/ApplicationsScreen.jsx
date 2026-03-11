@@ -3,7 +3,7 @@ import Sidebar from '../../layout/Sidebar/Sidebar'
 import Topbar from '../../layout/Topbar/Topbar'
 import Badge from '../../common/Badge/Badge'
 
-function ApplicationsScreen() {
+function ApplicationsScreen({onNavigate}) {
   const stats = [
     { value: 14, label: 'Tổng đơn', color: 'var(--ink)' },
     { value: 3, label: 'Phỏng vấn', color: 'var(--amber)' },
@@ -141,9 +141,9 @@ function ApplicationsScreen() {
   }
 
   return (
-    <div id="s7" className="screen active">
+    <div id="s7">
       <div className="app-layout">
-        <Sidebar activeItem="applications" />
+        <Sidebar activeItem="applications" onNavigate={onNavigate}/>
         
         <div className="main-content">
           <Topbar title="📋 Quản lý đơn ứng tuyển">

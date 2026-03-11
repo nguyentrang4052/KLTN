@@ -22,4 +22,5 @@
   display: grid;
   grid-template-columns: 220px 380px 1fr;
   height: calc(100vh - 104px);
+  margin-top: 30px
 }

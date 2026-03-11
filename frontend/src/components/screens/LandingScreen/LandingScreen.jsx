@@ -7,43 +7,43 @@ function LandingScreen({ onNavigate }) {
       icon: '🔍',
       bg: '#FDE8E4',
       title: 'Tổng hợp đa nền tảng',
-      desc: 'Tự động thu thập việc làm từ 15+ nguồn lớn nhất. Cập nhật realtime, không bỏ sót cơ hội nào.',
-      target: 's2'  // ← Dashboard
+      desc: 'Tự động thu thập việc làm từ các nguồn lớn nhất. Cập nhật realtime, không bỏ sót cơ hội nào.',
+      target: 's2'
     },
     {
       icon: '🧠',
       bg: '#FEF0D0',
       title: 'AI học theo hành vi',
       desc: 'Phân tích click, lưu tin, apply để hiểu sở thích của bạn và đề xuất ngày càng chính xác hơn.',
-      target: 's2'  // ← Dashboard
+      target: 's2'  
     },
     {
       icon: '⚡',
       bg: '#E0F0E6',
-      title: '1-Click Auto Apply',
-      desc: 'Nộp 1 lần trên NghềVN, hệ thống tự động nộp đến tất cả nền tảng gốc thay bạn.',
-      target: 's5'  // ← AutoApplyScreen
+      title: 'Ứng tuyển nhanh',
+      desc: 'Xem việc từ nhiều nền tảng và ứng tuyển trực tiếp trên trang gốc chỉ với một lần nhấn.',
+      target: 's5'  
     },
     {
       icon: '📄',
       bg: '#D8EFF4',
       title: 'CV Builder thông minh',
       desc: 'Tạo CV chuyên nghiệp, AI tối ưu nội dung và từ khoá ATS theo từng vị trí ứng tuyển.',
-      target: 's6'  // ← CVBuilderScreen
+      target: 's6' 
     },
     {
       icon: '🎯',
       bg: '#E4E5F8',
       title: 'Match Score AI',
       desc: 'Mỗi tin được chấm điểm phù hợp với hồ sơ bạn. Biết ngay cơ hội trúng tuyển trước khi apply.',
-      target: 's2'  // ← Dashboard
+      target: 's2'  
     },
     {
       icon: '📊',
       bg: '#FDE8E4',
       title: 'Kanban theo dõi',
       desc: 'Bảng Kanban quản lý toàn bộ đơn ứng tuyển. Từ nộp hồ sơ đến nhận Offer — mọi thứ trong tầm tay.',
-      target: 's7'  // ← ApplicationsScreen
+      target: 's7'  
     }
   ]
 
@@ -60,29 +60,29 @@ function LandingScreen({ onNavigate }) {
   }
 
   return (
-    <div id="s1" className="screen active">
+    <div id="s1">
       <div className="landing">
         <div className="land-noise"></div>
         <div className="land-glow"></div>
 
         <nav className="land-nav">
-          <div className="land-logo">Nghề<span>VN</span></div>
+          <div className="land-logo"><span>GZCONNECT</span></div>
           <div className="land-links">
-            <a href="#">Tính năng</a>
+            {/* <a href="#">Tính năng</a>
             <a href="#">Cách hoạt động</a>
             <a href="#">Giá cả</a>
-            <a href="#">Blog</a>
+            <a href="#">Blog</a> */}
             <Button
               variant="landing-outline"
-              size="sm"
-              onClick={() => onNavigate?.('s8')}
+              size="md"
+              onClick={() => onNavigate?.('s2')}
             >
               Đăng nhập
             </Button>
             <Button
               variant="rust"
               size="sm"
-              onClick={() => onNavigate?.('s2')}
+              onClick={() => onNavigate?.('s10')}
             >
               Bắt đầu miễn phí →
             </Button>
@@ -91,9 +91,9 @@ function LandingScreen({ onNavigate }) {
 
         <div className="hero">
           <div className="hero-left">
-            <div className="hero-eyebrow">✦ Nền tảng tìm việc AI đầu tiên tại Việt Nam</div>
+            {/* <div className="hero-eyebrow">✦ Nền tảng tìm việc AI đầu tiên tại Việt Nam</div> */}
             <h1 className="hero-title">Tìm việc <em>thông minh</em>,<br />ứng tuyển <em>tự động</em></h1>
-            <p className="hero-sub">Tổng hợp 50K+ việc làm từ TopCV, CareerLink, CareerViet mỗi ngày...</p>
+            <p className="hero-sub">Tổng hợp việc làm từ TopCV, CareerLink, CareerViet mỗi ngày...</p>
             <div className="hero-cta">
               <Button
                 variant="rust"
@@ -102,13 +102,13 @@ function LandingScreen({ onNavigate }) {
               >
                 Bắt đầu tìm việc
               </Button>
-              <Button
+              {/* <Button
                 variant="landing-outline2"
                 size="lg"
                 icon="▷"
               >
                 Xem demo
-              </Button>
+              </Button> */}
             </div>
             <div className="hero-stats">
               <div className="h-stat"><div className="h-stat-n">50K+</div><div className="h-stat-l">Việc làm mỗi ngày</div></div>

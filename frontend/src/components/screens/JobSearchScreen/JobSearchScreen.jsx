@@ -5,7 +5,7 @@ import JobCard from '../../common/JobCard/JobCard'
 import Badge from '../../common/Badge/Badge'
 import { jobData } from '../../../data/mockData'
 
-function JobSearchScreen() {
+function JobSearchScreen({onNavigate}) {
   const chips = [
     { label: '🤖 AI Đề xuất', active: true },
     { label: '💰 >20tr', active: true },
@@ -55,9 +55,9 @@ function JobSearchScreen() {
   ]
 
   return (
-    <div id="s3" className="screen active">
+    <div id="s3">
       <div className="app-layout">
-        <Sidebar activeItem="search" />
+        <Sidebar activeItem="search" onNavigate={onNavigate} />
         
         <div className="main-content">
           <div className="search-hero">

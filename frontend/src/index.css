@@ -1,9 +1,4 @@
-/* ═══════════════════════════════════════════════════════════════
-   NghềVN — Global Styles & CSS Variables
-   ═══════════════════════════════════════════════════════════════ */
-
 :root {
-  /* Colors */
   --bg: #f5f0e8;
   --bg2: #ede7d9;
   --bg3: #e4ddd0;
@@ -11,7 +6,7 @@
   --surface2: #f7f2e9;
   --border: #d9d0c0;
   --border2: #c8bda8;
-  --ink: #1a1510;
+  --ink: #080120;
   --ink2: #3d342a;
   --ink3: #6b5e50;
   --ink4: #9a8d80;
@@ -28,7 +23,6 @@
   --cream: #fff8ee;
 }
 
-/* Reset */
 * {
   margin: 0;
   padding: 0;
@@ -49,7 +43,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Typography */
 .serif {
   font-family: 'Fraunces', serif;
 }
@@ -58,7 +51,6 @@ body {
   font-family: 'Kode Mono', monospace;
 }
 
-/* Scrollbar */
 ::-webkit-scrollbar {
   width: 5px;
 }

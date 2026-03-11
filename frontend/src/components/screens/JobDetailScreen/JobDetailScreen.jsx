@@ -2,7 +2,7 @@ import './JobDetailScreen.css'
 import Sidebar from '../../layout/Sidebar/Sidebar'
 import Badge from '../../common/Badge/Badge'
 
-function JobDetailScreen() {
+function JobDetailScreen({onNavigate}) {
   const matchData = [
     { label: 'Kỹ năng kỹ thuật', value: 95, color: 'f-sage' },
     { label: 'Kinh nghiệm', value: 80, color: 'f-rust' },
@@ -25,9 +25,9 @@ function JobDetailScreen() {
   ]
 
   return (
-    <div id="s4" className="screen active">
+    <div id="s4">
       <div className="app-layout">
-        <Sidebar activeItem="search" />
+        <Sidebar activeItem="search" onNavigate={onNavigate}/>
         
         <div className="main-content">
           <div className="jd-wrap">

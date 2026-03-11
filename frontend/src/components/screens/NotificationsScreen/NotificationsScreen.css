@@ -1,7 +1,8 @@
 .notif-wrap {
   max-width: 680px;
-  margin: 0 auto;
+  margin: 20px auto;
   padding: 24px;
+  overflow-y: auto;
 }
 
 .notif-tabs {

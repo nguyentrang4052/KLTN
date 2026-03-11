@@ -3,7 +3,7 @@ import Sidebar from '../../layout/Sidebar/Sidebar'
 import Topbar from '../../layout/Topbar/Topbar'
 import Badge from '../../common/Badge/Badge'
 
-function ProfileScreen() {
+function ProfileScreen({onNavigate}) {
   const aiInsights = [
     { icon: '👁', text: 'Bạn thường xem kỹ JD có "React", "TypeScript" và lương >25tr', source: 'Từ 47 lần xem' },
     { icon: '🔖', text: '80% tin bạn lưu là Hybrid hoặc Remote', source: 'Từ 23 lần lưu' },
@@ -29,9 +29,9 @@ function ProfileScreen() {
   ]
 
   return (
-    <div id="s8" className="screen active">
+    <div id="s8">
       <div className="app-layout">
-        <Sidebar activeItem="profile" />
+        <Sidebar activeItem="profile" onNavigate={onNavigate}/>
         
         <div className="main-content">
           <Topbar title="👤 Hồ sơ & Cài đặt AI">

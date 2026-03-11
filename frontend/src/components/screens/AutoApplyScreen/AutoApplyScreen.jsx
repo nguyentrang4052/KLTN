@@ -1,7 +1,7 @@
 import './AutoApplyScreen.css'
 import Sidebar from '../../layout/Sidebar/Sidebar'
 
-function AutoApplyScreen() {
+function AutoApplyScreen({onNavigate}) {
   const steps = [
     {
       status: 'done',
@@ -35,9 +35,9 @@ function AutoApplyScreen() {
   ]
 
   return (
-    <div id="s5" className="screen active">
+    <div id="s5">
       <div className="app-layout">
-        <Sidebar activeItem="auto" />
+        <Sidebar activeItem="auto" onNavigate={onNavigate} />
         
         <div className="main-content">
           <div className="apply-wrap">

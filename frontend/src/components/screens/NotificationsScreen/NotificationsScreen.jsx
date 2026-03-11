@@ -2,7 +2,7 @@ import './NotificationsScreen.css'
 import Sidebar from '../../layout/Sidebar/Sidebar'
 import Topbar from '../..//layout/Topbar/Topbar'
 
-function NotificationsScreen() {
+function NotificationsScreen({onNavigate}) {
   const tabs = [
     { id: 'all', label: 'Tất cả', count: 12, active: true },
     { id: 'jobs', label: 'Việc mới', count: 5, active: false },
@@ -77,9 +77,9 @@ function NotificationsScreen() {
   ]
 
   return (
-    <div id="s9" className="screen active">
+    <div id="s9">
       <div className="app-layout">
-        <Sidebar activeItem="notifications" badgeCounts={{ notifications: 5 }} />
+        <Sidebar activeItem="notifications" badgeCounts={{ notifications: 5 }} onNavigate={onNavigate}/>
         
         <div className="main-content">
           <Topbar title="🔔 Thông báo">
