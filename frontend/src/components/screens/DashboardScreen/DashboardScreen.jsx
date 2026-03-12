@@ -21,7 +21,7 @@ function DashboardScreen({onNavigate}) {
         
         <div className="main-content">
           <Topbar title="Tổng quan hôm nay">
-            <Button className="btn btn-rust btn-sm" onClick={() => onNavigate?.('s6')}>+ Tạo CV </Button>
+            <Button className="btn btn-rust btn-sm" onClick={() => onNavigate?.('s1')}>+ Tạo CV </Button>
           </Topbar>
 
           <div className="main-scroll">

@@ -1,84 +1,3 @@
-/* .btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 9px 18px;
-  border-radius: 8px;
-  font-family: 'Cabinet Grotesk', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.18s;
-  border: none;
-  white-space: nowrap;
-}
-
-.btn-rust {
-  background: var(--rust);
-  color: #FFF;
-}
-
-.btn-rust:hover {
-  background: var(--rust2);
-  transform: translateY(-1px);
-}
-
-.btn-amber {
-  background: var(--amber);
-  color: #FFF;
-}
-
-.btn-amber:hover {
-  background: var(--amber2);
-}
-
-.btn-sage {
-  background: var(--sage);
-  color: #FFF;
-}
-
-.btn-sage:hover {
-  background: var(--sage2);
-}
-
-.btn-teal {
-  background: var(--teal);
-  color: #FFF;
-}
-
-.btn-outline {
-  background: transparent;
-  border: 1.5px solid var(--border2);
-  color: var(--ink3);
-}
-
-.btn-outline:hover {
-  border-color: var(--rust);
-  color: var(--rust);
-}
-
-.btn-sm {
-  padding: 6px 13px;
-  font-size: 12px;
-  border-radius: 6px;
-}
-
-.btn-lg {
-  padding: 11px 24px;
-  font-size: 14px;
-}
-
-.btn-icon {
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border-radius: 8px;
-  font-size: 16px;
-} */
-
-
-
 .btn {
   display: inline-flex;
   align-items: center;
@@ -86,7 +5,7 @@
   gap: 7px;
   padding: 9px 18px;
   border-radius: 8px;
-  font-family: 'Cabinet Grotesk', sans-serif;
+  font-family: 'Roboto', sans-serif;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -95,24 +14,41 @@
   white-space: nowrap;
 }
 
-/* === VARIANTS === */
-.btn-rust {
-  background: var(--rust);
+
+/* .btn-rust {
+  background: rgb(35, 42, 162);
   color: #FFF;
 }
 
 .btn-rust:hover {
-  background: var(--rust2);
+  background: rgb(6, 12, 121);
   transform: translateY(-1px);
+} */
+
+.btn-rust.btn-md {
+  background: rgb(35, 42, 162);
 }
 
+.btn-rust.btn-md:hover{
+  background: rgb(6, 12, 121);
+}
+
+.btn-rust.btn-lg {
+  background: rgb(35, 42, 162);
+}
+
+.btn-rust.btn-lg:hover{
+  background: rgb(6, 12, 121);
+}
+
+
 .btn-amber {
-  background: var(--amber);
+  background: rgb(35, 88, 174);
   color: #FFF;
 }
 
 .btn-amber:hover {
-  background: var(--amber2);
+  background: rgb(7, 64, 156);
 }
 
 .btn-sage {
@@ -129,7 +65,6 @@
   color: #FFF;
 }
 
-/* === OUTLINE BASE === */
 .btn-outline {
   background: transparent;
   border: 1.5px solid var(--border2);
@@ -141,20 +76,18 @@
   color: var(--rust);
 }
 
-/* === LANDING PAGE SPECIAL === */
-/* Nút đăng nhập trên nền đen */
 .btn-landing-outline {
-  background: transparent;
-  border: 1.5px solid #444;
-  color: #AAA;
+  font-family: 'Roboto', sans-serif;;
+  background:rgba(255, 255, 255, 0.05);
+  border: 1.5px solid #444444;
+  color: #aaaaaa;
 }
 
 .btn-landing-outline:hover {
-  border-color: #888;
-  color: #FFF;
+  background: rgba(0, 31, 155, 0.08);
+  /* border-color: rgba(255, 255, 255, .15); */
 }
 
-/* Nút "Xem demo" trên nền đen */
 .btn-landing-outline2 {
   background: transparent;
   border: 1.5px solid #444;
@@ -166,7 +99,6 @@
   color: #FFF;
 }
 
-/* === SIZES === */
 .btn-sm {
   padding: 6px 13px;
   font-size: 12px;
@@ -178,7 +110,6 @@
   font-size: 14px;
 }
 
-/* === ICON BUTTON === */
 .btn-icon {
   width: 36px;
   height: 36px;
@@ -187,7 +118,6 @@
   font-size: 16px;
 }
 
-/* === DISABLED === */
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;

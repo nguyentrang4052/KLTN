@@ -34,15 +34,14 @@
 }
 
 .land-logo {
-  font-family: 'Fraunces', serif;
+  font-family: 'Roboto', serif;
   font-size: 26px;
   font-weight: 700;
-  color: var(--amber2);
   letter-spacing: -1px;
 }
 
 .land-logo span {
-  color: var(--rust2);
+  color: white;
 }
 
 .land-links {
@@ -103,7 +102,7 @@
 }
 
 .hero-title {
-  font-family: 'Fraunces', serif;
+  font-family: 'Roboto', serif;
   font-size: 62px;
   font-weight: 700;
   line-height: 1.05;
@@ -147,13 +146,14 @@
 }
 
 .h-stat-n {
-  font-family: 'Fraunces', serif;
+  font-family: 'Roboto', serif !important;
   font-size: 28px;
   font-weight: 700;
   color: var(--amber2);
 }
 
 .h-stat-l {
+  font-family: 'Roboto', serif;
   font-size: 12px;
   color: #666;
   margin-top: 3px;
@@ -226,7 +226,7 @@
 }
 
 .hjp-match {
-  font-family: 'Kode Mono', monospace;
+  font-family: 'Roboto', monospace;
   font-size: 13px;
   font-weight: 500;
 }
@@ -251,7 +251,7 @@
 }
 
 .sect-title {
-  font-family: 'Fraunces', serif;
+  font-family: 'Roboto' serif;
   font-size: 42px;
   font-weight: 700;
   line-height: 1.1;
@@ -266,6 +266,7 @@
 }
 
 .feat-card {
+  font-family: 'Roboto', serif;
   padding: 28px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -291,7 +292,7 @@
 }
 
 .feat-title {
-  font-family: 'Fraunces', serif;
+  font-family: 'Roboto', serif;
   font-size: 17px;
   font-weight: 600;
   margin-bottom: 8px;
@@ -299,6 +300,6 @@
 
 .feat-desc {
   color: var(--ink3);
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.7;
 }

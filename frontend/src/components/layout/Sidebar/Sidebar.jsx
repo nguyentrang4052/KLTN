@@ -3,15 +3,15 @@ import './Sidebar.css';
 function Sidebar({ activeItem = 'dashboard', onNavigate }) {
   const navItems = [
     { id: 'dashboard', icon: '⊞', label: 'Dashboard', badge: null, target: 's2' },
-    { id: 'search', icon: '🔍', label: 'Tìm việc', badge: '247', target: 's3'},
+    // { id: 'search', icon: '🔍', label: 'Tìm việc', target: 's3'},
     { id: 'applications', icon: '📋', label: 'Đơn ứng tuyển', badge: null, target: 's7' },
-    { id: 'cv', icon: '📄', label: 'CV của tôi', badge: null, target: 's6'},
+    // { id: 'cv', icon: '📄', label: 'CV của tôi', badge: null, target: 's6'},
   ];
 
   const toolItems = [
     { id: 'ai', icon: '🤖', label: 'AI Assistant', badge: null },
-    { id: 'auto', icon: '⚡', label: 'Auto Apply', badge: null, target:'s5' },
-    { id: 'notifications', icon: '🔔', label: 'Thông báo', badge: '5',target:'s9' },
+    // { id: 'auto', icon: '⚡', label: 'Auto Apply', badge: null, target:'s5' },
+    { id: 'notifications', icon: '🔔', label: 'Thông báo', target:'s9' },
   ];
 
   const handleFeatureClick = (target) => {

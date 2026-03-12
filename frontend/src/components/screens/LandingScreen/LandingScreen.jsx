@@ -15,35 +15,35 @@ function LandingScreen({ onNavigate }) {
       bg: '#FEF0D0',
       title: 'AI học theo hành vi',
       desc: 'Phân tích click, lưu tin, apply để hiểu sở thích của bạn và đề xuất ngày càng chính xác hơn.',
-      target: 's2'  
+      target: 's2'
     },
     {
       icon: '⚡',
       bg: '#E0F0E6',
       title: 'Ứng tuyển nhanh',
       desc: 'Xem việc từ nhiều nền tảng và ứng tuyển trực tiếp trên trang gốc chỉ với một lần nhấn.',
-      target: 's5'  
+      target: 's5'
     },
     {
       icon: '📄',
       bg: '#D8EFF4',
       title: 'CV Builder thông minh',
       desc: 'Tạo CV chuyên nghiệp, AI tối ưu nội dung và từ khoá ATS theo từng vị trí ứng tuyển.',
-      target: 's6' 
+      target: 's6'
     },
     {
       icon: '🎯',
       bg: '#E4E5F8',
       title: 'Match Score AI',
       desc: 'Mỗi tin được chấm điểm phù hợp với hồ sơ bạn. Biết ngay cơ hội trúng tuyển trước khi apply.',
-      target: 's2'  
+      target: 's2'
     },
     {
       icon: '📊',
       bg: '#FDE8E4',
       title: 'Kanban theo dõi',
       desc: 'Bảng Kanban quản lý toàn bộ đơn ứng tuyển. Từ nộp hồ sơ đến nhận Offer — mọi thứ trong tầm tay.',
-      target: 's7'  
+      target: 's7'
     }
   ]
 
@@ -74,14 +74,14 @@ function LandingScreen({ onNavigate }) {
             <a href="#">Blog</a> */}
             <Button
               variant="landing-outline"
-              size="md"
-              onClick={() => onNavigate?.('s2')}
+              size="lg"
+              onClick={() => onNavigate?.('s3')}
             >
               Đăng nhập
             </Button>
             <Button
               variant="rust"
-              size="sm"
+              size="lg"
               onClick={() => onNavigate?.('s10')}
             >
               Bắt đầu miễn phí →
@@ -92,7 +92,9 @@ function LandingScreen({ onNavigate }) {
         <div className="hero">
           <div className="hero-left">
             {/* <div className="hero-eyebrow">✦ Nền tảng tìm việc AI đầu tiên tại Việt Nam</div> */}
-            <h1 className="hero-title">Tìm việc <em>thông minh</em>,<br />ứng tuyển <em>tự động</em></h1>
+            <h1 className="hero-title">
+              Tìm việc <em>thông minh</em>,<br />kết nối <em>đúng cơ hội</em>
+            </h1>
             <p className="hero-sub">Tổng hợp việc làm từ TopCV, CareerLink, CareerViet mỗi ngày...</p>
             <div className="hero-cta">
               <Button
@@ -125,7 +127,7 @@ function LandingScreen({ onNavigate }) {
                   <div
                     key={idx}
                     className="hjp"
-                    onClick={() => onNavigate?.('s4')}  // → JobDetail
+                    onClick={() => onNavigate?.('s4')}
                     style={{ cursor: 'pointer' }}
                   >
                     <div className={`hjp-logo ${job.color}`}>{job.logo}</div>
@@ -152,7 +154,7 @@ function LandingScreen({ onNavigate }) {
             <div
               key={idx}
               className="feat-card"
-              onClick={() => handleFeatureClick(feat.target)}  // ← click điều hướng
+              onClick={() => handleFeatureClick(feat.target)} 
               style={{ cursor: feat.target ? 'pointer' : 'default' }}
             >
               <div className="feat-ico" style={{ background: feat.bg }}>{feat.icon}</div>

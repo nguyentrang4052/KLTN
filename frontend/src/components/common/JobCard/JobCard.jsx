@@ -1,5 +1,6 @@
 import './JobCard.css'
 import Badge from '../Badge/Badge'
+import Button from '../Button/Button'
 
 function JobCard({ job, showMatch = true, showActions = true }) {
   const getLogoClass = (color) => {
@@ -52,8 +53,8 @@ function JobCard({ job, showMatch = true, showActions = true }) {
         <span className="salary">💰 {job.salary}</span>
         {showActions && (
           <div className="jcard-actions">
-            <button className="btn btn-outline btn-sm">🔖 Lưu</button>
-            <button className="btn btn-rust btn-sm">⚡ Apply</button>
+            <button className="btn btn-outline btn-md">🔖 Lưu</button>
+            <button className="btn btn-rust btn-md">⚡ Apply</button>
           </div>
         )}
       </div>

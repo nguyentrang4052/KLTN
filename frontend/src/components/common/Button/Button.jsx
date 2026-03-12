@@ -35,8 +35,8 @@ function Button({
   onClick,
   type = 'button',
   disabled = false,
-  icon = null,        // ← thêm prop icon
-  iconPosition = 'left' // ← vị trí icon: 'left' | 'right'
+  icon = null,        
+  iconPosition = 'left' 
 }) {
   const variantClass = `btn-${variant}`
   const sizeClass = size !== 'md' ? `btn-${size}` : ''

@@ -35,20 +35,20 @@ html {
 }
 
 body {
-  background: var(--bg);
+  background: whitesmoke;
   color: var(--ink);
-  font-family: 'Cabinet Grotesk', sans-serif;
+  font-family: 'Roboto', sans-serif;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 .serif {
-  font-family: 'Fraunces', serif;
+  font-family: 'Roboto', serif;
 }
 
 .mono {
-  font-family: 'Kode Mono', monospace;
+  font-family: 'Roboto', monospace;
 }
 
 ::-webkit-scrollbar {

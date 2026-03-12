@@ -13,8 +13,8 @@
 }
 
 .tpl-title {
-  font-size: 10px;
-  color: var(--ink4);
+  font-size: 15px;
+  color: black;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -83,8 +83,8 @@
 }
 
 .cvb-nav-title {
-  font-size: 10px;
-  color: var(--ink4);
+  font-size: 15px;
+  color: black;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;

@@ -49,7 +49,21 @@ export const jobData = [
     logo: 'S',
     color: 'l-shopee',
     tags: ['React', 'Performance', 'Team Lead']
+  },
+  {
+    id: 4,
+    title: 'Frontend Lead Engineer',
+    company: 'Shopee Vietnam',
+    location: 'Quận 1, HCM',
+    type: 'Onsite',
+    salary: '40–60 triệu/tháng',
+    match: 85,
+    platform: 'CareerLink',
+    logo: 'S',
+    color: 'l-shopee',
+    tags: ['React', 'Performance', 'Team Lead']
   }
+
 ]
 
 export const applicationsData = {

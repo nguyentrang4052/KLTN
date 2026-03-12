@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,400&family=Cabinet+Grotesk:wght@400;500;600;700&display=swap');
+/* @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,400&family=Cabinet+Grotesk:wght@400;500;600;700&display=swap'); */
 
 .f {
   --rust: #C0412A;
@@ -16,9 +16,9 @@
   --text3: #4A3E30;
   --cream: #F5EED8;
   
-  background: var(--bg);
+  background: linear-gradient(155deg, #010f36 0%, #060036 50%, #04283a 100%);
   color: var(--text);
-  font-family: 'Cabinet Grotesk', sans-serif;
+  font-family: 'Roboto', sans-serif;
   border-top: 1px solid var(--border);
   position: relative;
   overflow: hidden;
@@ -31,7 +31,6 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, var(--rust), var(--amber), var(--rust), transparent);
 }
 
 .f__noise {
@@ -50,7 +49,6 @@
   padding: 0 48px;
 }
 
-/* CTA */
 .f__cta {
   background: linear-gradient(135deg, var(--rust) 0%, #7A1408 55%, var(--amber) 100%);
   padding: 52px 0;
@@ -65,7 +63,7 @@
 }
 
 .f__cta-title {
-  font-family: 'Fraunces', serif;
+  font-family: 'Roboto', serif;
   font-size: 30px;
   font-weight: 700;
   color: #fff;
@@ -98,7 +96,7 @@
   gap: 7px;
   padding: 11px 22px;
   border-radius: 9px;
-  font-family: 'Cabinet Grotesk', sans-serif;
+  font-family: 'Roboto', sans-serif;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -145,7 +143,7 @@
 }
 
 .f__stat-n {
-  font-family: 'Fraunces', serif;
+  font-family: 'Roboto', serif;
   font-size: 32px;
   font-weight: 700;
   color: var(--amber2);
@@ -181,7 +179,7 @@
 }
 
 .f__nl-title {
-  font-family: 'Fraunces', serif;
+  font-family: 'Roboto', serif;
   font-size: 20px;
   font-weight: 600;
   color: var(--cream);
@@ -200,7 +198,7 @@
   background: var(--surface);
   border: 1.5px solid var(--border2);
   color: var(--cream);
-  font-family: 'Cabinet Grotesk', sans-serif;
+  font-family: 'Roboto', sans-serif;
   font-size: 13px;
   outline: none;
   transition: border-color .2s;
@@ -220,7 +218,7 @@
   background: var(--rust);
   color: #fff;
   border: none;
-  font-family: 'Cabinet Grotesk', sans-serif;
+  font-family: 'Roboto', sans-serif;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -259,16 +257,15 @@
 }
 
 .f__logo {
-  font-family: 'Fraunces', serif;
+  font-family: 'Roboto', serif;
   font-size: 28px;
   font-weight: 700;
-  color: var(--amber2);
   letter-spacing: -1px;
   margin-bottom: 14px;
 }
 
 .f__logo span {
-  color: var(--rust2);
+  color: rgb(4, 8, 242);
 }
 
 .f__desc {
@@ -362,7 +359,7 @@
 }
 
 .f__col-title {
-  font-family: 'Fraunces', serif;
+  font-family: 'Roboto', serif;
   font-size: 14px;
   font-weight: 600;
   color: var(--cream);
@@ -383,7 +380,7 @@
   display: flex;
   align-items: center;
   font-size: 13px;
-  color: var(--text);
+  color: white;
   text-decoration: none;
   padding: 5px 0;
   transition: color .18s;
@@ -392,7 +389,7 @@
 }
 
 .f__list-item a:hover {
-  color: var(--amber2);
+  color:rgb(31, 42, 243);
 }
 
 .f__list-item a:hover .f__arr {
@@ -417,7 +414,7 @@
   letter-spacing: .4px;
 }
 
-.f__badge--hot {
+/* .f__badge--hot {
   background: rgba(192,65,42,.2);
   color: var(--rust2);
   border: 1px solid rgba(192,65,42,.3);
@@ -427,7 +424,7 @@
   background: rgba(58,107,74,.2);
   color: var(--sage2);
   border: 1px solid rgba(58,107,74,.3);
-}
+} */
 
 /* Contact strip */
 .f__contact {
@@ -471,7 +468,7 @@
 
 .f__platforms-label {
   font-size: 11px;
-  color: var(--text3);
+  color: white;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -493,18 +490,19 @@
   border: 1px solid var(--border2);
   font-size: 12px;
   font-weight: 600;
-  color: var(--text2);
+  color: white;
   transition: all .2s;
   cursor: default;
 }
 
 .f__platform-pill:hover {
-  border-color: var(--amber);
-  color: var(--amber2);
+  border-color: rgb(0, 3, 63);
+  color: rgb(31, 42, 243);
 }
 
 /* Bottom bar */
 .f__bottom {
+  font-family: 'Roboto', serif;
   padding: 20px 0;
   display: flex;
   align-items: center;
@@ -514,12 +512,12 @@
 }
 
 .f__copy {
-  font-size: 12.5px;
-  color: var(--text3);
+  font-size: 14px;
+  color: white;
 }
 
 .f__copy strong {
-  color: var(--text2);
+  color: rgb(4, 8, 242);
 }
 
 .f__bottom-links {
@@ -529,8 +527,8 @@
 }
 
 .f__bottom-links a {
-  font-size: 12px;
-  color: var(--text3);
+  font-size: 14px;
+  color: white;
   text-decoration: none;
   transition: color .18s;
 }
@@ -554,10 +552,10 @@
   border-radius: 7px;
   background: var(--surface);
   border: 1px solid var(--border2);
-  font-size: 12px;
-  color: var(--text2);
+  font-size: 13px;
+  color: white;
   cursor: pointer;
-  font-family: 'Cabinet Grotesk', sans-serif;
+  font-family: 'Roboto', sans-serif;
   transition: all .2s;
 }
 

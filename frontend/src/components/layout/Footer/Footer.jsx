@@ -1,40 +1,6 @@
 import { useState } from "react";
 import "./Footer.css";
 
-/* ─── SVG Icons ─────────────────────────────────────────────── */
-// const IconFacebook = () => (
-//   <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
-//     <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
-//   </svg>
-// );
-
-// const IconLinkedin = () => (
-//   <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
-//     <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z" />
-//     <rect x="2" y="9" width="4" height="12" />
-//     <circle cx="4" cy="4" r="2" />
-//   </svg>
-// );
-
-// const IconTwitter = () => (
-//   <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
-//     <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
-//   </svg>
-// );
-
-// const IconYoutube = () => (
-//   <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
-//     <path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46a2.78 2.78 0 0 0-1.95 1.96A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.41 19.6C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.95A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z" />
-//     <polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="white" />
-//   </svg>
-// );
-
-// const IconTiktok = () => (
-//   <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
-//     <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.77 0 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 0 0-.79-.05 6.34 6.34 0 0 0 0 12.68 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.73a4.85 4.85 0 0 1-1.01-.04z" />
-//   </svg>
-// );
-
 const IconChevron = () => (
   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="9 18 15 12 9 6" />
@@ -97,13 +63,6 @@ const FOOTER_LINKS = {
   ],
 };
 
-// const SOCIAL_LINKS = [
-//   { icon: <IconFacebook />, href: "https://facebook.com/nghevn", label: "Facebook", hoverBg: "#1877F2" },
-//   { icon: <IconLinkedin />, href: "https://linkedin.com/company/nghevn", label: "LinkedIn", hoverBg: "#0A66C2" },
-//   { icon: <IconTwitter />, href: "https://twitter.com/nghevn", label: "Twitter", hoverBg: "#1DA1F2" },
-//   { icon: <IconYoutube />, href: "https://youtube.com/@nghevn", label: "YouTube", hoverBg: "#FF0000" },
-//   { icon: <IconTiktok />, href: "https://tiktok.com/@nghevn", label: "TikTok", hoverBg: "#333" },
-// ];
 
 const STATS = [
   { value: "200K+", label: "Người dùng đang tìm việc" },
@@ -152,31 +111,6 @@ export default function Footer() {
               Nền tảng tìm việc thông minh đầu tiên tại Việt Nam. AI học theo hành vi
               của bạn để gợi ý việc làm phù hợp nhất.
             </div>
-{/* 
-            <div className="f__social">
-              {SOCIAL_LINKS.map((s) => (
-                <a
-                  key={s.label}
-                  href={s.href}
-                  className="f__social-btn"
-                  aria-label={s.label}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = s.hoverBg;
-                    e.currentTarget.style.color = "#fff";
-                    e.currentTarget.style.borderColor = s.hoverBg;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "";
-                    e.currentTarget.style.color = "";
-                    e.currentTarget.style.borderColor = "";
-                  }}
-                >
-                  {s.icon}
-                </a>
-              ))}
-            </div> */}
           </div>
 
           <div className="f__links">
@@ -204,7 +138,6 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* 5 ── Contact */}
       <div className="f__wrap">
         <div className="f__contact">
           <div className="f__contact-item">
@@ -222,7 +155,6 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* 6 ── Platforms */}
       <div className="f__platforms">
         <div className="f__wrap">
           <div className="f__platforms-label">Dữ liệu việc làm được tổng hợp từ</div>
@@ -232,9 +164,7 @@ export default function Footer() {
             ))}
           </div>
         </div>
-      </div>
-
-      {/* 7 ── Bottom bar */}
+      </div>  
       <div className="f__wrap">
         <div className="f__bottom">
           <div className="f__copy">

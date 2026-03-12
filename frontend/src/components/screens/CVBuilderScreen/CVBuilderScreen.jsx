@@ -8,14 +8,15 @@ function CVBuilderScreen({onNavigate}) {
   return (
     <div id="s6">
       <div className="app-layout">
-        <Sidebar activeItem="cv" onNavigate={onNavigate}/>
+        {/* <Sidebar activeItem="cv" onNavigate={onNavigate}/> */}
         
         <div className="main-content cv-builder">
           <div className="topbar cv-topbar">
             <div className="topbar-title">✏️ CV Builder — Trần Văn Ngọc</div>
             <div className="topbar-actions">
               <Badge variant="sage" className="auto-save-badge">● Tự động lưu</Badge>
-              <button className="btn btn-teal btn-sm">👁 Xem trước</button>
+              <button className="btn btn-teal btn-sm" onClick={() => onNavigate?.('s2')}>👁 Xem trước</button>
+
               {/* <button className="btn btn-amber btn-sm">🤖 AI tối ưu ATS</button> */}
               <button className="btn btn-rust btn-sm">📥 Tải PDF</button>
             </div>
@@ -24,7 +25,7 @@ function CVBuilderScreen({onNavigate}) {
           <div className="cvb-layout">
             <CVSectionNav />
             <CVEditor />
-            <CVPreview />
+            {/* <CVPreview /> */}
           </div>
         </div>
       </div>

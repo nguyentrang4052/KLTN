@@ -14,7 +14,7 @@
 }
 
 .cvb-ed-title {
-  font-family: 'Fraunces', serif;
+  font-family: 'Roboto', serif;
   font-size: 15px;
   font-weight: 600;
   margin-bottom: 14px;
@@ -54,7 +54,7 @@
   border-radius: 8px;
   padding: 9px 12px;
   color: var(--ink);
-  font-family: 'Cabinet Grotesk', sans-serif;
+  font-family: 'Roboto', sans-serif;
   font-size: 13px;
   outline: none;
   transition: border-color 0.18s;
