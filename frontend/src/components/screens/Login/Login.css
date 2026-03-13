@@ -1,4 +1,4 @@
-/* ── Reset & base ── */
+
 .auth-wrap * { box-sizing: border-box; }
 
 .auth-wrap {
@@ -19,7 +19,6 @@
   pointer-events: none;
 }
 
-/* ── Left panel ── */
 .auth-left {
   width: 420px;
   flex-shrink: 0;
@@ -135,14 +134,13 @@
   font-family: 'Fraunces', serif;
   font-size: 30px; font-weight: 700;
   color: #F0EAE0; letter-spacing: -1px;
-  margin-bottom: 6px;
+  margin-bottom: 24px;
 }
 
 .auth-card-sub { font-size: 13px; color: #666; margin-bottom: 28px; line-height: 1.6; }
 .auth-card-sub a { color: #E8C97A; font-weight: 600; cursor: pointer; text-decoration: none; }
 .auth-card-sub a:hover { color: #F0D898; }
 
-/* ── Social ── */
 .auth-socials { display: flex; gap: 10px; margin-bottom: 20px; }
 
 .auth-social-btn {
@@ -162,7 +160,7 @@
 .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.08); }
 .auth-divider span { font-size: 11px; color: #555; font-weight: 500; letter-spacing: 0.5px; white-space: nowrap; }
 
-/* ── Form ── */
+
 .auth-form { display: flex; flex-direction: column; gap: 14px; }
 
 .auth-field { display: flex; flex-direction: column; gap: 6px; }

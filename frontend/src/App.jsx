@@ -13,20 +13,32 @@ import NotificationsScreen from './components/screens/NotificationsScreen/Notifi
 import Login from './components/screens/Login/Login'
 import Register from './components/screens/Register/Register'
 import ForgotPassword from './components/screens/ForgotPassword/ForgotPassword'
+import OAuthCallback from './components/screens/OAuthCallback/OAuthCallback'
+import { getToken } from './utils/auth'
 
 function App() {
-  const [activeScreen, setActiveScreen] = useState('s1')
+  const path = window.location.pathname
 
-  // Auth screens — không hiện ScreenNav
+  const [activeScreen, setActiveScreen] = useState(() => {
+    if (path === '/oauth-callback') return 'oauth'
+    if (getToken()) return 's2'
+    return 's1'
+  })
+
+  const handleLoginSuccess = () => setActiveScreen('s2')
+
   if (activeScreen === 'login')
     return <Login
       onGoRegister={() => setActiveScreen('register')}
       onGoForgot={() => setActiveScreen('forgot')}
+      onLoginSuccess={handleLoginSuccess}
     />
   if (activeScreen === 'register')
     return <Register onGoLogin={() => setActiveScreen('login')} />
   if (activeScreen === 'forgot')
     return <ForgotPassword onGoLogin={() => setActiveScreen('login')} />
+  if (activeScreen === 'oauth')
+    return <OAuthCallback onLoginSuccess={handleLoginSuccess} />
 
   const screens = {
     s1: <LandingScreen onGoLogin={() => setActiveScreen('login')} />,

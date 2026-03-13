@@ -69,11 +69,8 @@ export class AuthController {
     @Res() res: Response,
   ) {
     const result = await this.authService.oauthLogin(req.user);
-
-    const url = `${this.config.get<string>(
-      'FRONTEND_URL',
-    )}/oauth-callback?token=${result.accessToken}`;
-
+    const name = result.user.fullName ?? '';
+    const url = `${this.config.get<string>('FRONTEND_URL')}/oauth-callback?token=${result.accessToken}&email=${encodeURIComponent(result.user.email)}&name=${encodeURIComponent(name)}`;
     res.redirect(url);
   }
 
@@ -88,11 +85,8 @@ export class AuthController {
     @Res() res: Response,
   ) {
     const result = await this.authService.oauthLogin(req.user);
-
-    const url = `${this.config.get<string>(
-      'FRONTEND_URL',
-    )}/oauth-callback?token=${result.accessToken}`;
-
+    const name = result.user.fullName ?? '';
+    const url = `${this.config.get<string>('FRONTEND_URL')}/oauth-callback?token=${result.accessToken}&email=${encodeURIComponent(result.user.email)}&name=${encodeURIComponent(name)}`;
     res.redirect(url);
   }
 }

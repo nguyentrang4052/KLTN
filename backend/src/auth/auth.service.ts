@@ -44,6 +44,7 @@ export class AuthService {
             phone: dto.phone ?? null,
             birthYear: dto.birthYear ?? null,
             gender: dto.gender ?? null,
+            address: dto.address ?? null,
           },
         },
       },
@@ -57,6 +58,10 @@ export class AuthService {
         accountID: account.accountID,
         email: account.email,
         fullName: account.user?.fullName,
+        address: account.user?.address,
+        phone: account.user?.phone,
+        birthYear: account.user?.birthYear,
+        gender: account.user?.gender,
       },
     };
   }
