@@ -29,11 +29,11 @@ function App() {
 
   const [activeScreen, setActiveScreen] = useState(() => {
     if (path === '/oauth-callback') return 'oauth'
-    if (getToken()) return 's2'
+    if (getToken()) return 's3'
     return 's1'
   })
 
-  const handleLoginSuccess = () => setActiveScreen('s2')
+  const handleLoginSuccess = () => setActiveScreen('s3')
 
   if (activeScreen === 'login')
     return <Login
@@ -49,7 +49,7 @@ function App() {
     return <OAuthCallback onLoginSuccess={handleLoginSuccess} />
 
   const screens = {
-    s1:  <LandingScreen       onNavigate={setActiveScreen} />,
+    s1:  <LandingScreen  onGoLogin={() => setActiveScreen('login')}  onNavigate={setActiveScreen} />,
     s2:  <DashboardScreen     onNavigate={setActiveScreen} />,
     s3:  <HomeScreen     onNavigate={setActiveScreen} />,
     s4:  <JobDetailScreen     onNavigate={setActiveScreen} />,

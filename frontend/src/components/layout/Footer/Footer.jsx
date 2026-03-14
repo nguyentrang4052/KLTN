@@ -142,15 +142,15 @@ export default function Footer() {
         <div className="f__contact">
           <div className="f__contact-item">
             <span className="f__contact-icon"><IconMail /></span>
-            <a href="mailto:hello@nghevn.vn">hello@nghevn.vn</a>
+            <a href="mailto:gzconnect.team@gmail.com">gzconnect.team@gmail.com</a>
           </div>
           <div className="f__contact-item">
             <span className="f__contact-icon"><IconPhone /></span>
-            <a href="tel:+842812345678">028 1234 5678</a>
+            <a href="tel:+842812345678">0123 456 789</a>
           </div>
           <div className="f__contact-item">
             <span className="f__contact-icon"><IconMapPin /></span>
-            <span>Tầng 8, Tòa nhà Landmark 81, TP. Hồ Chí Minh</span>
+            <span>Số 1 Võ Văn Ngân, Phường Linh Chiểu, TP. Thủ Đức, TP. Hồ Chí Minh</span>
           </div>
         </div>
       </div>

@@ -144,16 +144,14 @@ export default function ForgotPassword({ onGoLogin }) {
 
 
       <div className="fp-left">
-        <div className="fp-brand">Nghề<span>VN</span></div>
+        <div className="fp-brand">GZ<span>CONNECT</span></div>
         <div className="fp-panel-body">
-          <div className="fp-panel-tag">✦ Khôi phục tài khoản</div>
           <h2 className="fp-panel-headline">Lấy lại<br /><em>quyền truy cập</em></h2>
           <p className="fp-panel-sub">Chúng tôi sẽ gửi mã xác minh qua email để bạn đặt lại mật khẩu an toàn.</p>
           <div className="fp-panel-stats">
             {[
-              { ico: '🔥', bg: 'rgba(192,65,42,0.15)', title: '50K+ việc làm mới / ngày', sub: 'Tổng hợp từ 15+ nền tảng' },
-              { ico: '🎯', bg: 'rgba(232,201,122,0.12)', title: 'Match Score AI chính xác 92%', sub: 'Học theo hành vi của bạn' },
-              { ico: '⚡', bg: 'rgba(78,142,98,0.15)', title: '1-Click Auto Apply', sub: 'Nộp đến mọi nền tảng cùng lúc' },
+              { ico: '🔥', bg: 'rgba(192,65,42,0.15)', title: 'Nhiều việc làm mới / ngày', sub: 'Tổng hợp từ nhiều nền tảng' },
+              { ico: '🎯', bg: 'rgba(232,201,122,0.12)', title: 'Match Score AI', sub: 'Học theo hành vi của bạn' },
             ].map((s, i) => (
               <div key={i} className="fp-aps-item">
                 <div className="fp-aps-ico" style={{ background: s.bg }}>{s.ico}</div>
@@ -162,7 +160,7 @@ export default function ForgotPassword({ onGoLogin }) {
             ))}
           </div>
         </div>
-        <div className="fp-footer">© 2025 NghềVN · Nền tảng tìm việc AI đầu tiên tại Việt Nam</div>
+
       </div>
 
 

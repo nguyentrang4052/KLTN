@@ -20,12 +20,12 @@ export class MailService {
 
   async sendOtp(email: string, otp: string) {
     await this.transporter.sendMail({
-      from: `"NghềVN" <${this.config.get('MAIL_USER')}>`,
+      from: `"GZCONNECT" <${this.config.get('MAIL_USER')}>`,
       to: email,
-      subject: `[NghềVN] Mã xác minh của bạn: ${otp}`,
+      subject: `[GZCONNECT] Mã xác minh của bạn: ${otp}`,
       html: `
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-          <h2 style="color: #C0412A;">NghềVN</h2>
+          <h2 style="color: rgb(35, 42, 162);">GZCONNECT</h2>
           <p>Mã xác minh đặt lại mật khẩu của bạn là:</p>
           <div style="
             font-size: 36px; font-weight: 700; letter-spacing: 8px;

@@ -1,19 +1,12 @@
-/* ══ AboutScreen.css ══════════════════════════════════════════
-   GZCONNECT — Trang "Về chúng tôi"
-   Warm earthy palette, editorial-magazine feel
-   ═══════════════════════════════════════════════════════════ */
-
 .ab-page {
     background: #F7F2EA;
-    font-family: 'Cabinet Grotesk', sans-serif;
+    font-family: 'Roboto', sans-serif;
     overflow-x: hidden;
 }
 
 .ab-page * {
     box-sizing: border-box;
 }
-
-/* ── Shared section helpers ─────────────────────────────── */
 .ab-section-inner {
     max-width: 1200px;
     margin: 0 auto;
@@ -21,7 +14,7 @@
 }
 
 .ab-sec-label {
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 1.2px;
@@ -34,7 +27,7 @@
 }
 
 .ab-sec-title {
-    font-family: 'Fraunces', serif;
+    font-family: 'Roboto', serif;
     font-size: 36px;
     font-weight: 700;
     color: #1C1510;
@@ -59,11 +52,8 @@
     text-align: center;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   HERO
-═══════════════════════════════════════════════════════════ */
 .ab-hero {
-    background: linear-gradient(155deg, #1C1510 0%, #251810 50%, #1A2830 100%);
+    background: linear-gradient(155deg, #082062 0%, #060036 50%, #1A2830 100%);
     padding: 80px 32px 72px;
     position: relative;
     overflow: hidden;
@@ -150,7 +140,7 @@
 }
 
 .ab-hero-title {
-    font-family: 'Fraunces', serif;
+    font-family: 'Roboto', serif;
     font-size: 56px;
     font-weight: 700;
     color: #F5EED8;
@@ -181,10 +171,10 @@
 .ab-btn-primary {
     padding: 13px 28px;
     border-radius: 10px;
-    background: #C0412A;
+    background: rgb(35, 42, 162);
     color: #fff;
     border: none;
-    font-family: 'Cabinet Grotesk', sans-serif;
+    font-family: 'Roboto', sans-serif;
     font-size: 14px;
     font-weight: 700;
     cursor: pointer;
@@ -208,7 +198,7 @@
     background: rgba(255, 255, 255, .08);
     border: 1.5px solid rgba(255, 255, 255, .15);
     color: rgba(200, 184, 154, .8);
-    font-family: 'Cabinet Grotesk', sans-serif;
+    font-family: 'Roboto', sans-serif;
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
@@ -249,7 +239,7 @@
 }
 
 .ab-quote-mark {
-    font-family: 'Fraunces', serif;
+    font-family: 'Roboto', serif;
     font-size: 48px;
     color: #C0412A;
     line-height: .7;
@@ -281,7 +271,7 @@
     font-weight: 800;
     color: #fff;
     flex-shrink: 0;
-    font-family: 'Cabinet Grotesk', sans-serif;
+    font-family: 'Roboto', sans-serif;
 }
 
 .ab-quote-name {
@@ -324,7 +314,7 @@
 }
 
 .ab-stat-n {
-    font-family: 'Fraunces', serif;
+    font-family: 'Roboto', serif;
     font-size: 26px;
     font-weight: 700;
     color: #F0A020;
@@ -514,7 +504,7 @@
 }
 
 .ab-val-title {
-    font-family: 'Fraunces', serif;
+    font-family: 'Roboto', serif;
     font-size: 17px;
     font-weight: 600;
     color: #1C1510;
@@ -612,7 +602,7 @@
 }
 
 .ab-tl-year {
-    font-family: 'Fraunces', serif;
+    font-family: 'Roboto', serif;
     font-size: 22px;
     font-weight: 700;
     color: #C0412A;
@@ -675,11 +665,11 @@
     font-size: 22px;
     font-weight: 800;
     color: #fff;
-    font-family: 'Cabinet Grotesk', sans-serif;
+    font-family: 'Roboto', sans-serif;
 }
 
 .ab-team-name {
-    font-family: 'Fraunces', serif;
+    font-family: 'Roboto', serif;
     font-size: 17px;
     font-weight: 600;
     color: #1C1510;
@@ -794,7 +784,7 @@
     font-weight: 800;
     color: #fff;
     flex-shrink: 0;
-    font-family: 'Cabinet Grotesk', sans-serif;
+    font-family: 'Roboto', sans-serif;
 }
 
 .ab-partner-name {
@@ -807,7 +797,7 @@
    FINAL CTA
 ═══════════════════════════════════════════════════════════ */
 .ab-cta {
-    background: linear-gradient(155deg, #1C1510 0%, #251810 55%, #1A2830 100%);
+    background: linear-gradient(155deg, #082062 0%, #060036 50%, #1A2830 100%);
     padding: 96px 32px;
     text-align: center;
     position: relative;
@@ -853,7 +843,7 @@
 }
 
 .ab-cta-title {
-    font-family: 'Fraunces', serif;
+    font-family: 'Roboto', serif;
     font-size: 48px;
     font-weight: 700;
     color: #F5EED8;
@@ -888,7 +878,7 @@
     background: transparent;
     border: 1.5px solid rgba(255, 255, 255, .18);
     color: rgba(200, 184, 154, .75);
-    font-family: 'Cabinet Grotesk', sans-serif;
+    font-family: 'Roboto', sans-serif;
     font-size: 15px;
     font-weight: 600;
     cursor: pointer;

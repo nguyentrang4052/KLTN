@@ -81,16 +81,14 @@ export default function Login({ onGoRegister, onGoForgot, onLoginSuccess }) {
       <div className="auth-noise" />
 
       <div className="auth-left">
-        <div className="auth-brand">Nghề<span>VN</span></div>
+        <div className="auth-brand">GZ<span>CONNECT</span></div>
         <div className="auth-panel-body">
-          <div className="auth-panel-tag">✦ AI Job Matching</div>
-          <h2 className="auth-panel-headline">Chào mừng<br />trở lại <em>NghềVN</em></h2>
-          <p className="auth-panel-sub">Hàng nghìn cơ hội việc làm đang chờ bạn. Đăng nhập để xem đề xuất AI cá nhân hoá hôm nay.</p>
+          <h2 className="auth-panel-headline">Chào mừng<br />trở lại <em>GZCONNECT</em></h2>
+          <p className="auth-panel-sub">Hàng nghìn cơ hội việc làm đang chờ bạn. Đăng nhập để trải nghiệm ngay hôm nay.</p>
           <div className="auth-panel-stats">
             {[
-              { ico: '🔥', bg: 'rgba(192,65,42,0.15)', title: '50K+ việc làm mới / ngày', sub: 'Tổng hợp từ 15+ nền tảng' },
-              { ico: '🎯', bg: 'rgba(232,201,122,0.12)', title: 'Match Score AI chính xác 92%', sub: 'Học theo hành vi của bạn' },
-              { ico: '⚡', bg: 'rgba(78,142,98,0.15)', title: '1-Click Auto Apply', sub: 'Nộp đến mọi nền tảng cùng lúc' },
+              { ico: '🔥', bg: 'rgba(192,65,42,0.15)', title: 'Nhiều việc làm mới / ngày', sub: 'Tổng hợp từ nhiều nền tảng' },
+              { ico: '🎯', bg: 'rgba(232,201,122,0.12)', title: 'Match Score AI', sub: 'Học theo hành vi của bạn' },
             ].map((s, i) => (
               <div key={i} className="aps-item">
                 <div className="aps-ico" style={{ background: s.bg }}>{s.ico}</div>
@@ -99,13 +97,12 @@ export default function Login({ onGoRegister, onGoForgot, onLoginSuccess }) {
             ))}
           </div>
         </div>
-        <div className="auth-footer">© 2025 NghềVN · Nền tảng tìm việc AI đầu tiên tại Việt Nam</div>
       </div>
 
       <div className="auth-right">
         <div className="auth-glow" />
         <div className="auth-card">
-          <h2 className="auth-card-title">Đăng nhập</h2>
+          <h2 className="auth-card-title">ĐĂNG NHẬP</h2>
 
           <div className="auth-socials">
             <button className="auth-social-btn" onClick={handleGoogle}>

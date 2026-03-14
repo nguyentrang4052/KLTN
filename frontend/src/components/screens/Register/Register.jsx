@@ -290,16 +290,13 @@ export default function Register({ onGoLogin }) {
       <div className="rg-noise" />
 
       <div className="rg-left">
-        <div className="rg-brand">Nghề<span>VN</span></div>
+        <div className="rg-brand">GZ<span>CONNECT</span></div>
         <div className="rg-panel-body">
-          <div className="rg-panel-tag">✦ Tham gia miễn phí</div>
           <h2 className="rg-panel-headline">Bắt đầu hành trình <em>sự nghiệp</em> mới</h2>
-          <p className="rg-panel-sub">Tạo tài khoản để nhận đề xuất việc làm AI, nộp hồ sơ tự động và theo dõi ứng tuyển.</p>
           <div className="rg-panel-stats">
             {[
-              { ico: '🔥', bg: 'rgba(192,65,42,0.15)', title: '50K+ việc làm mới / ngày', sub: 'Tổng hợp từ 15+ nền tảng' },
-              { ico: '🎯', bg: 'rgba(232,201,122,0.12)', title: 'Match Score AI chính xác 92%', sub: 'Học theo hành vi của bạn' },
-              { ico: '⚡', bg: 'rgba(78,142,98,0.15)', title: '1-Click Auto Apply', sub: 'Nộp đến mọi nền tảng cùng lúc' },
+              { ico: '🔥', bg: 'rgba(192,65,42,0.15)', title: 'Nhiều việc làm mới / ngày', sub: 'Tổng hợp từ nhiều nền tảng' },
+              { ico: '🎯', bg: 'rgba(232,201,122,0.12)', title: 'Match Score AI', sub: 'Học theo hành vi của bạn' },
             ].map((s, i) => (
               <div key={i} className="rg-aps-item">
                 <div className="rg-aps-ico" style={{ background: s.bg }}>{s.ico}</div>
@@ -308,7 +305,6 @@ export default function Register({ onGoLogin }) {
             ))}
           </div>
         </div>
-        <div className="rg-footer">© 2025 NghềVN · Nền tảng tìm việc AI đầu tiên tại Việt Nam</div>
       </div>
 
 
@@ -408,9 +404,6 @@ export default function Register({ onGoLogin }) {
                   Tiếp theo →
                 </button>
 
-                <p className="rg-terms">
-                  Bằng cách đăng ký, bạn đồng ý với <a>Điều khoản dịch vụ</a> và <a>Chính sách bảo mật</a> của NghềVN.
-                </p>
               </div>
             </>
           )}
@@ -509,8 +502,8 @@ export default function Register({ onGoLogin }) {
               <div className="rg-success-ring">
                 <div className="rg-success-ico">🎉</div>
               </div>
-              <h3>Chào mừng đến NghềVN!</h3>
-              <p>Tài khoản đã được tạo thành công. AI đang chuẩn bị đề xuất việc làm phù hợp nhất cho bạn.</p>
+              <h3>Chào mừng đến với GZCONNECT!</h3>
+              <p>Tài khoản đã được tạo thành công.</p>
               <div className="rg-success-info">
                 <div className="rg-success-info-item">
                   <span>📧</span> {form.email}
@@ -522,7 +515,7 @@ export default function Register({ onGoLogin }) {
                 )}
               </div>
               <button className="rg-submit" style={{ marginTop: 24, maxWidth: 240 }} onClick={onGoLogin}>
-                Đến trang chủ →
+                Đăng nhập để tiếp tục →
               </button>
             </div>
           )}
