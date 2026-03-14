@@ -338,9 +338,9 @@ export default function Register({ onGoLogin }) {
                   <IconGoogle /> Google
                 </button>
 
-                <button className="rg-social-btn" onClick={handleFacebookRegister}>
+                {/* <button className="rg-social-btn" onClick={handleFacebookRegister}>
                   <IconFacebook /> Facebook
-                </button>
+                </button> */}
               </div>
               <div className="rg-divider"><span>hoặc đăng ký bằng email</span></div>
 

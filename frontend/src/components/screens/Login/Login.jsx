@@ -108,9 +108,9 @@ export default function Login({ onGoRegister, onGoForgot, onLoginSuccess }) {
             <button className="auth-social-btn" onClick={handleGoogle}>
               <IconGoogle /> Google
             </button>
-            <button className="auth-social-btn" onClick={handleFacebook}>
+            {/* <button className="auth-social-btn" onClick={handleFacebook}>
               <IconFacebook /> Facebook
-            </button>
+            </button> */}
           </div>
           <div className="auth-divider"><span>hoặc đăng nhập bằng email</span></div>
 
