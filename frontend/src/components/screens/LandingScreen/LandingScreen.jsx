@@ -1,7 +1,11 @@
 import './LandingScreen.css'
 import Button from '../../common/Button/Button'
 
+<<<<<<< HEAD
 function LandingScreen({ onNavigate }) {
+=======
+function LandingScreen({ onGoLogin }) {
+>>>>>>> origin/Trong
   const features = [
     {
       icon: '🔍',
@@ -71,6 +75,7 @@ function LandingScreen({ onNavigate }) {
             {/* <a href="#">Tính năng</a>
             <a href="#">Cách hoạt động</a>
             <a href="#">Giá cả</a>
+<<<<<<< HEAD
             <a href="#">Blog</a> */}
             <Button
               variant="landing-outline"
@@ -86,6 +91,11 @@ function LandingScreen({ onNavigate }) {
             >
               Bắt đầu miễn phí →
             </Button>
+=======
+            <a href="#">Blog</a>
+            <button className="btn btn-outline btn-sm land-btn-outline" onClick={onGoLogin}>Đăng nhập</button>
+            <button className="btn btn-rust btn-sm" onClick={onGoLogin}>Bắt đầu miễn phí →</button>
+>>>>>>> origin/Trong
           </div>
         </nav>
 

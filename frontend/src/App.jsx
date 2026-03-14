@@ -4,7 +4,6 @@ import './App.css'
 
 import Header              from './components/layout/Header/Header'
 import Footer              from './components/layout/Footer/Footer'
-
 import LandingScreen       from './components/screens/LandingScreen/LandingScreen'
 import DashboardScreen     from './components/screens/DashboardScreen/DashboardScreen'
 import HomeScreen     from './components/screens/HomeScreen/HomeScreen'
@@ -17,10 +16,37 @@ import JobSearchScreen       from './components/screens/JobSearchScreen/JobSearc
 import CompaniesScreen     from './components/screens/CompaniesScreen/CompaniesScreen'
 import AboutScreen from './components/screens/AboutScreen/AboutScreen'
 
+import Login from './components/screens/Login/Login'
+import Register from './components/screens/Register/Register'
+import ForgotPassword from './components/screens/ForgotPassword/ForgotPassword'
+import OAuthCallback from './components/screens/OAuthCallback/OAuthCallback'
+import { getToken } from './utils/auth'
+
 const NO_HEADER_SCREENS = new Set(['s1'])
 
 function App() {
-  const [activeScreen, setActiveScreen] = useState('s1')
+  const path = window.location.pathname
+
+  const [activeScreen, setActiveScreen] = useState(() => {
+    if (path === '/oauth-callback') return 'oauth'
+    if (getToken()) return 's2'
+    return 's1'
+  })
+
+  const handleLoginSuccess = () => setActiveScreen('s2')
+
+  if (activeScreen === 'login')
+    return <Login
+      onGoRegister={() => setActiveScreen('register')}
+      onGoForgot={() => setActiveScreen('forgot')}
+      onLoginSuccess={handleLoginSuccess}
+    />
+  if (activeScreen === 'register')
+    return <Register onGoLogin={() => setActiveScreen('login')} />
+  if (activeScreen === 'forgot')
+    return <ForgotPassword onGoLogin={() => setActiveScreen('login')} />
+  if (activeScreen === 'oauth')
+    return <OAuthCallback onLoginSuccess={handleLoginSuccess} />
 
   const screens = {
     s1:  <LandingScreen       onNavigate={setActiveScreen} />,
@@ -34,6 +60,7 @@ function App() {
     s10: <JobSearchScreen onNavigate={setActiveScreen}/>,
     s11: <CompaniesScreen     onNavigate={setActiveScreen} />,
     s12: <AboutScreen onNavigate={setActiveScreen} />
+
   }
 
   const showHeader = !NO_HEADER_SCREENS.has(activeScreen)
