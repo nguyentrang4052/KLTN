@@ -182,7 +182,7 @@
 }
 
 .ab-btn-primary:hover {
-    background: #E05A40;
+    background:rgb(6, 12, 121);
     transform: translateY(-2px);
     box-shadow: 0 8px 28px rgba(192, 65, 42, .35);
 }

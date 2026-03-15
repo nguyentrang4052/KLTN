@@ -1,5 +1,6 @@
 
 import { useState } from 'react'
+import { useNavigate } from "react-router-dom"
 import './AboutScreen.css'
 
 /* ── Data ─────────────────────────────────────────────────── */
@@ -80,6 +81,7 @@ const PARTNERS = [
 /* ── Component ─────────────────────────────────────────────── */
 export default function AboutScreen({ onNavigate }) {
   const [activeVal, setActiveVal] = useState(0)
+  const navigate = useNavigate()
 
   return (
     <div className="ab-page">
@@ -103,7 +105,7 @@ export default function AboutScreen({ onNavigate }) {
           </p>
 
           <div className="ab-hero-ctas">
-            <button className="ab-btn-primary" onClick={() => onNavigate && onNavigate('s3')}>
+            <button className="ab-btn-primary" onClick={() => navigate("/home")}>
               Khám phá việc làm →
             </button>
           </div>

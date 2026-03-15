@@ -1,7 +1,8 @@
 import './LandingScreen.css'
 import Button from '../../common/Button/Button'
+import { useNavigate } from "react-router-dom"
 
-function LandingScreen({ onNavigate, onGoLogin }) {
+function LandingScreen() {
   const features = [
     {
       icon: '🔍',
@@ -53,11 +54,27 @@ function LandingScreen({ onNavigate, onGoLogin }) {
     { logo: 'S', color: 'l-shopee', title: 'Frontend Lead', company: 'Shopee VN', salary: '40-60tr', match: 81, matchColor: '#D4820A' }
   ]
 
+  const navigate = useNavigate()
+  
+  // const handleFeatureClick = (target) => {
+  //   if (target && onNavigate) {
+  //     onNavigate(target)
+  //   }
+  // }
+
   const handleFeatureClick = (target) => {
-    if (target && onNavigate) {
-      onNavigate(target)
-    }
+
+  const map = {
+    s2: "/dashboard",
+    s4: "/job/1",
+    s6: "/cv-builder",
+    s7: "/applications"
   }
+
+  if (map[target]) {
+    navigate(map[target])
+  }
+}
 
   return (
     <div id="s1">
@@ -71,14 +88,14 @@ function LandingScreen({ onNavigate, onGoLogin }) {
             <Button
               variant="landing-outline"
               size="lg"
-              onClick={onGoLogin}
+              onClick={() => navigate("/login")}
             >
               Đăng nhập
             </Button>
             <Button
               variant="rust"
               size="lg"
-              onClick={() => onNavigate?.('s10')}
+              onClick={() => navigate("/jobs")}
             >
               Bắt đầu miễn phí →
             </Button>
@@ -96,7 +113,7 @@ function LandingScreen({ onNavigate, onGoLogin }) {
               <Button
                 variant="rust"
                 size="lg"
-                onClick={() => onNavigate?.('s2')}
+                onClick={() => navigate("/jobs")}
               >
                 Bắt đầu tìm việc
               </Button>
@@ -123,7 +140,7 @@ function LandingScreen({ onNavigate, onGoLogin }) {
                   <div
                     key={idx}
                     className="hjp"
-                    onClick={() => onNavigate?.('s4')}
+                    onClick={() => navigate("/job/:id")}
                     style={{ cursor: 'pointer' }}
                   >
                     <div className={`hjp-logo ${job.color}`}>{job.logo}</div>

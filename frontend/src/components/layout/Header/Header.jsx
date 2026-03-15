@@ -1,56 +1,90 @@
 // src/components/layout/Header/Header.jsx
 import { useState } from 'react'
 import './Header.css'
+import { useNavigate, useLocation } from "react-router-dom"
+
+// const NAV_ITEMS = [
+//   { id: 'home', label: 'Tổng quan', screen: 's3' },
+//   { id: 'jobs',      label: 'Tìm việc',  screen: 's10'},
+//   { id: 'companies', label: 'Công ty',  screen: 's11' },
+//   { id: 'cv',        label: 'Tạo CV',  screen: 's6' },
+//   { id: 'about', label: 'Về chúng tôi',  screen: 's12' }
+// ]
 
 const NAV_ITEMS = [
-  { id: 'home', label: 'Tổng quan', screen: 's3' },
-  { id: 'jobs',      label: 'Tìm việc',  screen: 's10'},
-  { id: 'companies', label: 'Công ty',  screen: 's11' },
-  { id: 'cv',        label: 'Tạo CV',  screen: 's6' },
-  { id: 'about', label: 'Về chúng tôi',  screen: 's12' }
+  { id: 'home', label: 'Tổng quan', path: '/home' },
+  { id: 'jobs', label: 'Tìm việc', path: '/jobs' },
+  { id: 'companies', label: 'Công ty', path: '/companies' },
+  { id: 'cv', label: 'Tạo CV', path: '/cv-builder' },
+  { id: 'about', label: 'Về chúng tôi', path: '/about' }
 ]
 
 /* ── Dropdown sections ──────────────────────────────────────── */
+// const DD_MENU = [
+//   {
+//     label: 'Tài khoản',
+//     items: [
+//       { ico: '👤', label: 'Hồ sơ của tôi', path: '/profile' },
+//       { ico: '📋', label: 'Đơn ứng tuyển', path: '/applications', tag: '14' },
+//       { ico: '📄', label: 'CV của tôi', path: '/cv-builder' },
+//       { ico: '🤖', label: 'AI Assistant', screen: 's8' },
+//     ],
+//   },
+//   {
+//     label: 'Cài đặt',
+//     items: [
+//       { ico: '⚙️', label: 'Cài đặt tài khoản' },
+//       { ico: '🔔', label: 'Thông báo', path: '/notifications' },
+//       { ico: '🔒', label: 'Bảo mật & Mật khẩu', screen: null },
+//       { ico: '💳', label: 'Gói dịch vụ', screen: null, tag: 'Pro' },
+//     ],
+//   },
+//   {
+//     label: '',
+//     items: [
+//       { ico: '❓', label: 'Trung tâm hỗ trợ', screen: null },
+//       { ico: '📣', label: 'Gửi phản hồi', screen: null },
+//       { ico: '🚪', label: 'Đăng xuất', screen: null, danger: true },
+//     ],
+//   },
+// ]
+
 const DD_MENU = [
   {
     label: 'Tài khoản',
     items: [
-      { ico: '👤', label: 'Hồ sơ của tôi',      screen: 's8'  },
-      { ico: '📋', label: 'Đơn ứng tuyển',       screen: 's7', tag: '14' },
-      { ico: '📄', label: 'CV của tôi',           screen: 's6'  },
-      { ico: '🤖', label: 'AI Assistant',         screen: 's8'  },
+      { ico: '👤', label: 'Hồ sơ của tôi', path: '/profile' },
+      { ico: '📋', label: 'Đơn ứng tuyển', path: '/applications', tag: '14' },
+      { ico: '📄', label: 'CV của tôi', path: '/cv-builder' },
+      { ico: '🤖', label: 'AI Assistant', path: '/profile' }
     ],
   },
   {
     label: 'Cài đặt',
     items: [
-      { ico: '⚙️', label: 'Cài đặt tài khoản',  screen: 's8'  },
-      { ico: '🔔', label: 'Thông báo',            screen: 's9'  },
-      { ico: '🔒', label: 'Bảo mật & Mật khẩu',  screen: null  },
-      { ico: '💳', label: 'Gói dịch vụ',          screen: null, tag: 'Pro' },
+      { ico: '⚙️', label: 'Cài đặt tài khoản', path: '/profile' },
+      { ico: '🔔', label: 'Thông báo', path: '/notifications' },
+      { ico: '🔒', label: 'Bảo mật & Mật khẩu' },
+      { ico: '💳', label: 'Gói dịch vụ', tag: 'Pro' },
+      { ico: '🚪', label: 'Đăng xuất'}
     ],
-  },
-  {
-    label: '',
-    items: [
-      { ico: '❓', label: 'Trung tâm hỗ trợ',    screen: null  },
-      { ico: '📣', label: 'Gửi phản hồi',         screen: null  },
-      { ico: '🚪', label: 'Đăng xuất',            screen: null, danger: true },
-    ],
-  },
+  }
 ]
 
-/* ── Map screen → nav id ────────────────────────────────────── */
-const SCREEN_TO_NAV = {
-    s3: 'home', s10: 'jobs', s11: 'companies', s6: 'cv', s12: 'about'
-}
+// const SCREEN_TO_NAV = {
+//     s3: 'home', s10: 'jobs', s11: 'companies', s6: 'cv', s12: 'about'
+// }
 
-export default function Header({ activeScreen, onNavigate, notifCount = 5 }) {
+export default function Header({ notifCount = 5 }) {
   const [ddOpen, setDdOpen] = useState(false)
-  const activeNav = SCREEN_TO_NAV[activeScreen] ?? null
+  // const activeNav = SCREEN_TO_NAV[activeScreen] ?? null
+  const location = useLocation()
+  const navigate = useNavigate()
 
-  const go = (screen) => {
-    if (screen) onNavigate(screen)
+  const activeNav = NAV_ITEMS.find(i => location.pathname.startsWith(i.path))?.id
+
+  const go = (path) => {
+    if (path) navigate(path)
   }
 
   return (
@@ -58,7 +92,7 @@ export default function Header({ activeScreen, onNavigate, notifCount = 5 }) {
       <div className="app-header__inner">
 
         {/* Logo */}
-        <div className="app-header__logo" onClick={() => go('s2')}>
+        <div className="app-header__logo" onClick={() => navigate("/home")}>
           GZ<em>CONNECT</em>
         </div>
 
@@ -68,7 +102,7 @@ export default function Header({ activeScreen, onNavigate, notifCount = 5 }) {
             <button
               key={item.id}
               className={`app-header__nav-btn${activeNav === item.id ? ' active' : ''}`}
-              onClick={() => go(item.screen)}
+              onClick={() => navigate(item.path)}
             >
               <span className="app-header__nav-icon">{item.icon}</span>
               {item.label}
@@ -83,15 +117,15 @@ export default function Header({ activeScreen, onNavigate, notifCount = 5 }) {
         <div className="app-header__right">
 
           {/* Quick search */}
-          <button className="app-header__quick-search" onClick={() => go('s3')}>
+          <button className="app-header__quick-search" onClick={() => navigate("/jobs")}>
             🔍 <span>Tìm kiếm nhanh...</span>
           </button>
 
           {/* Notifications */}
           <button
-            className={`app-header__icon-btn${activeScreen === 's9' ? ' active' : ''}`}
+            className={`app-header__icon-btn${location.pathname === "/notifications" ? ' active' : ''}`}
             title="Thông báo"
-            onClick={() => go('s9')}
+            onClick={() => navigate("/notifications")}
           >
             🔔
             {notifCount > 0 && (
@@ -100,23 +134,6 @@ export default function Header({ activeScreen, onNavigate, notifCount = 5 }) {
               </span>
             )}
           </button>
-
-          {/* Saved jobs */}
-          {/* <button
-            className="app-header__icon-btn"
-            title="Việc làm đã lưu"
-          >
-            🔖
-          </button> */}
-
-{/*         
-          <button
-            className={`app-header__icon-btn${activeScreen === 's7' ? ' active' : ''}`}
-            title="Đơn ứng tuyển"
-            onClick={() => go('s7')}
-          >
-            📋
-          </button> */}
 
           <div className="app-header__divider" />
 
@@ -160,7 +177,10 @@ export default function Header({ activeScreen, onNavigate, notifCount = 5 }) {
                         <button
                           key={item.label}
                           className={`app-header__dd-item${item.danger ? ' danger' : ''}`}
-                          onClick={() => { setDdOpen(false); go(item.screen) }}
+                          onClick={() => {
+                            setDdOpen(false)
+                            if (item.path) navigate(item.path)
+                          }}
                         >
                           <span className="app-header__dd-item-ico">{item.ico}</span>
                           <span>{item.label}</span>

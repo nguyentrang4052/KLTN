@@ -1,6 +1,10 @@
 import { useEffect } from 'react'
+import { useNavigate } from "react-router-dom"
+
 
 function OAuthCallback({ onLoginSuccess }) {
+  const navigate = useNavigate()
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
 
@@ -16,9 +20,12 @@ function OAuthCallback({ onLoginSuccess }) {
       }))
 
       window.history.replaceState({}, document.title, '/')
-      onLoginSuccess()
+      // onLoginSuccess()
+      navigate("/home")
+    }else{
+      navigate("/login")
     }
-  }, [onLoginSuccess])
+  }, [navigate])
 
   return (
     <div style={{

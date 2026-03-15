@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from "react-router-dom"
 import './Login.css'
 
 const IconMail = () => (
@@ -43,6 +44,8 @@ export default function Login({ onGoRegister, onGoForgot, onLoginSuccess }) {
   const [error, setError] = useState('')
   const [remember, setRemember] = useState(false)
 
+  const navigate = useNavigate()
+
   const handleSubmit = async () => {
     setError('')
     if (!email || !password) { setError('Vui lòng điền đầy đủ thông tin.'); return }
@@ -60,7 +63,8 @@ export default function Login({ onGoRegister, onGoForgot, onLoginSuccess }) {
       storage.setItem('token', data.accessToken)
       storage.setItem('user', JSON.stringify(data.user))
 
-      onLoginSuccess()
+      // onLoginSuccess()
+      navigate("/home")
     } catch (err) {
       setError(err.message)
     } finally {
@@ -146,7 +150,7 @@ export default function Login({ onGoRegister, onGoForgot, onLoginSuccess }) {
                 <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} />
                 <span>Ghi nhớ đăng nhập</span>
               </label>
-              <a className="auth-link" onClick={onGoForgot}>Quên mật khẩu?</a>
+              <a className="auth-link" onClick={() => navigate("/forgot-password")}>Quên mật khẩu?</a>
             </div>
 
             <button className={`auth-submit${loading ? ' loading' : ''}`}
@@ -156,7 +160,7 @@ export default function Login({ onGoRegister, onGoForgot, onLoginSuccess }) {
           </div>
 
           <div className="auth-bottom">
-            Chưa có tài khoản? <a onClick={onGoRegister}>Đăng ký ngay</a>
+            Chưa có tài khoản? <a onClick={() => navigate("/register")}>Đăng ký ngay</a>
           </div>
         </div>
       </div>

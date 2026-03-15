@@ -271,8 +271,8 @@ function JobSearchScreen() {
 
   const categories = [
     { name: 'Tất cả' },
-    { name: '💻 IT/Tech'},
-    { name: '📊 Marketing'},
+    { name: '💻 IT/Tech' },
+    { name: '📊 Marketing' },
     { name: '💰 Tài chính' },
     { name: '🎨 Design' },
     { name: '🏢 Quản lý' },
@@ -370,17 +370,17 @@ function JobSearchScreen() {
             <div className="filter-section">
               <div className="filter-section-title">Mức lương (triệu/tháng)</div>
               <div className="range-row"><span>0</span><span>{salaryRange}tr+</span></div>
-              <input 
-                type="range" 
-                min="0" 
-                max="100" 
+              <input
+                type="range"
+                min="0"
+                max="100"
                 value={salaryRange}
                 onChange={(e) => setSalaryRange(e.target.value)}
               />
               <div className="salary-pills">
                 {['Dưới 10tr', '10–20tr', '20–40tr', '40–60tr', 'Trên 60tr'].map((pill, idx) => (
-                  <span 
-                    key={pill} 
+                  <span
+                    key={pill}
                     className={`spill ${pill === '20–40tr' ? 'on' : ''}`}
                     onClick={(e) => e.target.classList.toggle('on')}
                   >
@@ -503,7 +503,7 @@ function JobSearchScreen() {
             {activeFilters.jobType.map(f => (
               <div key={f} className="af-chip" onClick={() => removeFilterChip('jobType', f)}>{f} <span className="af-x">×</span></div>
             ))}
-            <div className="af-chip" onClick={() => {}}>20–40 triệu <span className="af-x">×</span></div>
+            <div className="af-chip" onClick={() => { }}>20–40 triệu <span className="af-x">×</span></div>
             {activeFilters.experience.map(f => (
               <div key={f} className="af-chip" onClick={() => removeFilterChip('experience', f)}>{f.replace('KN', 'KN')} <span className="af-x">×</span></div>
             ))}
@@ -515,7 +515,7 @@ function JobSearchScreen() {
           {/* Category tabs */}
           <div className="cat-tabs">
             {categories.map(cat => (
-              <button 
+              <button
                 key={cat.name}
                 className={`cat-tab ${selectedCategory === cat.name ? 'on' : ''}`}
                 onClick={() => setSelectedCategory(cat.name)}
@@ -554,7 +554,7 @@ function JobSearchScreen() {
           {/* JOB CARDS */}
           <div className="jobs-list">
             {jobs.map((job, idx) => (
-              <div 
+              <div
                 key={job.id}
                 className={`job-card fade-in ${job.featured ? 'featured' : ''} ${job.urgent ? 'urgent' : ''}`}
                 style={{ animationDelay: `${(idx + 1) * 0.04}s` }}
@@ -590,7 +590,7 @@ function JobSearchScreen() {
                     <span className={`source-chip ${job.sourceClass}`}>{job.source}</span>
                   </div>
                   <div className="jc-actions">
-                    <button 
+                    <button
                       className={`jc-save ${savedJobs.has(job.id) ? 'saved' : ''}`}
                       onClick={(e) => toggleSave(job.id, e)}
                       title="Lưu việc làm"
@@ -607,7 +607,7 @@ function JobSearchScreen() {
           {/* Pagination */}
           <div className="pagination">
             {[1, 2, 3, 4, 5].map(page => (
-              <button 
+              <button
                 key={page}
                 className={`pg-btn ${currentPage === page ? 'on' : ''}`}
                 onClick={() => setCurrentPage(page)}
@@ -700,14 +700,14 @@ function JobSearchScreen() {
                 <span className="jc-meta-item">👁 2,341 lượt xem</span>
                 <span className="jc-meta-item">📤 842 đã nộp</span>
               </div>
-              <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: '10px', padding: '14px 16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {/* <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: '10px', padding: '14px 16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <span style={{ fontSize: '22px' }}>🔓</span>
                 <div>
                   <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink)', marginBottom: '3px' }}>Bạn đang xem với tư cách khách</div>
                   <div style={{ fontSize: '12px', color: 'var(--ink3)' }}>Đăng ký miễn phí để <strong>nộp CV tự động</strong>, theo dõi trạng thái và nhận gợi ý AI</div>
                 </div>
                 <button className="btn btn-rust btn-sm" style={{ flexShrink: 0 }}>Đăng ký</button>
-              </div>
+              </div> */}
             </div>
             <div className="dp-section">
               <div className="dp-sec-title">Mô tả công việc</div>
@@ -764,31 +764,152 @@ function JobSearchScreen() {
 
       {/* APPLY MODAL */}
       {applyModalOpen && (
-        <div id="applyModal" style={{ display: 'flex', position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 3000, alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }} onClick={closeApply}>
-          <div style={{ background: 'var(--surf)', borderRadius: '16px', padding: '32px', maxWidth: '480px', width: '90%', boxShadow: '0 24px 80px rgba(0,0,0,.3)', animation: 'fadeIn .25s ease-out', position: 'relative' }} onClick={e => e.stopPropagation()}>
-            <button onClick={closeApply} style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', fontSize: '20px', color: 'var(--ink4)', cursor: 'pointer' }}>✕</button>
+        <div
+          id="applyModal"
+          style={{
+            display: 'flex',
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,.5)',
+            zIndex: 3000,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backdropFilter: 'blur(6px)'
+          }}
+          onClick={closeApply}
+        >
+          <div
+            style={{
+              background: 'var(--surf)',
+              borderRadius: '16px',
+              padding: '32px',
+              maxWidth: '480px',
+              width: '90%',
+              boxShadow: '0 24px 80px rgba(0,0,0,.3)',
+              animation: 'fadeIn .25s ease-out',
+              position: 'relative'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+
+            {/* Close */}
+            <button
+              onClick={closeApply}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: 'none',
+                border: 'none',
+                fontSize: '20px',
+                color: 'var(--ink4)',
+                cursor: 'pointer'
+              }}
+            >
+              ✕
+            </button>
+
+            {/* Header */}
             <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-              <div style={{ fontSize: '40px', marginBottom: '10px' }}>🚀</div>
-              <div style={{ fontFamily: "'Fraunces',serif", fontSize: '22px', fontWeight: 700, marginBottom: '8px' }}>Nộp hồ sơ nhanh hơn với AI</div>
-              <div style={{ fontSize: '13px', color: 'var(--ink3)', lineHeight: 1.65 }}>Đăng ký miễn phí để NghềVN tự động nộp CV đến 15+ nền tảng cùng lúc — tiết kiệm 3 giờ mỗi ngày</div>
+              <div style={{ fontSize: '40px', marginBottom: '10px' }}>🔗</div>
+
+              <div
+                style={{
+                  fontFamily: "'Fraunces',serif",
+                  fontSize: '22px',
+                  fontWeight: 700,
+                  marginBottom: '8px'
+                }}
+              >
+                Chuyển đến trang ứng tuyển
+              </div>
+
+              <div
+                style={{
+                  fontSize: '13px',
+                  color: 'var(--ink3)',
+                  lineHeight: 1.65
+                }}
+              >
+                Đây là nền tảng tổng hợp việc làm.
+                Khi nhấn <b>Ứng tuyển</b>, bạn sẽ được chuyển đến trang gốc của công việc để hoàn tất việc nộp hồ sơ.
+              </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+
+            {/* Info */}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                marginBottom: '20px'
+              }}
+            >
               {[
-                { icon: '⚡', title: '1-click Auto Apply', desc: 'Tự động nộp đến TopCV, CareerLink, VietnamWorks...' },
-                { icon: '🤖', title: 'AI tối ưu CV theo JD', desc: 'Tăng 30% tỷ lệ được gọi phỏng vấn' },
-                { icon: '📊', title: 'Theo dõi toàn bộ đơn ứng tuyển', desc: 'Kanban board quản lý từ nộp đến nhận Offer' }
+                { icon: '🌐', title: 'Trang tuyển dụng gốc', desc: 'Bạn sẽ được chuyển đến website đăng tuyển chính thức' },
+                { icon: '📄', title: 'Nộp hồ sơ trực tiếp', desc: 'Ứng tuyển bằng CV của bạn trên nền tảng đó' },
+                { icon: '🔒', title: 'Bảo mật thông tin', desc: 'Chúng tôi không lưu thông tin hồ sơ ứng tuyển của bạn' },
+                // { icon: '🌐', title: 'Nguồn tuyển dụng', desc: new URL(job.sourceUrl).hostname }
+                { icon: '🌐', title: 'Nguồn tuyển dụng', desc: null }
               ].map(item => (
-                <div key={item.title} style={{ display: 'flex', alignItems: 'center', gap: '9px', padding: '10px 14px', background: 'var(--bg2)', borderRadius: '9px', border: '1px solid var(--border)' }}>
+                <div
+                  key={item.title}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '9px',
+                    padding: '10px 14px',
+                    background: 'var(--bg2)',
+                    borderRadius: '9px',
+                    border: '1px solid var(--border)'
+                  }}
+                >
                   <span style={{ fontSize: '18px' }}>{item.icon}</span>
+
                   <div>
-                    <div style={{ fontSize: '13px', fontWeight: 600 }}>{item.title}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--ink3)' }}>{item.desc}</div>
+                    <div style={{ fontSize: '13px', fontWeight: 600 }}>
+                      {item.title}
+                    </div>
+
+                    <div style={{ fontSize: '11px', color: 'var(--ink3)' }}>
+                      {item.desc}
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
-            <button className="btn btn-rust" style={{ width: '100%', justifyContent: 'center', padding: '13px', fontSize: '14px' }}>Đăng ký miễn phí — 2 phút</button>
-            <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '12px', color: 'var(--ink4)' }}>Hoặc <a href="#" style={{ color: 'var(--rust)', fontWeight: 600 }}>tiếp tục nộp thủ công trên nền tảng gốc ↗</a></div>
+
+            {/* Apply button */}
+            <button
+              className="btn btn-rust"
+              style={{
+                width: '100%',
+                justifyContent: 'center',
+                padding: '13px',
+                fontSize: '14px',
+                background: 'rgb(35, 42, 162)'
+              }}
+              onClick={() => window.open(job.sourceUrl, "_blank")}
+            >
+              Đi đến trang ứng tuyển →
+            </button>
+
+            <div
+              style={{
+                textAlign: 'center',
+                marginTop: '12px',
+                fontSize: '12px',
+                color: 'var(--ink4)'
+              }}
+            >
+              Hoặc <span
+                style={{ color: 'var(--rust)', cursor: 'pointer', fontWeight: 600 }}
+                onClick={closeApply}
+              >
+                quay lại xem việc khác
+              </span>
+            </div>
+
           </div>
         </div>
       )}

@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import './HomeScreen.css'
 import JobCard from '../../common/JobCard/JobCard'
-import Badge from '../../common/Badge/Badge'
 import { jobData } from '../../../data/mockData'
+import { useNavigate } from "react-router-dom"
 
 const QUICK_TAGS = [
   '⚛️ React', '🏠 Remote', '📈 Senior', '🌱 Fresher', '🤖 AI/ML', '💰 Lương cao',
@@ -28,6 +28,8 @@ const CATEGORIES = [
 function HomeScreen({ onNavigate }) {
   const [activeTag, setActiveTag]   = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
+
+  const navigate = useNavigate()
 
   return (
     <div className="hs-page">
