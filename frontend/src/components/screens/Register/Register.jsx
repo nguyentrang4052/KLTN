@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import './Register.css'
+import { useNavigate } from "react-router-dom"
 
 const IconMail = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -194,12 +195,13 @@ function isValidBirthYear(year) {
   return y >= 1950 && y <= current - 16
 }
 
-export default function Register({ onGoLogin }) {
+export default function Register() {
   const [step, setStep] = useState(1)
   const [showPw, setShowPw] = useState(false)
   const [showPw2, setShowPw2] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const navigate = useNavigate()
 
   const [form, setForm] = useState({
     email: '', password: '', confirm: '',
@@ -331,7 +333,7 @@ export default function Register({ onGoLogin }) {
           {step === 1 && (
             <>
               <h2 className="rg-card-title">Tạo tài khoản</h2>
-              <p className="rg-card-sub">Đã có tài khoản? <a onClick={onGoLogin}>Đăng nhập →</a></p>
+              <p className="rg-card-sub">Đã có tài khoản? <a onClick={() => navigate("/login")}>Đăng nhập →</a></p>
 
               <div className="rg-socials">
                 <button className="rg-social-btn" onClick={handleGoogleRegister}>
@@ -514,7 +516,7 @@ export default function Register({ onGoLogin }) {
                   </div>
                 )}
               </div>
-              <button className="rg-submit" style={{ marginTop: 24, maxWidth: 240 }} onClick={onGoLogin}>
+              <button className="rg-submit" style={{ marginTop: 24, maxWidth: 240 }} onClick={() => navigate("/login")}>
                 Đăng nhập để tiếp tục →
               </button>
             </div>

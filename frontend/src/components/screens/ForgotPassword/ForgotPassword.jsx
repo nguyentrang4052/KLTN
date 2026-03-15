@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { useNavigate } from "react-router-dom"
 import './ForgotPassword.css'
 
 /* ── Icons ── */
@@ -55,6 +56,8 @@ export default function ForgotPassword({ onGoLogin }) {
   const [resendTimer, setResendTimer] = useState(0)
   const otpRefs = useRef([])
   const strength = getStrength(newPw)
+
+  const navigate = useNavigate()
 
   const startResend = () => {
     setResendTimer(60)
@@ -207,7 +210,7 @@ export default function ForgotPassword({ onGoLogin }) {
                 </button>
               </div>
               <div className="fp-bottom">
-                Nhớ mật khẩu rồi? <a onClick={onGoLogin}>Đăng nhập</a>
+                Nhớ mật khẩu rồi? <a onClick={() => navigate("/login")}>Đăng nhập</a>
               </div>
             </>
           )}
