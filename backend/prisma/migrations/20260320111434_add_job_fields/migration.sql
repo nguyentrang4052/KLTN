@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "Job" ADD COLUMN     "shortLocation" TEXT,
+ALTER COLUMN "experienceYear" SET DATA TYPE TEXT,
+ALTER COLUMN "postedAt" DROP NOT NULL,
+ALTER COLUMN "postedAt" DROP DEFAULT;

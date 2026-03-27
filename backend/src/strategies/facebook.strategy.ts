@@ -11,7 +11,7 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
       clientSecret: config.get<string>('FACEBOOK_APP_SECRET')!,
       callbackURL: config.get<string>('FACEBOOK_CALLBACK_URL')!,
       scope: ['email'],
-      profileFields: ['emails', 'name', 'displayName', 'photos'],
+      profileFields: ['emails', 'name', 'displayName'],
     });
   }
 
@@ -21,7 +21,7 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
     profile: Profile,
     done: (error: any, user?: any) => void,
   ): void {
-    const { id, emails, displayName, photos } = profile;
+    const { id, emails, displayName } = profile;
 
     // nếu Facebook không trả email
     const email = emails?.[0]?.value || `${id}@facebook.local`;
@@ -29,7 +29,6 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
     const user = {
       email,
       fullName: displayName,
-      avatar: photos?.[0]?.value,
       provider: 'facebook',
     };
     done(null, user);

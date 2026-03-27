@@ -137,3 +137,84 @@
   display: flex;
   gap: 7px;
 }
+
+.co-logo--letter {
+  background: linear-gradient(135deg, #082062, #1A3A6A);
+  color: #F0A020;
+  font-family: 'Roboto', serif;
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+.jcard-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0 }
+  to   { opacity: 1 }
+}
+
+.jcard-modal {
+  background: var(--surface, #fff);
+  border-radius: 16px;
+  padding: 32px 28px 24px;
+  width: 360px;
+  max-width: 90vw;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  animation: slideUp 0.2s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(16px); opacity: 0 }
+  to   { transform: translateY(0);    opacity: 1 }
+}
+
+.jcard-modal-icon {
+  font-size: 36px;
+  margin-bottom: 4px;
+}
+
+.jcard-modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary, #1a1a2e);
+}
+
+.jcard-modal-desc {
+  font-size: 14px;
+  color: var(--text-secondary, #666);
+  text-align: center;
+  line-height: 1.5;
+}
+
+.jcard-modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  width: 100%;
+}
+
+.jcard-modal-actions .btn {
+  flex: 1;
+  justify-content: center;
+}

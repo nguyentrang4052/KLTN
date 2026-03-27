@@ -101,8 +101,9 @@ model Job {
   benefit        String?
   jobType        String?
   workingTime    String?
-  experienceYear Int?
-  postedAt       DateTime  @default(now())
+  shortLocation  String?
+  experienceYear String?
+  postedAt       DateTime?
   deadline       DateTime?
   sourcePlatform String?
   sourceLink     String?
@@ -149,6 +150,8 @@ model SavedJob {
 
   user User @relation(fields: [userID], references: [userID])
   job  Job  @relation(fields: [jobID], references: [jobID])
+
+  @@unique([userID, jobID])
 }
 
 model Industry {

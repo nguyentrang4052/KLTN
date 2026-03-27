@@ -1,4 +1,3 @@
-/* ── RESET & VARS ─────────────────────────────────────────── */
 *,
 *::before,
 *::after {
@@ -75,7 +74,6 @@ textarea {
     border-radius: 3px;
 }
 
-/* ── NAVBAR ───────────────────────────────────────────────── */
 .navbar {
     position: sticky;
     top: 0;
@@ -214,8 +212,6 @@ textarea {
 }
 
 
-
-/* Search box */
 .search-box {
     background: var(--surf);
     border: 1px solid var(--border);
@@ -358,7 +354,6 @@ textarea {
     margin-top: 3px;
 }
 
-/* ── PAGE LAYOUT ──────────────────────────────────────────── */
 .page {
     max-width: 1360px;
     margin: 0 auto;
@@ -369,7 +364,6 @@ textarea {
     align-items: start;
 }
 
-/* ── FILTER SIDEBAR ───────────────────────────────────────── */
 .sidebar {
     position: sticky;
     top: 84px;
@@ -380,7 +374,6 @@ textarea {
     background: var(--surf);
     border: 1px solid var(--border);
     border-radius: 14px;
-    overflow: hidden;
 }
 
 .filter-header {
@@ -512,7 +505,6 @@ input[type=range] {
     background: rgba(192, 65, 42, .06);
 }
 
-/* Source logos */
 .source-row {
     display: flex;
     align-items: center;
@@ -563,7 +555,6 @@ input[type=range] {
     color: #E05A40;
 }
 
-/* ── MAIN CONTENT ─────────────────────────────────────────── */
 .results-bar {
     display: flex;
     align-items: center;
@@ -604,7 +595,6 @@ input[type=range] {
     cursor: pointer;
 }
 
-/* Active filter chips */
 .active-filters {
     display: flex;
     flex-wrap: wrap;
@@ -635,7 +625,6 @@ input[type=range] {
     line-height: 1;
 }
 
-/* Category tabs */
 .cat-tabs {
     display: flex;
     gap: 6px;
@@ -681,7 +670,6 @@ input[type=range] {
     color: rgba(255, 255, 255, .7);
 }
 
-/* Featured banner */
 .featured-banner {
     background: linear-gradient(135deg, #1C1510 0%, #2A3820 100%);
     border-radius: 14px;
@@ -716,7 +704,6 @@ input[type=range] {
     flex-shrink: 0;
 }
 
-/* Job Cards */
 .jobs-list {
     display: flex;
     flex-direction: column;
@@ -773,7 +760,6 @@ input[type=range] {
     background: var(--rust);
 }
 
-/* Hot badge on card */
 .card-hot-badge {
     position: absolute;
     top: 10px;
@@ -1223,7 +1209,6 @@ input[type=range] {
     text-align: left;
 }
 
-/* Right sidebar */
 .right-col {
     display: flex;
     flex-direction: column;
@@ -1257,7 +1242,6 @@ input[type=range] {
     text-decoration: underline;
 }
 
-/* Trending keywords */
 .kw-grid {
     display: flex;
     flex-wrap: wrap;
@@ -1281,7 +1265,6 @@ input[type=range] {
     color: var(--rust);
 }
 
-/* Top companies */
 .co-row {
     display: flex;
     align-items: center;
@@ -1340,7 +1323,6 @@ input[type=range] {
     color: var(--sage);
 }
 
-/* Alert setup */
 .alert-card {
     background: linear-gradient(135deg, rgba(192, 65, 42, .08), rgba(212, 130, 10, .06));
     border: 1.5px solid rgba(192, 65, 42, .2);
@@ -1378,7 +1360,6 @@ input[type=range] {
     border-color: var(--rust);
 }
 
-/* Job detail panel (modal slide) */
 .detail-overlay {
     position: fixed;
     inset: 0;
@@ -1536,7 +1517,6 @@ input[type=range] {
     background: rgba(212, 130, 10, .07);
 }
 
-/* Login nudge banner */
 .login-nudge {
     background: linear-gradient(135deg, rgba(26, 21, 16, .97), rgba(28, 40, 48, .97));
     border: 1px solid rgba(255, 255, 255, .1);
@@ -1579,7 +1559,6 @@ input[type=range] {
     position: absolute;
 }
 
-/* Footer mini */
 .footer-mini {
     background: var(--ink);
     border-top: 1px solid rgba(255, 255, 255, .07);
@@ -1627,7 +1606,6 @@ input[type=range] {
     color: rgba(200, 184, 154, .3);
 }
 
-/* Tooltip for guest */
 .guest-tip {
     display: inline-flex;
     align-items: center;
@@ -1754,7 +1732,6 @@ input[type=range] {
     }
 }
 
-/* Bottom grid */
 .bottom-grid {
     max-width: 1360px;
     margin: 0 auto;
@@ -1776,8 +1753,6 @@ input[type=range] {
     }
 }
 
-/* ── INDUSTRY GROUP FILTER ────────────────────────────────── */
-/* Sidebar accordion groups */
 .ind-group {
     margin-bottom: 4px;
 }
@@ -1837,7 +1812,6 @@ input[type=range] {
     transform: rotate(90deg);
 }
 
-/* Sub-items panel */
 .ind-sub-panel {
     display: none;
     padding: 4px 0 4px 12px;
@@ -1891,7 +1865,6 @@ input[type=range] {
     color: var(--ink4);
 }
 
-/* Group checkbox state */
 .ind-group-ck {
     width: 16px;
     height: 16px;
@@ -1917,7 +1890,6 @@ input[type=range] {
     color: var(--rust2);
 }
 
-/* Industry scroll area */
 .ind-scroll {
     max-height: 320px;
     overflow-y: auto;
@@ -1926,7 +1898,6 @@ input[type=range] {
     scrollbar-color: var(--border2) transparent;
 }
 
-/* ── INDUSTRY TABS (horizontal) ──────────────────────────── */
 .ind-tabs-wrap {
     border-bottom: 1px solid var(--border);
     margin-bottom: 18px;
@@ -1993,7 +1964,7 @@ input[type=range] {
     color: var(--rust2);
 }
 
-/* Fade arrows for tab scroll */
+
 .ind-tabs-wrap::after {
     content: '›';
     position: absolute;
@@ -2011,7 +1982,6 @@ input[type=range] {
     pointer-events: none;
 }
 
-/* Active industry chips below tabs */
 .ind-active-chips {
     display: flex;
     flex-wrap: wrap;
@@ -2031,7 +2001,25 @@ input[type=range] {
     transition: all .15s;
 }
 
-/* Mobile */
+.filter-card {
+  overflow: visible;
+}
+
+.filter-section:last-child {
+  overflow: visible;
+  position: relative;
+  z-index: 50;
+}
+.jc-save {
+  transition: all .2s ease;
+  white-space: nowrap;
+}
+
+.dp-save-btn {
+  transition: all .2s ease;
+  white-space: nowrap;
+}
+
 @media(max-width:860px) {
     .ind-tabs-wrap::after {
         display: none;

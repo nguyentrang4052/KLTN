@@ -94,7 +94,6 @@ export class AuthService {
     email: string;
     fullName: string;
     provider: string;
-    avatar?: string;
   }) {
     let account = await this.prisma.account.findUnique({
       where: { email: oauthUser.email },

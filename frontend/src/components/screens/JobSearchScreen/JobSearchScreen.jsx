@@ -1,34 +1,251 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { getToken } from '../../../utils/auth';
 import './JobSearchScreen.css';
 
+const API = 'http://localhost:3000/api';
+
+function LoginModal({ onClose }) {
+  const navigate = useNavigate();
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)',
+      backdropFilter: 'blur(4px)', zIndex: 4000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }} onClick={onClose}>
+      <div style={{
+        background: 'var(--surf)', borderRadius: '16px', padding: '32px 28px 24px',
+        width: '360px', maxWidth: '90vw',
+        boxShadow: '0 20px 60px rgba(0,0,0,.2)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
+      }} onClick={e => e.stopPropagation()}>
+        <div style={{ fontSize: '36px', marginBottom: '4px' }}>🔐</div>
+        <div style={{ fontSize: '18px', fontWeight: 700 }}>Bạn chưa đăng nhập</div>
+        <div style={{ fontSize: '14px', color: 'var(--ink3)', textAlign: 'center', lineHeight: 1.5 }}>
+          Vui lòng đăng nhập để tiếp tục sử dụng tính năng này.
+        </div>
+        <div style={{ display: 'flex', gap: '10px', marginTop: '12px', width: '100%' }}>
+          <button style={{
+            flex: 1, padding: '8px', borderRadius: '8px', fontWeight: 700,
+            fontSize: '13px', cursor: 'pointer', border: '1.5px solid var(--border2)',
+            background: 'transparent', color: 'var(--ink3)',
+          }} onClick={onClose}>Để sau</button>
+          <button style={{
+            flex: 1, padding: '8px', borderRadius: '8px', fontWeight: 700,
+            fontSize: '13px', cursor: 'pointer', border: 'none',
+            background: 'rgb(35,42,162)', color: '#fff',
+          }} onClick={() => { navigate('/login'); window.scrollTo({ top: 0, behavior: 'instant' }); }}>
+            Đăng nhập ngay
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function JobSearchScreen() {
-  const [searchInput, setSearchInput] = useState('');
-  const [locationInput, setLocationInput] = useState('TP. Hồ Chí Minh');
-  const [savedJobs, setSavedJobs] = useState(new Set());
+  const [token, setToken] = useState(() => getToken());
+  const [keyword, setKeyword] = useState('');
+  const [sort, setSort] = useState('newest');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [activeFilters, setActiveFilters] = useState({
+    jobType: [], experience: [], industry: [], locations: [], source: [],
+  });
+  const [salaryMin, setSalaryMin] = useState(0);
+  const [salaryMax, setSalaryMax] = useState(0);
+  const [salaryRange, setSalaryRange] = useState(100);
+
+  const [jobs, setJobs] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
+  const [meta, setMeta] = useState({ total: 0, totalPages: 1 });
+  const [filterOptions, setFilterOptions] = useState({
+    jobTypes: [], sources: [], locations: [], experiences: [], industries: [],
+  });
+  const [provinces, setProvinces] = useState([]);
+  const [trendingKeywords, setTrendingKeywords] = useState([]);
+  const [topCompanies, setTopCompanies] = useState([]);
+  const [savedJobIds, setSavedJobIds] = useState(new Set());
+
+  const [loadingJobs, setLoadingJobs] = useState(false);
+  const [loadingRecs, setLoadingRecs] = useState(false);
+  const [loadingFilters, setLoadingFilters] = useState(true);
+  const [selectedJob, setSelectedJob] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [applyModalOpen, setApplyModalOpen] = useState(false);
-  const [activeFilters, setActiveFilters] = useState({
-    jobType: ['Full-time', 'Remote / Hybrid'],
-    experience: ['1 – 3 năm', '3 – 5 năm'],
-    industry: ['IT / Phần mềm'],
-    location: ['TP. Hồ Chí Minh'],
-    source: ['TopCV', 'CareerLink', 'CareerViet']
-  });
-  const [salaryRange, setSalaryRange] = useState(35);
-  const [selectedCategory, setSelectedCategory] = useState('Tất cả');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [provinceSearch, setProvinceSearch] = useState('');
+  const [provinceDropdownOpen, setProvinceDropdownOpen] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
+  const provinceInputRef = useRef(null);
 
-  const toggleSave = (jobId, e) => {
-    if (e) e.stopPropagation();
-    const newSaved = new Set(savedJobs);
-    if (newSaved.has(jobId)) {
-      newSaved.delete(jobId);
-      showToast('Đã bỏ lưu');
+  const [recPage, setRecPage] = useState(1);
+  const REC_LIMIT = 10;
+
+  const pagedRecs = recommendations.slice((recPage - 1) * REC_LIMIT, recPage * REC_LIMIT);
+  const recTotalPages = Math.ceil(recommendations.length / REC_LIMIT);
+
+  useEffect(() => {
+    const sync = () => setToken(getToken());
+    window.addEventListener('focus', sync);
+    return () => window.removeEventListener('focus', sync);
+  }, []);
+
+  useEffect(() => {
+    if (!token && sort === 'match') setSort('newest');
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) { setSavedJobIds(new Set()); return; }
+    fetch(`${API}/jobs/saved`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => {
+        const ids = new Set((Array.isArray(data) ? data : []).map(s => s.job.jobID));
+        setSavedJobIds(ids);
+      })
+      .catch(console.error);
+  }, [token]);
+
+  useEffect(() => {
+    Promise.all([
+      fetch(`${API}/jobs/filter-options`).then(r => r.json()),
+      fetch(`${API}/common/locations`).then(r => r.json()),
+      fetch(`${API}/jobs/trending-keywords`).then(r => r.json()),
+      fetch(`${API}/jobs/top-companies`).then(r => r.json()),
+    ])
+      .then(([opts, provs, trending, companies]) => {
+        setFilterOptions(opts);
+        setProvinces(provs);
+        setTrendingKeywords(trending);
+        setTopCompanies(companies);
+      })
+      .catch(console.error)
+      .finally(() => setLoadingFilters(false));
+  }, []);
+
+  useEffect(() => {
+    if (sort !== 'match' || !token) return;
+    setLoadingRecs(true);
+    fetch(`${API}/jobs/recommendations`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(data => {
+        setRecommendations(Array.isArray(data) ? data : []);
+        setRecPage(1);
+      })
+      .catch(console.error)
+      .finally(() => setLoadingRecs(false));
+  }, [sort, token]);
+
+  const renderRecPages = () => {
+    const pages = [];
+    const total = recTotalPages;
+    const cur = recPage;
+    const addBtn = (n) => pages.push(
+      <button key={n} className={`pg-btn ${cur === n ? 'on' : ''}`}
+        onClick={() => setRecPage(n)}>{n}</button>
+    );
+    const addDots = (k) => pages.push(
+      <span key={k} style={{ display: 'flex', alignItems: 'center', padding: '0 6px', color: 'var(--ink4)' }}>…</span>
+    );
+    if (total <= 7) {
+      for (let i = 1; i <= total; i++) addBtn(i);
     } else {
-      newSaved.add(jobId);
-      showToast('🔖 Đã lưu! Đăng ký để xem danh sách lưu');
+      addBtn(1);
+      if (cur > 3) addDots('d1');
+      const start = Math.max(2, cur - 1);
+      const end = Math.min(total - 1, cur + 1);
+      for (let i = start; i <= end; i++) addBtn(i);
+      if (cur < total - 2) addDots('d2');
+      addBtn(total);
     }
-    setSavedJobs(newSaved);
+    return pages;
+  };
+
+
+  const fetchJobs = useCallback(async () => {
+    if (sort === 'match' && token) return;
+    setLoadingJobs(true);
+    try {
+      const params = new URLSearchParams({ page: String(currentPage), limit: '10', sort });
+      if (keyword) params.set('keyword', keyword);
+      if (activeFilters.industry.length === 1) params.set('industryId', activeFilters.industry[0]);
+      if (activeFilters.jobType.length > 0) params.set('jobType', activeFilters.jobType[0]);
+      if (activeFilters.experience.length > 0) params.set('experience', activeFilters.experience[0]);
+      if (activeFilters.source.length > 0) params.set('source', activeFilters.source[0]);
+      if (salaryMin > 0) params.set('salaryMin', String(salaryMin));
+      if (salaryMax > 0) params.set('salaryMax', String(salaryMax));
+      activeFilters.locations.forEach(loc => params.append('locations', loc));
+
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await fetch(`${API}/jobs?${params}`, { headers });
+      const data = await res.json();
+      setJobs(data.data ?? []);
+      setMeta(data.meta ?? { total: 0, totalPages: 1 });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingJobs(false);
+    }
+  }, [currentPage, sort, keyword, activeFilters, salaryMin, salaryMax, token]);
+
+  useEffect(() => { fetchJobs(); }, [fetchJobs]);
+
+  const displayJobs = sort === 'match' && token ? recommendations : jobs;
+  const displayLoading = sort === 'match' && token ? loadingRecs : loadingJobs;
+
+  const openDetail = async (jobID) => {
+    try {
+      const res = await fetch(`${API}/jobs/${jobID}`);
+      const data = await res.json();
+      setSelectedJob(data);
+      setDetailOpen(true);
+      document.body.style.overflow = 'hidden';
+    } catch (err) { console.error(err); }
+  };
+
+  const closeDetail = () => { setDetailOpen(false); document.body.style.overflow = ''; };
+  const openApply = (e) => { if (e) e.stopPropagation(); setApplyModalOpen(true); };
+  const closeApply = () => setApplyModalOpen(false);
+
+  const handleSave = async (jobID, e) => {
+    if (e) e.stopPropagation();
+    if (!token) { setShowLoginModal(true); return; }
+    const isSaved = savedJobIds.has(jobID);
+    try {
+      await fetch(`${API}/jobs/${jobID}/save`, {
+        method: isSaved ? 'DELETE' : 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      });
+      setSavedJobIds(prev => {
+        const next = new Set(prev);
+        isSaved ? next.delete(jobID) : next.add(jobID);
+        return next;
+      });
+      showToast(isSaved ? 'Đã bỏ lưu' : '🔖 Đã lưu việc làm!');
+    } catch (err) { console.error(err); }
+  };
+
+  const handleApply = (e) => {
+    if (e) e.stopPropagation();
+    if (!token) { setShowLoginModal(true); return; }
+    openApply(e);
+  };
+
+  const toggleFilter = (category, value) => {
+    setActiveFilters(prev => {
+      const current = prev[category] || [];
+      const updated = current.includes(value)
+        ? current.filter(i => i !== value)
+        : [...current, value];
+      return { ...prev, [category]: updated };
+    });
+    setCurrentPage(1);
+  };
+
+  const clearFilters = () => {
+    setActiveFilters({ jobType: [], experience: [], industry: [], locations: [], source: [] });
+    setSalaryMin(0); setSalaryMax(0); setSalaryRange(100); setCurrentPage(1);
   };
 
   const showToast = (message) => {
@@ -39,305 +256,122 @@ function JobSearchScreen() {
     setTimeout(() => t.remove(), 2800);
   };
 
-  const toggleFilter = (category, value) => {
-    setActiveFilters(prev => {
-      const current = prev[category] || [];
-      const updated = current.includes(value)
-        ? current.filter(item => item !== value)
-        : [...current, value];
-      return { ...prev, [category]: updated };
-    });
+  const getSourceClass = (src) => ({ TopCV: 'sc-tc', CareerLink: 'sc-cl', CareerViet: 'sc-cv', VietnamWorks: 'sc-vw' }[src] ?? 'sc-it');
+  const getSourceLogoClass = (src) => ({ TopCV: 'sl-tc', CareerLink: 'sl-cl', CareerViet: 'sl-cv', VietnamWorks: 'sl-vw' }[src] ?? 'sl-it');
+  const getLogoLetter = (name) => name?.[0]?.toUpperCase() ?? '?';
+
+  const formatPostedAt = (postedAt) => {
+    if (!postedAt) return '';
+    const diff = Date.now() - new Date(postedAt).getTime();
+    const h = Math.floor(diff / 3600000);
+    const d = Math.floor(diff / 86400000);
+    if (h < 1) return 'Vừa đăng';
+    if (h < 24) return `Đăng ${h} giờ trước`;
+    return `Đăng ${d} ngày trước`;
   };
 
-  const clearFilters = () => {
-    setActiveFilters({
-      jobType: [],
-      experience: [],
-      industry: [],
-      location: [],
-      source: []
-    });
-    setSalaryRange(0);
+  const formatDeadline = (deadline) => {
+    if (!deadline) return '';
+    const days = Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000);
+    if (days < 0) return 'Đã hết hạn';
+    if (days === 0) return 'Hết hạn hôm nay';
+    return `Còn ${days} ngày`;
   };
 
-  const removeFilterChip = (category, value) => {
-    toggleFilter(category, value);
-  };
-
-  const handleSearchTag = (tag) => {
-    setSearchInput(tag);
-  };
-
-  const openDetail = () => {
-    setDetailOpen(true);
-    document.body.style.overflow = 'hidden';
-  };
-
-  const closeDetail = () => {
-    setDetailOpen(false);
-    document.body.style.overflow = '';
-  };
-
-  const openApply = (e) => {
-    if (e) e.stopPropagation();
-    setApplyModalOpen(true);
-  };
-
-  const closeApply = () => {
-    setApplyModalOpen(false);
-  };
-
-  const jobs = [
-    {
-      id: 'fpt',
-      title: 'Senior React Developer',
-      company: 'FPT Software',
-      logo: 'F',
-      logoClass: 'l-fpt',
-      location: 'Cầu Giấy, Hà Nội',
-      workMode: 'Hybrid (3 ngày remote)',
-      type: 'Full-time',
-      size: '1000+ nhân viên',
-      salary: '25 – 35 triệu',
-      posted: 'Đăng 2 giờ trước',
-      deadline: 'Còn 26 ngày',
-      tags: ['React.js', 'TypeScript', 'Node.js', 'Redux'],
-      source: 'TopCV',
-      sourceClass: 'sc-tc',
-      featured: true,
-      badge: '⭐ Nổi bật',
-      badgeClass: 'badge-feat'
-    },
-    {
-      id: 'shopee',
-      title: 'Frontend Lead Engineer',
-      company: 'Shopee Vietnam',
-      logo: 'S',
-      logoClass: 'l-shopee',
-      location: 'Quận 1, TP.HCM',
-      workMode: 'Onsite',
-      type: 'Full-time',
-      salary: '40 – 60 triệu',
-      posted: 'Đăng hôm nay',
-      deadline: 'Còn 3 ngày',
-      tags: ['React', 'Team Lead', 'Performance', 'System Design'],
-      source: 'CareerLink',
-      sourceClass: 'sc-cl',
-      urgent: true,
-      badge: '🔥 Tuyển gấp',
-      badgeClass: 'badge-hot'
-    },
-    {
-      id: 'vng',
-      title: 'Full-stack Engineer (Python + React)',
-      company: 'VNG Corporation',
-      logo: 'V',
-      logoClass: 'l-vng',
-      location: 'Quận 7, TP.HCM',
-      workMode: 'Remote 100%',
-      type: 'Full-time',
-      salary: '30 – 45 triệu',
-      posted: 'Đăng 5 giờ trước',
-      deadline: 'Còn 30 ngày',
-      tags: ['Python', 'React', 'AWS', 'PostgreSQL'],
-      source: 'CareerViet',
-      sourceClass: 'sc-cv',
-      badge: '✦ Mới đăng',
-      badgeClass: 'badge-new'
-    },
-    {
-      id: 'tiki',
-      title: 'React Native Mobile Developer',
-      company: 'Tiki Corporation',
-      logo: 'Ti',
-      logoClass: 'l-tiki',
-      location: 'Toàn quốc',
-      workMode: 'Remote 100%',
-      type: 'Mobile',
-      salary: '22 – 32 triệu',
-      posted: 'Đăng 1 ngày trước',
-      deadline: 'Còn 20 ngày',
-      tags: ['React Native', 'iOS', 'Android', 'Firebase'],
-      source: 'VietnamWorks',
-      sourceClass: 'sc-vw',
-      badge: '🏠 Remote',
-      badgeClass: 'badge-remote'
-    },
-    {
-      id: 'momo',
-      title: 'Backend Engineer — Golang',
-      company: 'MoMo (M_Service)',
-      logo: 'M',
-      logoClass: 'l-momo',
-      location: 'Quận 3, TP.HCM',
-      workMode: 'Hybrid',
-      type: 'Full-time',
-      salary: '28 – 42 triệu',
-      posted: 'Đăng 2 ngày trước',
-      deadline: 'Còn 18 ngày',
-      tags: ['Golang', 'gRPC', 'Kafka', 'K8s'],
-      source: 'TopCV',
-      sourceClass: 'sc-tc',
-      extraBadges: ['Unicorn']
-    },
-    {
-      id: 'grab',
-      title: 'Software Engineer II — Platform',
-      company: 'Grab Vietnam',
-      logo: 'G',
-      logoClass: 'l-grab',
-      location: 'TP.HCM / HN',
-      workMode: 'Hybrid',
-      type: 'Full-time',
-      salary: '45 – 70 triệu',
-      posted: 'Đăng 3 ngày trước',
-      deadline: 'Còn 14 ngày',
-      tags: ['Java', 'Spring Boot', 'Microservices', 'AWS'],
-      source: 'LinkedIn',
-      sourceClass: 'sc-li',
-      featured: true,
-      badge: '💎 Premium',
-      badgeClass: 'badge-feat',
-      extraBadges: ['Superapp']
-    },
-    {
-      id: 'vnpay',
-      title: 'Product Manager — Payment',
-      company: 'VNPay',
-      logo: 'VP',
-      logoClass: 'l-vnpay',
-      location: 'Hoàn Kiếm, HN',
-      workMode: 'Onsite',
-      type: 'Senior level',
-      salary: '35 – 55 triệu',
-      posted: 'Đăng 4 ngày trước',
-      deadline: 'Còn 22 ngày',
-      tags: ['Product', 'Fintech', 'Agile / Scrum', 'OKR'],
-      source: 'CareerViet',
-      sourceClass: 'sc-cv'
-    },
-    {
-      id: 'zalo',
-      title: 'Junior Frontend Developer (Fresher)',
-      company: 'Zalo Group',
-      logo: 'Z',
-      logoClass: 'l-zalo',
-      location: 'Quận 7, TP.HCM',
-      workMode: 'Hybrid',
-      type: 'Full-time',
-      salary: '12 – 18 triệu',
-      posted: 'Đăng 1 ngày trước',
-      deadline: 'Còn 25 ngày',
-      tags: ['HTML/CSS', 'JavaScript', 'Vue.js', 'Git'],
-      source: 'TopCV',
-      sourceClass: 'sc-tc',
-      badge: '🎓 Fresher OK',
-      badgeClass: 'badge-new'
-    },
-    {
-      id: 'sea',
-      title: 'Data Engineer — Big Data Platform',
-      company: 'Sea Limited',
-      logo: 'Sea',
-      logoClass: 'l-sea',
-      location: 'Quận 1, TP.HCM',
-      workMode: 'English',
-      type: 'Data',
-      salary: '40 – 65 triệu',
-      posted: 'Đăng 5 ngày trước',
-      deadline: 'Còn 12 ngày',
-      tags: ['Spark', 'Airflow', 'Python', 'dbt', 'Kafka'],
-      source: 'LinkedIn',
-      sourceClass: 'sc-li',
-      extraBadges: ['NYSE: SE']
-    },
-    {
-      id: 'misa',
-      title: 'DevOps / Cloud Engineer',
-      company: 'MISA Joint Stock Company',
-      logo: 'Mi',
-      logoClass: 'l-misa',
-      location: 'Đống Đa, HN',
-      workMode: 'Hybrid',
-      type: 'Cloud',
-      salary: '25 – 40 triệu',
-      posted: 'Đăng 3 ngày trước',
-      deadline: 'Còn 17 ngày',
-      tags: ['Docker', 'Kubernetes', 'Terraform', 'AWS'],
-      source: 'TopCV',
-      sourceClass: 'sc-tc'
+  const openProvinceDropdown = () => {
+    if (provinceInputRef.current) {
+      const rect = provinceInputRef.current.getBoundingClientRect();
+      setDropdownPos({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+      });
     }
-  ];
+    setProvinceDropdownOpen(true);
+  };
 
-  const categories = [
-    { name: 'Tất cả' },
-    { name: '💻 IT/Tech' },
-    { name: '📊 Marketing' },
-    { name: '💰 Tài chính' },
-    { name: '🎨 Design' },
-    { name: '🏢 Quản lý' },
-    { name: '🏠 Remote' }
-  ];
+  const filteredProvinces = provinces.filter(p =>
+    p.label.toLowerCase().includes(provinceSearch.toLowerCase())
+  );
 
-  const trendingKeywords = ['AI Engineer', 'LLM', 'Golang', 'Rust', 'React Native', 'DevOps', 'Product Manager', 'Figma', 'Web3', 'Kubernetes', 'FastAPI', 'Next.js', 'Blockchain', 'Machine Learning'];
-
-  const topCompanies = [
-    { name: 'FPT Software', jobs: '127 vị trí đang tuyển', logo: 'F', logoClass: 'l-fpt', badge: 'Đang tuyển', badgeClass: 'cb-hire' },
-    { name: 'VNG Corporation', jobs: '84 vị trí đang tuyển', logo: 'V', logoClass: 'l-vng', badge: 'Hot', badgeClass: 'cb-hot' },
-    { name: 'Shopee Vietnam', jobs: '62 vị trí đang tuyển', logo: 'S', logoClass: 'l-shopee', badge: 'Đang tuyển', badgeClass: 'cb-hire' },
-    { name: 'MoMo', jobs: '48 vị trí đang tuyển', logo: 'M', logoClass: 'l-momo', badge: 'Hot', badgeClass: 'cb-hot' },
-    { name: 'Grab Vietnam', jobs: '35 vị trí đang tuyển', logo: 'G', logoClass: 'l-grab', badge: 'Đang tuyển', badgeClass: 'cb-hire' }
-  ];
+  const renderPages = () => {
+    const pages = [];
+    const total = meta.totalPages;
+    const cur = currentPage;
+    const addBtn = (n) => pages.push(
+      <button key={n} className={`pg-btn ${cur === n ? 'on' : ''}`}
+        onClick={() => setCurrentPage(n)}>{n}</button>
+    );
+    const addDots = (k) => pages.push(
+      <span key={k} style={{ display: 'flex', alignItems: 'center', padding: '0 6px', color: 'var(--ink4)' }}>…</span>
+    );
+    if (total <= 7) {
+      for (let i = 1; i <= total; i++) addBtn(i);
+    } else {
+      addBtn(1);
+      if (cur > 3) addDots('d1');
+      const start = Math.max(2, cur - 1);
+      const end = Math.min(total - 1, cur + 1);
+      for (let i = start; i <= end; i++) addBtn(i);
+      if (cur < total - 2) addDots('d2');
+      addBtn(total);
+    }
+    return pages;
+  };
 
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
-        closeDetail();
-        closeApply();
+        closeDetail(); closeApply();
+        setShowLoginModal(false);
+        setProvinceDropdownOpen(false);
       }
     };
     document.addEventListener('keydown', handleEsc);
     return () => document.removeEventListener('keydown', handleEsc);
   }, []);
 
+  const allChips = [
+    ...activeFilters.industry.map(v => ({ cat: 'industry', value: v, label: filterOptions.industries.find(i => String(i.id) === v)?.name ?? v })),
+    ...activeFilters.jobType.map(v => ({ cat: 'jobType', value: v, label: v })),
+    ...activeFilters.experience.map(v => ({ cat: 'experience', value: v, label: v })),
+    ...activeFilters.locations.map(v => ({ cat: 'locations', value: v, label: v })),
+    ...activeFilters.source.map(v => ({ cat: 'source', value: v, label: v })),
+  ];
+
   return (
     <div className="app">
-      {/* NAVBAR */}
-      {/* <nav className="navbar">
-        <div className="nav-inner">
-          <div className="nav-logo"><em>GZCONNECT</em></div>
-          <div className="nav-links">
-            <a className="nav-link active" href="#">Tìm việc làm</a>
-            <a className="nav-link" href="#">Công ty</a>
-            <a className="nav-link" href="#">CV Builder</a>
-            <a className="nav-link" href="#">Blog nghề nghiệp</a>
-          </div>
-          <div className="nav-right">
-            <button className="btn btn-ghost btn-sm">Đăng nhập</button>
-            <button className="btn btn-rust btn-sm">Đăng ký</button>
-          </div>
-        </div>
-      </nav> */}
+      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
 
-      {/* <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '16px 28px 0' }}>
-        <div className="login-nudge">
-          <div className="nudge-icon">🤖</div>
-          <div className="nudge-text">
-            <div className="nudge-title">Đăng ký miễn phí để nhận gợi ý việc làm phù hợp với bạn</div>
-            <div className="nudge-sub">AI sẽ học theo hành vi của bạn và tự động nộp CV đến 15+ nền tảng cùng lúc</div>
-          </div>
-          <div className="nudge-actions">
-            <button className="btn btn-rust btn-sm">Đăng ký miễn phí</button>
-            <button 
-              className="btn btn-ghost btn-sm" 
-              style={{ color: 'rgba(200,184,154,.6)', borderColor: 'rgba(255,255,255,.15)' }}
-              onClick={(e) => e.target.closest('.login-nudge').style.display = 'none'}
-            >
-              ✕
-            </button>
-          </div>
+      {provinceDropdownOpen && filteredProvinces.length > 0 && (
+        <div style={{
+          position: 'fixed',
+          top: dropdownPos.top,
+          left: dropdownPos.left,
+          width: dropdownPos.width,
+          zIndex: 9999,
+          background: 'var(--surf)',
+          border: '1px solid var(--border)',
+          borderRadius: '8px',
+          boxShadow: '0 8px 24px rgba(0,0,0,.15)',
+          maxHeight: '220px',
+          overflowY: 'auto',
+        }}>
+          {filteredProvinces.map(p => (
+            <div key={p.value} style={{
+              padding: '8px 12px', fontSize: '12.5px', cursor: 'pointer',
+              background: activeFilters.locations.includes(p.value) ? 'rgba(35,42,162,0.08)' : 'transparent',
+              color: activeFilters.locations.includes(p.value) ? 'rgb(35,42,162)' : 'var(--ink)',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }} onMouseDown={(e) => { e.preventDefault(); toggleFilter('locations', p.value); setProvinceSearch(''); }}>
+              <span>{p.label}</span>
+              {activeFilters.locations.includes(p.value) && (
+                <span style={{ color: 'rgb(35,42,162)', fontWeight: 700 }}>✓</span>
+              )}
+            </div>
+          ))}
         </div>
-      </div> */}
+      )}
 
       <div className="page">
         <aside className="sidebar">
@@ -349,567 +383,504 @@ function JobSearchScreen() {
 
             <div className="filter-section">
               <div className="filter-section-title">Loại hình công việc</div>
-              {[
-                { label: 'Full-time', count: '32,410', checked: true },
-                { label: 'Remote / Hybrid', count: '8,920', checked: true },
-                { label: 'Part-time', count: '2,340', checked: false },
-                { label: 'Freelance', count: '1,180', checked: false },
-                { label: 'Thực tập sinh', count: '4,600', checked: false }
-              ].map(item => (
-                <div key={item.label} className="ck-row" onClick={() => toggleFilter('jobType', item.label)}>
-                  <div className={`ck ${activeFilters.jobType.includes(item.label) ? 'on' : ''}`}>
-                    {activeFilters.jobType.includes(item.label) ? '✓' : ''}
+              {loadingFilters ? <div style={{ fontSize: '12px', color: 'var(--ink4)' }}>Đang tải...</div>
+                : filterOptions.jobTypes.map(item => (
+                  <div key={item.value} className="ck-row" onClick={() => toggleFilter('jobType', item.value)}>
+                    <div className={`ck ${activeFilters.jobType.includes(item.value) ? 'on' : ''}`}>
+                      {activeFilters.jobType.includes(item.value) ? '✓' : ''}
+                    </div>
+                    <span className="ck-label">{item.value}</span>
+                    <span className="ck-count">{item.count?.toLocaleString()}</span>
                   </div>
-                  <span className="ck-label">{item.label}</span>
-                  <span className="ck-count">{item.count}</span>
-                </div>
-              ))}
+                ))}
             </div>
 
-            {/* Mức lương */}
             <div className="filter-section">
               <div className="filter-section-title">Mức lương (triệu/tháng)</div>
-              <div className="range-row"><span>0</span><span>{salaryRange}tr+</span></div>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={salaryRange}
-                onChange={(e) => setSalaryRange(e.target.value)}
-              />
+              <div className="range-row">
+                <span>{salaryMin > 0 ? `${salaryMin}tr` : '0'}</span>
+                <span>{salaryRange < 100 ? `${salaryRange}tr` : 'Tất cả'}</span>
+              </div>
+              <input type="range" min="0" max="100" value={salaryRange}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  setSalaryRange(v); setSalaryMax(v < 100 ? v : 0); setCurrentPage(1);
+                }} />
               <div className="salary-pills">
-                {['Dưới 10tr', '10–20tr', '20–40tr', '40–60tr', 'Trên 60tr'].map((pill, idx) => (
-                  <span
-                    key={pill}
-                    className={`spill ${pill === '20–40tr' ? 'on' : ''}`}
-                    onClick={(e) => e.target.classList.toggle('on')}
-                  >
-                    {pill}
+                {[
+                  { label: 'Dưới 10tr', min: 0, max: 10 },
+                  { label: '10–20tr', min: 10, max: 20 },
+                  { label: '20–40tr', min: 20, max: 40 },
+                  { label: '40–60tr', min: 40, max: 60 },
+                  { label: 'Trên 60tr', min: 60, max: 0 },
+                ].map(pill => (
+                  <span key={pill.label}
+                    className={`spill ${salaryMin === pill.min && salaryMax === pill.max ? 'on' : ''}`}
+                    onClick={() => { setSalaryMin(pill.min); setSalaryMax(pill.max); setSalaryRange(pill.max || 100); setCurrentPage(1); }}>
+                    {pill.label}
                   </span>
                 ))}
               </div>
             </div>
 
-            {/* Kinh nghiệm */}
             <div className="filter-section">
               <div className="filter-section-title">Kinh nghiệm</div>
-              {[
-                { label: 'Không yêu cầu KN', count: '5,200' },
-                { label: 'Dưới 1 năm', count: '3,800' },
-                { label: '1 – 3 năm', count: '12,400', checked: true },
-                { label: '3 – 5 năm', count: '8,900', checked: true },
-                { label: 'Trên 5 năm', count: '4,100' }
-              ].map(item => (
-                <div key={item.label} className="ck-row" onClick={() => toggleFilter('experience', item.label)}>
-                  <div className={`ck ${activeFilters.experience.includes(item.label) ? 'on' : ''}`}>
-                    {activeFilters.experience.includes(item.label) ? '✓' : ''}
-                  </div>
-                  <span className="ck-label">{item.label}</span>
-                  <span className="ck-count">{item.count}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Ngành nghề */}
-            <div className="filter-section">
-              <div className="filter-section-title">Ngành nghề</div>
-              {[
-                { label: 'IT / Phần mềm', count: '15,200', checked: true },
-                { label: 'Marketing / Digital', count: '6,400' },
-                { label: 'Tài chính / Kế toán', count: '4,800' },
-                { label: 'Thiết kế / Sáng tạo', count: '3,200' },
-                { label: 'Bán hàng / Kinh doanh', count: '7,600' },
-                { label: 'Quản lý / Điều hành', count: '2,100' }
-              ].map(item => (
-                <div key={item.label} className="ck-row" onClick={() => toggleFilter('industry', item.label)}>
-                  <div className={`ck ${activeFilters.industry.includes(item.label) ? 'on' : ''}`}>
-                    {activeFilters.industry.includes(item.label) ? '✓' : ''}
-                  </div>
-                  <span className="ck-label">{item.label}</span>
-                  <span className="ck-count">{item.count}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Nguồn */}
-            <div className="filter-section">
-              <div className="filter-section-title">Nguồn tuyển dụng</div>
-              {[
-                { name: 'TopCV', code: 'T', class: 'sl-tc', count: '18,400', checked: true },
-                { name: 'CareerLink', code: 'C', class: 'sl-cl', count: '12,100', checked: true },
-                { name: 'CareerViet', code: 'V', class: 'sl-cv', count: '9,800', checked: true },
-                { name: 'VietnamWorks', code: 'V', class: 'sl-vw', count: '8,200' },
-                // { name: 'LinkedIn', code: 'in', class: 'sl-li', count: '5,600', small: true },
-                // { name: 'ITviec', code: 'IT', class: 'sl-it', count: '3,900', small: true }
-              ].map(source => (
-                <div key={source.name} className="source-row" onClick={() => toggleFilter('source', source.name)}>
-                  <div className={`source-logo ${source.class}`} style={source.small ? { fontSize: '10px' } : {}}>{source.code}</div>
-                  <span style={{ fontSize: '13px', flex: 1 }}>{source.name}</span>
-                  <div className={`ck ${activeFilters.source.includes(source.name) ? 'on' : ''}`}>
-                    {activeFilters.source.includes(source.name) ? '✓' : ''}
-                  </div>
-                  <span className="ck-count">{source.count}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Địa điểm */}
-            <div className="filter-section">
-              <div className="filter-section-title">Địa điểm</div>
-              {[
-                { label: 'TP. Hồ Chí Minh', count: '28,400', checked: true },
-                { label: 'Hà Nội', count: '14,200' },
-                { label: 'Đà Nẵng', count: '3,400' },
-                { label: 'Toàn quốc', count: '2,800' },
-                { label: 'Nước ngoài', count: '840' }
-              ].map(item => (
-                <div key={item.label} className="ck-row" onClick={() => toggleFilter('location', item.label)}>
-                  <div className={`ck ${activeFilters.location.includes(item.label) ? 'on' : ''}`}>
-                    {activeFilters.location.includes(item.label) ? '✓' : ''}
-                  </div>
-                  <span className="ck-label">{item.label}</span>
-                  <span className="ck-count">{item.count}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Promo card */}
-          {/* <div style={{ marginTop: '14px' }}>
-            <div className="promo-card">
-              <div style={{ fontSize: '32px', marginBottom: '10px' }}>🤖</div>
-              <div className="promo-title">Để AI tìm việc thay bạn</div>
-              <div className="promo-sub">Đăng ký miễn phí và nhận gợi ý việc phù hợp mỗi ngày</div>
-              <div className="promo-steps">
-                {['Tạo hồ sơ trong 2 phút', 'AI phân tích kỹ năng của bạn', 'Nhận 10+ gợi ý mỗi ngày', '1-click tự động nộp CV'].map((step, idx) => (
-                  <div key={idx} className="promo-step">
-                    <div className="promo-step-n">{idx + 1}</div>
-                    <div className="promo-step-t">{step}</div>
+              {loadingFilters ? <div style={{ fontSize: '12px', color: 'var(--ink4)' }}>Đang tải...</div>
+                : filterOptions.experiences.map(item => (
+                  <div key={item.value} className="ck-row" onClick={() => toggleFilter('experience', item.value)}>
+                    <div className={`ck ${activeFilters.experience.includes(item.value) ? 'on' : ''}`}>
+                      {activeFilters.experience.includes(item.value) ? '✓' : ''}
+                    </div>
+                    <span className="ck-label">{item.value}</span>
+                    <span className="ck-count">{item.count?.toLocaleString()}</span>
                   </div>
                 ))}
-              </div>
-              <button className="btn btn-rust" style={{ width: '100%', justifyContent: 'center' }}>Bắt đầu miễn phí →</button>
             </div>
-          </div> */}
+
+            <div className="filter-section">
+              <div className="filter-section-title">Ngành nghề</div>
+              {loadingFilters ? <div style={{ fontSize: '12px', color: 'var(--ink4)' }}>Đang tải...</div>
+                : filterOptions.industries.map(item => (
+                  <div key={item.id} className="ck-row" onClick={() => toggleFilter('industry', String(item.id))}>
+                    <div className={`ck ${activeFilters.industry.includes(String(item.id)) ? 'on' : ''}`}>
+                      {activeFilters.industry.includes(String(item.id)) ? '✓' : ''}
+                    </div>
+                    <span className="ck-label">{item.name}</span>
+                    <span className="ck-count">{item.count?.toLocaleString()}</span>
+                  </div>
+                ))}
+            </div>
+
+            <div className="filter-section">
+              <div className="filter-section-title">Nguồn tuyển dụng</div>
+              {loadingFilters ? <div style={{ fontSize: '12px', color: 'var(--ink4)' }}>Đang tải...</div>
+                : filterOptions.sources.map(source => (
+                  <div key={source.value} className="source-row" onClick={() => toggleFilter('source', source.value)}>
+                    <div className={`source-logo ${getSourceLogoClass(source.value)}`}>
+                      {source.value?.[0] ?? '?'}
+                    </div>
+                    <span style={{ fontSize: '13px', flex: 1 }}>{source.value}</span>
+                    <div className={`ck ${activeFilters.source.includes(source.value) ? 'on' : ''}`}>
+                      {activeFilters.source.includes(source.value) ? '✓' : ''}
+                    </div>
+                    <span className="ck-count">{source.count?.toLocaleString()}</span>
+                  </div>
+                ))}
+            </div>
+
+            <div className="filter-section">
+              <div className="filter-section-title">Địa điểm</div>
+              {activeFilters.locations.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginBottom: '8px' }}>
+                  {activeFilters.locations.map(loc => (
+                    <span key={loc} style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '4px',
+                      padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
+                      background: 'rgba(35,42,162,0.1)', border: '1px solid rgba(35,42,162,0.25)',
+                      color: 'rgb(35,42,162)', cursor: 'pointer',
+                    }} onClick={() => toggleFilter('locations', loc)}>
+                      {loc} <span style={{ fontSize: '13px' }}>×</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <input
+                ref={provinceInputRef}
+                type="text"
+                placeholder="Tìm tỉnh thành..."
+                value={provinceSearch}
+                onChange={e => { setProvinceSearch(e.target.value); openProvinceDropdown(); }}
+                onFocus={openProvinceDropdown}
+                onBlur={() => setTimeout(() => setProvinceDropdownOpen(false), 200)}
+                style={{
+                  width: '100%', padding: '7px 10px', borderRadius: '7px',
+                  border: '1.5px solid var(--border2)', fontSize: '12.5px',
+                  background: 'var(--bg)', outline: 'none',
+                }}
+              />
+            </div>
+          </div>
         </aside>
 
-        {/* MAIN CONTENT */}
         <main className="main">
-          {/* Active filter chips */}
-          <div className="active-filters">
-            {activeFilters.industry.map(f => (
-              <div key={f} className="af-chip" onClick={() => removeFilterChip('industry', f)}>{f} <span className="af-x">×</span></div>
-            ))}
-            {activeFilters.jobType.map(f => (
-              <div key={f} className="af-chip" onClick={() => removeFilterChip('jobType', f)}>{f} <span className="af-x">×</span></div>
-            ))}
-            <div className="af-chip" onClick={() => { }}>20–40 triệu <span className="af-x">×</span></div>
-            {activeFilters.experience.map(f => (
-              <div key={f} className="af-chip" onClick={() => removeFilterChip('experience', f)}>{f.replace('KN', 'KN')} <span className="af-x">×</span></div>
-            ))}
-            {activeFilters.location.map(f => (
-              <div key={f} className="af-chip" onClick={() => removeFilterChip('location', f)}>{f === 'TP. Hồ Chí Minh' ? 'HCM' : f} <span className="af-x">×</span></div>
-            ))}
+          <div style={{
+            display: 'flex', gap: '8px', marginBottom: '16px',
+            background: 'var(--surf)', border: '1px solid var(--border)',
+            borderRadius: '12px', padding: '12px',
+          }}>
+            <div className="search-field" style={{ flex: 1 }}>
+              <span className="search-field-icon">🔍</span>
+              <input placeholder="Tên công việc, kỹ năng, công ty..."
+                value={keyword}
+                onChange={e => setKeyword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && setCurrentPage(1)} />
+            </div>
+            <button className="search-btn" onClick={() => setCurrentPage(1)}>Tìm kiếm</button>
           </div>
 
-          {/* Category tabs */}
-          <div className="cat-tabs">
-            {categories.map(cat => (
-              <button
-                key={cat.name}
-                className={`cat-tab ${selectedCategory === cat.name ? 'on' : ''}`}
-                onClick={() => setSelectedCategory(cat.name)}
-              >
-                {cat.name} <span className="ct-count">{cat.count}</span>
-              </button>
-            ))}
-          </div>
+          {allChips.length > 0 && (
+            <div className="active-filters">
+              {allChips.map(chip => (
+                <div key={`${chip.cat}-${chip.value}`} className="af-chip"
+                  onClick={() => toggleFilter(chip.cat, chip.value)}>
+                  {chip.label} <span className="af-x">×</span>
+                </div>
+              ))}
+            </div>
+          )}
 
-          {/* Results bar */}
           <div className="results-bar">
-            <div className="results-count">Tìm thấy <strong>15,247 việc làm</strong> phù hợp bộ lọc</div>
+            <div className="results-count">
+              {sort === 'match' && token
+                ? <span>Hiển thị <strong>{recommendations.length} việc làm phù hợp</strong> với bạn</span>
+                : <span>Tìm thấy <strong>{meta.total.toLocaleString()} việc làm</strong></span>
+              }
+            </div>
             <div className="sort-row">
               <span className="sort-label">Sắp xếp:</span>
-              <select className="sort-sel">
-                <option>Phù hợp nhất</option>
-                <option>Mới nhất</option>
-                <option>Lương cao nhất</option>
-                <option>Sắp hết hạn</option>
+              <select className="sort-sel" value={sort}
+                onChange={e => { setSort(e.target.value); setCurrentPage(1); }}>
+                {token && <option value="match">Phù hợp nhất</option>}
+                <option value="newest">Mới nhất</option>
+                <option value="salary">Lương cao nhất</option>
+                <option value="deadline">Sắp hết hạn</option>
               </select>
             </div>
           </div>
 
-          {/* Featured banner */}
-          <div className="featured-banner">
-            <div className="fb-icon">⭐</div>
-            <div>
-              <div className="fb-title">3 tin tuyển dụng nổi bật hôm nay từ TopCV</div>
-              <div className="fb-sub">Được các nhà tuyển dụng hàng đầu tài trợ • Cập nhật lúc 08:00 sáng nay</div>
+          {displayLoading ? (
+            <div style={{ textAlign: 'center', padding: '48px', color: 'var(--ink4)', fontSize: '14px' }}>
+              ⟳ Đang tải việc làm...
             </div>
-            <div className="fb-cta">
-              <button className="btn btn-amber btn-sm">Xem tất cả ↗</button>
+          ) : (sort === 'match' && token ? pagedRecs : displayJobs).length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '48px', color: 'var(--ink4)', fontSize: '14px' }}>
+              {sort === 'match' && token
+                ? 'Chưa có gợi ý — hãy cập nhật kỹ năng trong hồ sơ'
+                : 'Không tìm thấy việc làm phù hợp'}
             </div>
-          </div>
+          ) : (
+            <div className="jobs-list">
+              {(sort === 'match' && token ? pagedRecs : displayJobs).map((job, idx) => (
+                <div key={job.jobID} className="job-card fade-in"
+                  style={{ animationDelay: `${idx * 0.04}s`, position: 'relative' }}
+                  onClick={() => openDetail(job.jobID)}>
 
-          {/* JOB CARDS */}
-          <div className="jobs-list">
-            {jobs.map((job, idx) => (
-              <div
-                key={job.id}
-                className={`job-card fade-in ${job.featured ? 'featured' : ''} ${job.urgent ? 'urgent' : ''}`}
-                style={{ animationDelay: `${(idx + 1) * 0.04}s` }}
-                onClick={() => openDetail(job.id)}
-              >
-                {job.badge && <div className={`card-hot-badge ${job.badgeClass}`}>{job.badge}</div>}
-                <div className="jc-top">
-                  <div className={`co-logo ${job.logoClass}`}>{job.logo}</div>
-                  <div className="jc-info">
-                    <div className="jc-title">{job.title}</div>
-                    <div className="jc-company">
-                      {job.company} <span className="verified">✓</span>
-                      {job.extraBadges && job.extraBadges.map(badge => (
-                        <span key={badge} className={`badge ${badge === 'Top 10 IT VN' ? 'b-sage' : badge === 'Sea Group' ? 'b-teal' : badge === 'Unicorn' ? 'b-amber' : badge === 'Superapp' ? 'b-sage' : 'b-indigo'}`} style={{ fontSize: '10px' }}>{badge}</span>
+                  {job.matchPercent != null && (
+                    <div style={{
+                      position: 'absolute', top: '10px', right: '14px',
+                      padding: '3px 9px', borderRadius: '5px', fontSize: '11px', fontWeight: 800,
+                      background: job.matchPercent >= 80 ? 'rgba(46,96,64,.12)' : 'rgba(212,130,10,.12)',
+                      color: job.matchPercent >= 80 ? 'var(--sage)' : 'var(--amber)',
+                      border: `1px solid ${job.matchPercent >= 80 ? 'rgba(46,96,64,.25)' : 'rgba(212,130,10,.25)'}`,
+                    }}>
+                      🎯 {Math.round(job.matchPercent)}% phù hợp
+                    </div>
+                  )}
+
+                  <div className="jc-top">
+                    <div className="co-logo" style={{ background: 'linear-gradient(135deg,#1565C0,#1E88E5)' }}>
+                      {getLogoLetter(job.companyName)}
+                    </div>
+                    <div className="jc-info">
+                      <div className="jc-title">{job.title}</div>
+                      <div className="jc-company">{job.companyName} <span className="verified">✓</span></div>
+                      <div className="jc-meta">
+                        {job.shortLocation && <span className="jc-meta-item">📍 {job.shortLocation}</span>}
+                        {job.jobType && <span className="jc-meta-item">⏰ {job.jobType}</span>}
+                        {job.experienceYear && <span className="jc-meta-item">🎯 {job.experienceYear}</span>}
+                      </div>
+                    </div>
+                    <div className="jc-right" style={{ paddingTop: job.matchPercent != null ? '24px' : '0' }}>
+                      <div className="jc-salary">{job.salary ?? 'Thỏa thuận'}</div>
+                      <div className="jc-posted">{formatPostedAt(job.postedAt)}</div>
+                      {job.deadline && (
+                        <div className="jc-deadline"
+                          style={formatDeadline(job.deadline)?.includes('hết') ? { color: 'var(--rust)' } : {}}>
+                          ⏰ {formatDeadline(job.deadline)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="jc-bottom">
+                    <div className="jc-tags">
+                      {(job.skills ?? []).map(tag => (
+                        <span key={tag} className="jtag">{tag}</span>
                       ))}
+                      {job.sourcePlatform && (
+                        <span className={`source-chip ${getSourceClass(job.sourcePlatform)}`}>
+                          {job.sourcePlatform}
+                        </span>
+                      )}
                     </div>
-                    <div className="jc-meta">
-                      <span className="jc-meta-item">📍 {job.location}</span>
-                      <span className="jc-meta-item">{job.workMode.includes('Remote') ? '🏠' : job.workMode.includes('Hybrid') ? '🏠' : '🏢'} {job.workMode}</span>
-                      <span className="jc-meta-item">⏰ {job.type}</span>
-                      {job.size && <span className="jc-meta-item">👥 {job.size}</span>}
-                    </div>
-                  </div>
-                  <div className="jc-right">
-                    <div className="jc-salary">{job.salary}</div>
-                    <div className="jc-posted">{job.posted}</div>
-                    <div className="jc-deadline" style={job.urgent ? { color: 'var(--rust)' } : {}}>{job.urgent ? '⚠️ ' : '⏰ '}{job.deadline}</div>
-                  </div>
-                </div>
-                <div className="jc-bottom">
-                  <div className="jc-tags">
-                    {job.tags.map(tag => <span key={tag} className="jtag">{tag}</span>)}
-                    <span className={`source-chip ${job.sourceClass}`}>{job.source}</span>
-                  </div>
-                  <div className="jc-actions">
-                    <button
-                      className={`jc-save ${savedJobs.has(job.id) ? 'saved' : ''}`}
-                      onClick={(e) => toggleSave(job.id, e)}
-                      title="Lưu việc làm"
-                    >
-                      🔖
-                    </button>
-                    <button className="jc-apply" onClick={(e) => { e.stopPropagation(); openApply(); }}>⚡ Apply ngay</button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Pagination */}
-          <div className="pagination">
-            {[1, 2, 3, 4, 5].map(page => (
-              <button
-                key={page}
-                className={`pg-btn ${currentPage === page ? 'on' : ''}`}
-                onClick={() => setCurrentPage(page)}
-              >
-                {page}
-              </button>
-            ))}
-            <span style={{ display: 'flex', alignItems: 'center', padding: '0 6px', color: 'var(--ink4)' }}>…</span>
-            <button className="pg-btn" onClick={() => setCurrentPage(127)}>127</button>
-            <button className="pg-btn pg-next" onClick={() => setCurrentPage(p => p + 1)}>Tiếp theo →</button>
-          </div>
-        </main>
-      </div>
-
-      {/* Trending & Top Companies */}
-      <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '0 28px 40px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
-        {/* Trending keywords */}
-        <div className="side-card">
-          <div className="side-title">🔥 Từ khóa đang hot <a className="see-all" href="#">Xem thêm</a></div>
-          <div className="kw-grid">
-            {trendingKeywords.map(kw => (
-              <span key={kw} className="kw-pill">{kw}</span>
-            ))}
-          </div>
-        </div>
-
-        {/* Top companies hiring */}
-        <div className="side-card">
-          <div className="side-title">🏢 Công ty đang tuyển nhiều <a className="see-all" href="#">Tất cả</a></div>
-          {topCompanies.map(company => (
-            <div key={company.name} className="co-row">
-              <div className={`co-mini ${company.logoClass}`}>{company.logo}</div>
-              <div className="co-info">
-                <div className="co-name">{company.name}</div>
-                <div className="co-jobs">{company.jobs}</div>
-              </div>
-              <span className={`co-badge ${company.badgeClass}`}>{company.badge}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Job alert setup */}
-        <div className="alert-card">
-          <div className="alert-title">🔔 Tạo thông báo việc làm</div>
-          <div className="alert-sub">Nhận email ngay khi có việc phù hợp — không cần tài khoản!</div>
-          <input className="alert-input" type="text" placeholder="Từ khóa: React Developer, PM..." />
-          <input className="alert-input" type="email" placeholder="Email của bạn" />
-          <button className="btn btn-rust" style={{ width: '100%', justifyContent: 'center' }}>🔔 Tạo thông báo miễn phí</button>
-          <div style={{ fontSize: '11px', color: 'var(--ink4)', marginTop: '8px', textAlign: 'center' }}>Gửi tối đa 1 email/ngày • Huỷ bất cứ lúc nào</div>
-        </div>
-      </div>
-
-      {/* FOOTER */}
-      {/* <footer className="footer-mini">
-        <div className="fm-inner">
-          <div className="fm-logo">Nghề<span>VN</span></div>
-          <div className="fm-links">
-            <a href="#">Về chúng tôi</a>
-            <a href="#">Blog</a>
-            <a href="#">Tuyển dụng</a>
-            <a href="#">Chính sách bảo mật</a>
-            <a href="#">Điều khoản</a>
-            <a href="#">Liên hệ</a>
-          </div>
-          <div className="fm-copy">© 2026 NghềVN. Tổng hợp việc làm từ TopCV, CareerLink, CareerViet, VietnamWorks & 10+ nền tảng lớn.</div>
-        </div>
-      </footer> */}
-
-      <div className={`detail-overlay ${detailOpen ? 'open' : ''}`} onClick={closeDetail}>
-        <div className="detail-panel" onClick={e => e.stopPropagation()}>
-          <div className="dp-header">
-            <div className="co-logo l-fpt" id="dpLogo">F</div>
-            <div>
-              <div style={{ fontFamily: "'Fraunces',serif", fontSize: '18px', fontWeight: 700, marginBottom: '4px' }} id="dpTitle">Senior React Developer</div>
-              <div style={{ fontSize: '13px', color: 'var(--ink3)' }} id="dpCompany">FPT Software • Hybrid • Hà Nội</div>
-              <div style={{ display: 'flex', gap: '7px', marginTop: '8px' }} id="dpBadges">
-                <span className="badge b-amber">25–35 triệu/tháng</span>
-                <span className="badge b-sage">⏰ Còn 26 ngày</span>
-                <span className="source-chip sc-tc">TopCV</span>
-              </div>
-            </div>
-            <button className="dp-close" onClick={closeDetail}>✕</button>
-          </div>
-          <div className="dp-body">
-            <div className="dp-section">
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
-                <span className="jc-meta-item">📍 Cầu Giấy, Hà Nội</span>
-                <span className="jc-meta-item">🏠 Hybrid (3 ngày remote)</span>
-                <span className="jc-meta-item">⏰ Full-time</span>
-                <span className="jc-meta-item">👁 2,341 lượt xem</span>
-                <span className="jc-meta-item">📤 842 đã nộp</span>
-              </div>
-              {/* <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: '10px', padding: '14px 16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ fontSize: '22px' }}>🔓</span>
-                <div>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink)', marginBottom: '3px' }}>Bạn đang xem với tư cách khách</div>
-                  <div style={{ fontSize: '12px', color: 'var(--ink3)' }}>Đăng ký miễn phí để <strong>nộp CV tự động</strong>, theo dõi trạng thái và nhận gợi ý AI</div>
-                </div>
-                <button className="btn btn-rust btn-sm" style={{ flexShrink: 0 }}>Đăng ký</button>
-              </div> */}
-            </div>
-            <div className="dp-section">
-              <div className="dp-sec-title">Mô tả công việc</div>
-              <ul className="dp-list">
-                <li>Phát triển ứng dụng web phức tạp với React.js và TypeScript, đảm bảo hiệu suất tối ưu</li>
-                <li>Thiết kế và implement UI/UX theo mockup từ designer, đạt tiêu chuẩn pixel-perfect</li>
-                <li>Phối hợp với Backend engineers tích hợp REST API và GraphQL</li>
-                <li>Code review, mentoring Junior Developer và thiết lập best practices</li>
-                <li>Tham gia Sprint planning, ước tính effort và breakdown task kỹ thuật</li>
-              </ul>
-            </div>
-            <div className="dp-section">
-              <div className="dp-sec-title">Yêu cầu ứng viên</div>
-              <ul className="dp-list">
-                <li>Tối thiểu 3 năm kinh nghiệm React.js, thành thạo Hooks, Context API, Performance optimization</li>
-                <li>Thành thạo TypeScript, hiểu rõ type system và generic types</li>
-                <li>Kinh nghiệm với state management: Redux Toolkit, Zustand hoặc Jotai</li>
-                <li>Hiểu biết về Core Web Vitals, lazy loading, code splitting, bundle optimization</li>
-                <li>Tiếng Anh đọc viết tài liệu kỹ thuật tốt (Reading/Writing)</li>
-              </ul>
-            </div>
-            <div className="dp-section">
-              <div className="dp-sec-title">Quyền lợi</div>
-              <ul className="dp-list">
-                <li>Lương cạnh tranh 25–35 triệu, review 2 lần/năm theo hiệu quả</li>
-                <li>Thưởng dự án, thưởng cuối năm lên đến 3 tháng lương</li>
-                <li>BHYT, BHXH đầy đủ + gói bảo hiểm sức khỏe nâng cao Bảo Việt</li>
-                <li>Budget học tập 5,000,000đ/năm cho khóa học, sách, chứng chỉ</li>
-                <li>14 ngày phép/năm + remote 3 ngày/tuần sau 3 tháng thử việc</li>
-              </ul>
-            </div>
-            <div className="dp-section">
-              <div className="dp-sec-title">Thông tin công ty</div>
-              <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-                <div className="co-logo l-fpt" style={{ flexShrink: 0 }}>F</div>
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>FPT Software</div>
-                  <div style={{ fontSize: '12.5px', color: 'var(--ink3)', lineHeight: 1.65 }}>Công ty phần mềm hàng đầu Việt Nam với 30,000+ nhân viên, hiện diện tại 29 quốc gia. Chuyên cung cấp giải pháp CNTT cho doanh nghiệp toàn cầu.</div>
-                  <div style={{ display: 'flex', gap: '6px', marginTop: '9px' }}>
-                    <span className="badge b-sage">🏆 Top 10 IT VN</span>
-                    <span className="badge b-teal">🌍 30K+ nhân viên</span>
-                    <span className="badge b-gray">📅 Thành lập 1999</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="dp-apply-bar">
-            <button className="dp-apply-btn" onClick={openApply}>⚡ Apply ngay (Đăng ký để nộp tự động)</button>
-            <button className="dp-save-btn" onClick={(e) => toggleSave('detail', e)}>🔖</button>
-          </div>
-        </div>
-      </div>
-
-      {/* APPLY MODAL */}
-      {applyModalOpen && (
-        <div
-          id="applyModal"
-          style={{
-            display: 'flex',
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,.5)',
-            zIndex: 3000,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backdropFilter: 'blur(6px)'
-          }}
-          onClick={closeApply}
-        >
-          <div
-            style={{
-              background: 'var(--surf)',
-              borderRadius: '16px',
-              padding: '32px',
-              maxWidth: '480px',
-              width: '90%',
-              boxShadow: '0 24px 80px rgba(0,0,0,.3)',
-              animation: 'fadeIn .25s ease-out',
-              position: 'relative'
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-
-            {/* Close */}
-            <button
-              onClick={closeApply}
-              style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                background: 'none',
-                border: 'none',
-                fontSize: '20px',
-                color: 'var(--ink4)',
-                cursor: 'pointer'
-              }}
-            >
-              ✕
-            </button>
-
-            {/* Header */}
-            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-              <div style={{ fontSize: '40px', marginBottom: '10px' }}>🔗</div>
-
-              <div
-                style={{
-                  fontFamily: "'Fraunces',serif",
-                  fontSize: '22px',
-                  fontWeight: 700,
-                  marginBottom: '8px'
-                }}
-              >
-                Chuyển đến trang ứng tuyển
-              </div>
-
-              <div
-                style={{
-                  fontSize: '13px',
-                  color: 'var(--ink3)',
-                  lineHeight: 1.65
-                }}
-              >
-                Đây là nền tảng tổng hợp việc làm.
-                Khi nhấn <b>Ứng tuyển</b>, bạn sẽ được chuyển đến trang gốc của công việc để hoàn tất việc nộp hồ sơ.
-              </div>
-            </div>
-
-            {/* Info */}
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-                marginBottom: '20px'
-              }}
-            >
-              {[
-                { icon: '🌐', title: 'Trang tuyển dụng gốc', desc: 'Bạn sẽ được chuyển đến website đăng tuyển chính thức' },
-                { icon: '📄', title: 'Nộp hồ sơ trực tiếp', desc: 'Ứng tuyển bằng CV của bạn trên nền tảng đó' },
-                { icon: '🔒', title: 'Bảo mật thông tin', desc: 'Chúng tôi không lưu thông tin hồ sơ ứng tuyển của bạn' },
-                // { icon: '🌐', title: 'Nguồn tuyển dụng', desc: new URL(job.sourceUrl).hostname }
-                { icon: '🌐', title: 'Nguồn tuyển dụng', desc: null }
-              ].map(item => (
-                <div
-                  key={item.title}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '9px',
-                    padding: '10px 14px',
-                    background: 'var(--bg2)',
-                    borderRadius: '9px',
-                    border: '1px solid var(--border)'
-                  }}
-                >
-                  <span style={{ fontSize: '18px' }}>{item.icon}</span>
-
-                  <div>
-                    <div style={{ fontSize: '13px', fontWeight: 600 }}>
-                      {item.title}
-                    </div>
-
-                    <div style={{ fontSize: '11px', color: 'var(--ink3)' }}>
-                      {item.desc}
+                    <div className="jc-actions">
+                      <button
+                        className={`jc-save ${savedJobIds.has(job.jobID) ? 'saved' : ''}`}
+                        onClick={(e) => handleSave(job.jobID, e)}
+                        style={{
+                          width: savedJobIds.has(job.jobID) ? 'auto' : '34px',
+                          padding: savedJobIds.has(job.jobID) ? '0 10px' : '0',
+                          gap: '4px',
+                          fontSize: savedJobIds.has(job.jobID) ? '12px' : '15px',
+                        }}>
+                        {savedJobIds.has(job.jobID) ? '🔖 Đã lưu' : '🔖'}
+                      </button>
+                      <button className="jc-apply"
+                        onClick={(e) => { e.stopPropagation(); handleApply(e); }}>
+                        ⚡ Apply ngay
+                      </button>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
+          )}
 
-            {/* Apply button */}
-            <button
-              className="btn btn-rust"
-              style={{
-                width: '100%',
-                justifyContent: 'center',
-                padding: '13px',
-                fontSize: '14px',
-                background: 'rgb(35, 42, 162)'
-              }}
-              onClick={() => window.open(job.sourceUrl, "_blank")}
-            >
+          {sort === 'match' && token && recTotalPages > 1 && (
+            <div className="pagination">
+              <button className="pg-btn" disabled={recPage === 1}
+                onClick={() => setRecPage(p => p - 1)}>‹</button>
+              {renderRecPages()}
+              <button className="pg-btn" disabled={recPage === recTotalPages}
+                onClick={() => setRecPage(p => p + 1)}>›</button>
+            </div>
+          )}
+
+          {meta.totalPages > 1 && sort !== 'match' && (
+            <div className="pagination">
+              <button className="pg-btn" disabled={currentPage === 1}
+                onClick={() => setCurrentPage(p => p - 1)}>‹</button>
+              {renderPages()}
+              <button className="pg-btn" disabled={currentPage === meta.totalPages}
+                onClick={() => setCurrentPage(p => p + 1)}>›</button>
+            </div>
+          )}
+        </main>
+      </div>
+
+      <div style={{
+        maxWidth: '1360px', margin: '0 auto', padding: '0 28px 40px',
+        display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px',
+      }}>
+        <div className="side-card">
+          <div className="side-title">🔥 Từ khóa đang hot <a className="see-all" href="#">Xem thêm</a></div>
+          <div className="kw-grid">
+            {trendingKeywords.map(kw => (
+              <span key={kw.name} className="kw-pill"
+                onClick={() => { setKeyword(kw.name); setSort('newest'); setCurrentPage(1); }}>
+                {kw.name}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="side-card">
+          <div className="side-title">🏢 Công ty đang tuyển nhiều <a className="see-all" href="#">Tất cả</a></div>
+          {topCompanies.map(company => (
+            <div key={company.companyID} className="co-row">
+              <div className="co-mini" style={{ background: 'linear-gradient(135deg,#1565C0,#1E88E5)' }}>
+                {getLogoLetter(company.name)}
+              </div>
+              <div className="co-info">
+                <div className="co-name">{company.name}</div>
+                <div className="co-jobs">{company.jobCount} vị trí đang tuyển</div>
+              </div>
+              <span className="co-badge cb-hire">Đang tuyển</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="alert-card">
+          <div className="alert-title">🔔 Tạo thông báo việc làm</div>
+          <div className="alert-sub">Nhận email ngay khi có việc phù hợp!</div>
+          <input className="alert-input" type="text" placeholder="Từ khóa: React Developer, PM..." />
+          <input className="alert-input" type="email" placeholder="Email của bạn" />
+          <button className="btn btn-rust" style={{ width: '100%', justifyContent: 'center' }}>
+            🔔 Tạo thông báo miễn phí
+          </button>
+          <div style={{ fontSize: '11px', color: 'var(--ink4)', marginTop: '8px', textAlign: 'center' }}>
+            Gửi tối đa 1 email/ngày • Huỷ bất cứ lúc nào
+          </div>
+        </div>
+      </div>
+
+      <div className={`detail-overlay ${detailOpen ? 'open' : ''}`} onClick={closeDetail}>
+        <div className="detail-panel" onClick={e => e.stopPropagation()}>
+          {selectedJob && (
+            <>
+              <div className="dp-header">
+                <div className="co-logo" style={{ background: 'linear-gradient(135deg,#1565C0,#1E88E5)', flexShrink: 0 }}>
+                  {getLogoLetter(selectedJob.company?.companyName)}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: "'Fraunces',serif", fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>
+                    {selectedJob.title}
+                  </div>
+                  <div style={{ fontSize: '13px', color: 'var(--ink3)' }}>
+                    {selectedJob.company?.companyName} • {selectedJob.jobType} • {selectedJob.shortLocation}
+                  </div>
+                  <div style={{ display: 'flex', gap: '7px', marginTop: '8px', flexWrap: 'wrap' }}>
+                    {selectedJob.salary && <span className="badge b-amber">💰 {selectedJob.salary}</span>}
+                    {selectedJob.deadline && <span className="badge b-sage">⏰ {formatDeadline(selectedJob.deadline)}</span>}
+                    {selectedJob.sourcePlatform && (
+                      <span className={`source-chip ${getSourceClass(selectedJob.sourcePlatform)}`}>
+                        {selectedJob.sourcePlatform}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <button className="dp-close" onClick={closeDetail}>✕</button>
+              </div>
+
+              <div className="dp-body">
+                <div className="dp-section">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+                    {selectedJob.location && <span className="jc-meta-item">📍 {selectedJob.location}</span>}
+                    {selectedJob.jobType && <span className="jc-meta-item">⏰ {selectedJob.jobType}</span>}
+                    {selectedJob.experienceYear && <span className="jc-meta-item">🎯 {selectedJob.experienceYear}</span>}
+                    {selectedJob.workingTime && <span className="jc-meta-item">🕐 {selectedJob.workingTime}</span>}
+                  </div>
+                </div>
+
+                {selectedJob.description && (
+                  <div className="dp-section">
+                    <div className="dp-sec-title">Mô tả công việc</div>
+                    <div style={{ fontSize: '13.5px', color: 'var(--ink2)', lineHeight: 1.7, whiteSpace: 'pre-line' }}>
+                      {selectedJob.description}
+                    </div>
+                  </div>
+                )}
+
+                {selectedJob.requirement && (
+                  <div className="dp-section">
+                    <div className="dp-sec-title">Yêu cầu ứng viên</div>
+                    <div style={{ fontSize: '13.5px', color: 'var(--ink2)', lineHeight: 1.7, whiteSpace: 'pre-line' }}>
+                      {selectedJob.requirement}
+                    </div>
+                  </div>
+                )}
+
+                {selectedJob.benefit && (
+                  <div className="dp-section">
+                    <div className="dp-sec-title">Quyền lợi</div>
+                    <div style={{ fontSize: '13.5px', color: 'var(--ink2)', lineHeight: 1.7, whiteSpace: 'pre-line' }}>
+                      {selectedJob.benefit}
+                    </div>
+                  </div>
+                )}
+
+                {selectedJob.skills?.length > 0 && (
+                  <div className="dp-section">
+                    <div className="dp-sec-title">Kỹ năng yêu cầu</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                      {selectedJob.skills.map(skill => (
+                        <span key={skill} className="jtag">{skill}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="dp-section">
+                  <div className="dp-sec-title">Thông tin công ty</div>
+                  <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+                    <div className="co-logo" style={{ background: 'linear-gradient(135deg,#1565C0,#1E88E5)', flexShrink: 0 }}>
+                      {getLogoLetter(selectedJob.company?.companyName)}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>
+                        {selectedJob.company?.companyName}
+                      </div>
+                      {selectedJob.company?.companyProfile && (
+                        <div style={{ fontSize: '12.5px', color: 'var(--ink3)', lineHeight: 1.65 }}>
+                          {selectedJob.company.companyProfile}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: '6px', marginTop: '9px', flexWrap: 'wrap' }}>
+                        {selectedJob.company?.companySize && (
+                          <span className="badge b-teal">👥 {selectedJob.company.companySize}</span>
+                        )}
+                        {selectedJob.company?.address && (
+                          <span className="badge b-gray">📍 {selectedJob.company.address}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="dp-apply-bar">
+                <button className="dp-apply-btn" onClick={handleApply}>⚡ Apply ngay</button>
+                <button className="dp-save-btn"
+                  style={{
+                    color: savedJobIds.has(selectedJob.jobID) ? 'var(--amber)' : 'var(--ink3)',
+                    borderColor: savedJobIds.has(selectedJob.jobID) ? 'var(--amber)' : 'var(--border2)',
+                    background: savedJobIds.has(selectedJob.jobID) ? 'rgba(212,130,10,.07)' : 'transparent',
+                    fontSize: '13px',
+                    width: savedJobIds.has(selectedJob.jobID) ? 'auto' : '44px',
+                    padding: savedJobIds.has(selectedJob.jobID) ? '0 12px' : '0',
+                  }}
+                  onClick={(e) => handleSave(selectedJob.jobID, e)}>
+                  {savedJobIds.has(selectedJob.jobID) ? '🔖 Đã lưu' : '🔖'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {applyModalOpen && (
+        <div style={{
+          display: 'flex', position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)',
+          zIndex: 3000, alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)',
+        }} onClick={closeApply}>
+          <div style={{
+            background: 'var(--surf)', borderRadius: '16px', padding: '32px',
+            maxWidth: '480px', width: '90%', boxShadow: '0 24px 80px rgba(0,0,0,.3)',
+            animation: 'fadeIn .25s ease-out', position: 'relative',
+          }} onClick={e => e.stopPropagation()}>
+            <button onClick={closeApply} style={{
+              position: 'absolute', top: '16px', right: '16px',
+              background: 'none', border: 'none', fontSize: '20px', color: 'var(--ink4)', cursor: 'pointer',
+            }}>✕</button>
+
+            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+              <div style={{ fontSize: '40px', marginBottom: '10px' }}>🔗</div>
+              <div style={{ fontFamily: "'Fraunces',serif", fontSize: '22px', fontWeight: 700, marginBottom: '8px' }}>
+                Chuyển đến trang ứng tuyển
+              </div>
+              <div style={{ fontSize: '13px', color: 'var(--ink3)', lineHeight: 1.65 }}>
+                Khi nhấn <b>Ứng tuyển</b>, bạn sẽ được chuyển đến trang gốc để hoàn tất nộp hồ sơ.
+              </div>
+            </div>
+
+            {[
+              { icon: '🌐', title: 'Trang tuyển dụng gốc', desc: selectedJob?.sourcePlatform ?? '' },
+              { icon: '📄', title: 'Nộp hồ sơ trực tiếp', desc: 'Ứng tuyển bằng CV của bạn trên nền tảng đó' },
+              { icon: '🔒', title: 'Bảo mật thông tin', desc: 'Chúng tôi không lưu thông tin hồ sơ ứng tuyển' },
+            ].map(item => (
+              <div key={item.title} style={{
+                display: 'flex', alignItems: 'center', gap: '9px', padding: '10px 14px',
+                background: 'var(--bg2)', borderRadius: '9px', border: '1px solid var(--border)', marginBottom: '8px',
+              }}>
+                <span style={{ fontSize: '18px' }}>{item.icon}</span>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: 600 }}>{item.title}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--ink3)' }}>{item.desc}</div>
+                </div>
+              </div>
+            ))}
+
+            <button className="btn btn-rust" style={{
+              width: '100%', justifyContent: 'center', padding: '13px',
+              fontSize: '14px', background: 'rgb(35,42,162)', marginTop: '8px',
+            }} onClick={() => selectedJob?.sourceLink && window.open(selectedJob.sourceLink, '_blank')}>
               Đi đến trang ứng tuyển →
             </button>
 
-            <div
-              style={{
-                textAlign: 'center',
-                marginTop: '12px',
-                fontSize: '12px',
-                color: 'var(--ink4)'
-              }}
-            >
-              Hoặc <span
-                style={{ color: 'var(--rust)', cursor: 'pointer', fontWeight: 600 }}
-                onClick={closeApply}
-              >
-                quay lại xem việc khác
-              </span>
+            <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '12px', color: 'var(--ink4)' }}>
+              Hoặc <span style={{ color: 'var(--rust)', cursor: 'pointer', fontWeight: 600 }}
+                onClick={closeApply}>quay lại xem việc khác</span>
             </div>
-
           </div>
         </div>
       )}
