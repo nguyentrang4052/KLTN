@@ -27,7 +27,6 @@ function JobDetailScreen({onNavigate}) {
   return (
     <div id="s4">
       <div className="app-layout">
-        <Sidebar activeItem="search" onNavigate={onNavigate}/>
         
         <div className="main-content">
           <div className="jd-wrap">

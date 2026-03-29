@@ -579,7 +579,11 @@ function JobSearchScreen() {
 
                   <div className="jc-top">
                     <div className="co-logo" style={{ background: 'linear-gradient(135deg,#1565C0,#1E88E5)' }}>
-                      {getLogoLetter(job.companyName)}
+                      {job.companyLogo ? (
+                        <img src={job.companyLogo} alt={job.companyName} />
+                      ) : (
+                        <span>{getLogoLetter(job.companyName)}</span>
+                      )}
                     </div>
                     <div className="jc-info">
                       <div className="jc-title">{job.title}</div>
@@ -663,7 +667,7 @@ function JobSearchScreen() {
         display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px',
       }}>
         <div className="side-card">
-          <div className="side-title">🔥 Từ khóa đang hot <a className="see-all" href="#">Xem thêm</a></div>
+          <div className="side-title">🔥 Từ khóa đang hot</div>
           <div className="kw-grid">
             {trendingKeywords.map(kw => (
               <span key={kw.name} className="kw-pill"
@@ -675,11 +679,15 @@ function JobSearchScreen() {
         </div>
 
         <div className="side-card">
-          <div className="side-title">🏢 Công ty đang tuyển nhiều <a className="see-all" href="#">Tất cả</a></div>
+          <div className="side-title">🏢 Công ty đang tuyển nhiều <a className="see-all" href="/companies">Tất cả</a></div>
           {topCompanies.map(company => (
             <div key={company.companyID} className="co-row">
               <div className="co-mini" style={{ background: 'linear-gradient(135deg,#1565C0,#1E88E5)' }}>
-                {getLogoLetter(company.name)}
+                {company.logo? (
+                        <img src={company.logo} alt={company.name} />
+                      ) : (
+                        <span>{getLogoLetter(company.name)}</span>
+                      )}
               </div>
               <div className="co-info">
                 <div className="co-name">{company.name}</div>
@@ -710,8 +718,13 @@ function JobSearchScreen() {
             <>
               <div className="dp-header">
                 <div className="co-logo" style={{ background: 'linear-gradient(135deg,#1565C0,#1E88E5)', flexShrink: 0 }}>
-                  {getLogoLetter(selectedJob.company?.companyName)}
+                      {selectedJob.company?.companyLogo ? (
+                        <img src={selectedJob.company.companyLogo} alt={selectedJob.company.companyName} />
+                      ) : (
+                        <span>{getLogoLetter(selectedJob.company.companyName)}</span>
+                      )}
                 </div>
+
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: "'Fraunces',serif", fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>
                     {selectedJob.title}
@@ -784,7 +797,11 @@ function JobSearchScreen() {
                   <div className="dp-sec-title">Thông tin công ty</div>
                   <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
                     <div className="co-logo" style={{ background: 'linear-gradient(135deg,#1565C0,#1E88E5)', flexShrink: 0 }}>
-                      {getLogoLetter(selectedJob.company?.companyName)}
+                      {selectedJob.company?.companyLogo ? (
+                        <img src={selectedJob.company.companyLogo} alt={selectedJob.company.companyName} />
+                      ) : (
+                        <span>{getLogoLetter(selectedJob.company.companyName)}</span>
+                      )}
                     </div>
                     <div>
                       <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>
@@ -849,7 +866,7 @@ function JobSearchScreen() {
                 Chuyển đến trang ứng tuyển
               </div>
               <div style={{ fontSize: '13px', color: 'var(--ink3)', lineHeight: 1.65 }}>
-                Khi nhấn <b>Ứng tuyển</b>, bạn sẽ được chuyển đến trang gốc để hoàn tất nộp hồ sơ.
+                Khi nhấn <b>Đi đến trang ứng tuyển </b>, bạn sẽ được chuyển đến trang gốc để hoàn tất nộp hồ sơ.
               </div>
             </div>
 
@@ -857,6 +874,7 @@ function JobSearchScreen() {
               { icon: '🌐', title: 'Trang tuyển dụng gốc', desc: selectedJob?.sourcePlatform ?? '' },
               { icon: '📄', title: 'Nộp hồ sơ trực tiếp', desc: 'Ứng tuyển bằng CV của bạn trên nền tảng đó' },
               { icon: '🔒', title: 'Bảo mật thông tin', desc: 'Chúng tôi không lưu thông tin hồ sơ ứng tuyển' },
+              { icon: '🔗', title: 'Link chi tiết ở trang gốc', desc: selectedJob?.sourceLink ?? '' },
             ].map(item => (
               <div key={item.title} style={{
                 display: 'flex', alignItems: 'center', gap: '9px', padding: '10px 14px',
@@ -865,7 +883,15 @@ function JobSearchScreen() {
                 <span style={{ fontSize: '18px' }}>{item.icon}</span>
                 <div>
                   <div style={{ fontSize: '13px', fontWeight: 600 }}>{item.title}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--ink3)' }}>{item.desc}</div>
+                  <div style={{
+                      fontSize: '11px',
+                      color: 'var(--ink3)',
+                      wordBreak: 'break-word',  
+                      whiteSpace: 'normal',     
+                      overflowWrap: 'break-word' 
+                    }}>
+                      {item.desc}
+                    </div>
                 </div>
               </div>
             ))}

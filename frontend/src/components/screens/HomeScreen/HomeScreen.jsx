@@ -69,6 +69,8 @@ export default function HomeScreen() {
   const pagedRecs = recommendations.slice((recPage - 1) * REC_LIMIT, recPage * REC_LIMIT)
   const recTotalPages = Math.ceil(recommendations.length / REC_LIMIT)
 
+
+
   useEffect(() => {
     const sync = () => setToken(getToken())
     window.addEventListener('focus', sync)
@@ -221,6 +223,7 @@ export default function HomeScreen() {
           salary: job.salary,
           tags: job.skills ?? [],
           platform: job.sourcePlatform,
+          sourceLink: job.sourceLink,
           type: job.jobType,
           match: job.matchPercent != null ? Math.round(job.matchPercent) : null,
           isSaved: savedJobIds.has(job.jobID),
@@ -254,6 +257,8 @@ export default function HomeScreen() {
       </div>
     </div>
   )
+
+    
 
   return (
     <div className="hs-page">
@@ -353,12 +358,6 @@ export default function HomeScreen() {
                     <div className="hs-cat-name">{cat.name}</div>
                     <div className="hs-cat-count">{cat.jobCount?.toLocaleString()} việc làm</div>
                   </div>
-                  {cat.trend && (
-                    <div className="hs-cat-trend">
-                      <span className="hs-cat-trend-val">{cat.trend}</span>
-                      <span className="hs-cat-trend-lbl">tháng này</span>
-                    </div>
-                  )}
                   <div className="hs-cat-arrow">→</div>
                 </div>
               ))}
@@ -464,6 +463,7 @@ export default function HomeScreen() {
         )}
 
       </div>
+
     </div>
   )
 }

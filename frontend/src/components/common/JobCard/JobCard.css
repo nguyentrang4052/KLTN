@@ -18,7 +18,7 @@
 
 .jcard-top {
   display: flex;
-  gap: 12px;
+  gap: 15px;
   align-items: flex-start;
 }
 
@@ -75,13 +75,26 @@
   font-family: 'Roboto', serif;
   font-size: 15px;
   font-weight: 600;
-  margin-bottom: 3px;
+  margin-bottom: 12px;
+}
+
+.jcard-title:hover{
+  color: rgb(35, 42, 162);
 }
 
 .jcard-co {
   font-size: 12px;
   color: black;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+}
+
+.jcard-co-name {
+  color: black;
+  margin-bottom: 5px;
+}
+
+.jcard-co-name:hover {
+  color: rgb(35, 42, 162);
 }
 
 .jcard-tags {

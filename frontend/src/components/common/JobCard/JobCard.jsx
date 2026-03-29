@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './JobCard.css';
 import Badge from '../Badge/Badge';
@@ -9,6 +9,9 @@ function JobCard({ job, showMatch = true, showActions = true, token, onSave }) {
   const [saved, setSaved] = useState(job?.isSaved ?? false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const navigate = useNavigate();
+  const [applyModalOpen, setApplyModalOpen] = useState(false);
+  const openApply = (e) => { if (e) e.stopPropagation(); setApplyModalOpen(true); };
+  const closeApply = () => setApplyModalOpen(false);
 
   const headers = {
     'Content-Type': 'application/json',
@@ -30,13 +33,11 @@ function JobCard({ job, showMatch = true, showActions = true, token, onSave }) {
     }
   };
 
-  const handleApply = (e) => {
-    e.stopPropagation();
-    if (!token) {
-      setShowLoginModal(true);
-      return;
-    }
-    alert('Apply logic');
+  const handleApply = (e, jobID) => {
+    if (e) e.stopPropagation();
+    if (!token) { setShowLoginModal(true); return; }
+    if (jobID) trackBehavior(jobID, 'apply');
+    openApply(e);
   };
 
   const handleGoLogin = (e) => {
@@ -48,12 +49,12 @@ function JobCard({ job, showMatch = true, showActions = true, token, onSave }) {
     }, 50);
   };
 
+
   const getPlatformBadge = (platform) => {
     const badges = {
       TopCV: 'b-sage',
       CareerViet: 'b-rust',
       CareerLink: 'b-teal',
-      VietnamWorks: 'b-gray',
     };
     return badges[platform] || 'b-gray';
   };
@@ -63,6 +64,15 @@ function JobCard({ job, showMatch = true, showActions = true, token, onSave }) {
     if (match >= 80) return 'var(--amber)';
     return 'var(--rust)';
   };
+
+  const trackBehavior = useCallback((jobID, action) => {
+    if (!token) return;
+    fetch(`${API_BASE}/jobs/${jobID}/track`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action }),
+    }).catch(console.error);
+  }, [token]);
 
   if (!job) return null;
 
@@ -99,9 +109,9 @@ function JobCard({ job, showMatch = true, showActions = true, token, onSave }) {
           <div className="jcard-info">
             <div className="jcard-title">{job.title}</div>
             <div className="jcard-co">
-              {job.company}
-              {job.location && ` • ${job.location}`}
-              {job.type && ` • ${job.type}`}
+              <div className="jcard-co-name">{job.company} </div>
+              <div>{job.shortLocation && ` • ${job.shortLocation}`}</div>
+              <div>{job.type && ` • ${job.type}`}</div>
             </div>
             <div className="jcard-tags">
               {(job.tags ?? []).map((tag, idx) => (
@@ -132,13 +142,81 @@ function JobCard({ job, showMatch = true, showActions = true, token, onSave }) {
               <button className="btn btn-outline btn-md" onClick={handleSave}>
                 {saved ? '🔖 Đã lưu' : '🔖 Lưu'}
               </button>
-              <button className="btn btn-rust btn-md" onClick={handleApply}>
+              <button className="btn btn-rust btn-md" onClick={(e) => { e.stopPropagation(); handleApply(e, job.id); }}>
                 ⚡ Apply
+
               </button>
             </div>
           )}
         </div>
       </div>
+      {
+        applyModalOpen && (
+          <div style={{
+            display: 'flex', position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)',
+            zIndex: 3000, alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)',
+          }} onClick={closeApply}>
+            <div style={{
+              background: 'var(--surf)', borderRadius: '16px', padding: '32px',
+              maxWidth: '480px', width: '90%', boxShadow: '0 24px 80px rgba(0,0,0,.3)',
+              animation: 'fadeIn .25s ease-out', position: 'relative',
+            }} onClick={e => e.stopPropagation()}>
+              <button onClick={closeApply} style={{
+                position: 'absolute', top: '16px', right: '16px',
+                background: 'none', border: 'none', fontSize: '20px', color: 'var(--ink4)', cursor: 'pointer',
+              }}>✕</button>
+
+              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                <div style={{ fontSize: '40px', marginBottom: '10px' }}>🔗</div>
+                <div style={{ fontFamily: "'Fraunces',serif", fontSize: '22px', fontWeight: 700, marginBottom: '8px' }}>
+                  Chuyển đến trang ứng tuyển
+                </div>
+                <div style={{ fontSize: '13px', color: 'var(--ink3)', lineHeight: 1.65 }}>
+                  Khi nhấn <b>Đi đến trang ứng tuyển</b>, bạn sẽ được chuyển đến trang gốc để hoàn tất nộp hồ sơ.
+                </div>
+              </div>
+
+              {[
+                { icon: '🌐', title: 'Trang tuyển dụng gốc', desc: job?.platform ?? '' },
+                { icon: '📄', title: 'Nộp hồ sơ trực tiếp', desc: 'Ứng tuyển bằng CV của bạn trên nền tảng đó' },
+                { icon: '🔒', title: 'Bảo mật thông tin', desc: 'Chúng tôi không lưu thông tin hồ sơ ứng tuyển' },
+                { icon: '🔗', title: 'Link chi tiết ở trang gốc', desc: job?.sourceLink ?? '' },
+              ].map(item => (
+                <div key={item.title} style={{
+                  display: 'flex', alignItems: 'center', gap: '9px', padding: '10px 14px',
+                  background: 'var(--bg2)', borderRadius: '9px', border: '1px solid var(--border)', marginBottom: '8px',
+                }}>
+                  <span style={{ fontSize: '18px' }}>{item.icon}</span>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: 600 }}>{item.title}</div>
+                    <div style={{
+                      fontSize: '11px',
+                      color: 'var(--ink3)',
+                      wordBreak: 'break-word',  
+                      whiteSpace: 'normal',     
+                      overflowWrap: 'break-word' 
+                    }}>
+                      {item.desc}
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              <button className="btn btn-rust" style={{
+                width: '100%', justifyContent: 'center', padding: '13px',
+                fontSize: '14px', background: 'rgb(35,42,162)', marginTop: '8px',
+              }} onClick={() => job?.sourceLink && window.open(job.sourceLink, '_blank')}>
+                Đi đến trang ứng tuyển →
+              </button>
+
+              <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '12px', color: 'var(--ink4)' }}>
+                Hoặc <span style={{ color: 'var(--rust)', cursor: 'pointer', fontWeight: 600 }}
+                  onClick={closeApply}>quay lại xem việc khác</span>
+              </div>
+            </div>
+          </div>
+        )
+      }
     </>
   );
 }

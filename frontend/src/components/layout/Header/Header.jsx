@@ -54,7 +54,8 @@ const DD_MENU = [
     label: 'Tài khoản',
     items: [
       { ico: '👤', label: 'Hồ sơ của tôi', path: '/profile' },
-      { ico: '📋', label: 'Đơn ứng tuyển', path: '/applications', tag: '14' },
+      // { ico: '📋', label: 'Đơn ứng tuyển', path: '/applications', tag: '14' },
+      { ico: '⭐', label: 'Việc đã lưu', path: '/saved-jobs', tag: '3' },
       { ico: '📄', label: 'CV của tôi', path: '/cv-builder' },
       { ico: '🤖', label: 'AI Assistant', path: '/profile' }
     ],
@@ -62,10 +63,10 @@ const DD_MENU = [
   {
     label: 'Cài đặt',
     items: [
-      { ico: '⚙️', label: 'Cài đặt tài khoản', path: '/profile' },
+
       { ico: '🔔', label: 'Thông báo', path: '/notifications' },
-      { ico: '🔒', label: 'Bảo mật & Mật khẩu' },
       { ico: '💳', label: 'Gói dịch vụ', tag: 'Pro' },
+      { ico: '⚙️', label: 'Cài đặt tài khoản', path: '/profile' },
       { ico: '🚪', label: 'Đăng xuất'}
     ],
   }

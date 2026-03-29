@@ -701,6 +701,10 @@
     line-height: 1.25;
 }
 
+.cs-card__name:hover {
+    color: rgb(35, 42, 162);
+}
+
 .cs-card__ind {
     font-size: 12px;
     color: #9A8D80;
@@ -893,14 +897,14 @@
 }
 
 .cs-pg-btn:hover {
-    border-color: #C0412A;
-    color: #C0412A;
+    border-color: rgb(35, 42, 162);
+    color: rgb(35, 42, 162);
 }
 
 .cs-pg-btn.on {
-    background: #C0412A;
+    background: rgb(35, 42, 162);
     color: #fff;
-    border-color: #C0412A;
+    border-color: rgb(35, 42, 162);
 }
 
 .cs-pg-btn.wide {

@@ -13,14 +13,17 @@ function Sidebar() {
     // { id: 'dashboard', icon: '⊞', label: 'Dashboard', path: '/dashboard' },
     // { id: 'applications', icon: '📋', label: 'Đơn ứng tuyển', path: '/applications' },
     { id: 'profile', icon: '👤', label: 'Hồ sơ của tôi', path: '/profile' },
-    { id: 'save-jobs', icon: '⭐', label: 'Việc đã lưu', path: null },
+    { id: 'save-jobs', icon: '⭐', label: 'Việc đã lưu', path: '/saved-jobs' },
+    { id: 'cv', icon: '📄', label: 'CV của tôi', path: '/mycv'},
     // { id: 'applications', icon: '📋', label: 'Đơn ứng tuyển', path: '/applications' },
   ]
 
   const toolItems = [
-    { id: 'ai', icon: '🤖', label: 'AI Assistant', path: null },
+    { id: 'ai', icon: '🤖', label: 'AI Assistant', path: '/ai-assistant' },
     { id: 'notifications', icon: '🔔', label: 'Thông báo', path: '/notifications' },
-    { id: 'settings', icon: '⚙️', label: 'Cài đặt tài khoản', path: '/settings' }
+    { id: 'services', icon: '💳', label: 'Gói dịch vụ', path: '/services' },
+    { id: 'settings', icon: '⚙️', label: 'Cài đặt tài khoản', path: '/settings' },
+    { id: 'logout', icon: '🚪', label: 'Đăng xuất' }
 
   ]
   // const toolItems = [

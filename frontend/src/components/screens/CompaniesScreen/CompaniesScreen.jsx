@@ -41,7 +41,6 @@ function CompanyLogo({ company }) {
 }
 
 function CompanyCard({ company, listView, onFollow, following }) {
-
   return (
     <div className={`cs-card${listView ? ' list-card' : ''}`}>
       <div className="cs-card__cover"
@@ -73,19 +72,6 @@ function CompanyCard({ company, listView, onFollow, following }) {
   )
 }
 
-// export default function CompaniesScreen({ onNavigate, onSelectCompany }) {
-//   const [listView, setListView] = useState(false)
-//   const [following, setFollowing] = useState(new Set())
-//   const [activeInds, setActiveInds] = useState(new Set())
-//   const [activeFilter, setActiveFilter] = useState('all')
-//   const [searchQuery, setSearchQuery] = useState('')
-
-//   const [checkedSize, setCheckedSize] = useState({})
-//   const [checkedLoc, setCheckedLoc] = useState({})
-
-//   const handleSelectCompany = (company) => {
-//     if (onSelectCompany) onSelectCompany(company)
-//   }
 export default function CompaniesScreen() {
   const [companies, setCompanies] = useState([])
   const [topCompanies, setTopCompanies] = useState([])
@@ -289,24 +275,6 @@ export default function CompaniesScreen() {
         </div>
       </section>
 
-      {/* ── Filter chips strip ──────────────────────────────── */}
-      <div className="cs-filters-strip">
-        <div className="cs-filters-strip__inner">
-          <span className="cs-filter-label">Lọc nhanh:</span>
-          {FILTER_CHIPS.map(chip => (
-            <button
-              key={chip.key}
-              className={`cs-filter-chip${activeFilter === chip.key ? ' on' : ''}`}
-              onClick={() => setActiveFilter(chip.key)}
-            >
-              {activeFilter === chip.key && <span className="cs-filter-chip-dot" />}
-              {chip.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Body ────────────────────────────────────────────── */}
       <div className="cs-body">
         <aside className="cs-sidebar">
           <div className="cs-sidebar__head">
@@ -314,7 +282,6 @@ export default function CompaniesScreen() {
             <span className="cs-sidebar__clear" onClick={clearFilters}>Xoá tất cả</span>
           </div>
 
-          {/* Industry */}
           <div className="cs-sb-section">
             <div className="cs-sb-sec-title">Quy mô công ty</div>
             {sizes.length === 0

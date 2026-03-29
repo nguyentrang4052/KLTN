@@ -1,6 +1,7 @@
 .jd-wrap {
   display: grid;
   grid-template-columns: 1fr 320px;
+  margin: 30px 100px;
   height: calc(100vh - 48px);
   overflow: hidden;
 }

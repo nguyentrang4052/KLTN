@@ -13,45 +13,6 @@ const STATS = [
   { n: '1-click',l: 'Auto Apply',           s: 'nộp nhiều nơi cùng lúc' },
 ]
 
-const TEAM = [
-  {
-    name: 'Nguyễn Minh Khoa', role: 'CEO & Co-founder',
-    avatar: 'MK', color: 'linear-gradient(135deg,#C0412A,#E05A40)',
-    bio: 'Cựu PM tại VNG, 8 năm kinh nghiệm trong HR-tech và AI product.',
-    links: { li: '#', tw: '#' },
-  },
-  {
-    name: 'Trần Thị Lan Anh', role: 'CTO & Co-founder',
-    avatar: 'LA', color: 'linear-gradient(135deg,#1565C0,#1E88E5)',
-    bio: 'PhD AI tại ĐH Bách Khoa, từng nghiên cứu NLP tại Google Research.',
-    links: { li: '#', gh: '#' },
-  },
-  {
-    name: 'Lê Hoàng Nam', role: 'Head of Product',
-    avatar: 'HN', color: 'linear-gradient(135deg,#1B5E20,#388E3C)',
-    bio: 'Ex-Tiki, Shopee. Đam mê xây dựng sản phẩm tốt cho người Việt.',
-    links: { li: '#' },
-  },
-  {
-    name: 'Phạm Quỳnh Như', role: 'Head of Design',
-    avatar: 'QN', color: 'linear-gradient(135deg,#880E4F,#C2185B)',
-    bio: '10 năm UX, từng thiết kế cho MoMo, Be và nhiều startup unicorn.',
-    links: { li: '#', tw: '#' },
-  },
-  {
-    name: 'Đặng Trọng Nghĩa', role: 'AI Engineer Lead',
-    avatar: 'TN', color: 'linear-gradient(135deg,#1A3A6A,#2E6DA8)',
-    bio: 'Chuyên gia ML, tác giả mô hình matching AI cho 3 triệu người dùng.',
-    links: { li: '#', gh: '#' },
-  },
-  {
-    name: 'Vũ Thị Thanh Hà', role: 'Head of Growth',
-    avatar: 'TH', color: 'linear-gradient(135deg,#D4820A,#F0A020)',
-    bio: '0→1 growth hacker, đã scale 5 startup tại Việt Nam và Singapore.',
-    links: { li: '#' },
-  },
-]
-
 const VALUES = [
   {
     icon: '🎯', title: 'Cá nhân hóa thật sự',
@@ -74,7 +35,6 @@ const VALUES = [
 const PARTNERS = [
   { name: 'TopCV',       short: 'TC',  color: '#007A35' },
   { name: 'CareerLink',  short: 'CL',  color: '#A02018' },
-  { name: 'VietnamWorks',short: 'VW',  color: '#B35A00' },
   { name: 'CareerViet',  short: 'CV',  color: '#0D47A1' },
 ]
 
