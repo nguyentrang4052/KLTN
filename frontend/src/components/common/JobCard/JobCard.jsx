@@ -100,7 +100,7 @@ function JobCard({ job, showMatch = true, showActions = true, token, onSave }) {
             <div className="jcard-title">{job.title}</div>
             <div className="jcard-co">
               {job.company}
-              {job.location && ` • ${job.location}`}
+              {job.shortLocation && ` • ${job.shortLocation}`}
               {job.type && ` • ${job.type}`}
             </div>
             <div className="jcard-tags">

@@ -86,7 +86,7 @@ export default function HomeScreen() {
     try {
       const params = new URLSearchParams({ page: String(page), limit: '9', sort })
       if (keyword) params.set('keyword', keyword)
-      if (location) params.set('location', location)
+      if (location) params.append('locations', location)
       if (industryFilter) params.set('industryId', String(industryFilter))
 
       const headers = {}
