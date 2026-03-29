@@ -1,0 +1,172 @@
+[
+  {
+    "name": "ubsessid",
+    "value": "jz2ebh23qlfll31oiyiut7rjxssrlbln",
+    "domain": "www.careerlink.vn",
+    "path": "/",
+    "expires": 1808937404.661812,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "_gcl_au",
+    "value": "1.1.1746966803.1774377408",
+    "domain": ".careerlink.vn",
+    "path": "/",
+    "expires": 1782153408,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_ga",
+    "value": "GA1.1.546786473.1774377408",
+    "domain": ".careerlink.vn",
+    "path": "/",
+    "expires": 1809274977.013441,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_fbp",
+    "value": "fb.1.1774377409183.886933945409038294",
+    "domain": ".careerlink.vn",
+    "path": "/",
+    "expires": 1782490977,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "fr",
+    "value": "0dcKaqysPgFsO7Rlr..BpxZML...1.0.BpxZML.",
+    "domain": ".facebook.com",
+    "path": "/",
+    "expires": 1782331919.777307,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "YSC",
+    "value": "Wezf4CKpaq0",
+    "domain": ".youtube.com",
+    "path": "/",
+    "expires": -1,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None",
+    "partitionKey": "https://careerlink.vn",
+    "_crHasCrossSiteAncestor": true
+  },
+  {
+    "name": "VISITOR_INFO1_LIVE",
+    "value": "PZBBOnoUnVo",
+    "domain": ".youtube.com",
+    "path": "/",
+    "expires": 1790254607.788212,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None",
+    "partitionKey": "https://careerlink.vn",
+    "_crHasCrossSiteAncestor": true
+  },
+  {
+    "name": "VISITOR_PRIVACY_METADATA",
+    "value": "CgJWThIEGgAgSQ%3D%3D",
+    "domain": ".youtube.com",
+    "path": "/",
+    "expires": 1790254607.78862,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None",
+    "partitionKey": "https://careerlink.vn",
+    "_crHasCrossSiteAncestor": true
+  },
+  {
+    "name": "__Secure-ROLLOUT_TOKEN",
+    "value": "CNnO9c_k4KW97QEQ8JDD1ZrAkwMY-v6b2ZrAkwM%3D",
+    "domain": ".youtube.com",
+    "path": "/",
+    "expires": 1790170940.591189,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None",
+    "partitionKey": "https://careerlink.vn",
+    "_crHasCrossSiteAncestor": true
+  },
+  {
+    "name": "IDE",
+    "value": "AHWqTUlkwYvOQ-SkTTRtssRZFPtsIqBbVvPpBE-XeHEQ7eF0subR7W53AbkLjf-PQIw",
+    "domain": ".doubleclick.net",
+    "path": "/",
+    "expires": 1809185381.724451,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "__gads",
+    "value": "ID=5cf5e9c20ca50dcd:T=1774625374:RT=1774627171:S=ALNI_Mag_2Ek2StHa98wrjuNrgtwW259bA",
+    "domain": ".careerlink.vn",
+    "path": "/",
+    "expires": 1808321374,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "__gpi",
+    "value": "UID=00001230c1dbd36a:T=1774625374:RT=1774627171:S=ALNI_MZpByasXA51-Vw4OHEL0uMAKHl5bg",
+    "domain": ".careerlink.vn",
+    "path": "/",
+    "expires": 1808321374,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "__eoi",
+    "value": "ID=8dc42af5db69b90c:T=1774625374:RT=1774627171:S=AA-AfjaUgYsRAD5ayA6USS8dWg6R",
+    "domain": ".careerlink.vn",
+    "path": "/",
+    "expires": 1790177374,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "hmt_id",
+    "value": "b140b0f6-b327-4ba4-a671-4f2d4a16aed9",
+    "domain": "api.hcaptcha.com",
+    "path": "/",
+    "expires": 1777219334.005075,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None",
+    "partitionKey": "https://careerlink.vn",
+    "_crHasCrossSiteAncestor": true
+  },
+  {
+    "name": "_c24_session",
+    "value": "VE1TS0dmTCtESDMwSG9EbGRCMGZYM0F2OXJnczJ0NFN4Nmk2SSs5NUtRWnlTMTJPWTdkWEJud0VyakRMN2hDeVYxRW4zbVhDRWZETjRMSVNqQVF5cjlQQkNqVFJUMXNPWW1SQVpJalcza0MzOGRDM0ZnaXFLWUdueGZTcVpRNk8rRnBvVU5ZS1k3TVlVSUNqbk1vK1ZRPT0tLWUzaGMyV0QrSFJvWjdoWkdFeGR4cFE9PQ%3D%3D--c0e4bd3a68d090d1a472929250dbd5e66f9c0828",
+    "domain": "www.careerlink.vn",
+    "path": "/",
+    "expires": 1806250976.770905,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "_ga_QHBV055BSK",
+    "value": "GS2.1.s1774711968$o11$g1$t1774714977$j53$l0$h1417970817",
+    "domain": ".careerlink.vn",
+    "path": "/",
+    "expires": 1809274977.067099,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  }
+]

@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+playwright
+redis[asyncio]
+asyncpg
+psycopg2-binary
+python-dotenv
+sse-starlette

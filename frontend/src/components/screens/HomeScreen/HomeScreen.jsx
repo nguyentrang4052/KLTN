@@ -83,7 +83,7 @@ function HomeScreen({ onNavigate }) {
               <div className="hs-stat-l">Đã nộp tháng này</div>
               <div className="hs-stat-s">3 chờ phản hồi</div>
             </div>
-            <div className="hs-stat">
+            {/* <div className="hs-stat">
               <div className="hs-stat-ico">📊</div>
               <div className="hs-stat-n" style={{color:'#D4820A'}}>64%</div>
               <div className="hs-stat-l">Tỷ lệ phản hồi</div>
@@ -94,7 +94,7 @@ function HomeScreen({ onNavigate }) {
               <div className="hs-stat-n">2</div>
               <div className="hs-stat-l">Phỏng vấn sắp tới</div>
               <div className="hs-stat-s">Tiki: 14:00 ngày mai</div>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

@@ -75,7 +75,7 @@ const DD_MENU = [
 //     s3: 'home', s10: 'jobs', s11: 'companies', s6: 'cv', s12: 'about'
 // }
 
-export default function Header({ notifCount = 5 }) {
+export default function Header({ notifCount}) {
   const [ddOpen, setDdOpen] = useState(false)
   // const activeNav = SCREEN_TO_NAV[activeScreen] ?? null
   const location = useLocation()

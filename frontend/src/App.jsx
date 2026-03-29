@@ -39,7 +39,7 @@ function App() {
 
   return (
     <div className="app">
-      {!hideHeader && <Header notifCount={5} />}
+      {!hideHeader && <Header />}
 
       <div className="screen-container">
         {/* {screens[activeScreen] ?? screens['s3']} */}

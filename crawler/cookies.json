@@ -1,0 +1,304 @@
+[
+  {
+    "name": "CLID",
+    "value": "c6feeac8934341a2ad2cbef7d2385947.20260324.20270324",
+    "domain": "www.clarity.ms",
+    "path": "/",
+    "expires": 1805891271.547515,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "popup-ebook-cv",
+    "value": "1",
+    "domain": "www.topcv.vn",
+    "path": "/",
+    "expires": 1774441672,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_taid",
+    "value": "83tlsi3Qyw.1774355272372",
+    "domain": "www.topcv.vn",
+    "path": "/",
+    "expires": 1774453857,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_gcl_au",
+    "value": "1.1.1324577053.1774355273",
+    "domain": ".topcv.vn",
+    "path": "/",
+    "expires": 1782131273,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_gid",
+    "value": "GA1.2.1186971106.1774355273",
+    "domain": ".topcv.vn",
+    "path": "/",
+    "expires": 1774453857,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "li_sugr",
+    "value": "74ce7648-b749-4ef8-912c-245e3e8fd311",
+    "domain": ".linkedin.com",
+    "path": "/",
+    "expires": 1782143456.964916,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "_ttp",
+    "value": "3BOLeH6EDIVwLomeALoueCPx57Y",
+    "domain": ".tiktok.com",
+    "path": "/",
+    "expires": 1808063457.174801,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "_fbp",
+    "value": "fb.1.1774355273334.565422747105102255",
+    "domain": ".topcv.vn",
+    "path": "/",
+    "expires": 1782143457,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "UserMatchHistory",
+    "value": "AQK9klwlCya8AQAAAZ0f0LJrJiETXsc-QEjd2_X1aAZDCmuJe_uq1oY5vFyHMyu5Aolw_yeWJ6A9aQ",
+    "domain": ".linkedin.com",
+    "path": "/",
+    "expires": 1776947273.358623,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "AnalyticsSyncHistory",
+    "value": "AQLYAGQqsdqQuQAAAZ0f0LJr_k6IviBbDqBYrxAFGiZ6CSUtivda_kTyx6ig65zKsiicGzWqtLN7-LIyWG9RIg",
+    "domain": ".linkedin.com",
+    "path": "/",
+    "expires": 1776947273.358681,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "_clck",
+    "value": "yrgtv8%5E2%5Eg4m%5E0%5E2274",
+    "domain": ".topcv.vn",
+    "path": "/",
+    "expires": 1805891273,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "ar_debug",
+    "value": "1",
+    "domain": "px.ads.linkedin.com",
+    "path": "/",
+    "expires": 1776997202.983549,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "bcookie",
+    "value": "\"v=2&e8332801-629d-43a6-8641-a97af68bc121\"",
+    "domain": ".linkedin.com",
+    "path": "/",
+    "expires": 1805903456.983694,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "lidc",
+    "value": "\"b=VGST09:s=V:r=V:a=V:p=V:g=3384:u=1:x=1:i=1774355264:t=1774441664:v=2:sig=AQH_37rrtmZJUzvhl11GHdWqK-ceInKC\"",
+    "domain": ".linkedin.com",
+    "path": "/",
+    "expires": 1774441674.6824,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "bscookie",
+    "value": "\"v=1&2026032412274495c1b21f-19ae-4ec2-8ead-226fd0d14f75AQF4YqnwSUpQWd_CLVFwHadujhPByLRB\"",
+    "domain": ".www.linkedin.com",
+    "path": "/",
+    "expires": 1805891273.790484,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "_tt_enable_cookie",
+    "value": "1",
+    "domain": ".topcv.vn",
+    "path": "/",
+    "expires": 1808063458,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_ttp",
+    "value": "01KMFX1QBHAE2WVR51A1K0KNNZ_.tt.1",
+    "domain": ".topcv.vn",
+    "path": "/",
+    "expires": 1808063458,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_tafp",
+    "value": "1db5fde9e8be68096c2eac06f39c9c94",
+    "domain": "www.topcv.vn",
+    "path": "/",
+    "expires": 1774441675,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "IDE",
+    "value": "AHWqTUngGh1XMn-iFyIO7ROtca6EBS4JVYHm9xNPywBmtImBV-itFw5V9H6hc_jl",
+    "domain": ".doubleclick.net",
+    "path": "/",
+    "expires": 1808915889.24062,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "cf_clearance",
+    "value": "pjR5n6G0S.ZhOLfaOIXkPQ4jzLpy6gAKbZ5i_5DLu3I-1774367456-1.2.1.1-YVYw41InBACP1g1NQy5ujKqprVQxZz5bcpkh6noJ8xZgowIo1EoxigZto7W2sLhJ9oYn5ZILrwUPcGXcfvgKTJ.RbAx.EhZbpnkpz5X1BfetEIdwbgxugxHufwmkL.fOlYsCuX_ZmjyWBbJiLiy.WmZZdHHCGRYgOVMUPNKRQAemFGqVjrw2Vk.EnRoK809T0uSLYQQEd1sMDmC2MSsJ5.db39vX5nO3fHCB58qypAA",
+    "domain": ".topcv.vn",
+    "path": "/",
+    "expires": 1805903456.851654,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None",
+    "partitionKey": "https://topcv.vn",
+    "_crHasCrossSiteAncestor": false
+  },
+  {
+    "name": "_ga",
+    "value": "GA1.2.438638232.1774355271",
+    "domain": ".topcv.vn",
+    "path": "/",
+    "expires": 1808927457.06335,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_gat_UA-55579411-1",
+    "value": "1",
+    "domain": ".topcv.vn",
+    "path": "/",
+    "expires": 1774367517,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "XSRF-TOKEN",
+    "value": "eyJpdiI6IncyRXJEVU1qbnZzMU03ZGN2eVlNN0E9PSIsInZhbHVlIjoiTzR6L2N6M05abFgyVzlVSFUyL1FvZUxyaitaYVY5WUxSN0JpQVFob0hHbmc5cHVZclRleTZtMW5VTW5KSjc2WE1ER2hLYVl5QlhxdlhaMGtsL2pLeHIxcGFvN2F4S1FZS0R2blhuM0pEMFc4OSs0Tk9YbWxpT2Mya2lYVm9OWkIiLCJtYWMiOiJiOWM0OGNhNThkMThlOTc5ZGQ3ZGY1YmE1Y2I4MDBjMmViYzgzMWY5NzlhNDIwM2U5NjlkODUyYWYyMDg0OTFhIiwidGFnIjoiIn0%3D",
+    "domain": ".topcv.vn",
+    "path": "/",
+    "expires": 1782143457.398411,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "topcv_session",
+    "value": "eyJpdiI6IkZZQlNOWFR3QUE3Z25TMkdxWFRrdUE9PSIsInZhbHVlIjoidmZnVlhReGwwUTJVdk1qVWg4RE51REh3MGRtcWxyNEhpWW9RMGF5NDdNMjhKOU5DcWV2U2tscnB0SEFnRUlISjliT3JYbjk2MU1nZGdxcmk4TWxXUmhBS0JQbDlyMUJrSjZ0UWtab0dJWEJtUGJmbVZFQkJkRjdxTGtVZWtSQTgiLCJtYWMiOiJkNTZlYmExNTk0YThhMjQ3ZTMwMWRjZDY2NTUyNzI3YmNmMjdkMGU4MjVkN2YwYTZkMTc5Y2U0MWU1MGJjZDdkIiwidGFnIjoiIn0%3D",
+    "domain": ".topcv.vn",
+    "path": "/",
+    "expires": 1782143457.3986,
+    "httpOnly": true,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_clsk",
+    "value": "8ep9xe%5E1774367458704%5E1%5E0%5El.clarity.ms%2Fcollect",
+    "domain": ".topcv.vn",
+    "path": "/",
+    "expires": 1774453858,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_ga_F385SHE0Y3",
+    "value": "GS2.1.s1774367454$o2$g1$t1774367459$j55$l0$h0",
+    "domain": ".topcv.vn",
+    "path": "/",
+    "expires": 1808927459.105242,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "ttcsid",
+    "value": "1774367458882::Ze0Mz_LRNDfodYd09N8u.2.1774367459228.0",
+    "domain": ".topcv.vn",
+    "path": "/",
+    "expires": 1808063459,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "ttcsid_D0FPAFRC77UA600KP0E0",
+    "value": "1774367458880::-mGmzWE2f7DaGs8P0aYq.2.1774367459228.0",
+    "domain": ".topcv.vn",
+    "path": "/",
+    "expires": 1808063459,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "SM",
+    "value": "T",
+    "domain": ".c.clarity.ms",
+    "path": "/",
+    "expires": -1,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "MUID",
+    "value": "2632EC5E5EF262C62ED2FB785AF26C97",
+    "domain": ".clarity.ms",
+    "path": "/",
+    "expires": 1808063459.250685,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  }
+]

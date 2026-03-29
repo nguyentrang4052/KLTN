@@ -14,7 +14,7 @@ function Sidebar() {
     // { id: 'applications', icon: '📋', label: 'Đơn ứng tuyển', path: '/applications' },
     { id: 'profile', icon: '👤', label: 'Hồ sơ của tôi', path: '/profile' },
     { id: 'save-jobs', icon: '⭐', label: 'Việc đã lưu', path: null },
-    { id: 'applications', icon: '📋', label: 'Đơn ứng tuyển', path: '/applications' },
+    // { id: 'applications', icon: '📋', label: 'Đơn ứng tuyển', path: '/applications' },
   ]
 
   const toolItems = [

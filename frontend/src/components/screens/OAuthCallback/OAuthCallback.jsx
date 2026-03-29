@@ -31,7 +31,7 @@ function OAuthCallback({ onLoginSuccess }) {
     <div style={{
       minHeight: '100vh', background: '#0F0D0B',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: '#888', fontFamily: 'DM Sans, sans-serif', fontSize: 14
+      color: '#888', fontFamily: 'Roboto, sans-serif', fontSize: 14
     }}>
       ⟳ Đang đăng nhập...
     </div>

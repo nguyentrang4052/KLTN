@@ -104,16 +104,16 @@ const INDUSTRIES = [
 ]
 
 const SIZES = [
-  { label: 'Startup (< 100)',   count: '248', key: 'startup' },
-  { label: 'SME (100 – 999)',   count: '612', key: 'sme'     },
-  { label: 'Lớn (1K – 9,999)', count: '290', key: 'large'   },
-  { label: 'Tập đoàn (10K+)',  count: '68',  key: 'corp'    },
+  { label: 'Startup (< 100)', count: '248', key: 'startup' },
+  { label: 'SME (100 – 999)', count: '612', key: 'sme' },
+  { label: 'Lớn (1K – 9,999)', count: '290', key: 'large' },
+  { label: 'Tập đoàn (10K+)', count: '68', key: 'corp' },
 ]
 
 const LOCATIONS = [
   { label: 'TP. Hồ Chí Minh', count: '1,480' },
-  { label: 'Hà Nội',          count: '820'   },
-  { label: 'Đà Nẵng',         count: '240'   },
+  { label: 'Hà Nội', count: '820' },
+  { label: 'Đà Nẵng', count: '240' },
   { label: 'Remote / Toàn quốc', count: '310' },
 ]
 
@@ -143,7 +143,7 @@ function Badge({ type }) {
 }
 
 /* ── Company card (grid) ────────────────────────────────────── */
-function CompanyCard({ company, listView, onFollow, following }) {
+function CompanyCard({ company, listView, onFollow, following, onSelect }) {
   return (
     <div className={`cs-card${company.featured ? ' feat' : ''}${listView ? ' list-card' : ''}`}>
       {/* Cover */}
@@ -161,7 +161,7 @@ function CompanyCard({ company, listView, onFollow, following }) {
 
       {/* Body */}
       <div className="cs-card__body">
-        <div className="cs-card__name">{company.name}</div>
+        <div className="cs-card__name cd-clickable-name" onClick={() => onSelect && onSelect(company)}>{company.name}</div>
         <div className="cs-card__ind">
           {company.industry}
           <span className="cs-card__verified">✓</span>
@@ -202,15 +202,19 @@ function CompanyCard({ company, listView, onFollow, following }) {
 }
 
 /* ── Main screen ────────────────────────────────────────────── */
-export default function CompaniesScreen() {
-  const [listView, setListView]         = useState(false)
-  const [following, setFollowing]       = useState(new Set())
-  const [activeInds, setActiveInds]     = useState(new Set())
+export default function CompaniesScreen({ onNavigate, onSelectCompany }) {
+  const [listView, setListView] = useState(false)
+  const [following, setFollowing] = useState(new Set())
+  const [activeInds, setActiveInds] = useState(new Set())
   const [activeFilter, setActiveFilter] = useState('all')
-  const [searchQuery, setSearchQuery]   = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
 
-  const [checkedSize, setCheckedSize]   = useState({})
-  const [checkedLoc, setCheckedLoc]     = useState({})
+  const [checkedSize, setCheckedSize] = useState({})
+  const [checkedLoc, setCheckedLoc] = useState({})
+
+  const handleSelectCompany = (company) => {
+    if (onSelectCompany) onSelectCompany(company)
+  }
 
   const toggleFollow = (id) => {
     setFollowing(prev => {
@@ -240,10 +244,10 @@ export default function CompaniesScreen() {
   ]
 
   const filtered = COMPANIES.filter(c => {
-    if (activeFilter === 'top'     && !c.badges.includes('top')) return false
-    if (activeFilter === 'hot'     && !c.badges.includes('hot')) return false
-    if (activeFilter === 'new'     && !c.badges.includes('new')) return false
-    if (activeFilter === 'rem'     && !c.badges.includes('rem')) return false
+    if (activeFilter === 'top' && !c.badges.includes('top')) return false
+    if (activeFilter === 'hot' && !c.badges.includes('hot')) return false
+    if (activeFilter === 'new' && !c.badges.includes('new')) return false
+    if (activeFilter === 'rem' && !c.badges.includes('rem')) return false
     if (activeFilter === 'startup' && !c.size.includes('<')) return false
     if (searchQuery && !c.name.toLowerCase().includes(searchQuery.toLowerCase())) return false
     return true
@@ -257,10 +261,10 @@ export default function CompaniesScreen() {
         <div className="cs-hero__glow" />
         <div className="cs-hero__glow2" />
         <div className="cs-hero__inner">
-          {/* <div className="cs-hero__tag">
+          <div className="cs-hero__tag">
             <span className="cs-hero__dot" />
             3,200+ công ty đang tuyển dụng
-          </div> */}
+          </div>
           <h1 className="cs-hero__title">
             Khám phá <em>công ty</em><br />dành cho sự nghiệp của bạn
           </h1>
@@ -287,17 +291,36 @@ export default function CompaniesScreen() {
           </div>
 
           {/* Stats */}
-          {/* <div className="cs-hero__stats">
+          <div className="cs-hero__stats">
             <div><div className="cs-hero__stat-n">3,200+</div><div className="cs-hero__stat-l">Công ty tuyển dụng</div></div>
             <div><div className="cs-hero__stat-n">50K+</div><div className="cs-hero__stat-l">Việc làm hôm nay</div></div>
             <div><div className="cs-hero__stat-n">92%</div><div className="cs-hero__stat-l">Hài lòng về môi trường</div></div>
             <div><div className="cs-hero__stat-n">28K+</div><div className="cs-hero__stat-l">Đánh giá từ nhân viên</div></div>
-          </div> */}
+          </div>
         </div>
       </section>
 
+      {/* ── Filter chips strip ──────────────────────────────── */}
+      <div className="cs-filters-strip">
+        <div className="cs-filters-strip__inner">
+          <span className="cs-filter-label">Lọc nhanh:</span>
+          {FILTER_CHIPS.map(chip => (
+            <button
+              key={chip.key}
+              className={`cs-filter-chip${activeFilter === chip.key ? ' on' : ''}`}
+              onClick={() => setActiveFilter(chip.key)}
+            >
+              {activeFilter === chip.key && <span className="cs-filter-chip-dot" />}
+              {chip.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Body ────────────────────────────────────────────── */}
       <div className="cs-body">
 
+        {/* ── Sidebar ─────────────────────────────────────── */}
         <aside className="cs-sidebar">
           <div className="cs-sidebar__head">
             <div className="cs-sidebar__title">Bộ lọc</div>
@@ -309,6 +332,7 @@ export default function CompaniesScreen() {
             </span>
           </div>
 
+          {/* Industry */}
           <div className="cs-sb-section">
             <div className="cs-sb-sec-title">Ngành nghề</div>
             <div className="cs-ind-pills">
@@ -352,10 +376,10 @@ export default function CompaniesScreen() {
           <div className="cs-sb-section">
             <div className="cs-sb-sec-title">Đánh giá từ nhân viên</div>
             {[4.5, 4.0, 3.5].map(r => (
-              <div key={r} className="cs-ck-row" onClick={() => {}}>
+              <div key={r} className="cs-ck-row" onClick={() => { }}>
                 <div className="cs-ck" />
-                <span className="cs-ck-label" style={{ display:'flex', alignItems:'center', gap:5 }}>
-                  <span style={{ color:'#D4820A', fontSize:12 }}>{'★'.repeat(Math.floor(r))}</span>
+                <span className="cs-ck-label" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ color: '#D4820A', fontSize: 12 }}>{'★'.repeat(Math.floor(r))}</span>
                   {r}+ trở lên
                 </span>
               </div>
@@ -412,6 +436,7 @@ export default function CompaniesScreen() {
                 listView={listView}
                 following={following.has(c.id)}
                 onFollow={toggleFollow}
+                onSelect={handleSelectCompany}
               />
             ))}
           </div>
@@ -419,7 +444,7 @@ export default function CompaniesScreen() {
           {/* Pagination */}
           <div className="cs-pagination">
             <button className="cs-pg-btn">‹</button>
-            {[1,2,3,4,5].map(n => (
+            {[1, 2, 3, 4, 5].map(n => (
               <button key={n} className={`cs-pg-btn${n === 1 ? ' on' : ''}`}>{n}</button>
             ))}
             <button className="cs-pg-btn">…</button>
