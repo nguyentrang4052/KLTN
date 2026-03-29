@@ -5,7 +5,7 @@ import Badge from '../Badge/Badge';
 
 const API_BASE = 'http://localhost:3000/api';
 
-function JobCard({ job, showMatch = true, showActions = true, token }) {
+function JobCard({ job, showMatch = true, showActions = true, token, onSave }) {
   const [saved, setSaved] = useState(job?.isSaved ?? false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const navigate = useNavigate();
@@ -16,13 +16,14 @@ function JobCard({ job, showMatch = true, showActions = true, token }) {
   };
 
   const handleSave = async (e) => {
-    e.stopPropagation()
-    if (!token) { setShowLoginModal(true); return }
+    e.stopPropagation();
+    if (!token) { setShowLoginModal(true); return; }
     try {
       await fetch(`${API_BASE}/jobs/${job.id}/save`, {
         method: saved ? 'DELETE' : 'POST',
         headers,
       });
+      if (!saved && onSave) onSave(job.id);
       setSaved(!saved);
     } catch (err) {
       console.error(err);
@@ -30,23 +31,22 @@ function JobCard({ job, showMatch = true, showActions = true, token }) {
   };
 
   const handleApply = (e) => {
-    e.stopPropagation()
+    e.stopPropagation();
     if (!token) {
-      setShowLoginModal(true)
-      return
+      setShowLoginModal(true);
+      return;
     }
-    alert('Apply logic')
-  }
+    alert('Apply logic');
+  };
 
   const handleGoLogin = (e) => {
-    e.stopPropagation()
-    setShowLoginModal(false)
-    navigate('/login')
+    e.stopPropagation();
+    setShowLoginModal(false);
+    navigate('/login');
     setTimeout(() => {
-      window.scrollTo({ top: 0, behavior: 'instant' })
-    }, 50)
-  }
-
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }, 50);
+  };
 
   const getPlatformBadge = (platform) => {
     const badges = {
@@ -71,13 +71,13 @@ function JobCard({ job, showMatch = true, showActions = true, token }) {
   return (
     <>
       {showLoginModal && (
-        <div className="jcard-modal-overlay" onClick={(e) => { e.stopPropagation(); setShowLoginModal(false) }}>
+        <div className="jcard-modal-overlay" onClick={(e) => { e.stopPropagation(); setShowLoginModal(false); }}>
           <div className="jcard-modal" onClick={(e) => e.stopPropagation()}>
             <div className="jcard-modal-icon">🔐</div>
             <div className="jcard-modal-title">Bạn chưa đăng nhập</div>
             <div className="jcard-modal-desc">Vui lòng đăng nhập để tiếp tục sử dụng tính năng này.</div>
             <div className="jcard-modal-actions">
-              <button className="btn btn-outline btn-md" onClick={(e) => { e.stopPropagation(); setShowLoginModal(false) }}>
+              <button className="btn btn-outline btn-md" onClick={(e) => { e.stopPropagation(); setShowLoginModal(false); }}>
                 Để sau
               </button>
               <button className="btn btn-rust btn-md" onClick={handleGoLogin}>

@@ -137,6 +137,15 @@ function JobSearchScreen() {
       .finally(() => setLoadingRecs(false));
   }, [sort, token]);
 
+  const trackBehavior = useCallback((jobID, action) => {
+    if (!token) return;
+    fetch(`${API}/jobs/${jobID}/track`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action }),
+    }).catch(console.error);
+  }, [token]);
+
   const renderRecPages = () => {
     const pages = [];
     const total = recTotalPages;
@@ -161,7 +170,6 @@ function JobSearchScreen() {
     }
     return pages;
   };
-
 
   const fetchJobs = useCallback(async () => {
     if (sort === 'match' && token) return;
@@ -201,6 +209,7 @@ function JobSearchScreen() {
       setSelectedJob(data);
       setDetailOpen(true);
       document.body.style.overflow = 'hidden';
+      trackBehavior(jobID, 'view');
     } catch (err) { console.error(err); }
   };
 
@@ -223,12 +232,14 @@ function JobSearchScreen() {
         return next;
       });
       showToast(isSaved ? 'Đã bỏ lưu' : '🔖 Đã lưu việc làm!');
+      if (!isSaved) trackBehavior(jobID, 'save');
     } catch (err) { console.error(err); }
   };
 
-  const handleApply = (e) => {
+  const handleApply = (e, jobID) => {
     if (e) e.stopPropagation();
     if (!token) { setShowLoginModal(true); return; }
+    if (jobID) trackBehavior(jobID, 'apply');
     openApply(e);
   };
 
@@ -281,11 +292,7 @@ function JobSearchScreen() {
   const openProvinceDropdown = () => {
     if (provinceInputRef.current) {
       const rect = provinceInputRef.current.getBoundingClientRect();
-      setDropdownPos({
-        top: rect.bottom + 4,
-        left: rect.left,
-        width: rect.width,
-      });
+      setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
     }
     setProvinceDropdownOpen(true);
   };
@@ -345,17 +352,10 @@ function JobSearchScreen() {
 
       {provinceDropdownOpen && filteredProvinces.length > 0 && (
         <div style={{
-          position: 'fixed',
-          top: dropdownPos.top,
-          left: dropdownPos.left,
-          width: dropdownPos.width,
-          zIndex: 9999,
-          background: 'var(--surf)',
-          border: '1px solid var(--border)',
-          borderRadius: '8px',
-          boxShadow: '0 8px 24px rgba(0,0,0,.15)',
-          maxHeight: '220px',
-          overflowY: 'auto',
+          position: 'fixed', top: dropdownPos.top, left: dropdownPos.left,
+          width: dropdownPos.width, zIndex: 9999, background: 'var(--surf)',
+          border: '1px solid var(--border)', borderRadius: '8px',
+          boxShadow: '0 8px 24px rgba(0,0,0,.15)', maxHeight: '220px', overflowY: 'auto',
         }}>
           {filteredProvinces.map(p => (
             <div key={p.value} style={{
@@ -626,7 +626,7 @@ function JobSearchScreen() {
                         {savedJobIds.has(job.jobID) ? '🔖 Đã lưu' : '🔖'}
                       </button>
                       <button className="jc-apply"
-                        onClick={(e) => { e.stopPropagation(); handleApply(e); }}>
+                        onClick={(e) => { e.stopPropagation(); handleApply(e, job.jobID); }}>
                         ⚡ Apply ngay
                       </button>
                     </div>
@@ -809,7 +809,7 @@ function JobSearchScreen() {
               </div>
 
               <div className="dp-apply-bar">
-                <button className="dp-apply-btn" onClick={handleApply}>⚡ Apply ngay</button>
+                <button className="dp-apply-btn" onClick={(e) => handleApply(e, selectedJob.jobID)}>⚡ Apply ngay</button>
                 <button className="dp-save-btn"
                   style={{
                     color: savedJobIds.has(selectedJob.jobID) ? 'var(--amber)' : 'var(--ink3)',

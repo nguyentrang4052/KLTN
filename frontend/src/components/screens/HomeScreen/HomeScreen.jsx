@@ -152,13 +152,18 @@ export default function HomeScreen() {
       .catch(console.error)
   }, [token])
 
-  const trackJob = (jobID) => {
+  const trackBehavior = useCallback((jobID, action) => {
     if (!token) return
     fetch(`${API}/jobs/${jobID}/track`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ action: 'click' }),
+      body: JSON.stringify({ action }),
     }).catch(console.error)
+  }, [token])
+
+  const handleJobClick = (job) => {
+    trackBehavior(job.jobID, 'click')
+    navigate(`/job/${job.jobID}`)
   }
 
   const handleSearch = () => {
@@ -201,7 +206,7 @@ export default function HomeScreen() {
 
   const renderJobCard = (job) => (
     <div key={job.jobID} style={{ cursor: 'pointer' }}
-      onClick={() => { trackJob(job.jobID); navigate(`/job/${job.jobID}`) }}>
+      onClick={() => handleJobClick(job)}>
       <JobCard
         key={`${job.jobID}-${savedJobIds.has(job.jobID)}`}
         token={token}
@@ -219,9 +224,13 @@ export default function HomeScreen() {
           type: job.jobType,
           match: job.matchPercent != null ? Math.round(job.matchPercent) : null,
           isSaved: savedJobIds.has(job.jobID),
-        }} />
+        }}
+        onSave={(jobID) => {
+          if (!savedJobIds.has(jobID)) trackBehavior(jobID, 'save');
+        }}
+      />
     </div>
-  )
+  );
 
   const Pagination = ({ curPage, totalPages, onPageChange }) => (
     <div className="hs-pagination">
@@ -390,18 +399,13 @@ export default function HomeScreen() {
             )}
 
             {meta.totalPages > 1 && (
-              <Pagination
-                curPage={page}
-                totalPages={meta.totalPages}
-                onPageChange={setPage}
-              />
+              <Pagination curPage={page} totalPages={meta.totalPages} onPageChange={setPage} />
             )}
           </div>
         )}
 
         {token && (
           <div ref={resultsRef}>
-
             <div className="hs-sec-hd">
               <span className="hs-sec-title">🎯 Việc làm phù hợp với bạn</span>
               <div className="hs-sec-line" />
@@ -418,11 +422,7 @@ export default function HomeScreen() {
                   {pagedRecs.map(job => renderJobCard(job))}
                 </div>
                 {recTotalPages > 1 && (
-                  <Pagination
-                    curPage={recPage}
-                    totalPages={recTotalPages}
-                    onPageChange={setRecPage}
-                  />
+                  <Pagination curPage={recPage} totalPages={recTotalPages} onPageChange={setRecPage} />
                 )}
               </>
             )}
@@ -458,11 +458,7 @@ export default function HomeScreen() {
             )}
 
             {meta.totalPages > 1 && (
-              <Pagination
-                curPage={page}
-                totalPages={meta.totalPages}
-                onPageChange={setPage}
-              />
+              <Pagination curPage={page} totalPages={meta.totalPages} onPageChange={setPage} />
             )}
           </div>
         )}

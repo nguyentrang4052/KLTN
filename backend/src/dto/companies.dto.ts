@@ -15,7 +15,7 @@ export class QueryCompaniesDto {
   size?: string;
 
   @IsOptional()
-  @IsIn(['newest', 'jobs'])
+  @IsIn(['jobs', 'name'])
   sort?: string = 'jobs';
 
   @IsOptional()

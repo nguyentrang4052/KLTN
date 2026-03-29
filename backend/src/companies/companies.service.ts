@@ -12,11 +12,10 @@ export class CompaniesService {
 
     const skip = (page - 1) * limit;
 
-    const where: Prisma.CompanyWhereInput = {};
-    const andConditions: Prisma.CompanyWhereInput[] = [];
+    const conditions: Prisma.CompanyWhereInput[] = [];
 
-    if (keyword) {
-      andConditions.push({
+    if (keyword && keyword.trim() !== '') {
+      conditions.push({
         companyName: {
           contains: keyword,
           mode: 'insensitive',
@@ -24,8 +23,8 @@ export class CompaniesService {
       });
     }
 
-    if (location) {
-      andConditions.push({
+    if (location && location.trim() !== '') {
+      conditions.push({
         address: {
           contains: location,
           mode: 'insensitive',
@@ -33,8 +32,8 @@ export class CompaniesService {
       });
     }
 
-    if (size) {
-      andConditions.push({
+    if (size && size.trim() !== '') {
+      conditions.push({
         companySize: {
           contains: size,
           mode: 'insensitive',
@@ -42,26 +41,21 @@ export class CompaniesService {
       });
     }
 
-    if (andConditions.length > 0) {
-      where.AND = andConditions;
-    }
+    const where: Prisma.CompanyWhereInput =
+      conditions.length > 0 ? { AND: conditions } : {};
 
     const companies = await this.prisma.company.findMany({
       where,
-      skip,
-      take: limit,
       include: {
         _count: {
           select: {
-            jobs: {
-              where: { isActive: true },
-            },
+            jobs: { where: { isActive: true } },
           },
         },
       },
     });
 
-    let result = companies.map((c) => ({
+    const result = companies.map((c) => ({
       companyID: c.companyID,
       name: c.companyName,
       logo: c.companyLogo,
@@ -70,14 +64,17 @@ export class CompaniesService {
       jobCount: c._count.jobs,
     }));
 
-    if (sort === 'jobs') {
-      result = result.sort((a, b) => b.jobCount - a.jobCount);
+    if (sort === 'name') {
+      result.sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      result.sort((a, b) => b.jobCount - a.jobCount);
     }
 
-    const total = await this.prisma.company.count({ where });
+    const total = result.length;
+    const paginated = result.slice(skip, skip + limit);
 
     return {
-      data: result,
+      data: paginated,
       meta: {
         total,
         page,

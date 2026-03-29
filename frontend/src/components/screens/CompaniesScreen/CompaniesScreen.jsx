@@ -3,7 +3,6 @@ import './CompaniesScreen.css'
 
 const API = 'http://localhost:3000/api'
 
-// Map màu theo chữ cái đầu
 const LOGO_COLORS = [
   'linear-gradient(135deg,#D0392A,#E05A40)',
   'linear-gradient(135deg,#1565C0,#1E88E5)',
@@ -63,11 +62,11 @@ function CompanyCard({ company, listView, onFollow, following }) {
         <div className="cs-card__jobs-cta">
           {company.jobCount} việc làm <span>đang tuyển</span>
         </div>
-        <button
+        {/* <button
           className={`cs-card__follow-btn${following ? ' following' : ''}`}
           onClick={e => { e.stopPropagation(); onFollow(company.companyID) }}>
           {following ? '✓ Đang theo dõi' : '+ Theo dõi'}
-        </button>
+        </button> */}
       </div>
     </div>
   )
@@ -93,7 +92,6 @@ export default function CompaniesScreen() {
   const [following, setFollowing] = useState(new Set())
   const [loadingCompanies, setLoadingCompanies] = useState(false)
 
-  // Fetch static data
   useEffect(() => {
     Promise.all([
       fetch(`${API}/companies/top`).then(r => r.json()),
@@ -108,26 +106,7 @@ export default function CompaniesScreen() {
       .catch(console.error)
   }, [])
 
-  // Fetch companies — dùng useCallback để tránh re-create không cần
   const fetchCompanies = useCallback(() => {
-    setLoadingCompanies(true)
-    const params = new URLSearchParams({ page: String(page), limit: '9', sort })
-    if (keyword) params.set('keyword', keyword)
-    if (selectedLocations.length > 0) params.set('location', selectedLocations[0])
-    const activeSize = Object.entries(checkedSize).find(([, v]) => v)?.[0]
-    if (activeSize) params.set('size', activeSize)
-
-    fetch(`${API}/companies?${params}`)
-      .then(r => r.json())
-      .then(data => {
-        setCompanies(data.data ?? [])
-        setMeta(data.meta ?? { total: 0, totalPages: 1 })
-      })
-      .catch(console.error)
-      .finally(() => setLoadingCompanies(false))
-  }, [page, sort, keyword, selectedLocations, checkedSize])
-
-  useEffect(() => {
     setLoadingCompanies(true)
 
     const params = new URLSearchParams({
@@ -153,7 +132,11 @@ export default function CompaniesScreen() {
 
   }, [page, sort, keyword, selectedLocations, checkedSize])
 
-  useEffect(() => { fetchCompanies() }, [fetchCompanies])
+
+  useEffect(() => {
+    fetchCompanies()
+  }, [fetchCompanies])
+
 
   const toggleFollow = (companyID) => {
     setFollowing(prev => {
@@ -163,8 +146,7 @@ export default function CompaniesScreen() {
     })
   }
 
-  // ← Fix: không gọi setPage bên trong toggleLocation/toggleSize
-  // setPage được gọi trực tiếp từ event handler, không qua effect
+
   const toggleLocation = (loc) => {
     setSelectedLocations(prev =>
       prev.includes(loc) ? prev.filter(l => l !== loc) : [...prev, loc]
@@ -175,17 +157,19 @@ export default function CompaniesScreen() {
     setCheckedSize(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
-  // Reset page về 1 khi filter thay đổi — dùng useEffect đúng cách
   const isFirstRender = useRef(true)
   useEffect(() => {
-    if (isFirstRender.current) { isFirstRender.current = false; return }
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
     setPage(1)
+    fetchCompanies()
   }, [selectedLocations, checkedSize, keyword, sort])
 
   const clearFilters = () => {
     setSelectedLocations([])
     setCheckedSize({})
-    // setPage không cần vì useEffect trên sẽ tự reset
   }
 
   const openProvinceDropdown = () => {
@@ -269,12 +253,22 @@ export default function CompaniesScreen() {
           <div className="cs-hero__search">
             <div className="cs-hero__field">
               <span className="cs-hero__field-ico">🔍</span>
-              <input type="text" placeholder="Tên công ty, ngành nghề..."
+              <input type="text" placeholder="Tên công ty"
                 value={keyword}
                 onChange={e => setKeyword(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && setPage(1)} />
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    setPage(1)
+                    fetchCompanies()
+                  }
+                }} />
             </div>
-            <button className="cs-hero__search-btn" onClick={() => setPage(1)}>
+            <button
+              className="cs-hero__search-btn"
+              onClick={() => {
+                setPage(1)
+                fetchCompanies()
+              }}>
               🔍 Tìm kiếm
             </button>
           </div>

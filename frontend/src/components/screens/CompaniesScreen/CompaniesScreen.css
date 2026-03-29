@@ -581,7 +581,7 @@
     background: #FEFCF7;
     border: 1.5px solid #DDD6C6;
     border-radius: 16px;
-    overflow: hidden;
+    /* overflow: hidden; */
     cursor: pointer;
     transition: all .22s;
     position: relative;
@@ -622,6 +622,7 @@
     height: 74px;
     position: relative;
     overflow: hidden;
+    border-radius: 14px 14px 0 0;
 }
 
 .cs-card__lr {
@@ -777,7 +778,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-top: 12px;
+    padding: 12px 18px 16px;
     border-top: 1px solid #EFE9DC;
 }
 
