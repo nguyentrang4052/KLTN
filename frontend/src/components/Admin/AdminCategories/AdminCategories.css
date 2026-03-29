@@ -1,0 +1,194 @@
+.adm-cats__header { margin-bottom: 20px; }
+
+.adm-tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+.adm-tab {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 16px; border-radius: 8px;
+  border: 1.5px solid #DDD6C6;
+  background: #FEFCF7; color: #6B5E50;
+  font-size: 13px; font-family: 'Roboto', sans-serif;
+  font-weight: 600; cursor: pointer; transition: all 0.15s;
+}
+.adm-tab:hover { border-color: #342893; color: #342893; }
+.adm-tab.active { background: #342893; border-color: #342893; color: #fff; }
+.adm-tab__count {
+  background: rgba(255,255,255,0.2); border-radius: 10px;
+  padding: 1px 7px; font-size: 10px;
+}
+.adm-tab.active .adm-tab__count { background: rgba(255,255,255,0.25); }
+.adm-tab:not(.active) .adm-tab__count { background: #EFE9DC; color: #9A8D80; }
+
+.adm-toggle {
+  width: 36px; height: 20px; border-radius: 10px;
+  background: #EFE9DC; border: 1.5px solid #DDD6C6;
+  cursor: pointer; position: relative; transition: all 0.2s; padding: 0;
+}
+.adm-toggle.on { background: rgba(46,96,64,0.2); border-color: rgba(46,96,64,0.4); }
+.adm-toggle__knob {
+  position: absolute; top: 2px; left: 2px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: #CBC1AE; transition: all 0.2s;
+}
+.adm-toggle.on .adm-toggle__knob { left: 18px; background: #2E6040; }
+
+.adm-skill-cat {
+  display: inline-block; padding: 2px 8px; border-radius: 4px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
+  background: rgba(52,40,147,0.08); color: #342893;
+  border: 1px solid rgba(52,40,147,0.15);
+}
+
+.adm-add-btn {
+  padding: 7px 14px; border-radius: 7px;
+  background: rgb(35,42,162); border: none;
+  color: #fff; font-size: 12px; font-weight: 700;
+  font-family: 'Roboto', sans-serif; cursor: pointer; transition: all 0.15s;
+}
+.adm-add-btn:hover { background: rgb(6,12,121); transform: translateY(-1px); }
+
+.adm-form-field { display: flex; flex-direction: column; gap: 6px; }
+.adm-form-field label { font-size: 12px; font-weight: 700; color: #6B5E50; }
+.adm-form-input {
+  padding: 10px 12px;
+  background: #FEFCF7;
+  border: 1.5px solid #DDD6C6;
+  border-radius: 8px; color: #1C1510;
+  font-size: 13px; font-family: 'Roboto', sans-serif;
+  outline: none; transition: border-color 0.2s;
+}
+.adm-form-input::placeholder { color: #9A8D80; }
+.adm-form-input:focus { border-color: #342893; }
+.adm-form-input option { background: #FEFCF7; color: #1C1510; }
+
+.adm-cats__layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.adm-cats__left {
+  background: #FEFCF7;
+  border: 1.5px solid #DDD6C6;
+  border-radius: 12px;
+  overflow: hidden;
+  position: sticky;
+  top: 80px;
+}
+.adm-cats__left-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid #EFE9DC;
+}
+.adm-add-btn-sm {
+  width: 26px; height: 26px; border-radius: 6px;
+  background: rgb(35,42,162); border: none;
+  color: #fff; font-size: 16px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s; line-height: 1;
+}
+.adm-add-btn-sm:hover { background: rgb(6,12,121); }
+
+.adm-ind-item {
+  display: flex; align-items: center;
+  width: 100%; border: none; background: none;
+  padding: 0; cursor: pointer;
+  border-bottom: 1px solid #F5F0E8;
+  transition: background 0.15s;
+  font-family: 'Roboto', sans-serif;
+}
+.adm-ind-item:last-child { border-bottom: none; }
+.adm-ind-item:hover { background: #FAF7F2; }
+.adm-ind-item.active { background: rgba(52,40,147,0.06); }
+.adm-ind-item.inactive { opacity: 0.5; }
+
+button.adm-ind-item {
+  padding: 10px 14px;
+  justify-content: space-between;
+  font-size: 13px; font-weight: 600;
+  color: #3D3028;
+}
+button.adm-ind-item.active { color: #342893; }
+
+.adm-ind-item__main {
+  flex: 1; display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px;
+  background: none; border: none; cursor: pointer;
+  text-align: left; font-family: 'Roboto', sans-serif;
+  min-width: 0;
+}
+.adm-ind-item__dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.adm-ind-item__name {
+  flex: 1; font-size: 12.5px; font-weight: 500; color: #3D3028;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.adm-ind-item.active .adm-ind-item__name { color: #342893; font-weight: 700; }
+.adm-ind-item__count {
+  font-size: 11px; color: #9A8D80;
+  background: #EFE9DC; border-radius: 8px;
+  padding: 1px 6px; flex-shrink: 0;
+}
+.adm-ind-item__acts {
+  display: flex; gap: 2px;
+  padding-right: 8px; opacity: 0;
+  transition: opacity 0.15s;
+}
+.adm-ind-item:hover .adm-ind-item__acts { opacity: 1; }
+.adm-ind-act {
+  width: 22px; height: 22px; border-radius: 4px;
+  border: none; background: none; cursor: pointer;
+  font-size: 12px; color: #9A8D80;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.adm-ind-act:hover { background: #EFE9DC; color: #342893; }
+.adm-ind-act--del:hover { background: rgba(192,65,42,0.1); color: #C0412A; }
+
+.adm-cats__right-title {
+  display: flex; align-items: center; gap: 10px;
+}
+.adm-cats__skill-count {
+  font-size: 11px; color: #9A8D80;
+  background: #EFE9DC; border-radius: 8px; padding: 2px 8px;
+}
+
+.adm-cats__search-wrap {
+  padding: 10px 16px;
+  border-bottom: 1px solid #EFE9DC;
+}
+.adm-search__clear {
+  position: absolute; right: 10px; top: 50%;
+  transform: translateY(-50%);
+  background: none; border: none; color: #9A8D80;
+  cursor: pointer; font-size: 12px; padding: 2px;
+}
+.adm-search__clear:hover { color: #C0412A; }
+
+.adm-pager {
+  display: flex; align-items: center; gap: 3px;
+}
+.adm-pager__btn {
+  min-width: 28px; height: 28px; border-radius: 6px;
+  border: 1.5px solid #DDD6C6;
+  background: #FEFCF7; color: #6B5E50;
+  font-size: 12px; font-weight: 600;
+  font-family: 'Roboto', sans-serif;
+  cursor: pointer; transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center;
+}
+.adm-pager__btn:hover:not(:disabled) { border-color: #342893; color: #342893; }
+.adm-pager__btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.adm-pager__btn.active { background: #342893; border-color: #342893; color: #fff; }
+
+.adm-cats__left-footer {
+  padding: 10px 14px;
+  border-top: 1px solid #EFE9DC;
+  display: flex; justify-content: center;
+}
+
+.adm-cats__skill-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 20px;
+  border-top: 1px solid #EFE9DC;
+}
+.adm-cats__skill-info { font-size: 12px; color: #9A8D80; }

@@ -78,7 +78,10 @@ export class JobsController {
     @Body('action') action: string,
     @GetUser() user: JwtUser,
   ) {
-    return this.jobsService.logUserBehavior(user.sub, jobID, action ?? 'view');
+
+    const allowedActions = ['view', 'save', 'apply', 'click'];
+    const validAction = allowedActions.includes(action) ? action : 'view';
+    return this.jobsService.logUserBehavior(user.sub, jobID, validAction);
   }
 
   @UseGuards(JwtAuthGuard)

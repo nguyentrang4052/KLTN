@@ -92,7 +92,6 @@
   max-width: 520px;
 }
 
-/* Search bar */
 .hs-hero-search {
   display: flex;
   gap: 8px;
@@ -160,7 +159,6 @@
   transform: translateY(-1px);
 }
 
-/* Quick tags */
 .hs-quick-row {
   display: flex;
   align-items: center;
@@ -194,7 +192,6 @@
   color: #E05A40;
 }
 
-/* ── Right: stat cards ─────────────────────────────────────── */
 .hs-hero-right {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -268,7 +265,7 @@
   color: rgba(200, 184, 154, .4);
 }
 
-/* ══ AI INSIGHT STRIP ══════════════════════════════════════════ */
+
 .hs-ai-strip {
   background: #1C1510;
   border-bottom: 1px solid rgba(212, 130, 10, .2);
@@ -330,46 +327,54 @@
   white-space: nowrap;
 }
 
-/* ══ BODY ══════════════════════════════════════════════════════ */
+
 .hs-body {
   max-width: 1280px;
   margin: 0 auto;
   padding: 24px 32px 64px;
 }
 
-/* ── Toolbar ─────────────────────────────────────────────────── */
 .hs-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-  gap: 8px;
+  gap: 12px;
+  margin: 24px 0 16px;
+  padding: 0 4px;
 }
 
 .hs-count {
-  font-size: 13.5px;
-  color: #6B5E50;
+  font-size: 14px;
+  color: var(--text-secondary, #666);
+  white-space: nowrap;
 }
 
 .hs-count strong {
-  color: #1C1510;
-  font-weight: 700;
+  color: var(--text-primary, #1a1a2e);
+  font-weight: 600;
 }
 
 .hs-sort {
-  padding: 7px 12px;
+  padding: 8px 32px 8px 12px;
+  border: 1px solid var(--border, #e0e0e0);
   border-radius: 8px;
-  border: 1.5px solid #DDD6C6;
-  background: #FEFCF7;
-  color: #3D3028;
-  font-size: 12.5px;
-  font-family: 'Roboto', sans-serif;
-  outline: none;
+  font-size: 14px;
+  background: var(--surface, #fff);
+  color: var(--text-primary, #1a1a2e);
   cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-/* ── AI Highlight (full-width) ──────────────────────────────── */
+.hs-sort:focus {
+  outline: none;
+  border-color: var(--primary, #1a1a2e);
+}
+
 .hs-highlight-wrap {
   margin-bottom: 28px;
   border-left: 3px solid #D4820A;
@@ -392,7 +397,6 @@
   max-width: 600px;
 }
 
-/* ── Section header ─────────────────────────────────────────── */
 .hs-sec-hd {
   display: flex;
   align-items: center;
@@ -420,18 +424,17 @@
   white-space: nowrap;
 }
 
-/* ══ 3-COLUMN GRID ═════════════════════════════════════════════ */
 .hs-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 14px;
+  align-items: start;
 }
 
 .hs-grid>* {
   height: 100%;
 }
 
-/* ── Pagination ─────────────────────────────────────────────── */
 .hs-pagination {
   display: flex;
   align-items: center;
@@ -531,7 +534,6 @@
   border-color: #C0412A;
 }
 
-/* ══ CATEGORIES SECTION ═════════════════════════════════════════ */
 .hs-cats-wrap {
   background: #EFE9DC;
   border-top: 1px solid #DDD6C6;
@@ -598,7 +600,6 @@
   opacity: .75;
 }
 
-/* Category grid — 4 cols */
 .hs-cats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -606,7 +607,6 @@
   margin-bottom: 20px;
 }
 
-/* Category card */
 .hs-cat-card {
   background: #FEFCF7;
   border: 1.5px solid #DDD6C6;
@@ -718,7 +718,7 @@
   color: #9A8D80;
 }
 
-/* CTA banner inside categories */
+
 .hs-cats-cta {
   background: linear-gradient(135deg, #1C1510, #2A1A10);
   border-radius: 16px;
@@ -765,7 +765,7 @@
   transform: translateY(-1px);
 }
 
-/* ── Responsive ─────────────────────────────────────────────── */
+
 @media (max-width: 1100px) {
   .hs-hero-inner {
     grid-template-columns: 1fr 280px;
@@ -834,4 +834,17 @@
   .hs-pg-jump {
     display: none;
   }
+}
+
+.hs-loading, .hs-empty {
+  text-align: center;
+  padding: 60px 0;
+  color: #9A8D80;
+  font-size: 14px;
+}
+
+.hs-cat-card--active {
+  border-color: var(--cat-color) !important;
+  box-shadow: 0 6px 24px rgba(28,21,16,0.12);
+  transform: translateY(-2px);
 }

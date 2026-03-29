@@ -25,6 +25,7 @@ model User {
   gender             String?
   address            String?
   accountID          Int                 @unique
+  avatar             String?
   applications       ApplyHistory[]
   cvs                CV[]
   jobRecommendations JobRecommendation[]
@@ -38,14 +39,17 @@ model User {
 model UserProfile {
   id             Int       @id @default(autoincrement())
   jobTitle       String?
-  experienceYear Int?
+  experienceYear String?
   careerLevel    String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  userID         Int
-  industryID     Int?
-  industry       Industry? @relation(fields: [industryID], references: [id])
-  user           User      @relation(fields: [userID], references: [userID])
+  expectedSalary String?
+  workingType    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  userID     Int
+  user       User      @relation(fields: [userID], references: [userID])
+  industryID Int?
+  industry   Industry? @relation(fields: [industryID], references: [id])
 }
 
 model UserSkill {
@@ -132,8 +136,11 @@ model SavedJob {
   userID  Int
   jobID   Int
   savedAt DateTime @default(now())
-  job     Job      @relation(fields: [jobID], references: [jobID])
-  user    User     @relation(fields: [userID], references: [userID])
+
+  user User @relation(fields: [userID], references: [userID])
+  job  Job  @relation(fields: [jobID], references: [jobID])
+
+  @@unique([userID, jobID])
 }
 
 model Industry {

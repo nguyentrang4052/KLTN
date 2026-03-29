@@ -46,7 +46,6 @@ export class JobsService {
       where.experienceYear = { contains: experience, mode: 'insensitive' };
     if (source) where.sourcePlatform = source;
 
-    // Lọc nhiều tỉnh thành
     if (locations && locations.length > 0) {
       andConditions.push({
         OR: locations.map((loc) => ({
@@ -55,7 +54,6 @@ export class JobsService {
       });
     }
 
-    // Lọc lương — salary là string nên lọc phía JS
     if (salaryMin != null || salaryMax != null) {
       andConditions.push({ salary: { not: null } });
     }
@@ -217,10 +215,6 @@ export class JobsService {
       },
       take: 50,
       orderBy: { postedAt: 'desc' },
-    });
-
-    await this.prisma.jobRecommendation.deleteMany({
-      where: { userID: user.userID, matchPercent: 0 },
     });
 
     for (const job of jobs) {
