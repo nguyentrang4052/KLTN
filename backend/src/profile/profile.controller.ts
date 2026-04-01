@@ -55,6 +55,12 @@ export class ProfileController {
     return this.profileService.updateAvatar(Number(userID), file);
   }
 
+  @Delete(':userID/avatar')
+  @UseGuards(JwtAuthGuard)
+  removeAvatar(@Param('userID', ParseIntPipe) userID: number) {
+    return this.profileService.removeAvatar(userID);
+  }
+
   @Put(':userID/user-profile')
   updateUserProfile(
     @Param('userID', ParseIntPipe) userID: number,

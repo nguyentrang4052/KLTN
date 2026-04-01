@@ -6,3 +6,7 @@ asyncpg
 psycopg2-binary
 python-dotenv
 sse-starlette
+dotenv
+aiohttp
+playwright
+chromium

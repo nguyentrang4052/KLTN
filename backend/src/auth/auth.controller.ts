@@ -21,6 +21,9 @@ import { ResetPasswordDto } from '../dto/reset-password.dto';
 
 import type { Response, Request } from 'express';
 import { OAuthUser } from './interfaces/oauth-user.interface';
+import { GetUser } from './decorators/get-user.decorator';
+import * as jwtUserInterface from './interfaces/jwt-user.interface';
+import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -74,19 +77,27 @@ export class AuthController {
     res.redirect(url);
   }
 
-  @Get('facebook')
-  @UseGuards(AuthGuard('facebook'))
-  async facebookLogin() {}
+  @Get('refresh')
+  @UseGuards(JwtAuthGuard)
+  refreshToken(@GetUser() user: jwtUserInterface.JwtUser) {
+    const newToken = this.authService.refreshToken(user.sub, user.email);
+    return { accessToken: newToken };
+  }
 
-  @Get('facebook/callback')
-  @UseGuards(AuthGuard('facebook'))
-  async facebookCallback(
-    @Req() req: Request & { user: OAuthUser },
-    @Res() res: Response,
-  ) {
-    const result = await this.authService.oauthLogin(req.user);
-    const name = result.user.fullName ?? '';
-    const url = `${this.config.get<string>('FRONTEND_URL')}/oauth-callback?token=${result.accessToken}&email=${encodeURIComponent(result.user.email)}&name=${encodeURIComponent(name)}`;
-    res.redirect(url);
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  getMe(@GetUser() user: jwtUserInterface.JwtUser) {
+    return this.authService.getMe(user.sub);
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  logout(@Req() req: Request) {
+    const token = req.headers['authorization']?.split(' ')[1];
+    if (!token) {
+      throw new Error('Authorization token is missing');
+    }
+    return this.authService.logout(token);
   }
 }

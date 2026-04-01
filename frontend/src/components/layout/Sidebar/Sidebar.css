@@ -16,13 +16,13 @@
   font-family: 'Roboto', serif;
   font-size: 22px;
   font-weight: 700;
-  color: var(--amber2);
+  color: rgb(35, 42, 162);
   padding: 8px 12px 20px;
   letter-spacing: -0.5px;
 }
 
 .sb-logo span {
-  color: var(--rust2);
+  color: rgb(35, 42, 162);;
 }
 
 .sb-section {
@@ -50,7 +50,9 @@
   border-radius: 8px;
   cursor: pointer;
   color: black;
+
   font-size: 15px;
+
   font-weight: 500;
   transition: all 0.18s;
 }
@@ -97,7 +99,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--rust), var(--amber));
+  background: rgb(189, 114, 71);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -110,7 +112,7 @@
 .av-name {
   font-size: 12px;
   font-weight: 600;
-  color: #ddd;
+  color: black;
 }
 
 .av-role {

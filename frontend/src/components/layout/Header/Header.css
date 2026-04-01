@@ -1,5 +1,3 @@
-/* ══ Header.css ═══════════════════════════════════════════════ */
-
 .app-header {
     position: sticky;
     top: 0;
@@ -23,7 +21,6 @@
     gap: 0;
 }
 
-/* ── Logo ─────────────────────────────────────────────────── */
 .app-header__logo {
     font-family: 'Roboto', serif;
     font-size: 20px;
@@ -111,7 +108,6 @@
     line-height: 1.4;
 }
 
-/* ── Right ────────────────────────────────────────────────── */
 .app-header__right {
     display: flex;
     align-items: center;
@@ -119,7 +115,6 @@
     margin-left: auto;
 }
 
-/* Quick search */
 .app-header__quick-search {
     display: flex;
     align-items: center;
@@ -142,7 +137,6 @@
     background: #EFE9DC;
 }
 
-/* Icon buttons */
 .app-header__icon-btn {
     position: relative;
     width: 36px;
@@ -190,7 +184,6 @@
     font-family: 'Roboto', sans-serif;
 }
 
-/* Divider */
 .app-header__divider {
     width: 1px;
     height: 22px;
@@ -199,7 +192,6 @@
     flex-shrink: 0;
 }
 
-/* ── Avatar button ────────────────────────────────────────── */
 .app-header__avatar-wrap {
     position: relative;
 }
@@ -231,7 +223,7 @@
     width: 30px;
     height: 30px;
     border-radius: 8px;
-    background: linear-gradient(135deg, #C0412A 0%, #D4820A 100%);
+    background:rgb(189, 114, 71);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -239,6 +231,13 @@
     font-weight: 800;
     color: #fff;
     flex-shrink: 0;
+    overflow: hidden;
+}
+.app-header__av-circle img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }
 
 .app-header__av-meta {
@@ -279,7 +278,6 @@
     transform: rotate(180deg);
 }
 
-/* ── Dropdown ─────────────────────────────────────────────── */
 .app-header__dropdown {
     position: absolute;
     top: calc(100% + 8px);
@@ -306,7 +304,6 @@
     }
 }
 
-/* User card at top */
 .app-header__dd-hero {
     padding: 14px 16px;
     border-bottom: 1px solid #EFE9DC;
@@ -320,7 +317,7 @@
     height: 40px;
     border-radius: 10px;
     flex-shrink: 0;
-    background: linear-gradient(135deg, #C0412A, #D4820A);
+    background:  rgb(189, 114, 71);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -328,6 +325,13 @@
     font-weight: 800;
     color: #fff;
     font-family: 'Roboto', sans-serif;
+    overflow: hidden;
+}
+.app-header__dd-av img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }
 
 .app-header__dd-name {
@@ -359,7 +363,6 @@
     letter-spacing: .3px;
 }
 
-/* Section */
 .app-header__dd-sec {
     padding: 6px 8px;
 }

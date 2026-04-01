@@ -16,13 +16,15 @@
   display: flex;
   gap: 18px;
   align-items: flex-start;
+  overflow: hidden;
 }
 
 .p-avatar {
   width: 76px;
   height: 76px;
+  min-width: 76px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--rust), var(--amber));
+  background: rgb(189, 114, 71);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -31,12 +33,21 @@
   color: #FFF;
   flex-shrink: 0;
   position: relative;
+  overflow: hidden;
+}
+
+.p-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 50%;
 }
 
 .p-status {
   position: absolute;
   bottom: 3px;
-  right: 3px;
+  right: 13px;
   width: 14px;
   height: 14px;
   background: var(--sage2);
@@ -101,7 +112,7 @@
 
 .pref-v {
   font-size: 13px;
-  color: var(--rust);
+  color: rgb(35, 42, 162);
   font-weight: 600;
 }
 
@@ -244,4 +255,14 @@
 
 .account-status.connected {
   color: var(--sage);
+}
+
+.btn-sage {
+  background-color: rgb(35, 42, 162); 
+  color: white;
+  border: none;
+}
+
+.btn-sage:hover {
+  background-color: rgb(35, 42, 162);
 }

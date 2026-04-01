@@ -277,7 +277,7 @@
 }
 
 .cs-sidebar {
-    position: sticky;
+    /* position: sticky; */
     top: 80px;
     background: #FEFCF7;
     border: 1px solid #DDD6C6;

@@ -51,6 +51,11 @@ export class JobsController {
     return this.jobsService.getSavedJobs(dto, user.sub);
   }
 
+  @Get('filter-by-source')
+  getFilterBySource(@Query('source') source?: string) {
+    return this.jobsService.getFilterOptionsBySource(source);
+  }
+
   @Get('filter-options')
   getFilterOptions() {
     return this.jobsService.getFilterOptions();
@@ -59,11 +64,6 @@ export class JobsController {
   @Get('trending-keywords')
   getTrendingKeywords() {
     return this.jobsService.getTrendingKeywords();
-  }
-
-  @Get('top-companies')
-  getTopCompanies() {
-    return this.jobsService.getTopHiringCompanies();
   }
 
   @Get(':id')
@@ -78,7 +78,6 @@ export class JobsController {
     @Body('action') action: string,
     @GetUser() user: JwtUser,
   ) {
-
     const allowedActions = ['view', 'save', 'apply', 'click'];
     const validAction = allowedActions.includes(action) ? action : 'view';
     return this.jobsService.logUserBehavior(user.sub, jobID, validAction);

@@ -1,0 +1,32 @@
+[
+  {
+    "email": "nguyenvantrong3254@gmail.com",
+    "keyword": "react",
+    "createdAt": "2026-03-30T02:35:17.940Z",
+    "active": false
+  },
+  {
+    "email": "nguyenvantrong3254@gmail.com",
+    "keyword": "Node",
+    "createdAt": "2026-03-30T02:36:04.658Z",
+    "active": false
+  },
+  {
+    "email": "nguyenvantrong3254@gmail.com",
+    "keyword": "Kinh doanh",
+    "createdAt": "2026-03-30T02:42:01.417Z",
+    "active": false
+  },
+  {
+    "email": "nguyenvantrong3254@gmail.com",
+    "keyword": "react",
+    "createdAt": "2026-03-30T03:15:37.118Z",
+    "active": false
+  },
+  {
+    "email": "nguyenvantrong3254@gmail.com",
+    "keyword": "React",
+    "createdAt": "2026-04-01T08:01:36.970Z",
+    "active": true
+  }
+]

@@ -1,511 +1,643 @@
-// src/components/screens/CompanyDetailScreen/CompanyDetailScreen.jsx
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './CompanyDetailScreen.css'
 
-/* ── Rich detail data ────────────────────────────────────── */
-const DETAIL_DATA = {
-  1: {
-    tagline: 'Kiến tạo tương lai số cùng FPT Software',
-    founded: '1999', website: 'fpt-software.com', followers: '48,200',
-    about: 'FPT Software là công ty thành viên của Tập đoàn FPT — tập đoàn công nghệ hàng đầu Việt Nam. Với hơn 25 năm kinh nghiệm, chúng tôi cung cấp dịch vụ IT toàn diện cho khách hàng tại 30+ quốc gia.\n\nChúng tôi đặc biệt mạnh trong Digital Transformation, AI/ML Solutions, Cloud Services và Embedded Software — phục vụ các tập đoàn Fortune 500 từ Mỹ, Nhật Bản và Châu Âu.',
-    mission: 'Trở thành công ty dịch vụ CNTT hàng đầu thế giới, góp phần thay đổi cuộc sống con người bằng công nghệ.',
-    stats: [
-      { n: '10,000+', l: 'Nhân sự toàn cầu' },
-      { n: '30+',     l: 'Quốc gia hoạt động' },
-      { n: '1,000+',  l: 'Khách hàng lớn' },
-      { n: '$1.2B',   l: 'Doanh thu 2024' },
-    ],
-    benefits: [
-      { icon: '💰', title: 'Lương & Thưởng',         desc: 'Lương tháng 13, thưởng dự án, review 2 lần/năm.' },
-      { icon: '🏥', title: 'Bảo hiểm PTI cao cấp',   desc: 'Bảo hiểm sức khỏe cho nhân viên và người thân.' },
-      { icon: '📚', title: 'Budget học tập 10tr/năm', desc: 'Chứng chỉ AWS/Google/Microsoft được hỗ trợ 100%.' },
-      { icon: '🏠', title: 'Remote 2 ngày/tuần',      desc: 'Giờ làm linh hoạt 7AM–10AM, ra về sau 8 tiếng.' },
-      { icon: '🎯', title: 'Lộ trình thăng tiến',     desc: 'Framework rõ ràng từ Junior → Principal/Architect.' },
-      { icon: '🌏', title: 'Onsite quốc tế',          desc: 'Cơ hội onsite Nhật, Mỹ, Châu Âu thường xuyên.' },
-    ],
-    offices: [
-      { city: 'Hà Nội (HQ)',  addr: 'Tầng 23–25, FPT Tower, 10 Phạm Văn Bạch, Cầu Giấy' },
-      { city: 'TP.HCM',       addr: 'Tầng 8–12, Saigon Centre, 65 Lê Lợi, Q.1' },
-      { city: 'Đà Nẵng',      addr: 'Tầng 6, FPT Building, 72 Hùng Vương' },
-    ],
-    reviews: [
-      { name: 'Nguyễn Văn An', role: 'Senior Developer', rating: 5, time: '2 tháng trước',
-        pros: 'Môi trường chuyên nghiệp, đồng nghiệp giỏi. Cơ hội làm việc với khách Nhật rất tốt cho career.',
-        cons: 'Deadline dự án đôi khi gấp, cần quản lý stress tốt.' },
-      { name: 'Trần Thị Bình', role: 'QA Engineer', rating: 4, time: '1 tháng trước',
-        pros: 'Phúc lợi tốt, đặc biệt bảo hiểm. WFH linh hoạt, sếp hiểu và thoải mái.',
-        cons: 'Quy trình dự án đôi khi nhiều giấy tờ, hơi cứng nhắc.' },
-      { name: 'Lê Văn Cường', role: 'Tech Lead', rating: 4, time: '3 tuần trước',
-        pros: 'Lộ trình thăng tiến rõ, có mentor từ đầu. Lương review đúng hẹn.',
-        cons: 'Văn phòng HN đôi khi ồn ào, khu ăn trưa hơi xa.' },
-    ],
-    jobList: [
-      { id: 101, title: 'Senior React Developer',    type: 'Hybrid',  salary: '35–50tr', exp: '3–5 năm', deadline: '3 ngày',  match: 94, isNew: true  },
-      { id: 102, title: 'Java Spring Boot Engineer', type: 'Onsite',  salary: '28–40tr', exp: '2–4 năm', deadline: '7 ngày',  match: 78, isNew: false },
-      { id: 103, title: 'Cloud/DevOps Engineer',     type: 'Hybrid',  salary: '40–60tr', exp: '3+ năm',  deadline: '5 ngày',  match: 82, isNew: true  },
-      { id: 104, title: 'AI/ML Engineer',            type: 'Remote',  salary: '50–80tr', exp: '2+ năm',  deadline: '14 ngày', match: 71, isNew: false },
-      { id: 105, title: 'Business Analyst (IT)',     type: 'Onsite',  salary: '20–32tr', exp: '1–3 năm', deadline: '10 ngày', match: 65, isNew: false },
-    ],
-    culture: [
-      { emoji: '🚀', title: 'Innovation First',  desc: 'Khuyến khích thử nghiệm ý tưởng mới. 20% thời gian cho side-projects.' },
-      { emoji: '🤝', title: 'Teamwork',          desc: 'Agile, daily standup, sprint review. Đồng nghiệp như gia đình.' },
-      { emoji: '🌱', title: 'Grow Together',     desc: 'Công ty phát triển, bạn phát triển. Mỗi nhân viên có OKR riêng.' },
-      { emoji: '🌍', title: 'Global Mindset',    desc: 'Tiếng Anh là ngôn ngữ chính. Giao lưu văn hóa quốc tế liên tục.' },
-    ],
-    ratingBreakdown: [
-      ['Môi trường làm việc', 4.4],
-      ['Lương & Thưởng',      4.0],
-      ['Ban lãnh đạo',        4.1],
-      ['Cân bằng cuộc sống',  3.9],
-      ['Cơ hội thăng tiến',   4.3],
-    ],
-  },
-  2: {
-    tagline: 'Kết nối người Việt — Vươn tầm thế giới',
-    founded: '2004', website: 'vng.com.vn', followers: '31,500',
-    about: 'VNG Corporation là công ty Internet hàng đầu Việt Nam, nổi tiếng với Zalo (74M người dùng), ZingMP3 và nhiều game online.\n\nVNG xây dựng hệ sinh thái số từ nhắn tin, giải trí đến thanh toán, phục vụ hàng chục triệu người dùng mỗi ngày.',
-    mission: 'Kết nối con người, truyền cảm hứng và làm phong phú cuộc sống qua công nghệ.',
-    stats: [
-      { n: '74M+',   l: 'Người dùng Zalo' },
-      { n: '3,000+', l: 'Nhân sự' },
-      { n: '20+',    l: 'Năm hoạt động' },
-      { n: 'NASDAQ', l: 'Niêm yết 2023' },
-    ],
-    benefits: [
-      { icon: '💰', title: 'Lương cạnh tranh',    desc: 'Top market, review hằng năm theo performance.' },
-      { icon: '🎮', title: 'Gaming Perks',         desc: 'Chơi game miễn phí, event gaming nội bộ hằng tháng.' },
-      { icon: '📚', title: 'Tech Learning',        desc: 'Tech talk mỗi tuần. Budget conference 20tr/năm.' },
-      { icon: '🏃', title: 'Wellness',             desc: 'Gym membership, yoga, running club. Phòng game thư giãn.' },
-      { icon: '🏠', title: 'Flexible Work',        desc: 'WFH linh hoạt. Core hours 10AM–4PM.' },
-      { icon: '📈', title: 'Stock Options (ESOP)', desc: 'Cơ hội sở hữu cổ phần cho nhân viên kỳ cựu.' },
-    ],
-    offices: [
-      { city: 'TP.HCM (HQ)', addr: '182 Lê Đại Hành, Phường 15, Quận 11' },
-    ],
-    reviews: [
-      { name: 'Phạm Thanh Duy', role: 'Backend Engineer', rating: 4, time: '1 tháng trước',
-        pros: 'Scale thực sự ấn tượng. Làm hệ thống 74M users khác hẳn các nơi khác.',
-        cons: 'Work-life balance có thể tốt hơn ở một số team.' },
-      { name: 'Hoàng Minh Em', role: 'Data Engineer', rating: 4, time: '2 tuần trước',
-        pros: 'Data infrastructure world-class. Học được nhiều kỹ thuật big data thực tế.',
-        cons: 'Quy trình phê duyệt hơi nhiều tầng nấc.' },
-    ],
-    jobList: [
-      { id: 201, title: 'Frontend Engineer (Vue 3)', type: 'Onsite', salary: '30–45tr', exp: '2–4 năm', deadline: '7 ngày',  match: 88, isNew: true  },
-      { id: 202, title: 'Backend Engineer (Go)',     type: 'Hybrid', salary: '35–55tr', exp: '3+ năm',  deadline: '5 ngày',  match: 75, isNew: false },
-      { id: 203, title: 'Data Engineer',             type: 'Onsite', salary: '28–42tr', exp: '2–3 năm', deadline: '12 ngày', match: 70, isNew: false },
-    ],
-    culture: [
-      { emoji: '⚡', title: 'Move Fast',    desc: 'Ship nhanh, iterate nhanh. Tư duy startup dù quy mô lớn.' },
-      { emoji: '🔬', title: 'Data-driven', desc: 'Mọi quyết định đều dựa trên data. A/B test trước, kết luận sau.' },
-      { emoji: '🎯', title: 'User First',  desc: 'Mọi tính năng đều hướng đến trải nghiệm người dùng tốt nhất.' },
-      { emoji: '🏆', title: 'Excellence',  desc: 'Tiêu chuẩn cao. Tự hào về chất lượng sản phẩm.' },
-    ],
-    ratingBreakdown: [
-      ['Môi trường làm việc', 4.0],
-      ['Lương & Thưởng',      4.1],
-      ['Ban lãnh đạo',        3.8],
-      ['Cân bằng cuộc sống',  3.7],
-      ['Cơ hội thăng tiến',   4.0],
-    ],
-  },
-}
-
-const DEFAULT_DETAIL = (c) => ({
-  tagline: `Xây dựng tương lai cùng ${c?.name}`,
-  founded: 'N/A', website: '#', followers: '0',
-  about: `${c?.name} là một trong những công ty hàng đầu trong lĩnh vực ${c?.industry}.`,
-  mission: 'Tạo ra giá trị bền vững cho khách hàng, nhân viên và cộng đồng.',
-  stats: [
-    { n: c?.size,  l: 'Nhân sự' },
-    { n: c?.jobs,  l: 'Việc tuyển' },
-    { n: c?.rating,l: 'Đánh giá trung bình' },
-    { n: c?.reviewCount, l: 'Reviews' },
-  ],
-  benefits: [
-    { icon: '💰', title: 'Lương cạnh tranh',   desc: 'Mức lương hấp dẫn, review định kỳ theo hiệu suất.' },
-    { icon: '🏥', title: 'Bảo hiểm sức khỏe',  desc: 'Bảo hiểm toàn diện cho nhân viên.' },
-    { icon: '📚', title: 'Đào tạo & phát triển',desc: 'Budget học tập hằng năm, khóa học online miễn phí.' },
-    { icon: '🏠', title: 'Làm việc linh hoạt',  desc: 'Giờ làm linh hoạt và chính sách remote thân thiện.' },
-  ],
-  offices: [{ city: c?.location, addr: 'Xem website chính thức để biết địa chỉ chi tiết.' }],
-  reviews: [],
-  jobList: [],
-  culture: [
-    { emoji: '🤝', title: 'Teamwork',   desc: 'Đề cao tinh thần hợp tác và hỗ trợ lẫn nhau.' },
-    { emoji: '🌱', title: 'Phát triển', desc: 'Môi trường học hỏi và phát triển liên tục.' },
-    { emoji: '💡', title: 'Đổi mới',    desc: 'Khuyến khích sáng tạo và tư duy đột phá.' },
-    { emoji: '🎯', title: 'Kết quả',    desc: 'Tập trung vào kết quả, không chỉ nỗ lực.' },
-  ],
-  ratingBreakdown: [
-    ['Môi trường', 4.0], ['Lương & Thưởng', 3.8],
-    ['Lãnh đạo', 4.0],   ['Cân bằng', 3.9], ['Thăng tiến', 4.0],
-  ],
-})
-
-const BADGE_MAP = {
-  hot:  ['cb-hot', '🔥 Hot'],
-  top:  ['cb-top', '⭐ Top'],
-  new:  ['cb-new', '✦ Mới'],
-  rem:  ['cb-rem', '🏠 Remote'],
-  feat: ['cb-feat','✦ Nổi bật'],
-}
-
-function Stars({ n }) {
-  const full = Math.floor(n), half = n % 1 >= 0.5
-  return <span className="cd-stars">{'★'.repeat(full)}{half ? '½' : ''}{'☆'.repeat(5 - full - (half ? 1 : 0))}</span>
-}
+const API = 'http://localhost:3000/api'
+const JOBS_PER_PAGE = 10
 
 function matchCls(n) { return n >= 85 ? 'mc-hi' : n >= 70 ? 'mc-md' : 'mc-lo' }
 
-/* ── Main ────────────────────────────────────────────────── */
-export default function CompanyDetailScreen({ company, onBack }) {
-  const [tab, setTab]         = useState('overview')
-  const [following, setFol]   = useState(false)
-  const [saved, setSaved]     = useState(new Set())
+function daysLeft(deadline) {
+  if (!deadline) return 'Chưa cập nhật'
+  const days = Math.max(0, Math.ceil((new Date(deadline) - Date.now()) / 86400000))
+  const formatted = new Date(deadline).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  if (days === 0) return `Hết hạn hôm nay (${formatted})`
+  return `Còn ${days} ngày (${formatted})`
+}
+
+function buildJobList(apiJobs = []) {
+  return apiJobs.map((j) => ({
+    id: j.jobID,
+    title: j.title,
+    type: j.jobType ?? 'Onsite',
+    salary: j.salary ?? 'Thỏa thuận',
+    exp: j.experienceYear ?? 'Chưa cập nhật',
+    deadline: daysLeft(j.deadline),
+    match: j.matchPercent ?? null,
+    isNew: j.postedAt ? Date.now() - new Date(j.postedAt).getTime() < 3 * 86400000 : false,
+    skills: j.skills ?? [],
+    sourceLink: j.sourceLink ?? null,
+    sourcePlatform: j.sourcePlatform ?? null,
+  }))
+}
+
+function CompanyLogo({ logo, name, logoColor, size = 'lg' }) {
+  const [imgError, setImgError] = useState(false)
+  const letter = name?.[0]?.toUpperCase() ?? '?'
+  useEffect(() => { setImgError(false) }, [logo])
+  if (logo && !imgError) {
+    return (
+      <img
+        className={`cd-logo cd-logo-img cd-logo-${size}`}
+        src={logo} alt={name}
+        onError={() => setImgError(true)}
+      />
+    )
+  }
+  return (
+    <div className={`cd-logo cd-logo-${size}`} style={{ background: logoColor }}>
+      {letter}
+    </div>
+  )
+}
+
+function ApplyModal({ job, onClose }) {
+  if (!job) return null
+  return (
+    <div style={{
+      display: 'flex', position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)',
+      zIndex: 6000, alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)',
+    }} onClick={onClose}>
+      <div style={{
+        background: 'var(--surf)', borderRadius: '16px', padding: '32px',
+        maxWidth: '480px', width: '90%', boxShadow: '0 24px 80px rgba(0,0,0,.3)', position: 'relative',
+      }} onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} style={{
+          position: 'absolute', top: '16px', right: '16px',
+          background: 'none', border: 'none', fontSize: '20px', color: 'var(--ink4)', cursor: 'pointer',
+        }}>✕</button>
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <div style={{ fontSize: '40px', marginBottom: '10px' }}>🔗</div>
+          <div style={{ fontFamily: "'Fraunces',serif", fontSize: '22px', fontWeight: 700, marginBottom: '8px' }}>
+            Chuyển đến trang ứng tuyển
+          </div>
+          <div style={{ fontSize: '13px', color: 'var(--ink3)', lineHeight: 1.65 }}>
+            Khi nhấn <b>Đi đến trang ứng tuyển</b>, bạn sẽ được chuyển đến trang gốc để hoàn tất nộp hồ sơ.
+          </div>
+        </div>
+        {[
+          { icon: '🌐', title: 'Trang tuyển dụng gốc', desc: job.sourcePlatform ?? '' },
+          { icon: '📄', title: 'Nộp hồ sơ trực tiếp', desc: 'Ứng tuyển bằng CV của bạn trên nền tảng đó' },
+          { icon: '🔒', title: 'Bảo mật thông tin', desc: 'Chúng tôi không lưu thông tin hồ sơ ứng tuyển' },
+          { icon: '🔗', title: 'Link chi tiết ở trang gốc', desc: job.sourceLink ?? 'Không có link trực tiếp' },
+        ].map(item => (
+          <div key={item.title} style={{
+            display: 'flex', alignItems: 'center', gap: '9px', padding: '10px 14px',
+            background: 'var(--bg2)', borderRadius: '9px', border: '1px solid var(--border)', marginBottom: '8px',
+          }}>
+            <span style={{ fontSize: '18px' }}>{item.icon}</span>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 600 }}>{item.title}</div>
+              <div style={{ fontSize: '11px', color: 'var(--ink3)', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                {item.desc}
+              </div>
+            </div>
+          </div>
+        ))}
+        <button style={{
+          width: '100%', padding: '13px', fontSize: '14px', fontWeight: 700,
+          background: 'rgb(35,42,162)', color: '#fff', border: 'none',
+          borderRadius: '10px', cursor: job.sourceLink ? 'pointer' : 'not-allowed',
+          opacity: job.sourceLink ? 1 : 0.5, marginTop: '8px',
+        }} onClick={() => job.sourceLink && window.open(job.sourceLink, '_blank')}>
+          Đi đến trang ứng tuyển →
+        </button>
+        <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '12px', color: 'var(--ink4)' }}>
+          Hoặc <span style={{ color: 'var(--rust)', cursor: 'pointer', fontWeight: 600 }} onClick={onClose}>
+            quay lại xem việc khác
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function LoginModal({ onClose }) {
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)',
+      backdropFilter: 'blur(4px)', zIndex: 6000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }} onClick={onClose}>
+      <div style={{
+        background: 'var(--surf)', borderRadius: '16px', padding: '32px 28px 24px',
+        width: '360px', maxWidth: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,.2)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
+      }} onClick={e => e.stopPropagation()}>
+        <div style={{ fontSize: '36px', marginBottom: '4px' }}>🔐</div>
+        <div style={{ fontSize: '18px', fontWeight: 700 }}>Bạn chưa đăng nhập</div>
+        <div style={{ fontSize: '14px', color: 'var(--ink3)', textAlign: 'center', lineHeight: 1.5 }}>
+          Vui lòng đăng nhập để tiếp tục sử dụng tính năng này.
+        </div>
+        <div style={{ display: 'flex', gap: '10px', marginTop: '12px', width: '100%' }}>
+          <button style={{
+            flex: 1, padding: '8px', borderRadius: '8px', fontWeight: 700,
+            fontSize: '13px', cursor: 'pointer', border: '1.5px solid var(--border2)',
+            background: 'transparent', color: 'var(--ink3)',
+          }} onClick={onClose}>Để sau</button>
+          <button style={{
+            flex: 1, padding: '8px', borderRadius: '8px', fontWeight: 700,
+            fontSize: '13px', cursor: 'pointer', border: 'none',
+            background: 'rgb(35,42,162)', color: '#fff',
+          }} onClick={() => { window.location.href = '/login' }}>
+            Đăng nhập ngay
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function showToast(message) {
+  const t = document.createElement('div')
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1C1510;color:#F5EED8;padding:10px 20px;border-radius:9px;font-size:13px;font-weight:600;z-index:9999'
+  t.textContent = message
+  document.body.appendChild(t)
+  setTimeout(() => t.remove(), 2800)
+}
+
+export default function CompanyDetailScreen({ company, onBack, token, jobBasePath = '/home/job' }) {
+  const navigate = useNavigate()
+
+  const [tab, setTab] = useState('overview')
+  const [apiData, setApiData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [matchMap, setMatchMap] = useState({})
+  const [savedJobIds, setSavedJobIds] = useState(new Set())
+  const [applyJob, setApplyJob] = useState(null)
+  const [applyLoading, setApplyLoading] = useState(false)
+  const [showLogin, setShowLogin] = useState(false)
+
+  const [jobSearch, setJobSearch] = useState('')
+  const [jobPage, setJobPage] = useState(1)
+
+  const companyId = company?.companyID ?? company?.id
+
+  useEffect(() => {
+    if (!companyId) return
+    setLoading(true)
+    setTab('overview')
+    setApiData(null)
+    setMatchMap({})
+    setJobSearch('')
+    setJobPage(1)
+
+    const headers = token ? { Authorization: `Bearer ${token}` } : {}
+    Promise.all([
+      fetch(`${API}/companies/${companyId}`).then(r => r.json()),
+      token
+        ? fetch(`${API}/jobs/recommendations`, { headers }).then(r => r.json()).catch(() => [])
+        : Promise.resolve([]),
+    ])
+      .then(([companyData, recs]) => {
+        setApiData(companyData)
+        const map = {}
+        if (Array.isArray(recs)) recs.forEach(r => { map[r.jobID] = r.matchPercent })
+        setMatchMap(map)
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [companyId, token])
+
+  useEffect(() => {
+    if (!token) { setSavedJobIds(new Set()); return }
+    fetch(`${API}/jobs/saved`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => {
+        const ids = new Set((Array.isArray(data) ? data : []).map(s => s.job?.jobID ?? s.jobID))
+        setSavedJobIds(ids)
+      })
+      .catch(console.error)
+  }, [token])
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === 'Escape') { setApplyJob(null); setShowLogin(false) }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [])
 
   if (!company) return null
-  const extra  = DETAIL_DATA[company.id] ?? DEFAULT_DETAIL(company)
-  const detail = { ...company, ...extra }
+
+  const name = apiData?.name ?? company.name ?? ''
+  const location = apiData?.location ?? company.location ?? 'Việt Nam'
+  const size = apiData?.size ?? company.size ?? 'Chưa cập nhật nhân sự'
+  const profile = apiData?.profile ?? ''
+  const jobCount = apiData?.jobCount ?? company.jobs ?? 0
+  const logo = apiData?.logo ?? company.logo ?? null
+  const website = apiData?.website ?? company.website ?? null
+  const logoColor = company.logoColor ?? 'linear-gradient(135deg,#1565C0,#1E88E5)'
+  const cover = company.cover ?? 'linear-gradient(135deg,#1565C0,#42A5F5)'
+  const tags = company.tags ?? []
+  const industry = company.industry ?? ''
+  const about = profile || `${name} là một trong những công ty hàng đầu${industry ? ` trong lĩnh vực ${industry}` : ''}.`
+  const websiteDomain = website ? website.replace(/^https?:\/\//, '').split('/')[0] : null
+
+  const allJobs = buildJobList(apiData?.jobs ?? []).map(j => ({ ...j, match: matchMap[j.id] ?? null }))
+
+  const filteredJobs = jobSearch.trim()
+    ? allJobs.filter(j =>
+      j.title?.toLowerCase().includes(jobSearch.toLowerCase()) ||
+      j.type?.toLowerCase().includes(jobSearch.toLowerCase()) ||
+      j.skills?.some(s => s.toLowerCase().includes(jobSearch.toLowerCase()))
+    )
+    : allJobs
+
+  const totalJobPages = Math.ceil(filteredJobs.length / JOBS_PER_PAGE)
+  const pagedJobs = filteredJobs.slice((jobPage - 1) * JOBS_PER_PAGE, jobPage * JOBS_PER_PAGE)
+
+  const handleJobSearch = (val) => {
+    setJobSearch(val)
+    setJobPage(1)
+  }
+
+  const stats = [
+    { n: size, l: 'Quy mô nhân sự' },
+    { n: String(jobCount), l: 'Việc đang tuyển' },
+  ]
 
   const TABS = [
     { key: 'overview', label: 'Tổng quan' },
-    { key: 'jobs',     label: `Việc làm (${detail.jobList?.length ?? 0})` },
-    { key: 'reviews',  label: `Đánh giá (${detail.reviews?.length ?? 0})` },
-    { key: 'culture',  label: 'Văn hoá' },
+    { key: 'jobs', label: `Việc làm (${allJobs.length})` },
   ]
 
-  const toggleSave = (id) =>
-    setSaved(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const handleSave = async (jobId, e) => {
+    if (e) e.stopPropagation()
+    if (!token) { setShowLogin(true); return }
+    const isSaved = savedJobIds.has(jobId)
+    try {
+      await fetch(`${API}/jobs/${jobId}/save`, {
+        method: isSaved ? 'DELETE' : 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      })
+      setSavedJobIds(prev => {
+        const next = new Set(prev)
+        isSaved ? next.delete(jobId) : next.add(jobId)
+        return next
+      })
+      showToast(isSaved ? 'Đã bỏ lưu' : '🔖 Đã lưu việc làm!')
+    } catch (err) { console.error(err) }
+  }
+
+  const trackBehavior = (jobId, action) => {
+    if (!token) return
+    fetch(`${API}/jobs/${jobId}/track`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action }),
+    }).catch(console.error)
+  }
+
+  const handleApply = async (jobId, e) => {
+    if (e) e.stopPropagation()
+
+    // Đã đăng nhập → navigate đến JobDetailScreen
+    if (token) {
+      trackBehavior(jobId, 'view')
+      navigate(`${jobBasePath}/${jobId}`)
+      return
+    }
+
+    // Chưa đăng nhập → mở ApplyModal
+    setApplyLoading(true)
+    try {
+      const res = await fetch(`${API}/jobs/${jobId}`)
+      const data = await res.json()
+      setApplyJob(data)
+      trackBehavior(jobId, 'apply')
+    } catch (err) {
+      console.error(err)
+      showToast('Không thể tải thông tin việc làm')
+    } finally {
+      setApplyLoading(false)
+    }
+  }
+
+  const renderJobPages = () => {
+    const pages = []
+    const cur = jobPage
+    const total = totalJobPages
+    const addBtn = (n) => pages.push(
+      <button key={n}
+        onClick={() => setJobPage(n)}
+        style={{
+          width: 36, height: 36, borderRadius: 8, border: '1.5px solid',
+          borderColor: cur === n ? 'rgb(35,42,162)' : '#DDD6C6',
+          background: cur === n ? 'rgb(35,42,162)' : 'transparent',
+          color: cur === n ? '#fff' : '#6B5E50',
+          fontSize: 13, fontWeight: 600, cursor: 'pointer',
+        }}>{n}</button>
+    )
+    const addDots = (k) => pages.push(
+      <span key={k} style={{ display: 'flex', alignItems: 'center', padding: '0 4px', color: '#9A8D80' }}>…</span>
+    )
+    if (total <= 7) {
+      for (let i = 1; i <= total; i++) addBtn(i)
+    } else {
+      addBtn(1)
+      if (cur > 3) addDots('d1')
+      const start = Math.max(2, cur - 1)
+      const end = Math.min(total - 1, cur + 1)
+      for (let i = start; i <= end; i++) addBtn(i)
+      if (cur < total - 2) addDots('d2')
+      addBtn(total)
+    }
+    return pages
+  }
 
   return (
     <div className="cd-page">
+      {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
+      {applyJob && <ApplyModal job={applyJob} onClose={() => setApplyJob(null)} />}
 
-      {/* ── Breadcrumb ───────────────────────────────────── */}
       <div className="cd-breadcrumb">
         <div className="cd-bc-inner">
           <button className="cd-back" onClick={onBack}>← Quay lại</button>
           <span className="cd-bc-sep">›</span>
           <span>Công ty</span>
           <span className="cd-bc-sep">›</span>
-          <span className="cd-bc-cur">{detail.name}</span>
+          <span className="cd-bc-cur">{name}</span>
         </div>
       </div>
 
-      {/* ── Hero: cover + logo ───────────────────────────── */}
       <div className="cd-hero">
-        <div className="cd-cover" style={{ background: detail.cover }}>
+        <div className="cd-cover" style={{ background: cover }}>
           <div className="cd-cover-dim" />
           <div className="cd-cover-noise" />
         </div>
-
         <div className="cd-hero-body">
           <div className="cd-hero-inner">
             <div className="cd-logo-wrap">
-              <div className="cd-logo" style={{ background: detail.logoColor }}>{detail.logo}</div>
+              <CompanyLogo logo={logo} name={name} logoColor={logoColor} size="lg" />
             </div>
-
             <div className="cd-hero-info">
-              {/* Top row */}
               <div className="cd-hero-row1">
                 <div>
-                  <div className="cd-badge-row">
-                    {(detail.badges || []).map(b => {
-                      const [cls, txt] = BADGE_MAP[b] || []; return cls
-                        ? <span key={b} className={`cd-badge ${cls}`}>{txt}</span> : null
-                    })}
-                    {detail.featured && <span className="cd-badge cb-feat">✦ Nổi bật</span>}
-                  </div>
-                  <h1 className="cd-name">{detail.name}</h1>
+                  <h1 className="cd-name">{name}</h1>
                   <div className="cd-sub">
-                    <span>{detail.industry}</span><span className="cd-dot">·</span>
-                    <span>📍 {detail.location}</span><span className="cd-dot">·</span>
-                    <span>🏢 {detail.size} nhân sự</span><span className="cd-dot">·</span>
-                    <span>📅 Thành lập {detail.founded}</span>
+                    {industry && <><span>{industry}</span><span className="cd-dot">·</span></>}
+                    <span>📍 {location}</span>
+                    <span className="cd-dot">·</span>
+                    <span>🏢 {size}</span>
                   </div>
-                </div>
-
-                <div className="cd-hero-actions">
-                  <button className={`cd-follow-btn${following ? ' on' : ''}`} onClick={() => setFol(v => !v)}>
-                    {following ? '✓ Đang theo dõi' : '+ Theo dõi'}
-                  </button>
-                  <a className="cd-web-btn" href={`https://${detail.website}`} target="_blank" rel="noreferrer">
-                    🌐 Website
-                  </a>
                 </div>
               </div>
-
-              {/* KPI strip */}
               <div className="cd-kpi-strip">
-                <div className="cd-kpi">
-                  <Stars n={detail.rating} />
-                  <span className="cd-kpi-n">{detail.rating}</span>
-                  <span className="cd-kpi-l">{detail.reviewCount?.toLocaleString()} đánh giá</span>
-                </div>
                 <div className="cd-kpi-div" />
                 <div className="cd-kpi">
-                  <span className="cd-kpi-n cd-rust">{detail.jobList?.length ?? detail.jobs}</span>
+                  <span className="cd-kpi-n cd-rust">{allJobs.length}</span>
                   <span className="cd-kpi-l">việc đang tuyển</span>
                 </div>
-                <div className="cd-kpi-div" />
-                <div className="cd-kpi">
-                  <span className="cd-kpi-n">{detail.followers}</span>
-                  <span className="cd-kpi-l">người theo dõi</span>
+              </div>
+              {tags.length > 0 && (
+                <div className="cd-tag-row">
+                  {tags.map(t => <span key={t} className="cd-tag">{t}</span>)}
                 </div>
-              </div>
-
-              {/* Tags */}
-              <div className="cd-tag-row">
-                {(detail.tags || []).map(t => <span key={t} className="cd-tag">{t}</span>)}
-              </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Tabs ─────────────────────────────────────────── */}
       <div className="cd-tabs-bar">
         <div className="cd-tabs-inner">
           {TABS.map(t => (
-            <button key={t.key} className={`cd-tab${tab === t.key ? ' active' : ''}`} onClick={() => setTab(t.key)}>
+            <button key={t.key} className={`cd-tab${tab === t.key ? ' active' : ''}`}
+              onClick={() => { setTab(t.key); if (t.key === 'jobs') { setJobSearch(''); setJobPage(1) } }}>
               {t.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* ── Body ─────────────────────────────────────────── */}
       <div className="cd-body">
         <div className="cd-body-inner">
-
-          {/* ══ OVERVIEW ════════════════════════════════════ */}
-          {tab === 'overview' && (
-            <div className="cd-2col">
-
-              {/* Left */}
-              <div className="cd-col-main">
-                <section className="cd-sec">
-                  <div className="cd-sec-title">📋 Giới thiệu</div>
-                  <div className="cd-tagline">"{detail.tagline}"</div>
-                  <div className="cd-about">
-                    {(detail.about || '').split('\n\n').map((p, i) => <p key={i}>{p}</p>)}
-                  </div>
-                </section>
-
-                <section className="cd-sec">
-                  <div className="cd-sec-title">🎯 Sứ mệnh</div>
-                  <div className="cd-mission-box">
-                    <div className="cd-mission-q">"</div>
-                    <div className="cd-mission-txt">{detail.mission}</div>
-                  </div>
-                </section>
-
-                <section className="cd-sec">
-                  <div className="cd-sec-title">🎁 Phúc lợi & Chính sách</div>
-                  <div className="cd-benefits-grid">
-                    {(detail.benefits || []).map((b, i) => (
-                      <div key={i} className="cd-benefit">
-                        <div className="cd-benefit-ico">{b.icon}</div>
-                        <div>
-                          <div className="cd-benefit-t">{b.title}</div>
-                          <div className="cd-benefit-d">{b.desc}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-
-                <section className="cd-sec">
-                  <div className="cd-sec-title">📍 Địa điểm làm việc</div>
-                  <div className="cd-offices">
-                    {(detail.offices || []).map((o, i) => (
-                      <div key={i} className="cd-office">
-                        <div className="cd-office-dot" />
-                        <div>
-                          <div className="cd-office-city">{o.city}</div>
-                          <div className="cd-office-addr">{o.addr}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              </div>
-
-              {/* Right sidebar */}
-              <div className="cd-col-side">
-                {/* Stats */}
-                <div className="cd-card">
-                  <div className="cd-card-title">📊 Số liệu nổi bật</div>
-                  <div className="cd-stats-grid">
-                    {(detail.stats || []).map((s, i) => (
-                      <div key={i} className="cd-stat">
-                        <div className="cd-stat-n">{s.n}</div>
-                        <div className="cd-stat-l">{s.l}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Quick jobs */}
-                <div className="cd-card">
-                  <div className="cd-card-hd">
-                    <span className="cd-card-title">💼 Việc đang tuyển</span>
-                    <button className="cd-see-all" onClick={() => setTab('jobs')}>Xem tất cả →</button>
-                  </div>
-                  {(detail.jobList || []).length > 0
-                    ? (detail.jobList || []).slice(0, 3).map(j => (
-                      <div key={j.id} className="cd-qjob">
-                        <div className="cd-qjob-info">
-                          <div className="cd-qjob-title">
-                            {j.title}
-                            {j.isNew && <span className="cd-qjob-new">Mới</span>}
-                          </div>
-                          <div className="cd-qjob-meta">{j.type} · {j.salary}</div>
-                        </div>
-                        <span className={`cd-qjob-match ${matchCls(j.match)}`}>{j.match}%</span>
-                      </div>
-                    ))
-                    : <div className="cd-empty-sm">Chưa có dữ liệu.</div>
-                  }
-                </div>
-
-                {/* Rating breakdown */}
-                <div className="cd-card">
-                  <div className="cd-card-title">⭐ Đánh giá chi tiết</div>
-                  <div className="cd-rating-top">
-                    <span className="cd-rating-big">{detail.rating}</span>
-                    <div>
-                      <Stars n={detail.rating} />
-                      <div className="cd-rating-ct">{detail.reviewCount?.toLocaleString()} đánh giá</div>
-                    </div>
-                  </div>
-                  {(detail.ratingBreakdown || []).map(([lbl, val]) => (
-                    <div key={lbl} className="cd-rb-row">
-                      <span className="cd-rb-lbl">{lbl}</span>
-                      <div className="cd-rb-bg">
-                        <div className="cd-rb-bar" style={{ width: `${(val / 5) * 100}%` }} />
-                      </div>
-                      <span className="cd-rb-val">{val}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+          {loading && (
+            <div style={{ textAlign: 'center', padding: '64px', color: 'var(--ink4)', fontSize: '14px' }}>
+              ⟳ Đang tải thông tin công ty...
             </div>
           )}
 
-          {/* ══ JOBS ════════════════════════════════════════ */}
-          {tab === 'jobs' && (
-            <div className="cd-tab-pane">
-              <div className="cd-jobs-hd">
-                <span className="cd-jobs-ct">{detail.jobList?.length ?? 0} việc làm đang tuyển tại {detail.name}</span>
-              </div>
-              {(detail.jobList || []).length > 0 ? (
-                <div className="cd-jobs-list">
-                  {(detail.jobList || []).map(j => (
-                    <div key={j.id} className="cd-job-card">
-                      <div className="cd-job-top">
-                        <div className="cd-job-logo" style={{ background: detail.logoColor }}>{detail.logo}</div>
-                        <div className="cd-job-info">
-                          <div className="cd-job-title">
-                            {j.title}
-                            {j.isNew && <span className="cd-job-new-tag">Mới</span>}
+          {!loading && (
+            <>
+              {tab === 'overview' && (
+                <div className="cd-2col">
+                  <div className="cd-col-main">
+                    {profile && (
+                      <section className="cd-sec">
+                        <div className="cd-sec-title">📋 Giới thiệu</div>
+                        <div className="cd-about">
+                          {about.split('\n\n').map((p, i) => <p key={i}>{p}</p>)}
+                        </div>
+                      </section>
+                    )}
+                    {location && (
+                      <section className="cd-sec">
+                        <div className="cd-sec-title">📍 Địa điểm làm việc</div>
+                        <div className="cd-offices">
+                          <div className="cd-office">
+                            <div className="cd-office-dot" />
+                            <div>
+                              <div className="cd-office-city">{location}</div>
+                              {website && (
+                                <div className="cd-office-addr">
+                                  Xem thêm tại <a href={website} target="_blank" rel="noreferrer">{websiteDomain}</a>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <div className="cd-job-chips">
-                            <span className="cd-chip">📍 {detail.location}</span>
-                            <span className="cd-chip">🕐 {j.type}</span>
-                            <span className="cd-chip">🎓 {j.exp}</span>
+                        </div>
+                      </section>
+                    )}
+                  </div>
+
+                  <div className="cd-col-side">
+                    <div className="cd-card">
+                      <div className="cd-card-title">📊 Số liệu nổi bật</div>
+                      <div className="cd-stats-grid">
+                        {stats.map((s, i) => (
+                          <div key={i} className="cd-stat">
+                            <div className="cd-stat-n">{s.n}</div>
+                            <div className="cd-stat-l">{s.l}</div>
                           </div>
-                        </div>
-                        <div className={`cd-job-match ${matchCls(j.match)}`}>
-                          <span className="cd-jm-n">{j.match}%</span>
-                          <span className="cd-jm-l">phù hợp</span>
-                        </div>
-                      </div>
-                      <div className="cd-job-foot">
-                        <span className="cd-job-salary">💰 {j.salary}/tháng</span>
-                        <span className="cd-job-dl">⏰ Còn {j.deadline}</span>
-                        <div className="cd-job-acts">
-                          <button className={`cd-save-btn${saved.has(j.id) ? ' on' : ''}`} onClick={() => toggleSave(j.id)}>🔖</button>
-                          <button className="cd-apply-btn">⚡ Ứng tuyển</button>
-                        </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="cd-empty">
-                  <div className="cd-empty-ico">💼</div>
-                  <div className="cd-empty-t">Chưa có việc làm nào</div>
-                  <div className="cd-empty-s">Theo dõi công ty để nhận thông báo khi có vị trí mới.</div>
+
+                    <div className="cd-card">
+                      <div className="cd-card-hd">
+                        <span className="cd-card-title">💼 Việc đang tuyển</span>
+                        <button className="cd-see-all" onClick={() => setTab('jobs')}>Xem tất cả →</button>
+                      </div>
+                      {allJobs.length > 0
+                        ? allJobs.slice(0, 3).map(j => (
+                          <div key={j.id} className="cd-qjob" style={{ cursor: 'pointer' }}
+                            onClick={() => handleApply(j.id, null)}>
+                            <div className="cd-qjob-info">
+                              <div className="cd-qjob-title">{j.title}</div>
+                              <div className="cd-qjob-meta">{j.type} · {j.salary}</div>
+                            </div>
+                            {j.match != null && (
+                              <span className={`cd-qjob-match ${matchCls(j.match)}`}>{j.match}% phù hợp</span>
+                            )}
+                          </div>
+                        ))
+                        : <div className="cd-empty-sm">Chưa có dữ liệu.</div>
+                      }
+                    </div>
+
+                    {website && (
+                      <div className="cd-card">
+                        <div className="cd-card-title">🔗 Liên kết</div>
+                        <a href={website} target="_blank" rel="noreferrer" className="cd-website-link">
+                          🌐 {websiteDomain}
+                        </a>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
-            </div>
-          )}
 
-          {/* ══ REVIEWS ═════════════════════════════════════ */}
-          {tab === 'reviews' && (
-            <div className="cd-tab-pane">
-              {(detail.reviews || []).length > 0 ? (
-                <div className="cd-reviews">
-                  {(detail.reviews || []).map((r, i) => (
-                    <div key={i} className="cd-review">
-                      <div className="cd-review-hd">
-                        <div className="cd-review-av">{r.name.split(' ').pop()[0]}</div>
-                        <div className="cd-review-meta">
-                          <div className="cd-review-name">{r.name}</div>
-                          <div className="cd-review-sub">{r.role} · {r.time}</div>
-                        </div>
-                        <div className="cd-review-stars-row">
-                          <Stars n={r.rating} />
-                          <span className="cd-review-rv">{r.rating}.0</span>
-                        </div>
-                      </div>
-                      <div className="cd-review-body">
-                        <div className="cd-review-block pros">
-                          <span className="cd-review-lbl pros">👍 Ưu điểm</span>
-                          <p>{r.pros}</p>
-                        </div>
-                        <div className="cd-review-block cons">
-                          <span className="cd-review-lbl cons">👎 Nhược điểm</span>
-                          <p>{r.cons}</p>
-                        </div>
-                      </div>
+              {tab === 'jobs' && (
+                <div className="cd-tab-pane">
+                  <div style={{
+                    display: 'flex', gap: '10px', marginBottom: '20px',
+                    alignItems: 'center', flexWrap: 'wrap',
+                  }}>
+                    <div style={{
+                      flex: 1, minWidth: '200px',
+                      display: 'flex', alignItems: 'center', gap: '0',
+                      background: '#FEFCF7', border: '1.5px solid #DDD6C6',
+                      borderRadius: '10px', overflow: 'hidden',
+                    }}>
+                      <span style={{ padding: '0 12px', fontSize: '16px', color: '#9A8D80', flexShrink: 0 }}>🔍</span>
+                      <input
+                        type="text"
+                        placeholder="Tìm theo tên, loại hình, kỹ năng..."
+                        value={jobSearch}
+                        onChange={e => handleJobSearch(e.target.value)}
+                        style={{
+                          flex: 1, padding: '10px 12px 10px 0',
+                          border: 'none', outline: 'none',
+                          fontSize: '13.5px', background: 'transparent',
+                          fontFamily: 'inherit', color: '#1C1510',
+                        }}
+                      />
+                      {jobSearch && (
+                        <button onClick={() => handleJobSearch('')} style={{
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          padding: '0 12px', fontSize: '16px', color: '#9A8D80', flexShrink: 0,
+                        }}>×</button>
+                      )}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="cd-empty">
-                  <div className="cd-empty-ico">💬</div>
-                  <div className="cd-empty-t">Chưa có đánh giá nào</div>
-                  <div className="cd-empty-s">Hãy là người đầu tiên chia sẻ trải nghiệm.</div>
-                  <button className="cd-write-btn">✍️ Viết đánh giá</button>
+                    <div style={{ fontSize: '13px', color: '#9A8D80', flexShrink: 0 }}>
+                      {filteredJobs.length !== allJobs.length
+                        ? <><strong style={{ color: '#1C1510' }}>{filteredJobs.length}</strong> / {allJobs.length} việc làm</>
+                        : <><strong style={{ color: '#1C1510' }}>{allJobs.length}</strong> việc làm đang tuyển</>
+                      }
+                    </div>
+                  </div>
+
+                  {filteredJobs.length === 0 ? (
+                    <div className="cd-empty">
+                      <div className="cd-empty-ico">🔍</div>
+                      <div className="cd-empty-t">Không tìm thấy việc làm</div>
+                      <div className="cd-empty-s">Thử từ khóa khác hoặc xoá bộ lọc.</div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="cd-jobs-list">
+                        {pagedJobs.map(j => (
+                          <div key={j.id} className="cd-job-card"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => handleApply(j.id, null)}>
+                            <div className="cd-job-top">
+                              <CompanyLogo logo={logo} name={name} logoColor={logoColor} size="sm" />
+                              <div className="cd-job-info">
+                                <div className="cd-job-title">{j.title}</div>
+                                <div className="cd-job-chips">
+                                  <div className="cd-chip-row">
+                                    <span className="cd-chip">📍 {location}</span>
+                                    <span className="cd-chip">🕐 {j.type}</span>
+                                    <span className="cd-chip">🎓 {j.exp}</span>
+                                  </div>
+                                  {j.skills.length > 0 && (
+                                    <div className="cd-skill-row">
+                                      {j.skills.map(s => (
+                                        <span key={s} className="cd-chip cd-chip-skill">🔧 {s}</span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              {j.match != null && (
+                                <div className={`cd-job-match ${matchCls(j.match)}`}>
+                                  <span className="cd-jm-n">{j.match}%</span>
+                                  <span className="cd-jm-l">phù hợp</span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="cd-job-foot">
+                              <span className="cd-job-salary">💰 {j.salary}</span>
+                              <span className="cd-job-dl">⏰ {j.deadline}</span>
+                              <div className="cd-job-acts">
+                                <button
+                                  className={`cd-save-btn${savedJobIds.has(j.id) ? ' on' : ''}`}
+                                  onClick={(e) => handleSave(j.id, e)}
+                                  style={{
+                                    width: savedJobIds.has(j.id) ? 'auto' : '34px',
+                                    padding: savedJobIds.has(j.id) ? '0 10px' : '0',
+                                    fontSize: savedJobIds.has(j.id) ? '12px' : '15px',
+                                  }}
+                                >
+                                  {savedJobIds.has(j.id) ? '🔖 Đã lưu' : '🔖'}
+                                </button>
+                                <button
+                                  className="cd-apply-btn"
+                                  disabled={applyLoading}
+                                  onClick={(e) => handleApply(j.id, e)}
+                                >
+                                  {applyLoading ? '⏳' : token ? '👁 Xem chi tiết' : '⚡ Ứng tuyển'}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {totalJobPages > 1 && (
+                        <div style={{
+                          display: 'flex', justifyContent: 'center', alignItems: 'center',
+                          gap: '6px', marginTop: '28px', flexWrap: 'wrap',
+                        }}>
+                          <button
+                            disabled={jobPage === 1}
+                            onClick={() => setJobPage(p => p - 1)}
+                            style={{
+                              width: 36, height: 36, borderRadius: 8,
+                              border: '1.5px solid #DDD6C6', background: 'transparent',
+                              color: '#6B5E50', fontSize: 16, cursor: jobPage === 1 ? 'not-allowed' : 'pointer',
+                              opacity: jobPage === 1 ? 0.4 : 1,
+                            }}>‹</button>
+                          {renderJobPages()}
+                          <button
+                            disabled={jobPage === totalJobPages}
+                            onClick={() => setJobPage(p => p + 1)}
+                            style={{
+                              width: 36, height: 36, borderRadius: 8,
+                              border: '1.5px solid #DDD6C6', background: 'transparent',
+                              color: '#6B5E50', fontSize: 16, cursor: jobPage === totalJobPages ? 'not-allowed' : 'pointer',
+                              opacity: jobPage === totalJobPages ? 0.4 : 1,
+                            }}>›</button>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
-            </div>
+            </>
           )}
-
-          {/* ══ CULTURE ═════════════════════════════════════ */}
-          {tab === 'culture' && (
-            <div className="cd-tab-pane">
-              <div className="cd-culture-grid">
-                {(detail.culture || []).map((c, i) => (
-                  <div key={i} className="cd-culture-card">
-                    <div className="cd-culture-emoji">{c.emoji}</div>
-                    <div className="cd-culture-title">{c.title}</div>
-                    <div className="cd-culture-desc">{c.desc}</div>
-                  </div>
-                ))}
-              </div>
-              <div className="cd-culture-cta">
-                <div>
-                  <div className="cd-culture-cta-t">Muốn trở thành một phần của {detail.name}?</div>
-                  <div className="cd-culture-cta-s">Xem các vị trí đang tuyển và ứng tuyển ngay.</div>
-                </div>
-                <button className="cd-culture-cta-btn" onClick={() => setTab('jobs')}>Xem việc làm →</button>
-              </div>
-            </div>
-          )}
-
         </div>
       </div>
     </div>

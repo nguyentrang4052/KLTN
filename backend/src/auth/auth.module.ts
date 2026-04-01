@@ -6,11 +6,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { MailService } from '../../mail/mail.service';
+import { TokenBlacklistService } from './token-blacklist.service';
 
 import { JwtStrategy } from '../strategies/jwt.strategy';
 import { GoogleStrategy } from '../strategies/google.strategy';
-import { FacebookStrategy } from '../strategies/facebook.strategy';
-
 import { PrismaModule } from '../../prisma/prisma.module';
 
 @Module({
@@ -22,7 +21,6 @@ import { PrismaModule } from '../../prisma/prisma.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         secret: config.get('JWT_SECRET'),
-        signOptions: { expiresIn: '7d' },
       }),
     }),
   ],
@@ -32,7 +30,7 @@ import { PrismaModule } from '../../prisma/prisma.module';
     MailService,
     JwtStrategy,
     GoogleStrategy,
-    FacebookStrategy,
+    TokenBlacklistService,
   ],
   exports: [AuthService],
 })

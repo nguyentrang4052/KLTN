@@ -8,6 +8,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from '../../mail/mail.service';
+import { TokenBlacklistService } from './token-blacklist.service';
 import * as bcrypt from 'bcrypt';
 import { RegisterDto } from '../dto/register.dto';
 import { LoginDto } from '../dto/login.dto';
@@ -23,6 +24,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private mailService: MailService,
+    private blacklistService: TokenBlacklistService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -86,6 +88,7 @@ export class AuthService {
         accountID: account.accountID,
         email: account.email,
         fullName: account.user?.fullName,
+        avatar: account.user?.avatar ?? null,
       },
     };
   }
@@ -132,7 +135,6 @@ export class AuthService {
       where: { email: dto.email },
     });
 
-    // kiểm tra email tồn tại
     if (!account) {
       throw new NotFoundException('Email chưa được đăng ký.');
     }
@@ -144,9 +146,7 @@ export class AuthService {
 
     await this.mailService.sendOtp(dto.email, otp);
 
-    return {
-      message: 'Mã OTP đã được gửi tới email của bạn.',
-    };
+    return { message: 'Mã OTP đã được gửi tới email của bạn.' };
   }
 
   verifyOtp(dto: VerifyOtpDto) {
@@ -185,7 +185,49 @@ export class AuthService {
     return { message: 'Đặt lại mật khẩu thành công.' };
   }
 
+  refreshToken(accountID: number, email: string): string {
+    return this.signToken(accountID, email);
+  }
+
   private signToken(accountID: number, email: string): string {
-    return this.jwtService.sign({ sub: accountID, email });
+    return this.jwtService.sign({ sub: accountID, email }, { expiresIn: '1h' });
+  }
+
+  async getMe(accountID: number) {
+    const account = await this.prisma.account.findUnique({
+      where: { accountID },
+      include: {
+        user: {
+          include: {
+            profiles: {
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+
+    if (!account) throw new NotFoundException('Tài khoản không tồn tại.');
+
+    const latestProfile = account.user?.profiles?.[0];
+
+    return {
+      accountID: account.accountID,
+      email: account.email,
+      fullName: account.user?.fullName ?? '',
+      phone: account.user?.phone ?? null,
+      address: account.user?.address ?? null,
+      birthYear: account.user?.birthYear ?? null,
+      gender: account.user?.gender ?? null,
+      provider: account.provider,
+      avatar: account.user?.avatar ?? null,
+      jobTitle: latestProfile?.jobTitle ?? 'Thành viên',
+    };
+  }
+
+  logout(token: string): { message: string } {
+    this.blacklistService.add(token);
+    return { message: 'Đăng xuất thành công.' };
   }
 }

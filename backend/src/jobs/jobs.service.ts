@@ -3,6 +3,28 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { QueryJobsDto } from '../dto/jobs.dto';
 import { Prisma } from '@prisma/client';
 
+const JOB_TYPE_REVERSE_MAP: Record<string, string[]> = {
+  'Toàn thời gian': ['Toàn thời gian', 'Nhân viên chính thức', 'Full-time'],
+  'Bán thời gian': ['Bán thời gian', 'Part-time'],
+  'Thực tập': ['Thực tập', 'Intern'],
+  'Thời vụ': ['Thời vụ'],
+  'Freelance': ['Freelance', 'Nghề tự do'],
+  'Remote': ['Remote'],
+};
+
+const JOB_TYPE_MAP: Record<string, string> = {
+  'Nhân viên chính thức': 'Toàn thời gian',
+  'Full-time': 'Toàn thời gian',
+  'Bán thời gian': 'Bán thời gian',
+  'Part-time': 'Bán thời gian',
+  'Thực tập': 'Thực tập',
+  'Intern': 'Thực tập',
+  'Thời vụ': 'Thời vụ',
+  'Nghề tự do': 'Freelance',
+  'Freelance': 'Freelance',
+  'Remote': 'Remote',
+};
+
 @Injectable()
 export class JobsService {
   constructor(private prisma: PrismaService) { }
@@ -41,10 +63,18 @@ export class JobsService {
     }
 
     if (industryId) where.industryID = industryId;
-    if (jobType) where.jobType = { contains: jobType, mode: 'insensitive' };
     if (experience)
       where.experienceYear = { contains: experience, mode: 'insensitive' };
     if (source) where.sourcePlatform = source;
+
+    if (jobType) {
+      const variants = JOB_TYPE_REVERSE_MAP[jobType] ?? [jobType];
+      andConditions.push({
+        OR: variants.map((v) => ({
+          jobType: { contains: v, mode: 'insensitive' as const },
+        })),
+      });
+    }
 
     if (locations && locations.length > 0) {
       andConditions.push({
@@ -72,7 +102,9 @@ export class JobsService {
         take: limit,
         orderBy,
         include: {
-          company: { select: { companyName: true, companyLogo: true } },
+          company: {
+            select: { companyID: true, companyName: true, companyLogo: true },
+          },
           industry: { select: { name: true } },
           skills: { include: { skill: { select: { name: true } } }, take: 5 },
         },
@@ -103,6 +135,7 @@ export class JobsService {
     let jobList = jobs.map((j) => ({
       jobID: j.jobID,
       title: j.title,
+      companyID: j.company.companyID,
       companyName: j.company.companyName,
       companyLogo: j.company.companyLogo,
       location: j.location,
@@ -202,7 +235,12 @@ export class JobsService {
       orConditions.push({ industryID: { in: industryIDs } });
     }
 
-    if (orConditions.length === 0) return;
+    if (orConditions.length === 0) {
+      await this.prisma.jobRecommendation.deleteMany({
+        where: { userID: user.userID },
+      });
+      return;
+    }
 
     const jobs = await this.prisma.job.findMany({
       where: {
@@ -213,9 +251,11 @@ export class JobsService {
       include: {
         skills: { select: { skillID: true } },
       },
-      take: 50,
+      // take: 50,
       orderBy: { postedAt: 'desc' },
     });
+
+    const validJobIDs: number[] = [];
 
     for (const job of jobs) {
       const jobSkillIDs = job.skills.map((s) => s.skillID);
@@ -225,6 +265,8 @@ export class JobsService {
 
       if (matchPercent === 0) continue;
 
+      validJobIDs.push(job.jobID);
+
       await this.prisma.jobRecommendation.upsert({
         where: {
           userID_jobID: { userID: user.userID, jobID: job.jobID },
@@ -233,9 +275,16 @@ export class JobsService {
         create: { userID: user.userID, jobID: job.jobID, matchPercent },
       });
     }
+
+    await this.prisma.jobRecommendation.deleteMany({
+      where: {
+        userID: user.userID,
+        jobID: { notIn: validJobIDs },
+      },
+    });
   }
 
-  async getRecommendations(accountID: number, limit = 10) {
+  async getRecommendations(accountID: number) {
     const user = await this.prisma.user.findFirst({
       where: { accountID },
       select: { userID: true },
@@ -245,10 +294,10 @@ export class JobsService {
     const recs = await this.prisma.jobRecommendation.findMany({
       where: {
         userID: user.userID,
-        matchPercent: { gt: 50 },
+        matchPercent: { gt: 49 },
       },
       orderBy: { matchPercent: 'desc' },
-      take: limit,
+      // take: limit,
       include: {
         job: {
           include: {
@@ -270,6 +319,7 @@ export class JobsService {
       salary: r.job.salary,
       skills: r.job.skills.map((s) => s.skill.name),
       matchPercent: r.matchPercent,
+      sourcePlatform: r.job.sourcePlatform,
     }));
   }
 
@@ -498,7 +548,7 @@ export class JobsService {
       where: { job: { isActive: true } },
       _count: { jobID: true },
       orderBy: { _count: { jobID: 'desc' } },
-      take: 15,
+      take: 50,
     });
 
     const skillDetails = await this.prisma.skill.findMany({
@@ -510,27 +560,89 @@ export class JobsService {
       skillDetails.map((s) => [s.skillID, s.name]),
     );
 
-    return skills.map((s) => ({
-      name: skillMap[s.skillID],
-      count: s._count.jobID,
-    }));
+    const nameMap = new Map<string, number>();
+    for (const s of skills) {
+      const name = skillMap[s.skillID];
+      if (!name) continue;
+      const key = name.trim().toLowerCase();
+      nameMap.set(key, (nameMap.get(key) ?? 0) + s._count.jobID);
+    }
+
+    const seenKeys = new Set<string>();
+    const result: { name: string; count: number }[] = [];
+
+    for (const s of skills) {
+      const name = skillMap[s.skillID];
+      if (!name) continue;
+      const key = name.trim().toLowerCase();
+      if (seenKeys.has(key)) continue;
+      seenKeys.add(key);
+      result.push({ name: name.trim(), count: nameMap.get(key)! });
+      if (result.length >= 15) break;
+    }
+
+    return result.sort((a, b) => b.count - a.count);
   }
 
-  async getTopHiringCompanies(limit = 5) {
-    const companies = await this.prisma.company.findMany({
-      include: {
-        _count: { select: { jobs: { where: { isActive: true } } } },
-      },
-      orderBy: { jobs: { _count: 'desc' } },
-      take: limit,
-      where: { jobs: { some: { isActive: true } } },
-    });
+  async getFilterOptionsBySource(source?: string) {
+    const where: Prisma.JobWhereInput = { isActive: true };
+    if (source) where.sourcePlatform = source;
 
-    return companies.map((c) => ({
-      companyID: c.companyID,
-      name: c.companyName,
-      logo: c.companyLogo,
-      jobCount: c._count.jobs,
-    }));
+    const [jobTypes, industries] = await Promise.all([
+      this.prisma.job.groupBy({
+        by: ['jobType'],
+        where: {
+          ...where,
+          jobType: { not: null },
+        },
+        _count: { jobID: true },
+        orderBy: { _count: { jobID: 'desc' } },
+      }),
+      this.prisma.industry.findMany({
+        where: { jobs: { some: where } },
+        include: { _count: { select: { jobs: { where } } } },
+        orderBy: { id: 'asc' },
+      }),
+    ]);
+
+    const VALID_JOB_TYPES = [
+      'Toàn thời gian',
+      'Bán thời gian',
+      'Thực tập',
+      'Thời vụ',
+      'Freelance',
+      'Remote',
+    ];
+
+    const jobTypeMap = new Map<string, number>();
+
+    for (const r of jobTypes) {
+      if (!r.jobType) continue;
+      if (r.jobType.length > 50) continue;
+
+      const parts = r.jobType.split(',').map((p) => p.trim());
+      for (const part of parts) {
+        if (!part || part.length > 30) continue;
+        const normalized = JOB_TYPE_MAP[part] ?? part;
+        if (!VALID_JOB_TYPES.includes(normalized)) continue;
+        jobTypeMap.set(
+          normalized,
+          (jobTypeMap.get(normalized) ?? 0) + r._count.jobID,
+        );
+      }
+    }
+
+    const orderedJobTypes = VALID_JOB_TYPES.filter((v) =>
+      jobTypeMap.has(v),
+    ).map((v) => ({ value: v, count: jobTypeMap.get(v)! }));
+
+    return {
+      jobTypes: orderedJobTypes,
+      industries: industries.map((ind) => ({
+        id: ind.id,
+        name: ind.name,
+        count: ind._count.jobs,
+      })),
+    };
   }
 }
