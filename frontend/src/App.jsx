@@ -16,6 +16,8 @@ import NotificationsScreen from './components/screens/NotificationsScreen/Notifi
 import JobSearchScreen from './components/screens/JobSearchScreen/JobSearchScreen'
 import CompaniesScreen from './components/screens/CompaniesScreen/CompaniesScreen'
 import AboutScreen from './components/screens/AboutScreen/AboutScreen'
+import AccountSettingScreen from './components/screens/AccountSettingScreen/AccountSettingScreen'
+import SavedJobScreen from './components/screens/SavedJobScreen/SavedJobScreen'
 
 import Login from './components/Authentication/Login/Login'
 import Register from './components/Authentication/Register/Register'
@@ -27,6 +29,7 @@ import AdminDashboard from './components/Admin/AdminDashboard/AdminDashboard'
 import AdminUsers from './components/Admin/AdminUsers/AdminUsers'
 import AdminCategories from './components/Admin/AdminCategories/AdminCategories'
 import AdminPackages from './components/Admin/AdminPackages/AdminPackages'
+
 
 
 function App() {
@@ -64,8 +67,10 @@ function App() {
           <Route path="/profile" element={<ProfileScreen />} />
           <Route path="/notifications" element={<NotificationsScreen />} />
           <Route path="/jobs" element={<JobSearchScreen />} />
+          <Route path="/saved-jobs" element={<SavedJobScreen />} />
           <Route path="/companies" element={<CompaniesScreen />} />
           <Route path="/about" element={<AboutScreen />} />
+          <Route path="/settings" element={<AccountSettingScreen />} />
 
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />

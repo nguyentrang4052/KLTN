@@ -15,18 +15,24 @@
   margin-bottom: 24px;
 }
 
-.jd-logo-big {
-  width: 68px;
-  height: 68px;
-  border-radius: 16px;
+.jd-logo {
+  width: 90px;
+  height: 90px;
+  border-radius: 11px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 26px;
   font-weight: 800;
-  margin-bottom: 14px;
+  font-size: 15px;
+  flex-shrink: 0;
   color: #FFF;
-  background: linear-gradient(135deg, #D0392A, #E05A40);
+}
+
+.jd-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  /* 👈 ảnh fill đẹp, không méo */
 }
 
 .jd-title {
@@ -66,8 +72,9 @@
 }
 
 .jd-actions {
-  display: flex;
-  gap: 9px;
+    display: flex;
+    gap: 7px;
+    flex-shrink: 0;
 }
 
 .divider {
@@ -103,6 +110,22 @@
   flex-shrink: 0;
   margin-top: 1px;
   font-weight: 700;
+}
+
+.jd-save {
+  height: 34px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border2);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;      /* icon + text */
+  padding: 0 10px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all .18s;
+  color: var(--ink4);
 }
 
 .ai-box {

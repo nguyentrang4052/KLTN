@@ -14,7 +14,7 @@
     "value": "1",
     "domain": "px.ads.linkedin.com",
     "path": "/",
-    "expires": 1777353867.035139,
+    "expires": 1777587910.014186,
     "httpOnly": true,
     "secure": true,
     "sameSite": "None"
@@ -34,7 +34,7 @@
     "value": "3BOpsUnxn0U1SVPkeTGnVx7FEuu",
     "domain": ".tiktok.com",
     "path": "/",
-    "expires": 1808420121.028517,
+    "expires": 1808654164.607283,
     "httpOnly": false,
     "secure": true,
     "sameSite": "None"
@@ -44,7 +44,7 @@
     "value": "d65a9d72-73e8-4262-a2b8-4b639d6e5cae",
     "domain": ".linkedin.com",
     "path": "/",
-    "expires": 1782500121.033304,
+    "expires": 1782734164.008341,
     "httpOnly": false,
     "secure": true,
     "sameSite": "None"
@@ -54,7 +54,7 @@
     "value": "\"v=2&06f828fe-316a-4047-88cc-34c635bf63a6\"",
     "domain": ".linkedin.com",
     "path": "/",
-    "expires": 1806260121.035298,
+    "expires": 1806494164.014526,
     "httpOnly": false,
     "secure": true,
     "sameSite": "None"
@@ -64,7 +64,7 @@
     "value": "1",
     "domain": ".topcv.vn",
     "path": "/",
-    "expires": 1808420121,
+    "expires": 1808654167,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
@@ -74,7 +74,7 @@
     "value": "01KMGB8GX3B9B1XATWS557DYWW_.tt.1",
     "domain": ".topcv.vn",
     "path": "/",
-    "expires": 1808420121,
+    "expires": 1808654167,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
@@ -84,7 +84,7 @@
     "value": "fb.1.1774370178374.146100279756833160",
     "domain": ".topcv.vn",
     "path": "/",
-    "expires": 1782500121,
+    "expires": 1782734165,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
@@ -124,7 +124,7 @@
     "value": "2F5D4BB3FE616F4217565C95FF736E6C",
     "domain": ".c.bing.com",
     "path": "/",
-    "expires": 1808396873.337167,
+    "expires": 1808575926.778121,
     "httpOnly": false,
     "secure": true,
     "sameSite": "None"
@@ -150,26 +150,6 @@
     "sameSite": "None"
   },
   {
-    "name": "_taid",
-    "value": "Nrc8fV8eaB.1774512356974",
-    "domain": "www.topcv.vn",
-    "path": "/",
-    "expires": 1774810521,
-    "httpOnly": false,
-    "secure": false,
-    "sameSite": "Lax"
-  },
-  {
-    "name": "_gid",
-    "value": "GA1.2.1628979838.1774512358",
-    "domain": ".topcv.vn",
-    "path": "/",
-    "expires": 1774810521,
-    "httpOnly": false,
-    "secure": false,
-    "sameSite": "Lax"
-  },
-  {
     "name": "fr",
     "value": "0HXq90gIAB4uUfQVH..BpxPUm...1.0.BpxPUm.",
     "domain": ".facebook.com",
@@ -190,51 +170,71 @@
     "sameSite": "Lax"
   },
   {
-    "name": "CLID",
-    "value": "dcc21f3a298646f196fce7b97c704562.20260324.20270328",
-    "domain": "www.clarity.ms",
+    "name": "popup-ebook-cv",
+    "value": "1",
+    "domain": "www.topcv.vn",
     "path": "/",
-    "expires": 1806236866.47621,
-    "httpOnly": true,
+    "expires": 1774966301,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_taid",
+    "value": "IHYty62IWH.1774879901275",
+    "domain": "www.topcv.vn",
+    "path": "/",
+    "expires": 1775044566,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_tafp",
+    "value": "1db5fde9e8be68096c2eac06f39c9c94",
+    "domain": "www.topcv.vn",
+    "path": "/",
+    "expires": 1774966302,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "lidc",
+    "value": "\"b=VGST08:s=V:r=V:a=V:p=V:g=3406:u=1:x=1:i=1774879901:t=1774966301:v=2:sig=AQHzwnDhy5vpH0ZlKkuEenxPEzBVw-Jt\"",
+    "domain": ".linkedin.com",
+    "path": "/",
+    "expires": 1774966305.698721,
+    "httpOnly": false,
     "secure": true,
     "sameSite": "None"
   },
   {
     "name": "UserMatchHistory",
-    "value": "AQKTrDyvDVHQBgAAAZ00ahMNzPRKf1z1N68Duv0k6WmM8ixWHe2yexXlA-1N5aR5kk79vCCdGxd2qA",
+    "value": "AQJ5YNHEVlRI3gAAAZ0_FguPJc8UMPjKI1JOg9S4u2XiwYXfHA8ZmqAJ5SOz6KXH9y5aBcH0Fq4Dbw",
     "domain": ".linkedin.com",
     "path": "/",
-    "expires": 1777292868.805377,
+    "expires": 1777471906.457614,
     "httpOnly": false,
     "secure": true,
     "sameSite": "None"
   },
   {
     "name": "AnalyticsSyncHistory",
-    "value": "AQL3WIr7rprrnAAAAZ00ahMN8O0I4O8NCi5-s2p2bJKB6P8cKf0pWXtJsJqELvl5Xol8gcmz-bcNQ07R7jy0BA",
+    "value": "AQK9zhH6HZg01wAAAZ0_FguPpK_sJMoH3_GnZTAkAxSK7Gp170c-OeIfxgfXzkFaQAya1dGk3MukOLaNohaNOA",
     "domain": ".linkedin.com",
     "path": "/",
-    "expires": 1777292868.805501,
+    "expires": 1777471906.457688,
     "httpOnly": false,
     "secure": true,
     "sameSite": "None"
   },
   {
-    "name": "_clck",
-    "value": "hampk6%5E2%5Eg4q%5E0%5E2274",
+    "name": "_gid",
+    "value": "GA1.2.489502691.1774879907",
     "domain": ".topcv.vn",
     "path": "/",
-    "expires": 1806236869,
-    "httpOnly": false,
-    "secure": false,
-    "sameSite": "Lax"
-  },
-  {
-    "name": "popup-ebook-cv",
-    "value": "1",
-    "domain": "www.topcv.vn",
-    "path": "/",
-    "expires": 1774787272,
+    "expires": 1775044566,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
@@ -250,41 +250,41 @@
     "sameSite": "None"
   },
   {
-    "name": "_tafp",
-    "value": "1db5fde9e8be68096c2eac06f39c9c94",
-    "domain": "www.topcv.vn",
+    "name": "CLID",
+    "value": "dcc21f3a298646f196fce7b97c704562.20260324.20270331",
+    "domain": "www.clarity.ms",
     "path": "/",
-    "expires": 1774787277,
+    "expires": 1806460530.969388,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "_clck",
+    "value": "hampk6%5E2%5Eg4t%5E0%5E2274",
+    "domain": ".topcv.vn",
+    "path": "/",
+    "expires": 1806460539,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
-  },
-  {
-    "name": "lidc",
-    "value": "\"b=TGST09:s=T:r=T:a=T:p=T:g=3223:u=1:x=1:i=1774711966:t=1774798366:v=2:sig=AQGVhENEUbYUzsJxy1vybFCAboHZj7qY\"",
-    "domain": ".linkedin.com",
-    "path": "/",
-    "expires": 1774798375.331919,
-    "httpOnly": false,
-    "secure": true,
-    "sameSite": "None"
   },
   {
     "name": "appier",
     "value": "%7B%22event%22%3A%22job_searched%22%2C%22payload%22%3A%7B%22searched_keyword%22%3A%22%22%2C%22job_category%22%3A%22%22%2C%22company_category%22%3A%22%22%2C%22work_location%22%3A%22%22%7D%7D",
     "domain": ".topcv.vn",
     "path": "/",
-    "expires": 1774724719.39678,
+    "expires": 1774958793.322717,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
   },
   {
     "name": "cf_clearance",
-    "value": "LCsqlz_iwhreDcqiWjF5t2lGcPGU6VV.uou3d4fZ5yk-1774723516-1.2.1.1-6dy_ATwDMiWrxfywtO8m85eJ16bILqxbfp3Xey07bC9mmkHq2UcdGuw17ygOv2Iv_HCnQdfRhE0TaBQy_k19sPpFPAPZ5lZAbE1YrD7bh5VjJyv9zuVfQYjmiRbOfRHUcHpY7ogm9w9goi7B4KUqtgDjUXPVJyGPbQ2yjcQkqe7iUvzF8XasNc8i3bBu6Mnl5XSRy4Cs70m3HDDBkm29D1xeyM_IEsa5O1P4VnUduhM",
+    "value": "hqvsVTGiEU.VJl6WxHGxbKH8Ci0OBSZ05wKvMPsavY0-1774957862-1.2.1.1-02DxjoaH_b1pzU4hIhRRtaM8v.EsK4eRUsvz4PNO29zv_vigDGBxX1_3pCXzj0BWvXLi9YwcfjqdNiG7.DL.9dd5nzB57WD.wy8Hu9Yn3WHD7bWDzktVeCVQi3YwP_ahisLonLKzgbLMQAdV0f4nf__GKbqgFykjzWKOuUn2lGvAQoC9gbLSW3uuTVhSk9lu57uHx4hZmVyH.uIIgtw6ITY7Cs2WMQ_zgvEd0L0Qc0M",
     "domain": ".topcv.vn",
     "path": "/",
-    "expires": 1806259516.540826,
+    "expires": 1806493866.850057,
     "httpOnly": true,
     "secure": true,
     "sameSite": "None",
@@ -292,102 +292,92 @@
     "_crHasCrossSiteAncestor": false
   },
   {
-    "name": "_gat_UA-55579411-1",
-    "value": "1",
-    "domain": ".topcv.vn",
-    "path": "/",
-    "expires": 1774724174,
-    "httpOnly": false,
-    "secure": false,
-    "sameSite": "Lax"
-  },
-  {
     "name": "_ga",
     "value": "GA1.2.1945016027.1774370175",
     "domain": ".topcv.vn",
     "path": "/",
-    "expires": 1809284121.642854,
-    "httpOnly": false,
-    "secure": false,
-    "sameSite": "Lax"
-  },
-  {
-    "name": "XSRF-TOKEN",
-    "value": "eyJpdiI6ImlOVEJHeWpCVnhlL1RSNmRYVC85Y1E9PSIsInZhbHVlIjoiMkdLVzBKM2VWZGlMZWhzWm9pQUY4QlpoVWJkWEJqQkxRaFhEQWQ4ZytySWFjK0hneU9wU0JHdnZjblpiN3lvc2kvSU10S2ZUNGxRMFJEWS8xUU9Rd3pyZEhDc3RPZkJacGFyK09tU3dFWGZMQXJGVzJsbUJJMVRHY04zWEc4N2QiLCJtYWMiOiJiMDE0MGRiZWE1ZGVlMDlkNzZiYTYyOWVkMjEzMDEzZDc3MzIyN2I5Mjc3MDUzOGVlNTk4Nzg0OTE2ZWVkYWIwIiwidGFnIjoiIn0%3D",
-    "domain": ".topcv.vn",
-    "path": "/",
-    "expires": 1782500121.756584,
-    "httpOnly": false,
-    "secure": false,
-    "sameSite": "Lax"
-  },
-  {
-    "name": "topcv_session",
-    "value": "eyJpdiI6Imk1Wk1OZWJaaEN3WjZMZlZFa00vQ3c9PSIsInZhbHVlIjoic1JpZnduU3YycVVSMm1JRDdQVCs1V0Z1bEtiYWNrNWhTaFQ0aFNLSUduc2lKWU9pY3A5WWRNS0FGSi9WTUk5UVVtakpqYkwzUC9LaUVxTVBrWlEvbmVFUkpOQjRqVWRUMnhOYkhDMG9ONjVBczZkcFB3RTliQWg3OWhmb3FUdWwiLCJtYWMiOiIwMjBhYzEzZjZlODI1NmY5NTBiZjk0YjEwNTE5ZTk2MzQyNTA1OGUzZjg3NjA0YWQ4YmQ5MmVlY2NjYzk4NGM5IiwidGFnIjoiIn0%3D",
-    "domain": ".topcv.vn",
-    "path": "/",
-    "expires": 1782500121.756859,
-    "httpOnly": true,
-    "secure": false,
-    "sameSite": "Lax"
-  },
-  {
-    "name": "_clsk",
-    "value": "1hl7nj9%5E1774724122223%5E93%5E1%5En.clarity.ms%2Fcollect",
-    "domain": ".topcv.vn",
-    "path": "/",
-    "expires": 1774810522,
-    "httpOnly": false,
-    "secure": false,
-    "sameSite": "Lax"
-  },
-  {
-    "name": "_clsk",
-    "value": "1hl7nj9%5E1774724122223%5E93%5E1%5En.clarity.ms%2Fcollect",
-    "domain": ".www.topcv.vn",
-    "path": "/",
-    "expires": 1774810522,
-    "httpOnly": false,
-    "secure": false,
-    "sameSite": "Lax"
-  },
-  {
-    "name": "_clsk",
-    "value": "1hl7nj9%5E1774724122223%5E93%5E1%5En.clarity.ms%2Fcollect",
-    "domain": "www.topcv.vn",
-    "path": "/",
-    "expires": 1774810522,
+    "expires": 1809518166.142446,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
   },
   {
     "name": "ttcsid",
-    "value": "1774722031807::m1Uja99U7qIdxS4BMRvQ.18.1774724122367.0",
+    "value": "1774957138660::-89A4DgLFcHTX2eadcxI.26.1774958167473.0::1.1021325.1028481::0.0.0.0::92337.95.3491",
     "domain": ".topcv.vn",
     "path": "/",
-    "expires": 1808420122,
+    "expires": 1808654167,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
   },
   {
     "name": "ttcsid_D0FPAFRC77UA600KP0E0",
-    "value": "1774722031806::LCYnwg0LslJpnyN9-UWi.18.1774724122367.1",
+    "value": "1774957138658::kAkKbdwWlzZyWZqHL0_T.26.1774958167474.1",
     "domain": ".topcv.vn",
     "path": "/",
-    "expires": 1808420122,
+    "expires": 1808654167,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_clsk",
+    "value": "1stf12g%5E1774958170373%5E53%5E0%5El.clarity.ms%2Fcollect",
+    "domain": ".topcv.vn",
+    "path": "/",
+    "expires": 1775044570,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_clsk",
+    "value": "1stf12g%5E1774958170373%5E53%5E0%5El.clarity.ms%2Fcollect",
+    "domain": ".www.topcv.vn",
+    "path": "/",
+    "expires": 1775044570,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_clsk",
+    "value": "1stf12g%5E1774958170373%5E53%5E0%5El.clarity.ms%2Fcollect",
+    "domain": "www.topcv.vn",
+    "path": "/",
+    "expires": 1775044570,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
   },
   {
     "name": "_ga_F385SHE0Y3",
-    "value": "GS2.1.s1774722028$o10$g1$t1774724124$j20$l0$h0",
+    "value": "GS2.1.s1774951037$o15$g1$t1774958170$j2$l0$h0",
     "domain": ".topcv.vn",
     "path": "/",
-    "expires": 1809284124.659169,
+    "expires": 1809518170.635295,
     "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "XSRF-TOKEN",
+    "value": "eyJpdiI6IkdRdlZ0T1FVRkpyaytNRm4xWitPOEE9PSIsInZhbHVlIjoicGZSZGxxYnkvdW1xRFFYUmpYakkxUk1JcEpmeU5PbEFXWU9qb05XMDRLa2dXUURMZDhEcU9kaTVnRTI3NDVzbDJUdGpKb2dtcGt6ZnAyMWc4SWJHZjZCTmF0cHJxOXlSMXdHNkkxTmNuOXNCWHpBdER0ellMb2RFNGg0SnJTUjciLCJtYWMiOiJlMjI3MWJkZWUzM2MyNDgyMGI0MjQ1YzA2YzY4YTU4OTFiZDlhNDQ5MTlmZTkwMTFmMzRkOWI0OGU1NTZmMDViIiwidGFnIjoiIn0%3D",
+    "domain": ".topcv.vn",
+    "path": "/",
+    "expires": 1782734193.32225,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "topcv_session",
+    "value": "eyJpdiI6IjVGbm1EcVpuSURCWk5ZL2F5bW1EeUE9PSIsInZhbHVlIjoia3ljc1BXNGlNSEJneDJmY3ZlVVBGSVNKazNod3dacDlRK01GQ3lqcTZBTUFKejdXR1R4OFJ3dXJwbUJxejduc3VlNXpBN01CcFNQMTFxa2xJb1hjVTRQWUgwcEZkSTJYYm5rRCtveDNmVkpGdnIrOFRQZmEvdy9XMVZVR0JJSGsiLCJtYWMiOiI2ODA3M2ExMzdkYWQ0MjkyODNkNjk4Y2IyNmQ1MDhmOWZkNWM3OGNhMDUxNDE0ZjBjMDAxZGQxMGJmMzE2YzUzIiwidGFnIjoiIn0%3D",
+    "domain": ".topcv.vn",
+    "path": "/",
+    "expires": 1782734193.322538,
+    "httpOnly": true,
     "secure": false,
     "sameSite": "Lax"
   }

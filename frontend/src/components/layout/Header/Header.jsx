@@ -66,7 +66,7 @@ const DD_MENU = [
 
       { ico: '🔔', label: 'Thông báo', path: '/notifications' },
       { ico: '💳', label: 'Gói dịch vụ', tag: 'Pro' },
-      { ico: '⚙️', label: 'Cài đặt tài khoản', path: '/profile' },
+      { ico: '⚙️', label: 'Cài đặt tài khoản', path: '/settings' },
       { ico: '🚪', label: 'Đăng xuất'}
     ],
   }

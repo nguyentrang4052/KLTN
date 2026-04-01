@@ -2,13 +2,14 @@
 .sidebar {
   width: 220px;
   flex-shrink: 0;
-  background: var(--ink);
+  background: whitesmoke;
   display: flex;
   flex-direction: column;
-  padding: 16px 10px;
-  gap: 2px;
+  padding: 40px 10px;
+  gap: 5px;
   overflow-y: auto;
-  /* margin-top: 30px; */
+  border-right: 1px solid #604f46;
+
 }
 
 .sb-logo {
@@ -25,34 +26,43 @@
 }
 
 .sb-section {
-  font-size: 10px;
-  color: #555;
-  font-weight: 700;
+  font-size: 14px;
+  color: black;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1.2px;
   padding: 12px 12px 4px;
 }
 
+.sb-divider {
+  display: flex;
+  flex-direction: column;
+  border: #6B5E50 1px solid;
+  border-radius: 5%;
+}
+
+
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 15px;
   padding: 9px 12px;
   border-radius: 8px;
   cursor: pointer;
-  color: #aaa;
-  font-size: 13px;
+  color: black;
+  font-size: 15px;
   font-weight: 500;
   transition: all 0.18s;
 }
 
 .nav-item:hover {
-  background: #1e1a16;
+  border: #5f3508 1px solid;
+  background: #6589dd;
   color: #ddd;
 }
 
 .nav-item.active {
-  background: var(--rust);
+  background: rgb(35, 42, 162);
   color: #fff;
 }
 

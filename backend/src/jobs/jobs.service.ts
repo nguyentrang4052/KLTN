@@ -5,7 +5,7 @@ import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class JobsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async getJobs(dto: QueryJobsDto, accountID?: number) {
     const {
@@ -399,15 +399,37 @@ export class JobsService {
     });
   }
 
-  async getSavedJobs(accountID: number) {
+  async getSavedJobs(dto: QueryJobsDto, accountID: number) {
     const user = await this.prisma.user.findUnique({ where: { accountID } });
+    const {
+      page = 1,
+      limit = 9,
+    } = dto;
+
     if (!user) throw new Error('User not found');
 
-    return this.prisma.savedJob.findMany({
-      where: { userID: user.userID },
-      include: { job: { include: { company: true } } },
-      orderBy: { savedAt: 'desc' },
+    const skip = (page - 1) * limit;
+
+    const total = await this.prisma.savedJob.count({
+      where: { userID: user.userID }
     });
+
+    const savedJobs = await this.prisma.savedJob.findMany({
+      where: { userID: user.userID },
+      include: {
+        job: {
+          include: { company: true },
+        },
+      },
+      orderBy: { savedAt: 'desc' },
+      skip,
+      take: limit,
+    });
+
+    return {
+      data: savedJobs,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   async getFilterOptions() {

@@ -47,8 +47,8 @@ export class JobsController {
 
   @Get('saved')
   @UseGuards(JwtAuthGuard)
-  getSavedJobs(@GetUser() user: JwtUser) {
-    return this.jobsService.getSavedJobs(user.sub);
+  getSavedJobs(@Query() dto: QueryJobsDto, @GetUser() user: JwtUser) {
+    return this.jobsService.getSavedJobs(dto, user.sub);
   }
 
   @Get('filter-options')

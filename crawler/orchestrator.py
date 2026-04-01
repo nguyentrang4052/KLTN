@@ -107,7 +107,7 @@ async def _process_platform(p, platform: str, CrawlerClass, query: str) -> int:
             print(f"[{platform}/{cat_name}] Không có link nào")
             continue
 
-        print(f"[{platform}/{cat_name}] Lấy được {len(current_links)} links từ web")
+        print(f"[{platform}/{cat_name}] Lấy được {len(current_links)} links từ web" )
 
         # Xác định links thực sự mới (chưa từng thấy trong cache)
         truly_new_links, _ = await redis_service.get_new_links_only(
@@ -146,6 +146,16 @@ async def _process_platform(p, platform: str, CrawlerClass, query: str) -> int:
                 if not raw:
                     print(f"[{platform}] ❌ Crawl failed (no data): {link[:60]}")
                     continue  # KHÔNG thêm vào success, sẽ thử lại lần sau
+
+                # ── THÊM MỚI: kiểm tra trùng nội dung ──────────────────────
+                is_dup, original_link = await redis_service.check_and_store_fingerprint(raw, link)
+                if is_dup:
+                    print(f"[{platform}] ♻️  Trùng nội dung với: {(original_link or '')[:60]}")
+                    print(f"[{platform}]    Bỏ qua: {link[:60]}")
+                    # Vẫn đánh dấu link này là đã "xử lý" để không crawl lại
+                    await redis_service.mark_as_crawled(platform, link)
+                    category_success_links.append(link)
+                    continue
 
                 # Thêm metadata
                 raw["industrySourcePlatform"] = PLATFORM_NAMES.get(platform, platform)
