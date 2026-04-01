@@ -1,7 +1,17 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './CompaniesScreen.css'
 
 const API = 'http://localhost:3000/api'
+
+const COMPANY_SIZES = [
+  { value: 'Dưới 10 người', label: 'Dưới 10 người' },
+  { value: '10-50 người', label: '10 – 50 người' },
+  { value: '50-100 người', label: '50 – 100 người' },
+  { value: '100-500 người', label: '100 – 500 người' },
+  { value: '500-1000 người', label: '500 – 1.000 người' },
+  { value: 'Trên 1000 người', label: 'Trên 1.000 người' },
+]
 
 const LOGO_COLORS = [
   'linear-gradient(135deg,#D0392A,#E05A40)',
@@ -40,9 +50,13 @@ function CompanyLogo({ company }) {
   )
 }
 
-function CompanyCard({ company, listView, onFollow, following }) {
+function CompanyCard({ company, listView, onClick }) {
   return (
-    <div className={`cs-card${listView ? ' list-card' : ''}`}>
+    <div
+      className={`cs-card${listView ? ' list-card' : ''}`}
+      onClick={() => onClick(company.companyID)}
+      style={{ cursor: 'pointer' }}
+    >
       <div className="cs-card__cover"
         style={{ background: getLogoColor(company.name) + ', linear-gradient(135deg,#1a3a6a,#2e6da8)' }} />
 
@@ -62,20 +76,16 @@ function CompanyCard({ company, listView, onFollow, following }) {
         <div className="cs-card__jobs-cta">
           {company.jobCount} việc làm <span>đang tuyển</span>
         </div>
-        {/* <button
-          className={`cs-card__follow-btn${following ? ' following' : ''}`}
-          onClick={e => { e.stopPropagation(); onFollow(company.companyID) }}>
-          {following ? '✓ Đang theo dõi' : '+ Theo dõi'}
-        </button> */}
       </div>
     </div>
   )
 }
 
 export default function CompaniesScreen() {
+  const navigate = useNavigate()
+
   const [companies, setCompanies] = useState([])
   const [topCompanies, setTopCompanies] = useState([])
-  const [sizes, setSizes] = useState([])
   const [meta, setMeta] = useState({ total: 0, totalPages: 1 })
   const [provinces, setProvinces] = useState([])
   const [provinceSearch, setProvinceSearch] = useState('')
@@ -89,18 +99,15 @@ export default function CompaniesScreen() {
   const [sort, setSort] = useState('jobs')
   const [page, setPage] = useState(1)
   const [listView, setListView] = useState(false)
-  const [following, setFollowing] = useState(new Set())
   const [loadingCompanies, setLoadingCompanies] = useState(false)
 
   useEffect(() => {
     Promise.all([
       fetch(`${API}/companies/top`).then(r => r.json()),
-      fetch(`${API}/companies/sizes`).then(r => r.json()),
       fetch(`${API}/common/locations`).then(r => r.json()),
     ])
-      .then(([top, szData, provs]) => {
+      .then(([top, provs]) => {
         setTopCompanies(Array.isArray(top) ? top : [])
-        setSizes(Array.isArray(szData) ? szData : [])
         setProvinces(Array.isArray(provs) ? provs : [])
       })
       .catch(console.error)
@@ -108,16 +115,9 @@ export default function CompaniesScreen() {
 
   const fetchCompanies = useCallback(() => {
     setLoadingCompanies(true)
-
-    const params = new URLSearchParams({
-      page: String(page),
-      limit: '9',
-      sort
-    })
-
+    const params = new URLSearchParams({ page: String(page), limit: '9', sort })
     if (keyword) params.set('keyword', keyword)
     if (selectedLocations.length > 0) params.set('location', selectedLocations[0])
-
     const activeSize = Object.entries(checkedSize).find(([, v]) => v)?.[0]
     if (activeSize) params.set('size', activeSize)
 
@@ -129,23 +129,27 @@ export default function CompaniesScreen() {
       })
       .catch(console.error)
       .finally(() => setLoadingCompanies(false))
-
   }, [page, sort, keyword, selectedLocations, checkedSize])
 
+  useEffect(() => { fetchCompanies() }, [fetchCompanies])
+
+  const isFirstRender = useRef(true)
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return }
+    setPage(1)
+  }, [selectedLocations, checkedSize, keyword, sort])
 
   useEffect(() => {
-    fetchCompanies()
-  }, [fetchCompanies])
+    const updateDropdownPos = () => {
+      if (provinceDropdownOpen && provinceInputRef.current) {
+        const rect = provinceInputRef.current.getBoundingClientRect()
+        setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width })
+      }
+    }
 
-
-  const toggleFollow = (companyID) => {
-    setFollowing(prev => {
-      const next = new Set(prev)
-      next.has(companyID) ? next.delete(companyID) : next.add(companyID)
-      return next
-    })
-  }
-
+    window.addEventListener('scroll', updateDropdownPos, true)
+    return () => window.removeEventListener('scroll', updateDropdownPos, true)
+  }, [provinceDropdownOpen])
 
   const toggleLocation = (loc) => {
     setSelectedLocations(prev =>
@@ -154,18 +158,8 @@ export default function CompaniesScreen() {
   }
 
   const toggleSize = (key) => {
-    setCheckedSize(prev => ({ ...prev, [key]: !prev[key] }))
+    setCheckedSize(prev => ({ [key]: !prev[key] }))
   }
-
-  const isFirstRender = useRef(true)
-  useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false
-      return
-    }
-    setPage(1)
-    fetchCompanies()
-  }, [selectedLocations, checkedSize, keyword, sort])
 
   const clearFilters = () => {
     setSelectedLocations([])
@@ -183,6 +177,10 @@ export default function CompaniesScreen() {
   const filteredProvinces = provinces.filter(p =>
     p.label.toLowerCase().includes(provinceSearch.toLowerCase())
   )
+
+  const goToCompany = (companyID) => {
+    navigate(`/companies/${companyID}`)
+  }
 
   const renderPages = () => {
     const pages = []
@@ -223,8 +221,8 @@ export default function CompaniesScreen() {
           {filteredProvinces.map(p => (
             <div key={p.value} style={{
               padding: '8px 12px', fontSize: '12.5px', cursor: 'pointer',
-              background: selectedLocations.includes(p.value) ? 'rgba(192,65,42,0.08)' : 'transparent',
-              color: selectedLocations.includes(p.value) ? '#C0412A' : '#1C1510',
+              background: selectedLocations.includes(p.value) ? 'rgba(35,42,162,0.08)' : 'transparent',
+              color: selectedLocations.includes(p.value) ? 'rgb(35,42,162)' : '#1C1510',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             }} onMouseDown={e => {
               e.preventDefault()
@@ -233,7 +231,7 @@ export default function CompaniesScreen() {
             }}>
               <span>{p.label}</span>
               {selectedLocations.includes(p.value) && (
-                <span style={{ color: '#C0412A', fontWeight: 700 }}>✓</span>
+                <span style={{ color: 'rgb(35,42,162)', fontWeight: 700 }}>✓</span>
               )}
             </div>
           ))}
@@ -256,19 +254,9 @@ export default function CompaniesScreen() {
               <input type="text" placeholder="Tên công ty"
                 value={keyword}
                 onChange={e => setKeyword(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') {
-                    setPage(1)
-                    fetchCompanies()
-                  }
-                }} />
+                onKeyDown={e => { if (e.key === 'Enter') { setPage(1); fetchCompanies() } }} />
             </div>
-            <button
-              className="cs-hero__search-btn"
-              onClick={() => {
-                setPage(1)
-                fetchCompanies()
-              }}>
+            <button className="cs-hero__search-btn" onClick={() => { setPage(1); fetchCompanies() }}>
               🔍 Tìm kiếm
             </button>
           </div>
@@ -284,17 +272,14 @@ export default function CompaniesScreen() {
 
           <div className="cs-sb-section">
             <div className="cs-sb-sec-title">Quy mô công ty</div>
-            {sizes.length === 0
-              ? <div style={{ fontSize: '12px', color: '#9A8D80' }}>Đang tải...</div>
-              : sizes.map(s => (
-                <div key={s.value} className="cs-ck-row" onClick={() => toggleSize(s.value)}>
-                  <div className={`cs-ck${checkedSize[s.value] ? ' on' : ''}`}>
-                    {checkedSize[s.value] ? '✓' : ''}
-                  </div>
-                  <span className="cs-ck-label">{s.value}</span>
-                  <span className="cs-ck-count">{s.count}</span>
+            {COMPANY_SIZES.map(s => (
+              <div key={s.value} className="cs-ck-row" onClick={() => toggleSize(s.value)}>
+                <div className={`cs-ck${checkedSize[s.value] ? ' on' : ''}`}>
+                  {checkedSize[s.value] ? '✓' : ''}
                 </div>
-              ))}
+                <span className="cs-ck-label">{s.label}</span>
+              </div>
+            ))}
           </div>
 
           <div className="cs-sb-section">
@@ -305,8 +290,8 @@ export default function CompaniesScreen() {
                   <span key={loc} style={{
                     display: 'inline-flex', alignItems: 'center', gap: '4px',
                     padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
-                    background: 'rgba(192,65,42,0.1)', border: '1px solid rgba(192,65,42,0.25)',
-                    color: '#C0412A', cursor: 'pointer',
+                    background: 'rgba(35,42,162,0.1)', border: '1px solid rgba(35,42,162,0.25)',
+                    color: 'rgb(35,42,162)', cursor: 'pointer',
                   }} onClick={() => toggleLocation(loc)}>
                     {loc} <span style={{ fontSize: '13px' }}>×</span>
                   </span>
@@ -338,7 +323,12 @@ export default function CompaniesScreen() {
               </div>
               <div className="cs-feat-row">
                 {topCompanies.map(c => (
-                  <div key={c.companyID} className="cs-feat-card">
+                  <div
+                    key={c.companyID}
+                    className="cs-feat-card"
+                    onClick={() => goToCompany(c.companyID)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <div className="cs-feat-logo" style={{ background: getLogoColor(c.name) }}>
                       {c.logo
                         ? <img src={c.logo} alt={c.name}
@@ -360,16 +350,13 @@ export default function CompaniesScreen() {
               Tìm thấy <strong>{meta.total} công ty</strong> phù hợp
             </div>
             <div className="cs-toolbar-right">
-              <select className="cs-sort-sel" value={sort}
-                onChange={e => setSort(e.target.value)}>
+              <select className="cs-sort-sel" value={sort} onChange={e => setSort(e.target.value)}>
                 <option value="jobs">Nhiều việc làm nhất</option>
                 <option value="name">Tên A–Z</option>
               </select>
               <div className="cs-view-btns">
-                <button className={`cs-view-btn${!listView ? ' on' : ''}`}
-                  onClick={() => setListView(false)}>⊞</button>
-                <button className={`cs-view-btn${listView ? ' on' : ''}`}
-                  onClick={() => setListView(true)}>☰</button>
+                <button className={`cs-view-btn${!listView ? ' on' : ''}`} onClick={() => setListView(false)}>⊞</button>
+                <button className={`cs-view-btn${listView ? ' on' : ''}`} onClick={() => setListView(true)}>☰</button>
               </div>
             </div>
           </div>
@@ -389,8 +376,7 @@ export default function CompaniesScreen() {
                   key={c.companyID}
                   company={c}
                   listView={listView}
-                  following={following.has(c.companyID)}
-                  onFollow={toggleFollow}
+                  onClick={goToCompany}
                 />
               ))}
             </div>
@@ -398,11 +384,9 @@ export default function CompaniesScreen() {
 
           {meta.totalPages > 1 && (
             <div className="cs-pagination">
-              <button className="cs-pg-btn"
-                disabled={page === 1} onClick={() => setPage(p => p - 1)}>‹</button>
+              <button className="cs-pg-btn" disabled={page === 1} onClick={() => setPage(p => p - 1)}>‹</button>
               {renderPages()}
-              <button className="cs-pg-btn"
-                disabled={page === meta.totalPages} onClick={() => setPage(p => p + 1)}>›</button>
+              <button className="cs-pg-btn" disabled={page === meta.totalPages} onClick={() => setPage(p => p + 1)}>›</button>
             </div>
           )}
         </main>

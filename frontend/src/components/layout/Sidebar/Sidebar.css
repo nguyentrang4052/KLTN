@@ -2,7 +2,7 @@
 .sidebar {
   width: 220px;
   flex-shrink: 0;
-  background: var(--ink);
+  background: var(--bg2);
   display: flex;
   flex-direction: column;
   padding: 16px 10px;
@@ -15,13 +15,13 @@
   font-family: 'Roboto', serif;
   font-size: 22px;
   font-weight: 700;
-  color: var(--amber2);
+  color: rgb(35, 42, 162);
   padding: 8px 12px 20px;
   letter-spacing: -0.5px;
 }
 
 .sb-logo span {
-  color: var(--rust2);
+  color: rgb(35, 42, 162);;
 }
 
 .sb-section {
@@ -40,19 +40,19 @@
   padding: 9px 12px;
   border-radius: 8px;
   cursor: pointer;
-  color: #aaa;
+  color: black;
   font-size: 13px;
   font-weight: 500;
   transition: all 0.18s;
 }
 
 .nav-item:hover {
-  background: #1e1a16;
+  background: rgb(35, 42, 162);
   color: #ddd;
 }
 
 .nav-item.active {
-  background: var(--rust);
+  background: rgb(35, 42, 162);
   color: #fff;
 }
 
@@ -87,7 +87,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--rust), var(--amber));
+  background: rgb(189, 114, 71);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -100,7 +100,7 @@
 .av-name {
   font-size: 12px;
   font-weight: 600;
-  color: #ddd;
+  color: black;
 }
 
 .av-role {

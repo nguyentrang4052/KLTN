@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { CompaniesService } from './companies.service';
 import { QueryCompaniesDto } from '../dto/companies.dto';
 
@@ -24,5 +24,10 @@ export class CompaniesController {
   @Get('sizes')
   getSizes() {
     return this.companiesService.getSizes();
+  }
+
+  @Get(':id')
+  getCompanyById(@Param('id', ParseIntPipe) id: number) {
+    return this.companiesService.getCompanyById(id);
   }
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './ProfileScreen.css'
 import Sidebar from '../../layout/Sidebar/Sidebar'
@@ -14,18 +14,15 @@ const AI_INSIGHTS = [
   { icon: '⚡', text: 'Bạn apply trong 24h đầu khi lương >30tr', source: 'Từ 14 lần apply' },
   { icon: '🏢', text: 'Ưu tiên Fintech và E-commerce hơn 60%', source: 'Phân tích toàn lịch sử' },
 ]
-
 const AI_PREFERENCES = [
   { key: 'Ngành ưu tiên', value: 'Fintech, E-commerce, SaaS' },
   { key: 'Quy mô công ty', value: '100 – 1,000 người' },
   { key: 'Ngôn ngữ làm việc', value: 'Việt / English' },
 ]
-
 const AI_TOGGLES = [
   { key: 'Thông báo việc mới', active: true },
   { key: 'Auto apply khi match >90%', active: false },
 ]
-
 const CONNECTED_ACCOUNTS = [
   { name: 'TopCV', code: 'T', color: '#00B14F', connected: true },
   { name: 'CareerLink', code: 'C', color: '#D0392A', connected: true },
@@ -35,17 +32,20 @@ const CONNECTED_ACCOUNTS = [
 function ProfileScreen({ onNavigate }) {
   const navigate = useNavigate()
   const token = getToken()
+  const authRef = useRef({
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+  })
 
   const [profile, setProfile] = useState(null)
   const [stats, setStats] = useState(null)
   const [allSkills, setAllSkills] = useState([])
+  const [industries, setIndustries] = useState([])
   const [skillSearch, setSkillSearch] = useState('')
   const [showSkillDropdown, setShowSkillDropdown] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
-  const [industries, setIndustries] = useState([])
-
 
   const [personalForm, setPersonalForm] = useState({
     fullName: '', birthYear: '', phone: '', gender: 'Nam', address: '',
@@ -55,94 +55,110 @@ function ProfileScreen({ onNavigate }) {
     expectedSalary: '', workingType: '', industryId: '',
   })
 
-  const authHeaders = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-  }
-
-  const fetchProfile = useCallback(async () => {
+  const fetchProfile = useCallback(async (syncForm = true) => {
     if (!token) { setLoading(false); return }
-    setLoading(true)
+    if (syncForm) setLoading(true)
     try {
-      const res = await fetch(`${API}/profile/me`, { headers: authHeaders })
+      const res = await fetch(`${API}/profile/me`, { headers: authRef.current })
       if (!res.ok) throw new Error('Unauthorized')
       const data = await res.json()
       setProfile(data)
-      setPersonalForm({
-        fullName: data.fullName ?? '',
-        birthYear: data.birthYear ?? '',
-        phone: data.phone ?? '',
-        gender: data.gender ?? 'Nam',
-        address: data.address ?? '',
-      })
-      setCareerForm({
-        jobTitle: data.jobTitle ?? '',
-        experienceYear: data.experienceYear ?? '',
-        careerLevel: data.careerLevel ?? '',
-        expectedSalary: data.expectedSalary ?? '',
-        workingType: data.workingType ?? '',
-        industryId: data.industry?.id ?? '',
-      })
+      if (syncForm) {
+        setPersonalForm({
+          fullName: data.fullName ?? '',
+          birthYear: data.birthYear ?? '',
+          phone: data.phone ?? '',
+          gender: data.gender ?? 'Nam',
+          address: data.address ?? '',
+        })
+        setCareerForm({
+          jobTitle: data.jobTitle ?? '',
+          experienceYear: data.experienceYear ?? '',
+          careerLevel: data.careerLevel ?? '',
+          expectedSalary: data.expectedSalary ?? '',
+          workingType: data.workingType ?? '',
+          industryId: data.industry?.id ?? '',
+        })
+      }
     } catch (err) {
       console.error('fetchProfile:', err)
     } finally {
-      setLoading(false)
+      if (syncForm) setLoading(false)
     }
   }, [token])
 
   const fetchStats = useCallback(async (userID) => {
     try {
-      const res = await fetch(`${API}/profile/${userID}/stats`, { headers: authHeaders })
-      const data = await res.json()
-      setStats(data)
-    } catch (err) {
-      console.error('fetchStats:', err)
-    }
-  }, [token])
+      const res = await fetch(`${API}/profile/${userID}/stats`, { headers: authRef.current })
+      setStats(await res.json())
+    } catch (err) { console.error('fetchStats:', err) }
+  }, [])
 
   const fetchAllSkills = useCallback(async () => {
     try {
       const res = await fetch(`${API}/profile/skills/all`)
       const data = await res.json()
       setAllSkills(Array.isArray(data) ? data : [])
-    } catch (err) {
-      console.error('fetchAllSkills:', err)
-    }
-  }, [])
-  useEffect(() => {
-    fetch(`${API}/industries`)
-      .then(res => res.json())
-      .then(data => setIndustries(Array.isArray(data) ? data : []))
-      .catch(console.error)
+    } catch (err) { console.error('fetchAllSkills:', err) }
   }, [])
 
-  useEffect(() => { fetchProfile() }, [fetchProfile])
+  const fetchIndustries = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/industries`)
+      const data = await res.json()
+      setIndustries(Array.isArray(data) ? data : [])
+    } catch (err) { console.error('fetchIndustries:', err) }
+  }, [])
+
   useEffect(() => {
-    if (profile?.userID) { fetchStats(profile.userID); fetchAllSkills() }
+    fetchProfile(true)
+    fetchAllSkills()
+    fetchIndustries()
+  }, [])
+
+  useEffect(() => {
+    if (profile?.userID) fetchStats(profile.userID)
   }, [profile?.userID])
 
   const handleUploadAvatar = async (e) => {
     const file = e.target.files[0]
     if (!file || !profile?.userID) return
-
     const formData = new FormData()
     formData.append('file', file)
-
     try {
       const res = await fetch(`${API}/profile/${profile.userID}/avatar`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
         body: formData,
       })
-
       if (!res.ok) throw new Error()
 
-      fetchProfile()
-    } catch {
-      alert('Upload ảnh thất bại')
-    }
+      const updatedRes = await fetch(`${API}/profile/me`, { headers: authRef.current })
+      const updatedData = await updatedRes.json()
+
+      setProfile(updatedData)
+      window.dispatchEvent(new CustomEvent('userProfileUpdated', { detail: updatedData }))
+
+    } catch { alert('Upload ảnh thất bại') }
+  }
+
+
+  const handleRemoveAvatar = async () => {
+    if (!profile?.userID) return
+    try {
+      const res = await fetch(`${API}/profile/${profile.userID}/avatar`, {
+        method: 'DELETE',
+        headers: authRef.current,
+      })
+      if (!res.ok) throw new Error()
+
+      const updatedRes = await fetch(`${API}/profile/me`, { headers: authRef.current })
+      const updatedData = await updatedRes.json()
+
+      setProfile(updatedData)
+      window.dispatchEvent(new CustomEvent('userProfileUpdated', { detail: updatedData }))
+
+    } catch { alert('Xóa ảnh thất bại') }
   }
 
   const handleSave = async () => {
@@ -151,30 +167,35 @@ function ProfileScreen({ onNavigate }) {
     try {
       const [r1, r2] = await Promise.all([
         fetch(`${API}/profile/${profile.userID}`, {
-          method: 'PUT', headers: authHeaders,
+          method: 'PUT',
+          headers: authRef.current,
           body: JSON.stringify({
-            fullName: personalForm.fullName || undefined,
-            birthYear: personalForm.birthYear ? Number(personalForm.birthYear) : undefined,
-            phone: personalForm.phone || undefined,
-            gender: personalForm.gender || undefined,
-            address: personalForm.address || undefined,
+            fullName: personalForm.fullName || null,
+            birthYear: personalForm.birthYear ? Number(personalForm.birthYear) : null,
+            phone: personalForm.phone || null,
+            gender: personalForm.gender || null,
+            address: personalForm.address || null,
           }),
         }),
         fetch(`${API}/profile/${profile.userID}/user-profile`, {
-          method: 'PUT', headers: authHeaders,
+          method: 'PUT',
+          headers: authRef.current,
           body: JSON.stringify({
-            jobTitle: careerForm.jobTitle || undefined,
-            experienceYear: careerForm.experienceYear || undefined,
-            careerLevel: careerForm.careerLevel || undefined,
-            expectedSalary: careerForm.expectedSalary || undefined,
-            workingType: careerForm.workingType || undefined,
-            industryId: careerForm.industryId ? Number(careerForm.industryId) : undefined,
+            jobTitle: careerForm.jobTitle || null,
+            experienceYear: careerForm.experienceYear || null,
+            careerLevel: careerForm.careerLevel || null,
+            expectedSalary: careerForm.expectedSalary || null,
+            workingType: careerForm.workingType || null,
+            industryId: careerForm.industryId ? Number(careerForm.industryId) : null,
           }),
         }),
       ])
       if (!r1.ok || !r2.ok) throw new Error('Save failed')
       setSaveMsg('✓ Đã lưu thành công')
-      fetchProfile()
+      const updatedRes = await fetch(`${API}/profile/me`, { headers: authRef.current })
+      const updatedData = await updatedRes.json()
+      setProfile(updatedData)
+      window.dispatchEvent(new CustomEvent('userProfileUpdated', { detail: updatedData }))
     } catch {
       setSaveMsg('✗ Lưu thất bại')
     } finally {
@@ -187,10 +208,10 @@ function ProfileScreen({ onNavigate }) {
     if (!profile?.userID) return
     try {
       await fetch(`${API}/profile/${profile.userID}/skills/${skill.skillID}`, {
-        method: 'POST', headers: authHeaders,
+        method: 'POST', headers: authRef.current,
       })
       setSkillSearch(''); setShowSkillDropdown(false)
-      fetchProfile()
+      fetchProfile(false)
     } catch (err) { console.error(err) }
   }
 
@@ -198,19 +219,23 @@ function ProfileScreen({ onNavigate }) {
     if (!profile?.userID) return
     try {
       await fetch(`${API}/profile/${profile.userID}/skills/${skillID}`, {
-        method: 'DELETE', headers: authHeaders,
+        method: 'DELETE', headers: authRef.current,
       })
-      fetchProfile()
+      fetchProfile(false)
     } catch (err) { console.error(err) }
   }
 
-  const filteredSkills = allSkills.filter(s =>
-    s.name.toLowerCase().includes(skillSearch.toLowerCase()) &&
-    !(profile?.skills ?? []).some(us => us.id === s.skillID)
-  )
+  const filteredSkills = allSkills.filter(s => {
+    const matchSearch = s.name.toLowerCase().includes(skillSearch.toLowerCase())
+    const matchIndustry = careerForm.industryId
+      ? industries.find(ind => String(ind.id) === String(careerForm.industryId))?.name?.toLowerCase() === s.industry?.toLowerCase()
+      : true
+    const notAdded = !(profile?.skills ?? []).some(us => us.id === s.skillID)
+    return matchSearch && matchIndustry && notAdded
+  })
 
   const avatarLetters = profile?.fullName
-    ? profile.fullName.trim().split(' ').slice(-2).map(w => w[0]).join('').toUpperCase()
+    ? profile.fullName.trim().split(' ').slice(-1)[0].charAt(0).toUpperCase()
     : '??'
 
   if (!token) {
@@ -235,9 +260,21 @@ function ProfileScreen({ onNavigate }) {
     <div id="s8">
       <div className="app-layout">
         <Sidebar activeItem="profile" onNavigate={onNavigate} />
-
         <div className="main-content">
           <Topbar title="👤 Hồ sơ & Cài đặt AI">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 15, paddingRight: 15, borderRight: '1px solid var(--border)' }}>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>{profile?.fullName}</span>
+              <div style={{
+                width: 32, height: 32, borderRadius: '50%', overflow: 'hidden',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, background: 'rgb(189, 114, 71)'
+              }}>
+                {profile?.avatar
+                  ? <img src={`${API}${profile.avatar}`} alt="avt" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : avatarLetters
+                }
+              </div>
+            </div>
+
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {saveMsg && (
                 <span style={{
@@ -247,7 +284,7 @@ function ProfileScreen({ onNavigate }) {
                   {saveMsg}
                 </span>
               )}
-              <button className="btn btn-rust btn-sm" onClick={handleSave} disabled={saving || loading}>
+              <button className="btn btn-sage btn-sm" onClick={handleSave} disabled={saving || loading}>
                 {saving ? '⏳ Đang lưu...' : '💾 Lưu'}
               </button>
             </div>
@@ -264,12 +301,19 @@ function ProfileScreen({ onNavigate }) {
 
                   <div className="card p-header">
                     <div className="p-avatar">
-                      {profile?.avatar ? (
-                        <img src={`http://localhost:3000/api${profile.avatar}`} alt="avatar" />
-                      ) : (
-                        avatarLetters
-                      )}
+                      {profile?.avatar
+                        ? (
+                          <img
+                            src={`${API}${profile.avatar}`}
+                            alt="avatar"
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                          />
+                        )
+                        : avatarLetters
+                      }
+                      <div className="p-status" />
                     </div>
+
                     <div className="p-info">
                       <div className="p-name">{profile?.fullName ?? '—'}</div>
                       <div className="p-role">
@@ -281,15 +325,28 @@ function ProfileScreen({ onNavigate }) {
                         {profile?.careerLevel && <Badge variant="amber">⭐ {profile.careerLevel}</Badge>}
                       </div>
                     </div>
-                    <label className="btn btn-outline btn-sm" style={{ cursor: 'pointer' }}>
-                      ✏️ Sửa ảnh
-                      <input
-                        type="file"
-                        accept="image/*"
-                        hidden
-                        onChange={handleUploadAvatar}
-                      />
-                    </label>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignSelf: 'flex-start', flexShrink: 0 }}>
+                      <label className="btn btn-outline btn-sm" style={{ cursor: 'pointer', textAlign: 'center' }}>
+                        ✏️ Sửa ảnh
+                        <input type="file" accept="image/*" hidden onChange={handleUploadAvatar} />
+                      </label>
+                      {profile?.avatar && (
+                        <button
+                          className="btn btn-sm"
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid var(--border)',
+                            color: 'var(--ink3)',
+                            fontSize: 12,
+                            cursor: 'pointer',
+                          }}
+                          onClick={handleRemoveAvatar}
+                        >
+                          🗑 Xóa ảnh
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {stats && (
@@ -406,16 +463,11 @@ function ProfileScreen({ onNavigate }) {
                       </div>
                       <div className="form-group">
                         <div className="form-label">Ngành nghề</div>
-                        <select
-                          className="inp"
-                          value={careerForm.industryId}
-                          onChange={e => setCareerForm(p => ({ ...p, industryId: e.target.value }))}
-                        >
+                        <select className="inp" value={careerForm.industryId}
+                          onChange={e => setCareerForm(p => ({ ...p, industryId: e.target.value }))}>
                           <option value="">-- Chọn ngành nghề --</option>
                           {industries.map(ind => (
-                            <option key={ind.id} value={ind.id}>
-                              {ind.name}
-                            </option>
+                            <option key={ind.id} value={ind.id}>{ind.name}</option>
                           ))}
                         </select>
                       </div>
@@ -499,7 +551,6 @@ function ProfileScreen({ onNavigate }) {
 
                 <div className="p-right">
 
-                  {/* AI Insights — TODO: gắn API sau */}
                   <div className="card profile-card">
                     <div className="profile-section-title">🧠 AI đã học gì từ bạn</div>
                     {AI_INSIGHTS.map((insight, idx) => (
@@ -513,31 +564,31 @@ function ProfileScreen({ onNavigate }) {
                     ))}
                   </div>
 
-                  <div className="card profile-card">
-                    <div className="profile-section-title">🔗 Tài khoản kết nối</div>
-                    <div className="account-list">
-                      {CONNECTED_ACCOUNTS.map((acc, idx) => (
-                        <div key={idx} className="account-row">
-                          <div className="account-icon" style={{
-                            background: acc.color,
-                            color: acc.connected ? '#FFF' : 'var(--ink3)',
-                            border: acc.connected ? 'none' : '1px solid var(--border)',
-                          }}>
-                            {acc.code}
-                          </div>
-                          <div className="account-info">
-                            <div className="account-name">{acc.name}</div>
-                            <div className={`account-status ${acc.connected ? 'connected' : ''}`}>
-                              {acc.connected ? '✓ Đã kết nối' : 'Chưa kết nối'}
+                  {/* <div className="card profile-card">
+                      <div className="profile-section-title">🔗 Tài khoản kết nối</div>
+                      <div className="account-list">
+                        {CONNECTED_ACCOUNTS.map((acc, idx) => (
+                          <div key={idx} className="account-row">
+                            <div className="account-icon" style={{
+                              background: acc.color,
+                              color: acc.connected ? '#FFF' : 'var(--ink3)',
+                              border: acc.connected ? 'none' : '1px solid var(--border)',
+                            }}>
+                              {acc.code}
                             </div>
+                            <div className="account-info">
+                              <div className="account-name">{acc.name}</div>
+                              <div className={`account-status ${acc.connected ? 'connected' : ''}`}>
+                                {acc.connected ? '✓ Đã kết nối' : 'Chưa kết nối'}
+                              </div>
+                            </div>
+                            <button className={`btn btn-${acc.connected ? 'outline' : 'rust'} btn-sm`}>
+                              {acc.connected ? 'Ngắt' : '+ Kết nối'}
+                            </button>
                           </div>
-                          <button className={`btn btn-${acc.connected ? 'outline' : 'rust'} btn-sm`}>
-                            {acc.connected ? 'Ngắt' : '+ Kết nối'}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                        ))}
+                      </div>
+                    </div> */}
 
                   {profile && (
                     <div className="card profile-card">
@@ -546,10 +597,6 @@ function ProfileScreen({ onNavigate }) {
                         <span className="pref-k">Email</span>
                         <span className="pref-v" style={{ fontSize: 12 }}>{profile.email}</span>
                       </div>
-                      {/* <div className="pref-row">
-                        <span className="pref-k">Đăng ký qua</span>
-                        <span className="pref-v">{profile.provider}</span>
-                      </div> */}
                       <div className="pref-row" style={{ borderBottom: 'none' }}>
                         <span className="pref-k">Thành viên từ</span>
                         <span className="pref-v">

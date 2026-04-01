@@ -90,13 +90,8 @@ export class ProfileService {
       careerLevel: dto.careerLevel,
       expectedSalary: dto.expectedSalary,
       workingType: dto.workingType,
+      industryID: dto.industryId ?? null,
     };
-
-    if (dto.industryId) {
-      data.industry = {
-        connect: { id: dto.industryId },
-      };
-    }
 
     const existing = await this.prisma.userProfile.findFirst({
       where: { userID },
@@ -116,6 +111,7 @@ export class ProfileService {
       include: { industry: true },
     });
   }
+
   async getSkills(userID: number) {
     const userSkills = await this.prisma.userSkill.findMany({
       where: { userID },
@@ -179,7 +175,9 @@ export class ProfileService {
         this.prisma.userBehavior.count({ where: { userID, action: 'view' } }),
         this.prisma.savedJob.count({ where: { userID } }),
         this.prisma.applyHistory.count({ where: { userID } }),
-        this.prisma.jobRecommendation.count({ where: { userID } }),
+        this.prisma.jobRecommendation.count({
+          where: { userID, matchPercent: { gt: 49 } },
+        }),
       ]);
 
     return { viewCount, saveCount, applyCount, recommendCount };
@@ -204,6 +202,13 @@ export class ProfileService {
     return this.prisma.user.update({
       where: { userID },
       data: { avatar: avatarUrl },
+    });
+  }
+
+  async removeAvatar(userID: number) {
+    return this.prisma.user.update({
+      where: { userID },
+      data: { avatar: null },
     });
   }
 }

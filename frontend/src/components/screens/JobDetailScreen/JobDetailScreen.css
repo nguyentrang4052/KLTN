@@ -36,14 +36,20 @@
   margin-bottom: 6px;
   letter-spacing: -0.5px;
 }
+.jd-title:hover{
+  color: rgb(35, 42, 162);
+}
 
 .jd-co {
   font-size: 15px;
-  color: var(--ink3);
   margin-bottom: 14px;
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.jd-co:hover {
+  color: rgb(35, 42, 162);
 }
 
 .jd-meta-row {
@@ -336,6 +342,20 @@
   font-size: 12.5px;
   color: var(--ink3);
   line-height: 1.65;
+}
+
+.company-name {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  cursor: pointer;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  transition: color 0.2s ease;
+}
+
+.company-name:hover {
+  color: rgb(35, 42, 162); 
 }
 
 .company-badges {
