@@ -45,7 +45,7 @@ export class JobsService {
     } = dto;
 
     const skip = (page - 1) * limit;
-    const where: Prisma.JobWhereInput = { isActive: true };
+    const where: Prisma.JobWhereInput = { isActive: true};
     const andConditions: Prisma.JobWhereInput[] = [];
 
     if (keyword) {
@@ -132,7 +132,11 @@ export class JobsService {
       }
     }
 
-    let jobList = jobs.map((j) => ({
+    const filteredJobs = jobs.filter(j =>
+      j.deadline && new Date(j.deadline) > new Date()
+    );
+
+    let jobList = filteredJobs.map((j) => ({
       jobID: j.jobID,
       title: j.title,
       companyID: j.company.companyID,

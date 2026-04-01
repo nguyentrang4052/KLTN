@@ -35,9 +35,9 @@ function CVBuilderScreen({ onNavigate }) {
               selectedTemplateId={selectedTpl}
             />
 
-            {/* <CVEditor /> */}
+            <CVEditor />
             {/* <CVPreview /> */}
-             <CVTemplateScreen templateId={selectedTpl} />
+             {/* <CVTemplateScreen templateId={selectedTpl} /> */}
           </div>
         </div>
       </div>

@@ -190,7 +190,7 @@ export class AuthService {
   }
 
   private signToken(accountID: number, email: string): string {
-    return this.jwtService.sign({ sub: accountID, email }, { expiresIn: '1h' });
+    return this.jwtService.sign({ sub: accountID, email }, { expiresIn: '24h' });
   }
 
   async getMe(accountID: number) {

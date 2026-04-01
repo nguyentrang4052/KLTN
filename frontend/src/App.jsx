@@ -98,6 +98,21 @@ function JobDetailScreenRoute({ backPath, companyBasePath }) {
 }
 
 
+function JobDetailForSavedJobs({ backPath, savedJobPath }) {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const token = getToken()
+  return (
+    <JobDetailScreen
+      jobID={Number(id)}
+      onBack={() => navigate(backPath)}
+      token={token}
+      onSavedJobClick={(jobID) => navigate(`${savedJobPath}${jobID}`)}
+    />
+  )
+}
+
+
 function App() {
   const location = useLocation()
 
@@ -146,13 +161,35 @@ function App() {
 
           <Route path="/companies" element={<CompaniesScreen />} />
           <Route path="/companies/:id" element={<CompanyDetailScreenRouteForCompanies />} />
+
           <Route path="/companies/:companyId/jobs/:id" element={
             <JobDetailScreenRoute backPath="/companies" companyBasePath="/companies" />
           } />
 
+
+          <Route
+            path="/saved-jobs"
+            element={
+              <ProtectedRoute>
+                <SavedJobScreen />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/saved-jobs/job/:id"
+            element={
+              <JobDetailForSavedJobs
+                backPath="/saved-jobs"
+                savedJobPath="/saved-jobs/job/"
+              />
+            }
+          />
+
           <Route path="/home" element={
             <ProtectedRoute><HomeScreen /></ProtectedRoute>
           } />
+
           <Route path="/home/job/:id" element={
             <ProtectedRoute>
               <JobDetailScreenRoute backPath="/home" companyBasePath="/home/companies" />
@@ -176,9 +213,7 @@ function App() {
           <Route path="/settings" element={
             <ProtectedRoute><AccountSettingScreen /></ProtectedRoute>
           } />
-          <Route path="/saved-jobs" element={
-            <ProtectedRoute><SavedJobScreen /></ProtectedRoute>
-          } />
+
           <Route path="/applications" element={
             <ProtectedRoute><ApplicationsScreen /></ProtectedRoute>
           } />

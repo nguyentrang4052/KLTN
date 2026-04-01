@@ -72,12 +72,10 @@ function Sidebar() {
 
   return (
     <div className="sidebar">
-      <div className="sb-logo" onClick={() => navigate('/home')} style={{ cursor: 'pointer' }}>
-
-        <span>GZCONNECT</span>
-      </div> 
+      {/* <div className="sb-logo" onClick={() => navigate('/home')} style={{ cursor: 'pointer' }}>
+      </div>  */}
       <div className="sb-section">Tổng quan</div>
-      <div className="sb-divider">
+      {/* <div className="sb-divider">
         {navItems.map((item) => (
           <div
             key={item.id}
@@ -89,7 +87,7 @@ function Sidebar() {
             {item.badge && <span className="nav-badge">{item.badge}</span>}
           </div>
         ))}
-      </div>
+      </div> */}
 
       <div className="sb-menu-scroll">
         {navItems.map((item) => (

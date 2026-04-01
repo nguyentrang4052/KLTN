@@ -82,7 +82,7 @@ export default function SavedJobsScreen({ onNavigate }) {
 
   const handleJobClick = (job) => {
     trackBehavior(job.jobID, 'click')
-    navigate(`/job/${job.jobID}`)
+    navigate(`/saved-jobs/job/${job.jobID}`)
   }
 
   // filter
@@ -104,8 +104,8 @@ export default function SavedJobsScreen({ onNavigate }) {
         job={{
           id: job.jobID,
           title: job.title,
-          company: job.companyName,
-          companyLogo: job.companyLogo,
+          company: job.company.companyName,
+          companyLogo: job.company.companyLogo,
           location: job.location,
           shortLocation: job.shortLocation,
           experienceYear: job.experienceYear,

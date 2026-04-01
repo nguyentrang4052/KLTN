@@ -92,6 +92,7 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
     { label: 'Mức lương', value: 90, color: 'f-amber' },
     { label: 'Địa điểm', value: 70, color: 'f-teal' },
   ]
+
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '80px', color: '#9A8D80', fontSize: 15 }}>
@@ -329,6 +330,7 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
                   <div className="divider" />
                 </>
               )}
+
               {job.benefit && (
                 <>
                   <div className="jd-sec-title">Quyền lợi</div>
@@ -423,73 +425,8 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
           </div>
         </div>
       </div>
-      {applyModalOpen && (
-        <div style={{
-          display: 'flex', position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)',
-          zIndex: 3000, alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)',
-        }} onClick={closeApply}>
-          <div style={{
-            background: 'var(--surf)', borderRadius: '16px', padding: '32px',
-            maxWidth: '480px', width: '90%', boxShadow: '0 24px 80px rgba(0,0,0,.3)',
-            animation: 'fadeIn .25s ease-out', position: 'relative',
-          }} onClick={e => e.stopPropagation()}>
-            <button onClick={closeApply} style={{
-              position: 'absolute', top: '16px', right: '16px',
-              background: 'none', border: 'none', fontSize: '20px', color: 'var(--ink4)', cursor: 'pointer',
-            }}>✕</button>
-
-            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-              <div style={{ fontSize: '40px', marginBottom: '10px' }}>🔗</div>
-              <div style={{ fontFamily: "'Fraunces',serif", fontSize: '22px', fontWeight: 700, marginBottom: '8px' }}>
-                Chuyển đến trang ứng tuyển
-              </div>
-              <div style={{ fontSize: '13px', color: 'var(--ink3)', lineHeight: 1.65 }}>
-                Khi nhấn <b>Đi đến trang ứng tuyển </b>, bạn sẽ được chuyển đến trang gốc để hoàn tất nộp hồ sơ.
-              </div>
-            </div>
-
-            {[
-              { icon: '🌐', title: 'Trang tuyển dụng gốc', desc: selectedJob?.sourcePlatform ?? '' },
-              { icon: '📄', title: 'Nộp hồ sơ trực tiếp', desc: 'Ứng tuyển bằng CV của bạn trên nền tảng đó' },
-              { icon: '🔒', title: 'Bảo mật thông tin', desc: 'Chúng tôi không lưu thông tin hồ sơ ứng tuyển' },
-              { icon: '🔗', title: 'Link chi tiết ở trang gốc', desc: selectedJob?.sourceLink ?? '' },
-            ].map(item => (
-              <div key={item.title} style={{
-                display: 'flex', alignItems: 'center', gap: '9px', padding: '10px 14px',
-                background: 'var(--bg2)', borderRadius: '9px', border: '1px solid var(--border)', marginBottom: '8px',
-              }}>
-                <span style={{ fontSize: '18px' }}>{item.icon}</span>
-                <div>
-                  <div style={{ fontSize: '13px', fontWeight: 600 }}>{item.title}</div>
-                  <div style={{
-                    fontSize: '11px',
-                    color: 'var(--ink3)',
-                    wordBreak: 'break-word',
-                    whiteSpace: 'normal',
-                    overflowWrap: 'break-word'
-                  }}>
-                    {item.desc}
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            <button className="btn btn-rust" style={{
-              width: '100%', justifyContent: 'center', padding: '13px',
-              fontSize: '14px', background: 'rgb(35,42,162)', marginTop: '8px',
-            }} onClick={() => selectedJob?.sourceLink && window.open(selectedJob.sourceLink, '_blank')}>
-              Đi đến trang ứng tuyển →
-            </button>
-
-            <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '12px', color: 'var(--ink4)' }}>
-              Hoặc <span style={{ color: 'var(--rust)', cursor: 'pointer', fontWeight: 600 }}
-                onClick={closeApply}>quay lại xem việc khác</span>
-            </div>
-          </div>
-        </div>
-      )}
-    </div >
-
-  );
+    </div>
+  )
 }
+
 export default JobDetailScreen
