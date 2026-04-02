@@ -42,15 +42,15 @@ export default function Header({ notifCount }) {
       items: [
         { ico: '👤', label: 'Hồ sơ của tôi', path: '/profile' },
         { ico: '⭐', label: 'Việc đã lưu', path: '/saved-jobs', tag: savedCount > 0 ? `${savedCount}` : null },
-        { ico: '📄', label: 'CV của tôi', path: '/cv-builder' },
-        { ico: '🤖', label: 'AI Assistant', path: '/profile' },
+        { ico: '📄', label: 'CV của tôi', path: '/my-cv' },
+        { ico: '🤖', label: 'AI Assistant', path: '/ai-assistant' },
       ],
     },
     {
       label: 'Cài đặt',
       items: [
         { ico: '🔔', label: 'Thông báo', path: '/notifications' },
-        { ico: '💳', label: 'Gói dịch vụ', tag: 'Pro' },
+        { ico: '💳', label: 'Gói dịch vụ', tag: 'Pro', path: '/services' },
         { ico: '⚙️', label: 'Cài đặt tài khoản', path: '/profile' },
         { ico: '🚪', label: 'Đăng xuất', action: 'logout', danger: true },
       ],

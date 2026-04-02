@@ -1,0 +1,716 @@
+/* ══ CheckoutScreen.css ══════════════════════════════════════ */
+.ck-page {
+    background: #F7F2EA;
+    min-height: 100vh;
+    font-family: 'Cabinet Grotesk', sans-serif;
+}
+
+.ck-page * {
+    box-sizing: border-box;
+}
+
+.ck-header {
+    background: #FEFCF7;
+    border-bottom: 1px solid #DDD6C6;
+    padding: 0 32px;
+    position: sticky;
+    top: 58px;
+    z-index: 50;
+}
+
+.ck-header-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.ck-back {
+    background: none;
+    border: none;
+    font-family: 'Cabinet Grotesk', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: #C0412A;
+    cursor: pointer;
+    padding: 0;
+}
+
+.ck-back:hover {
+    opacity: .75;
+}
+
+.ck-header-title {
+    font-family: 'Fraunces', serif;
+    font-size: 17px;
+    font-weight: 600;
+    color: #1C1510;
+}
+
+.ck-header-secure {
+    font-size: 12px;
+    color: #2E6040;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ck-body {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 32px 64px;
+}
+
+.ck-layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 24px;
+    align-items: start;
+}
+
+/* Order card */
+.ck-order-card {
+    background: #FEFCF7;
+    border: 1.5px solid #DDD6C6;
+    border-radius: 16px;
+    padding: 22px;
+    margin-bottom: 16px;
+}
+
+.ck-order-title {
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1C1510;
+    margin-bottom: 16px;
+}
+
+.ck-order-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.ck-order-plan {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.ck-order-plan-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.ck-order-plan-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1C1510;
+}
+
+.ck-order-plan-period {
+    font-size: 12px;
+    color: #9A8D80;
+    margin-top: 2px;
+}
+
+.ck-order-price {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.ck-order-saving {
+    font-size: 12.5px;
+    color: #2E6040;
+    background: rgba(46, 96, 64, .08);
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    border: 1px solid rgba(46, 96, 64, .15);
+}
+
+.ck-order-saving strong {
+    font-weight: 800;
+}
+
+.ck-order-divider {
+    height: 1px;
+    background: #EFE9DC;
+    margin: 12px 0;
+}
+
+.ck-order-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #1C1510;
+    margin-bottom: 4px;
+}
+
+.ck-order-total-n {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: #1C1510;
+}
+
+.ck-order-vat {
+    font-size: 11.5px;
+    color: #9A8D80;
+    text-align: right;
+}
+
+/* Method card */
+.ck-method-card {
+    background: #FEFCF7;
+    border: 1.5px solid #DDD6C6;
+    border-radius: 16px;
+    padding: 22px;
+}
+
+.ck-method-title {
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1C1510;
+    margin-bottom: 16px;
+}
+
+.ck-method-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.ck-bank-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 10px;
+    border-radius: 12px;
+    border: 1.5px solid #DDD6C6;
+    background: #F7F2EA;
+    cursor: pointer;
+    transition: all .18s;
+    position: relative;
+    font-family: 'Cabinet Grotesk', sans-serif;
+}
+
+.ck-bank-btn:hover {
+    border-color: #CBC1AE;
+    background: #EFE9DC;
+}
+
+.ck-bank-btn.selected {
+    border-color: #C0412A;
+    background: rgba(192, 65, 42, .04);
+}
+
+.ck-bank-logo {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 800;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.ck-bank-name {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #3D3028;
+    text-align: center;
+}
+
+.ck-bank-check {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #C0412A;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ck-proceed-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    color: #fff;
+    font-family: 'Cabinet Grotesk', sans-serif;
+    font-size: 14.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .18s;
+}
+
+.ck-proceed-btn:hover {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+}
+
+.ck-method-note {
+    text-align: center;
+    font-size: 12px;
+    color: #9A8D80;
+    margin-top: 10px;
+}
+
+/* QR card */
+.ck-qr-card {
+    background: #FEFCF7;
+    border: 1.5px solid #DDD6C6;
+    border-radius: 16px;
+    padding: 22px;
+}
+
+.ck-qr-bank-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid #EFE9DC;
+}
+
+.ck-qr-bank-logo {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 800;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.ck-qr-bank-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1C1510;
+}
+
+.ck-qr-bank-sub {
+    font-size: 12px;
+    color: #9A8D80;
+    margin-top: 2px;
+}
+
+.ck-countdown {
+    margin-left: auto;
+    text-align: center;
+    padding: 8px 14px;
+    background: #EFE9DC;
+    border-radius: 10px;
+    border: 1px solid #DDD6C6;
+}
+
+.ck-countdown.urgent {
+    background: rgba(192, 65, 42, .1);
+    border-color: rgba(192, 65, 42, .3);
+}
+
+.ck-countdown-n {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: #1C1510;
+    line-height: 1;
+}
+
+.ck-countdown.urgent .ck-countdown-n {
+    color: #C0412A;
+    animation: countpulse 1s infinite;
+}
+
+@keyframes countpulse {
+
+    0%,
+    100% {
+        opacity: 1
+    }
+
+    50% {
+        opacity: .5
+    }
+}
+
+.ck-countdown-l {
+    font-size: 10px;
+    color: #9A8D80;
+    margin-top: 2px;
+}
+
+/* QR */
+.ck-qr-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 22px;
+}
+
+.ck-qr-container {
+    position: relative;
+    padding: 16px;
+    background: #fff;
+    border-radius: 16px;
+    border: 2px solid #EFE9DC;
+    box-shadow: 0 8px 32px rgba(28, 21, 16, .1);
+}
+
+.ck-qr-amount-overlay {
+    position: absolute;
+    bottom: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #C0412A;
+    color: #fff;
+    font-family: 'Fraunces', serif;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 4px 16px;
+    border-radius: 20px;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(192, 65, 42, .4);
+}
+
+.ck-qr-hint {
+    font-size: 12.5px;
+    color: #9A8D80;
+    margin-top: 20px;
+}
+
+/* Transfer info */
+.ck-transfer-info {
+    background: #F7F2EA;
+    border: 1px solid #DDD6C6;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 18px;
+}
+
+.ck-ti-title {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    color: #9A8D80;
+    margin-bottom: 12px;
+}
+
+.ck-ti-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #DDD6C6;
+    gap: 8px;
+}
+
+.ck-ti-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.ck-ti-label {
+    font-size: 12px;
+    color: #9A8D80;
+    flex-shrink: 0;
+    width: 120px;
+}
+
+.ck-ti-val-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.ck-ti-val {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #1C1510;
+    font-family: 'Cabinet Grotesk', sans-serif;
+}
+
+.ck-copy-btn {
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid #DDD6C6;
+    background: #FEFCF7;
+    font-family: 'Cabinet Grotesk', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: #6B5E50;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all .15s;
+}
+
+.ck-copy-btn:hover {
+    border-color: #C0412A;
+    color: #C0412A;
+}
+
+.ck-copy-btn.copied {
+    background: #2E6040;
+    border-color: #2E6040;
+    color: #fff;
+}
+
+.ck-qr-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.ck-back-method-btn {
+    flex: 0 0 auto;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1.5px solid #DDD6C6;
+    background: transparent;
+    font-family: 'Cabinet Grotesk', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: #6B5E50;
+    cursor: pointer;
+}
+
+.ck-back-method-btn:hover {
+    border-color: #C0412A;
+    color: #C0412A;
+}
+
+.ck-done-btn {
+    flex: 1;
+    padding: 13px;
+    border-radius: 10px;
+    border: none;
+    color: #fff;
+    font-family: 'Cabinet Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.ck-done-btn:hover {
+    filter: brightness(1.08);
+}
+
+/* Done */
+.ck-done-card {
+    background: #FEFCF7;
+    border: 1.5px solid rgba(46, 96, 64, .3);
+    border-radius: 16px;
+    padding: 40px 28px;
+    text-align: center;
+}
+
+.ck-done-ico {
+    font-size: 56px;
+    margin-bottom: 16px;
+}
+
+.ck-done-title {
+    font-family: 'Fraunces', serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: #1C1510;
+    margin-bottom: 12px;
+}
+
+.ck-done-sub {
+    font-size: 14px;
+    color: #6B5E50;
+    line-height: 1.75;
+    margin-bottom: 16px;
+}
+
+.ck-done-tx {
+    font-size: 13px;
+    color: #9A8D80;
+    margin-bottom: 24px;
+}
+
+.ck-done-tx strong {
+    color: #1C1510;
+    font-family: 'Kode Mono', monospace;
+}
+
+/* Right sidebar */
+.ck-right {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: sticky;
+    top: 120px;
+}
+
+.ck-benefits-card {
+    background: #FEFCF7;
+    border: 1px solid #DDD6C6;
+    border-radius: 16px;
+    padding: 20px;
+}
+
+.ck-benefits-title {
+    font-family: 'Fraunces', serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1C1510;
+    margin-bottom: 16px;
+}
+
+.ck-benefit-row {
+    display: flex;
+    gap: 13px;
+    align-items: flex-start;
+    padding: 9px 0;
+    border-bottom: 1px solid #EFE9DC;
+}
+
+.ck-benefit-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.ck-benefit-ico {
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.ck-benefit-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #1C1510;
+    margin-bottom: 2px;
+}
+
+.ck-benefit-sub {
+    font-size: 11.5px;
+    color: #9A8D80;
+    line-height: 1.5;
+}
+
+.ck-guarantee-card {
+    background: linear-gradient(135deg, rgba(46, 96, 64, .06), rgba(46, 96, 64, .02));
+    border: 1px solid rgba(46, 96, 64, .2);
+    border-radius: 14px;
+    padding: 18px;
+    text-align: center;
+}
+
+.ck-guarantee-ico {
+    font-size: 28px;
+    margin-bottom: 8px;
+}
+
+.ck-guarantee-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #2E6040;
+    margin-bottom: 6px;
+}
+
+.ck-guarantee-sub {
+    font-size: 12px;
+    color: #6B5E50;
+    line-height: 1.65;
+}
+
+.ck-reviews-mini {
+    background: #FEFCF7;
+    border: 1px solid #DDD6C6;
+    border-radius: 14px;
+    padding: 16px;
+}
+
+.ck-reviews-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1C1510;
+    margin-bottom: 12px;
+}
+
+.ck-review-mini {
+    padding: 10px 0;
+    border-bottom: 1px solid #EFE9DC;
+}
+
+.ck-review-mini:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.ck-review-mini-stars {
+    font-size: 12px;
+    margin-bottom: 5px;
+}
+
+.ck-review-mini-text {
+    font-size: 12.5px;
+    color: #6B5E50;
+    line-height: 1.6;
+    font-style: italic;
+}
+
+.ck-review-mini-name {
+    font-size: 11.5px;
+    color: #9A8D80;
+    margin-top: 4px;
+    font-weight: 600;
+}
+
+@media(max-width:900px) {
+    .ck-layout {
+        grid-template-columns: 1fr
+    }
+
+    .ck-right {
+        position: static
+    }
+}
+
+@media(max-width:600px) {
+    .ck-body {
+        padding: 20px 16px 48px
+    }
+
+    .ck-method-grid {
+        grid-template-columns: repeat(2, 1fr)
+    }
+}

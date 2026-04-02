@@ -8,7 +8,7 @@ import DashboardScreen from './components/screens/DashboardScreen/DashboardScree
 import HomeScreen from './components/screens/HomeScreen/HomeScreen'
 import JobDetailScreen from './components/screens/JobDetailScreen/JobDetailScreen'
 import CVBuilderScreen from './components/screens/CVBuilderScreen/CVBuilderScreen'
-import ApplicationsScreen from './components/screens/ApplicationsScreen/ApplicationsScreen'
+// import ApplicationsScreen from './components/screens/ApplicationsScreen/ApplicationsScreen'
 import ProfileScreen from './components/screens/ProfileScreen/ProfileScreen'
 import NotificationsScreen from './components/screens/NotificationsScreen/NotificationsScreen'
 import JobSearchScreen from './components/screens/JobSearchScreen/JobSearchScreen'
@@ -17,6 +17,10 @@ import CompanyDetailScreen from './components/screens/CompanyDetailScreen/Compan
 import AboutScreen from './components/screens/AboutScreen/AboutScreen'
 import AccountSettingScreen from './components/screens/AccountSettingScreen/AccountSettingScreen'
 import SavedJobScreen from './components/screens/SavedJobScreen/SavedJobScreen'
+import MyCVScreen from './components/screens/MyCVScreen/MyCVScreen'
+import AIScreen from './components/screens/AIScreen/AIScreen'
+import PricingScreen from './components/screens/PricingScreen/PricingScreen'
+import CheckoutScreen from './components/screens/CheckoutScreen/CheckoutScreen'
 
 import Login from './components/Authentication/Login/Login'
 import Register from './components/Authentication/Register/Register'
@@ -154,7 +158,9 @@ function App() {
           <Route path="/jobs/job/:id" element={
             <JobDetailScreenRoute backPath="/jobs" companyBasePath="/jobs/companies" />
           } />
+
           <Route path="/jobs/companies/:id" element={<CompanyDetailScreenRouteForJobs />} />
+
           <Route path="/jobs/companies/:companyId/jobs/:id" element={
             <JobDetailScreenRoute backPath="/jobs" companyBasePath="/jobs/companies" />
           } />
@@ -214,15 +220,33 @@ function App() {
             <ProtectedRoute><AccountSettingScreen /></ProtectedRoute>
           } />
 
-          <Route path="/applications" element={
+          {/* <Route path="/applications" element={
             <ProtectedRoute><ApplicationsScreen /></ProtectedRoute>
-          } />
+          } /> */}
           <Route path="/cv-builder" element={
             <ProtectedRoute><CVBuilderScreen /></ProtectedRoute>
           } />
+
+          <Route path="/my-cv" element={
+            <ProtectedRoute><MyCVScreen/></ProtectedRoute>
+          } />
+
+          <Route path="/ai-assistant" element={
+            <ProtectedRoute><AIScreen/></ProtectedRoute>
+          } />
+
+          <Route path="/services" element={
+            <ProtectedRoute><PricingScreen/></ProtectedRoute>
+          } />
+
+          <Route path="/checkout" element={
+            <ProtectedRoute><CheckoutScreen /></ProtectedRoute>
+          } />
+
           <Route path="/notifications" element={
             <ProtectedRoute><NotificationsScreen /></ProtectedRoute>
           } />
+
 
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
