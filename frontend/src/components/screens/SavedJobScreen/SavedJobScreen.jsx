@@ -95,6 +95,7 @@ export default function SavedJobsScreen({ onNavigate }) {
   })
 
 
+
   const renderJobCard = (job) => (
     <div key={job.jobID} style={{ cursor: 'pointer' }}
       onClick={() => handleJobClick(job)}>
@@ -105,6 +106,7 @@ export default function SavedJobsScreen({ onNavigate }) {
           id: job.jobID,
           title: job.title,
           company: job.company.companyName,
+          companyID: job.company.companyID,
           companyLogo: job.company.companyLogo,
           location: job.location,
           shortLocation: job.shortLocation,
@@ -120,6 +122,7 @@ export default function SavedJobsScreen({ onNavigate }) {
         onSave={(jobID) => {
           if (!savedJobIds.has(jobID)) trackBehavior(jobID, 'save')
         }}
+        onCompanyClick={(companyID) => navigate(`/home/companies/${companyID}`)}
       />
     </div>
   )

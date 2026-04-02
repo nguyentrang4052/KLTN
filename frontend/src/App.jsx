@@ -21,6 +21,7 @@ import MyCVScreen from './components/screens/MyCVScreen/MyCVScreen'
 import AIScreen from './components/screens/AIScreen/AIScreen'
 import PricingScreen from './components/screens/PricingScreen/PricingScreen'
 import CheckoutScreen from './components/screens/CheckoutScreen/CheckoutScreen'
+import PaymentScreen from './components/screens/PaymentScreen/PaymentScreen'
 
 import Login from './components/Authentication/Login/Login'
 import Register from './components/Authentication/Register/Register'
@@ -241,6 +242,10 @@ function App() {
 
           <Route path="/checkout" element={
             <ProtectedRoute><CheckoutScreen /></ProtectedRoute>
+          } />
+
+          <Route path="/payment" element={
+            <ProtectedRoute><PaymentScreen /></ProtectedRoute>
           } />
 
           <Route path="/notifications" element={
