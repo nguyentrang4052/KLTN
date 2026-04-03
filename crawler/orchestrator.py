@@ -8,6 +8,7 @@ from crawlers.topcv import TopCVCrawler
 from crawlers.careerviet import CareerVietCrawler
 from crawlers.careerlink import CareerLinkCrawler
 
+
 PLATFORM_NAMES = {
     "topcv":      "TopCV",
     "careerviet": "CareerViet",
@@ -88,7 +89,8 @@ async def _process_platform(p, platform: str, CrawlerClass, query: str) -> int:
         return 0
 
     print(f"[{platform}] {len(categories)} categories")
-
+    # print("AHIHIHIHIHI")
+    # print(categories)
     for category in categories:
         if MAX_JOBS_PER_SESSION > 0 and count >= MAX_JOBS_PER_SESSION:
             print(f"[{platform}] Đạt giới hạn MAX_JOBS_PER_SESSION")
@@ -137,21 +139,23 @@ async def _process_platform(p, platform: str, CrawlerClass, query: str) -> int:
             try:
                 # Double check: đã crawl thành công trước đó chưa?
                 if await redis_service.is_already_crawled(platform, link):
-                    print(f"[{platform}] ⏩ Skip (đã crawl OK trước đó): {link[:60]}")
+                    print(f"[{platform}] ⏩ Skip (đã crawl OK trước đó): {link}")
                     category_success_links.append(link)  # Vẫn coi như đã xử lý
                     continue
 
                 # Crawl detail
                 raw = await crawler.get_job_detail(link, cat_name)
+                print(
+                    f"[{platform}] Crawled: {link} - {'OK' if raw else 'NO DATA'}")
                 if not raw:
-                    print(f"[{platform}] ❌ Crawl failed (no data): {link[:60]}")
+                    print(f"[{platform}] ❌ Crawl failed (no data): {link}")
                     continue  # KHÔNG thêm vào success, sẽ thử lại lần sau
 
                 # ── THÊM MỚI: kiểm tra trùng nội dung ──────────────────────
                 is_dup, original_link = await redis_service.check_and_store_fingerprint(raw, link)
                 if is_dup:
-                    print(f"[{platform}] ♻️  Trùng nội dung với: {(original_link or '')[:60]}")
-                    print(f"[{platform}]    Bỏ qua: {link[:60]}")
+                    print(f"[{platform}] ♻️  Trùng nội dung với: {(original_link or '')}")
+                    print(f"[{platform}]    Bỏ qua: {link}")
                     # Vẫn đánh dấu link này là đã "xử lý" để không crawl lại
                     await redis_service.mark_as_crawled(platform, link)
                     category_success_links.append(link)

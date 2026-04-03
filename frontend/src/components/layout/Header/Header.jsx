@@ -36,7 +36,7 @@ export default function Header({ notifCount }) {
   const navigate = useNavigate()
   const [savedCount, setSavedCount] = useState(0)
 
-  const getDD_MENU = (savedCount) => [
+  const getDD_MENU = (savedCount,  notifCount ) => [
     {
       label: 'Tài khoản',
       items: [
@@ -49,7 +49,7 @@ export default function Header({ notifCount }) {
     {
       label: 'Cài đặt',
       items: [
-        { ico: '🔔', label: 'Thông báo', path: '/notifications' },
+        { ico: '🔔', label: 'Thông báo', path: '/notifications', tag: notifCount > 0 ? `${notifCount}` : null },
         { ico: '💳', label: 'Gói dịch vụ', tag: 'Pro', path: '/services' },
         { ico: '⚙️', label: 'Cài đặt tài khoản', path: '/profile' },
         { ico: '🚪', label: 'Đăng xuất', action: 'logout', danger: true },
@@ -195,7 +195,7 @@ export default function Header({ notifCount }) {
                     </div>
                   </div>
 
-                  {getDD_MENU(savedCount).map((section, si) => (
+                  {getDD_MENU(savedCount, notifCount).map((section, si) => (
                     <div className="app-header__dd-sec" key={si}>
                       {section.label && (
                         <div className="app-header__dd-sec-label">{section.label}</div>
