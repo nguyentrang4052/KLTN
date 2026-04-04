@@ -24,7 +24,7 @@
     "value": "GA1.1.546786473.1774377408",
     "domain": ".careerlink.vn",
     "path": "/",
-    "expires": 1809591700.809748,
+    "expires": 1809606992.007473,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
@@ -34,7 +34,7 @@
     "value": "fb.1.1774377409183.886933945409038294",
     "domain": ".careerlink.vn",
     "path": "/",
-    "expires": 1782807702,
+    "expires": 1782822993,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
@@ -151,20 +151,20 @@
   },
   {
     "name": "_c24_session",
-    "value": "cjZpZUtha1drUG1EYlRNMTNCemhXSjNneUJZNTlQV2xlME82U1ZIUlBTamRFTitpR21YaHc1ZkF2T0NFK3ByQm1XYUlUQVRxblEyV1pkK1dvQnhXcU40OHRTN2tSZ056dU5BRXM1MmtlT3lsZGZ4dUtabkl6YTN0bVVlaU82NXZENXJZamo2cFFpcDdnNmhhdGhhMkJBPT0tLXY5S1VicTdsTTVhZlgrdlBieTBFeHc9PQ%3D%3D--274069f721717242b6a7790263771467380c5242",
+    "value": "YUJFYUd3aWJkSHk4b3U0ZEg3cWdkNlZmdUtYRE9jL1dMSXhHNmZmTGFwQlAvdThrNEpSdE9icGFaNWRFRFl1RGozNm5yODc2MFhNYXpVMmlxcG05UWdaWlZQaWdzZExPZ1JzVWtPdG14VGxneGZYMzh6clQ0K0h3cDBnZVgzZ255QUNOZy9FaHpGbXRUODM2Z1UxWDN3PT0tLTZTTDBOMk8vUEs2SXVLM1YvMWRyb0E9PQ%3D%3D--f641d448e6460463d1d0a25cbd094cdbc4c92a82",
     "domain": "www.careerlink.vn",
     "path": "/",
-    "expires": 1806567701.093925,
+    "expires": 1806582991.765627,
     "httpOnly": true,
     "secure": true,
     "sameSite": "None"
   },
   {
     "name": "_ga_QHBV055BSK",
-    "value": "GS2.1.s1775028338$o23$g1$t1775031701$j59$l0$h995632713",
+    "value": "GS2.1.s1775046991$o25$g1$t1775046992$j59$l0$h436918645",
     "domain": ".careerlink.vn",
     "path": "/",
-    "expires": 1809591701.772624,
+    "expires": 1809606992.610071,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
