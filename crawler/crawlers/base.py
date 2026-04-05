@@ -41,3 +41,18 @@ class BaseCrawler(ABC):
         {"industry": str, "job": {...}, "company": {...}}
         """
         ...
+
+
+
+
+    
+
+
+
+    @abstractmethod
+    async def get_job_links_for_page(self, category: dict, page: int) -> tuple[list[str], bool]:
+        """
+        Lấy links từ 1 page cụ thể.
+        Trả về: (list_links, has_next_page)
+        """
+        ...

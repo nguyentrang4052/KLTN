@@ -6,6 +6,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from fastapi.responses import StreamingResponse
+
 
 # Load .env TRƯỚC mọi thứ
 from dotenv import load_dotenv
@@ -18,7 +20,20 @@ if sys.platform == "win32":
 
 # Import services
 from redis_service import redis_service
-from scheduler import scheduler_loop, trigger_immediate, get_status
+
+
+# from scheduler import scheduler_loop, trigger_immediate, get_status
+
+
+from scheduler import (
+    scheduler_loop, 
+    trigger_immediate, 
+    trigger_fast_search,  # Thêm import này
+    get_status
+)
+
+
+
 from maintenance import maintenance_loop, maintenance_service
 from link_checker import link_checker_loop, link_checker_service, LINK_CHECK_INTERVAL_DAYS  # 👈 Thêm mới
 
@@ -69,10 +84,24 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Job Crawler Service", lifespan=lifespan)
 
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],
+#     allow_methods=["POST", "GET"],
+#     allow_headers=["*"],
+# )
+
+
+origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",  # Nếu dùng Vite
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["POST", "GET"],
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],  # Cho phép tất cả methods
     allow_headers=["*"],
 )
 
@@ -87,24 +116,41 @@ class CrawlRequest(BaseModel):
     session_id: str = ""
 
 
-@app.post("/search")
-async def handle_search(req: SearchRequest):
-    triggered = await trigger_immediate(req.query)
-    status = get_status()
+@app.post("/search-smart")
+async def search_smart(req: SearchRequest):
+    """1. Trả về DB ngay, 2. Crawl mới ngầm, 3. Publish job mới realtime"""
+    from db_service import get_db_url
+    import psycopg2, psycopg2.extras
+
+    existing_jobs = []
+    try:
+        conn = psycopg2.connect(get_db_url())
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT * FROM "Job"
+            WHERE title ILIKE %s OR description ILIKE %s OR "sourcePlatform" ILIKE %s
+            ORDER BY "discoveredAt" DESC
+            LIMIT 20
+        """, (f"%{req.query}%", f"%{req.query}%", f"%{req.query}%"))
+        existing_jobs = [dict(row) for row in cur.fetchall()]
+        cur.close()
+        conn.close()
+        print(f"[SearchSmart] Tìm thấy {len(existing_jobs)} jobs trong DB")
+    except Exception as e:
+        print(f"[SearchSmart] Lỗi query DB: {e}")
+
+    # Trigger crawl ngầm (FAST mode)
+    if req.query:
+        asyncio.create_task(trigger_fast_search(req.query))
 
     return {
         "status": "ok",
-        "query": req.query,
-        "crawling": True,
-        "source": "triggered" if triggered else "existing",
-        "message": (
-            "Crawler vừa được khởi động, data sẽ stream qua SSE"
-            if triggered else
-            "Crawler đang chạy, data sẽ stream qua SSE"
-        ),
-        "scheduler_status": status,
+        "source": "db_first",
+        "existing_jobs": existing_jobs,
+        "count": len(existing_jobs),
+        "crawling": bool(req.query),
+        "message": f"Hiển thị {len(existing_jobs)} việc làm từ DB. Đang tìm thêm việc mới..."
     }
-
 
 @app.post("/crawl")
 async def trigger_crawl(req: CrawlRequest, background_tasks: BackgroundTasks):
@@ -135,6 +181,26 @@ async def health():
             "timeout_seconds": int(os.getenv("LINK_CHECK_TIMEOUT_SECONDS", "15")),
         },
     }
+
+
+
+@app.get("/stream")
+async def stream_jobs():
+    async def event_generator():
+        # Subscribe Redis channel crawl:jobs
+        pubsub = redis_service.client.pubsub()
+        await pubsub.subscribe("crawl:jobs")
+        try:
+            while True:
+                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                if message:
+                    yield f"data: {message['data']}\n\n"
+                await asyncio.sleep(0.1)
+        finally:
+            await pubsub.unsubscribe("crawl:jobs")
+    
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
 
 
 # ===== ADMIN ENDPOINTS =====

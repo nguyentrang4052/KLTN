@@ -56,17 +56,6 @@ function NotificationsScreen({ onNavigate }) {
         const dynamicNotifs = filtered.map(item => {
           const job = item.job
           const deadline = new Date(job.deadline)
-
-          // Kiểm tra và lấy createdAt đã lưu hoặc tạo mới
-          // const key = `createdAt-deadline-${job.jobID}`
-          // let createdAt = localStorage.getItem(key)
-          // if (!createdAt) {
-          //   // Giả định thời điểm thông báo tạo = deadline - 3 ngày
-          //   const createdDate = new Date(deadline.getTime() - 3 * 24 * 60 * 60 * 1000)
-          //   createdAt = createdDate.toISOString()
-          //   localStorage.setItem(key, createdAt)
-          // }
-
           const savedAt = new Date(item.savedAt)
 
           return {

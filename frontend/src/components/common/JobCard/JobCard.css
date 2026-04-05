@@ -4,7 +4,15 @@
   border-radius: 12px;
 }
 
+/* .jcard {
+  padding: 16px 18px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+} */
+
 .jcard {
+  position: relative; /* để ribbon vị trí tuyệt đối dựa trên card */
   padding: 16px 18px;
   margin-bottom: 10px;
   cursor: pointer;
@@ -78,7 +86,7 @@
   margin-bottom: 12px;
 }
 
-.jcard-title:hover{
+.jcard-title:hover {
   color: rgb(35, 42, 162);
 }
 
@@ -178,9 +186,45 @@
   animation: fadeIn 0.15s ease;
 }
 
+.jcard-tags .jtag-expired span{
+  background-color: #ff4d4f;
+  color: #fff;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-right: 5px;
+}
+
+
+.jcard-ribbon {
+  position: absolute;
+  top: 10px;
+  right: -10px; /* lệch ra ngoài */
+  width: 70px;
+  background: #ff4d4f; /* đỏ */
+  color: black;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 0;
+  transform: rotate(45deg); /* xéo */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  z-index: 10;
+}
+
+.jcard--expired .jcard-actions button {
+  pointer-events: auto;
+  /* vẫn cho phép riêng nút Apply xử lý disabled */
+}
+
 @keyframes fadeIn {
-  from { opacity: 0 }
-  to   { opacity: 1 }
+  from {
+    opacity: 0
+  }
+
+  to {
+    opacity: 1
+  }
 }
 
 .jcard-modal {
@@ -189,7 +233,7 @@
   padding: 32px 28px 24px;
   width: 360px;
   max-width: 90vw;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -198,8 +242,15 @@
 }
 
 @keyframes slideUp {
-  from { transform: translateY(16px); opacity: 0 }
-  to   { transform: translateY(0);    opacity: 1 }
+  from {
+    transform: translateY(16px);
+    opacity: 0
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1
+  }
 }
 
 .jcard-modal-icon {

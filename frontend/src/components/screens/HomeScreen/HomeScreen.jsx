@@ -73,6 +73,12 @@ export default function HomeScreen() {
   const catTotalPages = Math.ceil(industries.length / CAT_PAGE_SIZE)
   const pagedIndustries = industries.slice(catPage * CAT_PAGE_SIZE, (catPage + 1) * CAT_PAGE_SIZE)
 
+
+  const [crawlStatus, setCrawlStatus] = useState(null); // null | {type, message}
+  const [isRealtime, setIsRealtime] = useState(false);
+  const eventSourceRef = useRef(null);
+  const receivedJobsRef = useRef([]); // Buffer jobs nhận được
+
   useEffect(() => {
     const sync = () => setToken(getToken())
     window.addEventListener('focus', sync)
@@ -154,6 +160,20 @@ export default function HomeScreen() {
       .catch(console.error)
   }, [token])
 
+
+
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        console.log('SSE disconnected');
+      }
+    };
+  }, []);
+
+
+
+
   const trackBehavior = useCallback((jobID, action) => {
     if (!token) return
     fetch(`${API}/jobs/${jobID}/track`, {
@@ -168,10 +188,126 @@ export default function HomeScreen() {
     navigate(`/home/job/${job.jobID}`)
   }
 
-  const handleSearch = () => {
-    setPage(1)
-    setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
-  }
+  // const handleSearch = () => {
+  //   setPage(1)
+  //   setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
+  // }
+  const handleSearch = async () => {
+    setLoading(true);
+
+    try {
+      // 1. Gọi search-smart (trả về DB ngay + trigger crawl)
+      const res = await fetch('http://localhost:8000/search-smart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: keyword })
+      });
+
+      const data = await res.json();
+
+      // 2. Hiển thị ngay kết quả DB (nếu có)
+      if (data.existing_jobs?.length > 0) {
+        setJobs(data.existing_jobs);
+        setMeta({ total: data.count, totalPages: 1 });
+      }
+
+      // 3. Mở SSE để nhận job mới crawl về
+      connectToEventStream();
+      setCrawlStatus({ type: 'searching', message: '🔍 Dang tìm việc mới nhất...' });
+
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const connectToEventStream = () => {
+    // Nếu Python crawler expose endpoint /stream, nếu không thì dùng Redis qua NestJS
+    const es = new EventSource('http://localhost:8000/stream?channel=crawl:jobs');
+    eventSourceRef.current = es;
+
+    let fastCount = 0;
+    let deepStarted = false;
+
+    es.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        // Signal kết thúc từ crawler
+        if (data.__done__) {
+          setCrawlStatus({
+            type: 'done',
+            message: `✅ Hoàn thành! Tìm thấy ${data.total} việc làm`
+          });
+          setIsRealtime(false);
+          es.close();
+
+          // Sync với DB chính sau 1 giây để đảm bảo đồng bộ
+          setTimeout(() => {
+            fetchJobs();
+            setCrawlStatus(null); // Ẩn banner sau 3 giây
+          }, 3000);
+          return;
+        }
+
+        // Nhận job mới real-time
+        const job = data;
+        fastCount++;
+
+        // Thêm vào đầu danh sách (prepend)
+        setJobs(prev => {
+          // Kiểm tra trùng lặp (tránh race condition)
+          if (prev.find(j => j.jobID === job.job?.sourceLink)) return prev;
+          return [{
+            jobID: job.job?.sourceLink || Date.now(), // Tạm thời dùng sourceLink làm ID
+            title: job.job?.title,
+            companyName: job.company?.companyName,
+            companyLogo: job.company?.companyLogo,
+            location: job.job?.location,
+            shortLocation: job.job?.shortLocation,
+            salary: job.job?.salary,
+            jobType: job.job?.jobType,
+            experienceYear: job.job?.experienceYear,
+            sourcePlatform: job.job?.sourcePlatform,
+            isNewJob: true, // Đánh dấu job mới crawl
+            ...job.job
+          }, ...prev];
+        });
+
+        setMeta(prev => ({ ...prev, total: prev.total + 1 }));
+
+        // Chuyển trạng thái từ Fast sang Deep sau 10-15 jobs đầu
+        if (fastCount > 10 && !deepStarted) {
+          deepStarted = true;
+          setCrawlStatus({
+            type: 'deep',
+            message: '🔍 Đang tìm kiếm sâu thêm nhiều việc làm khác...'
+          });
+        } else if (fastCount <= 10) {
+          setCrawlStatus({
+            type: 'streaming',
+            message: `📥 Đang nhận dữ liệu (${fastCount} việc làm mới)...`
+          });
+        }
+
+      } catch (err) {
+        console.error('SSE parse error:', err);
+      }
+    };
+
+    es.onerror = (err) => {
+      console.error('SSE error:', err);
+      es.close();
+      setIsRealtime(false);
+      // Không hiển thị lỗi vì có thể crawl vẫn đang chạy background, fetch DB sau
+      setTimeout(fetchJobs, 2000);
+    };
+  };
+
+
+
+
 
   const handleIndustryClick = (indId) => {
     setIndustryFilter(prev => prev === indId ? null : indId)
@@ -222,8 +358,26 @@ export default function HomeScreen() {
   )
 
   const renderJobCard = (job) => (
-    <div key={job.jobID} style={{ cursor: 'pointer' }}
+    // <div key={job.jobID} style={{ cursor: 'pointer' }}
+    //   onClick={() => handleJobClick(job)}>
+    <div key={job.jobID} style={{ cursor: 'pointer', position: 'relative' }}
       onClick={() => handleJobClick(job)}>
+      {job.isNewJob && (
+        <span style={{
+          position: 'absolute',
+          top: '-8px',
+          right: '-8px',
+          background: '#FF4757',
+          color: 'white',
+          padding: '4px 8px',
+          borderRadius: '12px',
+          fontSize: '11px',
+          fontWeight: 'bold',
+          zIndex: 10
+        }}>
+          MỚI
+        </span>
+      )}
       <JobCard
         key={`${job.jobID}-${savedJobIds.has(job.jobID)}`}
         token={token}
@@ -468,6 +622,67 @@ export default function HomeScreen() {
                 {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
+
+
+
+
+            {/* Status Banner */}
+            {crawlStatus && (
+              <div style={{
+                padding: '16px 24px',
+                margin: '20px 0',
+                background: crawlStatus.type === 'fast' ? '#FFF3CD' :
+                  crawlStatus.type === 'deep' ? '#D1ECF1' :
+                    crawlStatus.type === 'error' ? '#F8D7DA' : '#D4EDDA',
+                border: `1px solid ${crawlStatus.type === 'fast' ? '#FFEAA7' :
+                  crawlStatus.type === 'deep' ? '#74B9FF' :
+                    crawlStatus.type === 'error' ? '#F5C6CB' : '#C3E6CB'}`,
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                animation: 'pulse 2s infinite',
+              }}>
+                <span style={{ fontSize: '20px' }}>
+                  {crawlStatus.type === 'fast' && '🚀'}
+                  {crawlStatus.type === 'deep' && '🔍'}
+                  {crawlStatus.type === 'streaming' && '📥'}
+                  {crawlStatus.type === 'done' && '✅'}
+                  {crawlStatus.type === 'error' && '❌'}
+                </span>
+                <span style={{
+                  flex: 1,
+                  fontWeight: 600,
+                  color: crawlStatus.type === 'error' ? '#721C24' : '#333'
+                }}>
+                  {crawlStatus.message}
+                </span>
+                {crawlStatus.type !== 'done' && crawlStatus.type !== 'error' && (
+                  <span style={{
+                    width: '20px',
+                    height: '20px',
+                    border: '2px solid #ccc',
+                    borderTopColor: '#333',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
+                  }} />
+                )}
+              </div>
+            )}
+
+            {/* CSS Animation */}
+            <style>{`
+                @keyframes spin { to { transform: rotate(360deg); } }
+                @keyframes pulse { 
+                  0%, 100% { opacity: 1; }
+                  50% { opacity: 0.8; }
+                }
+              `}</style>
+
+
+
+
+
             <div className="hs-sec-hd">
               <span className="hs-sec-title">💼 Tất cả việc làm</span>
               <div className="hs-sec-line" />

@@ -109,6 +109,8 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
     )
   }
 
+  const isExpired = job?.deadline && (new Date(job.deadline).getTime() < Date.now())
+
   const logoLetter = job.company?.companyName?.[0]?.toUpperCase() ?? '?'
 
   return (
@@ -229,7 +231,11 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
         <div className="main-content">
           <div className="jd-wrap">
 
-            <div className="jd-main">
+            <div className="jd-main" style={{ position: 'relative', opacity: isExpired ? 0.6 : 1 }}>
+              {isExpired && (
+                <div className="jd-card-ribbon">Đã hết hạn</div>
+              )}
+
               <div className="jd-head">
                 <div style={{
                   width: 64, height: 64, borderRadius: 14, flexShrink: 0,
@@ -274,8 +280,12 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
                 </div>
 
                 <div className="jd-actions">
-                  <button className="btn btn-rust btn-lg" onClick={handleApply}>⚡ Apply ngay</button>
-                  <button className="btn btn-outline btn-lg" onClick={handleSave}>
+                  <button className="btn btn-rust btn-lg" onClick={handleApply} disabled={isExpired}
+                    style={{
+                      opacity: isExpired ? 0.5 : 1,
+                      cursor: isExpired ? 'not-allowed' : 'pointer',
+                    }}>⚡ Apply ngay</button>
+                  <button className="btn btn-outline btn-lg" onClick={handleSave} disabled={isExpired}  >
                     {saved ? '🔖 Đã lưu' : '🔖 Lưu'}
                   </button>
                 </div>
@@ -374,10 +384,14 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
                 {job.deadline && (
                   <div className="apply-dl">⏰ Hạn nộp: {formatDeadline(job.deadline)}</div>
                 )}
-                <button className="btn btn-rust w100 btn-lg" onClick={handleApply}>
+                <button className="btn btn-rust w100 btn-lg" onClick={handleApply} disabled={isExpired}
+                  style={{
+                    opacity: isExpired ? 0.5 : 1,
+                    cursor: isExpired ? 'not-allowed' : 'pointer',
+                  }}>
                   ⚡ Apply ngay
                 </button>
-                <button className="btn btn-outline w100 btn-lg" style={{ marginTop: 8 }} onClick={handleSave}>
+                <button className="btn btn-outline w100 btn-lg" style={{ marginTop: 8 }} onClick={handleSave} disabled={isExpired}  >
                   {saved ? '🔖 Đã lưu' : '🔖 Lưu việc làm'}
                 </button>
               </div>

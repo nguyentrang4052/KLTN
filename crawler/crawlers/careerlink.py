@@ -156,38 +156,29 @@ class CareerLinkCrawler(BaseCrawler):
     #             if not next_btn: break
     #             url = urljoin(BASE_URL, await next_btn.get_attribute("href"))
     #             page_count += 1
-    #             print(f"[CareerLink] {category.get('title', 'unknown')}: {page_count} trang")
     #     finally:
     #         print(f"[CareerLink] Trang {page_count}: +{len(combined_links)} jobs")
     #         await page.context.close()
         
     #     return combined_links
 
-    async def get_job_links(self, category: dict, max_pages: int = 2) -> list[str]:
+    async def get_job_links(self, category: dict, max_pages: int = 0) -> list[str]:
+        ctx_page = await self._new_page()
+        page = ctx_page  # vì bạn đang return page thôi
+
         combined_links = []
+        seen = set()
+
         url = category["url"]
-        page_count = 1
-        page = await self._new_page()
+        page_num = 1
 
         try:
-            ok = await self._goto_and_wait(page, url)
-            if not ok:
-                return []
+            while True:
+                if max_pages > 0 and page_num > max_pages:
+                    break
 
-            # 👉 Lấy tổng số trang (nếu có pagination)
-            total_pages = await page.evaluate("""
-            () => {
-                const pages = Array.from(document.querySelectorAll("ul.pagination li a"))
-                    .map(a => parseInt(a.innerText))
-                    .filter(n => !isNaN(n));
-                return pages.length ? Math.max(...pages) : 1;
-            }
-            """)
-
-            print(f"[CareerLink] {category['name']}: {total_pages} trang")
-
-            while page_count <= max_pages:
-                print(f"[CareerLink] Thử lấy link tại: {url}")
+                # ✅ LOG GIỐNG CAREERVIET
+                print(f"[CareerLink] Page {page_num}")
 
                 ok = await self._goto_and_wait(page, url)
                 if not ok:
@@ -198,30 +189,10 @@ class CareerLinkCrawler(BaseCrawler):
                 except:
                     pass
 
-                pairs = await page.evaluate("""
-                () => {
-                    const data = [];
-                    const links = document.querySelectorAll("a.job-link, .media-body a[href*='/tim-viec-lam/']");
-                    
-                    links.forEach(a => {
-                        const href = a.getAttribute("href");
-                        if (href && href.includes("/tim-viec-lam/") && !href.includes("/tim-viec-lam/c")) {
-                            const container = a.closest(".media-body");
-                            const compA = container ? container.querySelector("a.job-company") : null;
-
-                            data.push({
-                                job: href,
-                                company: compA ? compA.getAttribute("href") : ""
-                            });
-                        }
-                    });
-
-                    return data;
-                }
-                """)
+                pairs = await page.evaluate(""" ... """)
 
                 if not pairs:
-                    print(f"[CareerLink] ❌ Không có job tại trang {page_count}")
+                    print("[CareerLink] ❌ Không còn job")
                     break
 
                 before = len(combined_links)
@@ -231,27 +202,37 @@ class CareerLinkCrawler(BaseCrawler):
                     c_url = urljoin(BASE_URL, p['company']) if p['company'] else ""
                     pair = f"{j_url}|{c_url}"
 
-                    if pair not in combined_links:
+                    if pair not in seen:
+                        seen.add(pair)
                         combined_links.append(pair)
 
                 added = len(combined_links) - before
 
-                # ✅ LOG giống TopCV
-                print(f"[CareerLink] Trang {page_count}: +{added} jobs")
+                # ✅ LOG GIỐNG TOPCV
+                print(f"[CareerLink] Trang {page_num}: +{added} jobs")
 
                 # next page
                 next_btn = await page.query_selector("a[rel='next']")
                 if not next_btn:
+                    print("[CareerLink] ✅ Hết trang")
                     break
 
                 url = urljoin(BASE_URL, await next_btn.get_attribute("href"))
-                page_count += 1
+                page_num += 1
+                # chống block nhẹ
+                await asyncio.sleep(random.uniform(1.5, 3))
+
+                # 🛡️ safeguard (rất nên có)
+                if page_num > 200:
+                    print("[CareerLink] ⚠️ Stop at 200 pages")
+                    break
 
         finally:
-            print(f"[CareerLink] Tổng: {len(combined_links)} jobs")
             await page.context.close()
 
+        print(f"[CareerLink] {category['name']}: {len(combined_links)} jobs")
         return combined_links
+    
 
     async def get_job_detail(self, combined_url: str, industry: str) -> dict:
         if "|" in combined_url:
@@ -344,3 +325,136 @@ class CareerLinkCrawler(BaseCrawler):
     async def close(self):
         if self._browser:
             await self._browser.close()
+
+
+
+
+
+
+
+
+
+
+
+
+    async def get_job_links_for_page(self, category: dict, page: int) -> tuple[list[str], bool]:
+        url = category["url"]
+        
+        if page > 1:
+            if "?" in url:
+                url = f"{url}&page={page}"
+            else:
+                url = f"{url}?page={page}"
+        
+        print(f"[CareerLink Debug] Truy cập: {url}")
+        
+        page_obj = await self._new_page()
+        combined_links = []
+        
+        try:
+            ok = await self._goto_and_wait(page_obj, url)
+            if not ok:
+                print(f"[CareerLink Debug] Không thể truy cập")
+                return [], False
+
+            # Chờ selector
+            try:
+                await page_obj.wait_for_selector("a.job-link", timeout=10000)
+            except:
+                print(f"[CareerLink Debug] Không tìm thấy a.job-link")
+
+            pairs = await page_obj.evaluate("""
+                () => {
+                    const data = [];
+                    const links = document.querySelectorAll("a.job-link, .media-body a[href*='/tim-viec-lam/']");
+                    links.forEach(a => {
+                        const href = a.getAttribute("href");
+                        if (href && href.includes("/tim-viec-lam/") && !href.includes("/tim-viec-lam/c")) {
+                            const container = a.closest(".media-body");
+                            const compA = container ? container.querySelector("a.job-company") : null;
+                            data.push({
+                                job: href,
+                                company: compA ? compA.getAttribute("href") : ""
+                            });
+                        }
+                    });
+                    return data;
+                }
+            """)
+
+            print(f"[CareerLink Debug] Tìm thấy {len(pairs)} pairs")
+
+            for p in pairs:
+                j_url = urljoin(BASE_URL, p['job']).split('?')[0]
+                c_url = urljoin(BASE_URL, p['company']) if p['company'] else ""
+                pair = f"{j_url}|{c_url}"
+                combined_links.append(pair)
+
+            # Check next
+            has_next = False
+            try:
+                next_btn = await page_obj.query_selector("a[rel='next']")
+                has_next = next_btn is not None
+            except:
+                pass
+
+            return combined_links, has_next
+
+        except Exception as e:
+            print(f"[CareerLink] Lỗi page {page}: {e}")
+            return [], False
+        finally:
+            await page_obj.context.close()
+
+
+
+
+
+
+    async def search_by_keyword(self, keyword: str, page: int = 1) -> tuple[list[str], bool]:
+        """Search CareerLink: /viec-lam?keyword=..."""
+        if not keyword:
+            return await self.get_categories("")
+        
+        page_obj = await self._new_page()
+        
+        try:
+            # CareerLink dùng query param
+            url = f"https://www.careerlink.vn/viec-lam?keyword={keyword.replace(' ', '+')}&page={page}"
+            
+            print(f"[CareerLink Search] Truy cập: {url}")
+            
+            ok = await self._goto_and_wait(page_obj, url)
+            if not ok:
+                return [], False
+            
+            # Lấy links
+            pairs = await page_obj.evaluate("""
+                () => {
+                    const data = [];
+                    document.querySelectorAll("a.job-link").forEach(a => {
+                        const href = a.getAttribute("href");
+                        if (href && href.includes("/tim-viec-lam/")) {
+                            data.push({job: href});
+                        }
+                    });
+                    return data;
+                }
+            """)
+            
+            links = []
+            for p in pairs:
+                j_url = urljoin(BASE_URL, p['job']).split('?')[0]
+                if j_url not in links:
+                    links.append(j_url)
+            
+            has_next = len(links) >= 20  # CareerLink thường 20-25 job/page
+            
+            print(f"[CareerLink Search] Tìm thấy {len(links)} jobs")
+            return links, has_next
+            
+        except Exception as e:
+            print(f"[CareerLink Search] ❌ Lỗi: {e}")
+            return [], False
+        finally:
+            await page_obj.context.close()

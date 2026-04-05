@@ -384,6 +384,8 @@ class CareerVietCrawler(BaseCrawler):
             if not company.get("companyName"):
                 company["companyName"] = company_name or "Không rõ"
 
+            print(f"[CareerViet] Crawled: {title} - {url} - OK")
+
             return {
                 "industry": industry,
                 "job": {
@@ -525,6 +527,156 @@ class CareerVietCrawler(BaseCrawler):
         except Exception as e:
             print(f"[CareerViet] Lỗi company {url} - {name or 'Không rõ'}: {e}")
             return {"companyName": "Không rõ", "companyWebsite": url}
+        finally:
+            await self._save_cookies(ctx)
+            await ctx.close()
+
+
+
+
+
+
+
+
+
+
+
+
+    async def get_job_links_for_page(self, category: dict, page: int) -> tuple[list[str], bool]:
+        ctx, page_obj = await self._new_page()
+        job_links = []
+        seen = set()
+        
+        try:
+            base_url = category["url"]
+            
+            # ===== FIX: CareerViet dùng /trang-{page}-vi.html =====
+            if page > 1:
+                # Tách phần base: nhân-su-c22-vi.html → nhân-su-c22-trang-2-vi.html
+                # Hoặc: ...c22.html → ...c22-trang-2.html
+                if "-vi.html" in base_url:
+                    url = base_url.replace("-vi.html", f"-trang-{page}-vi.html")
+                elif ".html" in base_url:
+                    url = base_url.replace(".html", f"-trang-{page}.html")
+                else:
+                    # Fallback nếu không có .html
+                    url = f"{base_url}?currentPage={page}"
+            else:
+                url = base_url
+
+            print(f"[CareerViet Debug] Truy cập: {url}")
+            
+            await page_obj.goto(url, timeout=30000, wait_until="domcontentloaded")
+            await page_obj.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            await page_obj.wait_for_timeout(1500)
+
+            # Chờ element
+            try:
+                await page_obj.wait_for_function(
+                    "() => document.querySelectorAll('a.job_link').length > 0",
+                    timeout=15000
+                )
+            except:
+                print(f"[CareerViet Debug] Không tìm thấy job_link")
+                return [], False
+
+            job_nodes = await page_obj.query_selector_all("a.job_link")
+            print(f"[CareerViet Debug] Tìm thấy {len(job_nodes)} jobs")
+
+            for job in job_nodes:
+                try:
+                    href = await job.get_attribute("href")
+                    if href:
+                        job_link = urljoin(BASE_URL, href)
+                        if job_link not in seen:
+                            seen.add(job_link)
+                            job_links.append(job_link)
+                except:
+                    continue
+
+            # Check next
+            has_next = False
+            try:
+                next_page_num = page + 1
+                page_btn = await page_obj.query_selector(f".pagination li a:has-text('{next_page_num}')")
+                has_next = page_btn is not None
+            except:
+                pass
+
+            return job_links, has_next
+
+        except Exception as e:
+            print(f"[CareerViet] Lỗi get_job_links_for_page {page}: {e}")
+            return [], False
+        finally:
+            await self._save_cookies(ctx)
+            await ctx.close()
+
+
+    async def search_by_keyword(self, keyword: str, page: int = 1) -> tuple[list[str], bool]:
+        """Search CareerViet với URL đúng: /viec-lam/{Keyword}-k-vi.html"""
+        if not keyword:
+            return await self.get_categories("")
+        
+        ctx, page_obj = await self._new_page()
+        
+        try:
+            # Format: /viec-lam/Business-Analyst-k-vi.html
+            # Keyword viết hoa chữ cái đầu, thay space bằng -
+            keyword_formatted = '-'.join(word.capitalize() for word in keyword.split())
+            
+            if page == 1:
+                url = f"https://careerviet.vn/viec-lam/{keyword_formatted}-k-vi.html"
+            else:
+                # Page 2+: thêm ?currentPage=2
+                url = f"https://careerviet.vn/viec-lam/{keyword_formatted}-k-vi.html?currentPage={page}"
+            
+            print(f"[CareerViet Search] Truy cập: {url}")
+            
+            await page_obj.goto(url, timeout=30000, wait_until="domcontentloaded")
+            await page_obj.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            await page_obj.wait_for_timeout(1500)
+            
+            # Chờ job links
+            try:
+                await page_obj.wait_for_function(
+                    "() => document.querySelectorAll('a.job_link').length > 0",
+                    timeout=10000
+                )
+            except:
+                pass
+            
+            job_nodes = await page_obj.query_selector_all("a.job_link")
+            links = []
+            seen = set()
+            
+            for job in job_nodes:
+                try:
+                    href = await job.get_attribute("href")
+                    if href:
+                        job_link = urljoin(BASE_URL, href)
+                        if job_link not in seen:
+                            seen.add(job_link)
+                            links.append(job_link)
+                except:
+                    continue
+            
+            # Check next page
+            has_next = False
+            try:
+                # CareerViet dùng ?currentPage=
+                next_page = page + 1
+                next_btn = await page_obj.query_selector(f".pagination a[href*='currentPage={next_page}']")
+                has_next = next_btn is not None
+            except:
+                pass
+            
+            print(f"[CareerViet Search] Tìm thấy {len(links)} jobs, has_next={has_next}")
+            return links, has_next
+            
+        except Exception as e:
+            print(f"[CareerViet Search] ❌ Lỗi: {e}")
+            return [], False
         finally:
             await self._save_cookies(ctx)
             await ctx.close()

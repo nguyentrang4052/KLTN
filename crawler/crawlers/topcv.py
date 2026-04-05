@@ -326,7 +326,7 @@ class TopCVCrawler(BaseCrawler):
                     return None
 
                 if any(x in page_content for x in CLOUDFLARE_MARKERS):
-                    print(f"[TopCV] 🚫 Cloudflare (attempt {attempt+1}): {url[:80]}")
+                    print(f"[TopCV] 🚫 Cloudflare (attempt {attempt+1}): {url}")
                     wait_time = 15 + attempt * 15  # 15s, 30s, 45s
                     await asyncio.sleep(wait_time)
                     if attempt == 2:
@@ -615,4 +615,220 @@ class TopCVCrawler(BaseCrawler):
                 "companyProfile": None,
             }
         finally:
+            await ctx.close()
+
+
+
+
+
+    async def get_job_links_for_page(self, category: dict, page: int) -> tuple[list[str], bool]:
+        """Lấy links từ 1 page cụ thể"""
+        print(f"[TopCV Debug] === Bắt đầu get_job_links_for_page: page={page} ===")
+        
+        ctx, page_obj = await self._new_page()
+        links = []
+        seen = set()
+        
+        try:
+            await self._rate_limit()
+            
+            # Build URL
+            base_url = category["url"]
+            if page > 1:
+                if "?" in base_url:
+                    url = f"{base_url}&page={page}"
+                else:
+                    url = f"{base_url}?page={page}"
+            else:
+                url = base_url
+            
+            print(f"[TopCV Debug] Truy cập URL: {url}")
+            
+            # ===== SỬA: Dùng domcontentloaded thay vì networkidle =====
+            # networkidle hay timeout vì TopCV có nhiều tracking scripts
+            try:
+                response = await page_obj.goto(url, wait_until="domcontentloaded", timeout=30000)
+                print(f"[TopCV Debug] Response status: {response.status if response else 'None'}")
+            except Exception as e:
+                print(f"[TopCV Debug] Lỗi goto: {e}, thử lại với load...")
+                try:
+                    response = await page_obj.goto(url, wait_until="load", timeout=30000)
+                except:
+                    print(f"[TopCV Debug] Vẫn lỗi, trả về rỗng")
+                    return [], False
+            
+            # Chờ lâu hơn để JS render (thay vì đợi networkidle)
+            await page_obj.wait_for_timeout(2500)
+            
+            # Check Cloudflare
+            title = await page_obj.title()
+            content = await page_obj.content()
+            
+            if any(marker in content for marker in CLOUDFLARE_MARKERS) or "Just a moment" in title:
+                print(f"[TopCV Debug] ⚠️ Cloudflare detected, đợi 20s...")
+                await asyncio.sleep(20)
+                # Thử reload
+                await page_obj.reload(wait_until="domcontentloaded", timeout=30000)
+                await page_obj.wait_for_timeout(2000)
+
+            print(f"[TopCV Debug] Page title: {title}")
+
+            # Chờ selector với timeout hợp lý
+            try:
+                # Thử nhiều selector khác nhau
+                selectors = ["h3.title a", ".job-item h3 a", ".job-title a", "a[href*='/viec-lam/']"]
+                found = False
+                for sel in selectors:
+                    try:
+                        await page_obj.wait_for_selector(sel, timeout=8000)
+                        found = True
+                        print(f"[TopCV Debug] Tìm thấy selector: {sel}")
+                        break
+                    except:
+                        continue
+                
+                if not found:
+                    print(f"[TopCV Debug] Không tìm thấy selector nào")
+                    return [], False
+                    
+            except Exception as e:
+                print(f"[TopCV Debug] Lỗi chờ selector: {e}")
+                return [], False
+
+            # Lấy links - dùng evaluate để chắc chắn
+            elements = await page_obj.query_selector_all("h3.title a")
+            if not elements:
+                elements = await page_obj.query_selector_all(".job-item h3 a")
+            if not elements:
+                elements = await page_obj.query_selector_all("a[href*='/viec-lam/']")
+
+            print(f"[TopCV Debug] Số elements: {len(elements)}")
+
+            for i, el in enumerate(elements):
+                try:
+                    href = await el.get_attribute("href")
+                    if href:
+                        full = urljoin(BASE_URL, href)
+                        if full not in seen and "/viec-lam/" in full and not "/viec-lam/c" in full:
+                            seen.add(full)
+                            links.append(full)
+                except:
+                    continue
+
+            print(f"[TopCV Debug] Tổng links unique: {len(links)}")
+            if links:
+                print(f"[TopCV Debug] Link đầu tiên: {links[0]}")
+
+            # Check next page
+            has_next = False
+            try:
+                next_btn = await page_obj.query_selector("a[rel='next']:not(.disabled)")
+                if next_btn:
+                    has_next = True
+                
+                if not has_next:
+                    # Check pagination text
+                    paginate_el = await page_obj.query_selector("#job-listing-paginate-text")
+                    if paginate_el:
+                        text = await paginate_el.inner_text()
+                        import re
+                        m = re.search(r"(\d+)\s*/\s*(\d+)", text)
+                        if m:
+                            current, total = int(m.group(1)), int(m.group(2))
+                            has_next = current < total
+                            print(f"[TopCV Debug] Page {current}/{total}")
+                        
+            except Exception as e:
+                print(f"[TopCV Debug] Lỗi check next: {e}")
+                has_next = False
+
+            return links, has_next
+            
+        except Exception as e:
+            print(f"[TopCV Debug] ❌ Lỗi nghiêm trọng: {e}")
+            return [], False
+        finally:
+            await self._save_cookies(ctx)
+            await ctx.close()
+            print(f"[TopCV Debug] === Kết thúc ===")
+
+
+
+    async def search_by_keyword(self, keyword: str, page: int = 1) -> tuple[list[str], bool]:
+        """Search TopCV với URL đúng: /tim-viec-lam-{keyword}"""
+        if not keyword:
+            return await self.get_categories("")
+        
+        ctx, page_obj = await self._new_page()
+        
+        try:
+            # Format: /tim-viec-lam-business-analyst?type_keyword=1&sba=1...
+            # Hoặc đơn giản: /tim-viec-lam?keyword=business+analyst
+            keyword_slug = keyword.lower().replace(' ', '-')
+            
+            if page == 1:
+                url = f"https://www.topcv.vn/tim-viec-lam-{keyword_slug}?type_keyword=1&sba=1"
+            else:
+                url = f"https://www.topcv.vn/tim-viec-lam-{keyword_slug}?type_keyword=1&sba=1&page={page}"
+            
+            print(f"[TopCV Search] Truy cập: {url}")
+            
+            await self._rate_limit()
+            await page_obj.goto(url, wait_until="domcontentloaded", timeout=30000)
+            await page_obj.wait_for_timeout(2000)
+            
+            # Check Cloudflare
+            content = await page_obj.content()
+            if any(x in content for x in CLOUDFLARE_MARKERS):
+                print(f"[TopCV Search] ⚠️ Cloudflare, đợi 15s...")
+                await asyncio.sleep(15)
+                await page_obj.reload(wait_until="domcontentloaded", timeout=30000)
+                await page_obj.wait_for_timeout(2000)
+            
+            # Lấy links - dùng selector cũ nhưng chắc chắn hơn
+            elements = await page_obj.query_selector_all("h3.title a")
+            if not elements:
+                # Thử selector dự phòng
+                elements = await page_obj.query_selector_all("div.job-item h3 a")
+            
+            links = []
+            seen = set()
+            
+            for el in elements:
+                try:
+                    href = await el.get_attribute("href")
+                    if href:
+                        full = urljoin(BASE_URL, href)
+                        if full not in seen and "/viec-lam/" in full:
+                            seen.add(full)
+                            links.append(full)
+                except:
+                    continue
+            
+            # Check next page
+            has_next = False
+            try:
+                # Tìm số page hiện tại và tổng số page
+                paginate_text = await page_obj.inner_text("#job-listing-paginate-text")
+                import re
+                m = re.search(r"(\d+)\s*/\s*(\d+)", paginate_text)
+                if m:
+                    current, total = int(m.group(1)), int(m.group(2))
+                    has_next = current < total
+                    print(f"[TopCV Search] Page {current}/{total}")
+                else:
+                    # Fallback: check nút next
+                    next_btn = await page_obj.query_selector("a[rel='next']:not(.disabled)")
+                    has_next = next_btn is not None
+            except:
+                has_next = False
+            
+            print(f"[TopCV Search] Tìm thấy {len(links)} jobs, has_next={has_next}")
+            return links, has_next
+            
+        except Exception as e:
+            print(f"[TopCV Search] ❌ Lỗi: {e}")
+            return [], False
+        finally:
+            await self._save_cookies(ctx)
             await ctx.close()
