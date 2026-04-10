@@ -17,7 +17,7 @@ import CompanyDetailScreen from './components/screens/CompanyDetailScreen/Compan
 import AboutScreen from './components/screens/AboutScreen/AboutScreen'
 import AccountSettingScreen from './components/screens/AccountSettingScreen/AccountSettingScreen'
 import SavedJobScreen from './components/screens/SavedJobScreen/SavedJobScreen'
-import MyCVScreen from './components/screens/MyCVScreen/MyCVScreen'
+import CreatedCVScreen from './components/screens/CreatedCVScreen/CreatedCVScreen'
 import AIScreen from './components/screens/AIScreen/AIScreen'
 import PricingScreen from './components/screens/PricingScreen/PricingScreen'
 import CheckoutScreen from './components/screens/CheckoutScreen/CheckoutScreen'
@@ -36,6 +36,13 @@ import AdminPackages from './components/Admin/AdminPackages/AdminPackages'
 
 import { useParams, useNavigate } from 'react-router-dom'
 import { getToken } from './utils/auth'
+
+
+import { CVStoreProvider } from './store/cvStore'
+import TemplatePickerScreen from './components/screens/TemplatePickerScreen/TemplatePickerScreen'
+// import CVEditorScreen from './components/screens/CVEditorScreen/CVEditorScreen'
+import VisualCVEditorScreen from './components/screens/VisualCVEditorScreen/VisualCVEditorScreen'
+
 
 function ProtectedRoute({ children }) {
   const location = useLocation()
@@ -142,6 +149,9 @@ function App() {
     location.pathname.startsWith('/home/job/') ||
     location.pathname.startsWith('/jobs/job/')
 
+  const [screen, setScreen] = useState('myCV')
+  const navigate = useNavigate()
+
   return (
     <div className="app">
       {!hideHeader && <Header />}
@@ -224,20 +234,20 @@ function App() {
           {/* <Route path="/applications" element={
             <ProtectedRoute><ApplicationsScreen /></ProtectedRoute>
           } /> */}
-          <Route path="/cv-builder" element={
+          <Route path="/my-cv" element={
             <ProtectedRoute><CVBuilderScreen /></ProtectedRoute>
           } />
 
-          <Route path="/my-cv" element={
-            <ProtectedRoute><MyCVScreen/></ProtectedRoute>
+          <Route path="/cv-builder" element={
+            <ProtectedRoute><CreatedCVScreen /></ProtectedRoute>
           } />
 
           <Route path="/ai-assistant" element={
-            <ProtectedRoute><AIScreen/></ProtectedRoute>
+            <ProtectedRoute><AIScreen /></ProtectedRoute>
           } />
 
           <Route path="/services" element={
-            <ProtectedRoute><PricingScreen/></ProtectedRoute>
+            <ProtectedRoute><PricingScreen /></ProtectedRoute>
           } />
 
           <Route path="/checkout" element={
@@ -251,6 +261,17 @@ function App() {
           <Route path="/notifications" element={
             <ProtectedRoute><NotificationsScreen /></ProtectedRoute>
           } />
+
+          <Route path="/cv-templates" element={
+            <ProtectedRoute><TemplatePickerScreen /></ProtectedRoute>
+          } />
+          <Route path="/cv-editor/:id" element={
+            <ProtectedRoute><VisualCVEditorScreen /></ProtectedRoute>
+          } />
+          <Route path="/cv-editor/new" element={
+            <ProtectedRoute><VisualCVEditorScreen /></ProtectedRoute>
+          } />
+
 
 
           <Route path="/admin" element={<AdminLayout />}>

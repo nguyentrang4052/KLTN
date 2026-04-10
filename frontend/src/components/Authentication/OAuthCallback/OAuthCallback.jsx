@@ -1,11 +1,16 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from "react-router-dom"
 
 
 function OAuthCallback({ onLoginSuccess }) {
   const navigate = useNavigate()
+  const hasRun = useRef(false)
+
 
   useEffect(() => {
+    if (hasRun.current) return
+    hasRun.current = true
+
     const params = new URLSearchParams(window.location.search)
 
     const token = params.get('token')?.trim()
@@ -19,10 +24,11 @@ function OAuthCallback({ onLoginSuccess }) {
         fullName: name ? decodeURIComponent(name) : '',
       }))
 
-      window.history.replaceState({}, document.title, '/')
+      // window.history.replaceState({}, document.title, '/')
       // onLoginSuccess()
-      navigate("/home")
-    }else{
+      // navigate("/home")
+      navigate("/home", { replace: true })
+    } else {
       navigate("/login")
     }
   }, [navigate])

@@ -623,15 +623,19 @@ class CareerVietCrawler(BaseCrawler):
         try:
             # Format: /viec-lam/Business-Analyst-k-vi.html
             # Keyword viết hoa chữ cái đầu, thay space bằng -
-            keyword_formatted = '-'.join(word.capitalize() for word in keyword.split())
+            keyword_formatted = '-'.join(keyword.split())
             
             if page == 1:
                 url = f"https://careerviet.vn/viec-lam/{keyword_formatted}-k-vi.html"
+
             else:
                 # Page 2+: thêm ?currentPage=2
-                url = f"https://careerviet.vn/viec-lam/{keyword_formatted}-k-vi.html?currentPage={page}"
+                url = f"https://careerviet.vn/viec-lam/{keyword_formatted}-k-trang-{page}-vi.html"
+
             
-            print(f"[CareerViet Search] Truy cập: {url}")
+            print(f"[CareerViet Search] 🔗 Truy cập: {url}")
+            print(f"[CareerViet Search] 🔍 Tìm: '{keyword}' (formatted: '{keyword_formatted}')")
+        
             
             await page_obj.goto(url, timeout=30000, wait_until="domcontentloaded")
             await page_obj.evaluate("window.scrollTo(0, document.body.scrollHeight)")
@@ -657,7 +661,19 @@ class CareerVietCrawler(BaseCrawler):
                         job_link = urljoin(BASE_URL, href)
                         if job_link not in seen:
                             seen.add(job_link)
-                            links.append(job_link)
+                            company_el = await job.evaluate("""el => {
+                                const container = el.closest('.job-item, .job-list-item');
+                                if (!container) return null;
+                                const comp = container.querySelector('.company-name a, .logo-company a, a[href*="/company/"]');
+                                return comp ? comp.getAttribute('href') : null;
+                            }""")
+                            
+                            company_url = urljoin(BASE_URL, company_el) if company_el else ""
+                            
+                            if company_url:
+                                links.append(f"{job_link}|{company_url}")
+                            else:
+                                links.append(job_link)
                 except:
                     continue
             

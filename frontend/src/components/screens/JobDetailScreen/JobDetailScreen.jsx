@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import './JobDetailScreen.css'
 import Badge from '../../common/Badge/Badge'
 import { getToken } from '../../../utils/auth'
@@ -9,6 +9,7 @@ const API = 'http://localhost:3000/api'
 function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
   const params = useParams()
   const navigate = useNavigate()
+  const location = useLocation() 
   const id = jobId ?? params.id
   const token = getToken()
 
@@ -17,6 +18,18 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
   const [saved, setSaved] = useState(false)
   const [applyModalOpen, setApplyModalOpen] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
+
+  const returnUrl = location.state?.fromPath || '/home'
+  const scrollY = location.state?.scrollY || 0
+
+   const handleBack = () => {
+    // Navigate về URL cũ, state sẽ được đọc bởi HomeScreen
+    navigate(returnUrl, {
+      state: { scrollY }  // Truyền lại scrollY để HomeScreen restore
+    })
+  }
+
+
 
   useEffect(() => {
     if (!id) return
@@ -125,7 +138,7 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
             maxWidth: 1280, margin: '0 auto', height: 44,
             display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#9A8D80',
           }}>
-            <button onClick={onBack} style={{
+            <button onClick={handleBack} style={{
               background: 'none', border: 'none', cursor: 'pointer',
               color: 'var(--rust)', fontSize: 13, fontWeight: 700, padding: 0,
             }}>← Quay lại</button>

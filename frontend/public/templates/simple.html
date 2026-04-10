@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CV Đặng Ngọc Linh</title>
+    <style>
+        body {
+            font-family: "Times New Roman", Times, serif;
+            line-height: 1.5;
+            color: #333;
+            margin: 0;
+            padding: 40px;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+        }
+
+        .cv-container {
+            width: 100%;
+            /* Khổ giấy A4 */
+            min-height: 297mm;
+            background-color: white;
+            padding: 40px 50px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 28px;
+            text-transform: none;
+            font-weight: bold;
+        }
+
+        header .title {
+            font-size: 18px;
+            margin: 5px 0 15px 0;
+            font-weight: bold;
+        }
+
+        .contact-info {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            font-size: 13px;
+            flex-wrap: wrap;
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+        }
+
+        section {
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            font-size: 18px;
+            text-transform: uppercase;
+            border-bottom: 1.5px solid #333;
+            margin-bottom: 10px;
+            padding-bottom: 2px;
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .bold {
+            font-weight: bold;
+        }
+
+        .italic {
+            font-style: italic;
+        }
+
+        .content {
+            font-size: 14px;
+            text-align: justify;
+        }
+
+        ul {
+            margin: 5px 0;
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 3px;
+        }
+
+        .skill-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .skill-table td {
+            padding: 5px 0;
+            vertical-align: top;
+            font-size: 14px;
+        }
+
+        .skill-name {
+            width: 30%;
+        }
+
+        /* Tối ưu hóa khi in */
+        @media print {
+            body {
+                background-color: white;
+                padding: 0;
+            }
+
+            .cv-container {
+                box-shadow: none;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="cv-container">
+        <!-- <header>
+        <h1>Đặng Ngọc Linh</h1>
+        <div class="title">Nhân viên tư vấn</div>
+        <div class="contact-info">
+            <span class="contact-item">📞 0123 456 789</span>
+            <span class="contact-item">✉️ tech.growth@topcv.vn</span>
+            <span class="contact-item">🌐 be.net/tencuaban</span>
+            <span class="contact-item">📍 Hoàng Mai, Hà Nội</span>
+        </div>
+    </header> -->
+        <!-- SECTION: personal -->
+        <div class="section-header" data-section-id="personal">
+            <!-- <div class="avatar-wrapper" data-editable="image" data-field="avatar" data-section="personal">
+                <img src="placeholder.jpg" alt="Avatar">
+            </div> -->
+            <div class="info">
+                <h1 data-field="fullName" data-section="personal" contenteditable="true" data-placeholder="Họ và tên">
+                    Đặng Ngọc Linh</h1>
+                <p data-field="jobTitle" data-section="personal" contenteditable="true"
+                    data-placeholder="Vị trí ứng tuyển">Nhân viên tư vấn</p>
+                <div class="contact-info">
+                    <span class="contact-item" data-field="phone" data-section="personal" contenteditable="true"
+                        data-placeholder="Số điện thoại">📞 0123 456 789</span>
+                    <span class="contact-item" data-field="email" data-section="personal" contenteditable="true"
+                        data-placeholder="Email">✉️ tech.growth@topcv.vn</span>
+                    <span class="contact-item" data-field="linkedin" data-section="personal" contenteditable="true"
+                        data-placeholder="LinkedIn">🌐 linkedin.com/in/username</span>
+                    <span class="contact-item" data-field="github" data-section="personal" contenteditable="true"
+                        data-placeholder="GitHub">🌐 github.com/username</span>
+                    <span class="contact-item" data-field="location" data-section="personal" contenteditable="true"
+                        data-placeholder="Địa chỉ">📍 Hoàng Mai, Hà Nội</span>
+
+                </div>
+
+            </div>
+        </div>
+
+        <div class="section" data-section-id="summary">
+            <h2 data-field="sectionTitle" data-section="summary" contenteditable="true"
+                data-placeholder="Mục tiêu nghề nghiệp">MỤC TIÊU NGHỀ NGHIỆP</h2>
+            <p data-field="summary" data-section="summary" contenteditable="true" data-placeholder="Nội dung...">Tôi
+                mong muốn ứng tuyển vào vị trí Tổng đài viên Chăm sóc khách hàng để tận dụng 3 năm kinh nghiệm xử lý
+                yêu cầu và phản hồi khách hàng chuyên nghiệp, cùng với khả năng giao tiếp tiếng Anh tốt và tinh thần làm
+                việc năng động, linh hoạt. Mục tiêu của tôi là không ngừng nâng cao trải nghiệm khách hàng, góp phần xây
+                dựng hình ảnh chuyên nghiệp và thân thiện cho doanh nghiệp.</p>
+        </div>
+
+        <div class="section" data-section-id="education">
+            <h2 data-field="sectionTitle" data-section="education" contenteditable="true" data-placeholder="Học vấn">HỌC
+                VẤN</h2>
+            <div class="education-item" data-template-item data-item-index="0">
+                <div class="row">
+                    <span class="cv-editable cv-placeholder" data-field="school_0" data-section="education" contenteditable="true"
+                        data-placeholder="Tên trường">ĐH TopCV</span>
+                    <span data-field="year_0" data-section="education" contenteditable="true"
+                        data-placeholder="Năm tốt nghiệp">2016 - 2020</span>
+                </div>
+                <div class="bold" data-field="degree_0" data-section="education" contenteditable="true"
+                    data-placeholder="Bằng cấp">Quản trị kinh doanh</div>
+                <div class="italic" data-field="honor_0" data-section="education" contenteditable="true"
+                    data-placeholder="Thành tích">Tốt nghiệp loại Giỏi</div>
+            </div>
+        </div>
+
+        <div class="section" data-section-id="experience">
+            <h2 data-field="sectionTitle" data-section="experience" contenteditable="true"
+                data-placeholder="Kinh nghiệm">KINH NGHIỆM</h2>
+
+            <!-- Template cho 1 item -->
+            <div class="timeline-item" data-template-item data-item-index="0">
+                <div class="date">
+                    <span data-field="startDate_0" data-section="experience" contenteditable="true"
+                        data-placeholder="MM/YYYY">08/2018</span>
+                    <span> - </span>
+                    <span data-field="endDate_0" data-section="experience" contenteditable="true"
+                        data-placeholder="MM/YYYY">Hiện tại</span>
+                </div>
+                <div class="content">
+                    <h3 data-field="company_0" data-section="experience" contenteditable="true"
+                        data-placeholder="Công ty">CÔNG TY TNHH ABC</h3>
+                    <p data-field="position_0" data-section="experience" contenteditable="true"
+                        data-placeholder="Vị trí">Chuyên Viên Tư Vấn Giải Pháp Phần Mềm</p>
+                    <div data-field="description_1" data-section="experience" contenteditable="true"
+                        data-placeholder="Mô tả công việc 1">Phân tích nhu cầu và quy trình quản lý nhân sự của khách
+                        hàng, từ đó đề xuất giải pháp phần mềm chấm
+                        công, tính lương, quản lý ca phù hợp.</div>
+                    <div data-field="description_2" data-section="experience" contenteditable="true"
+                        data-placeholder="Mô tả công việc 2">Tư vấn giải pháp và trình bày demo sản phẩm cho khách hàng
+                        doanh nghiệp, giúp họ hiểu rõ tính năng
+                        và lợi ích của phần mềm.</div>
+                    <div data-field="description_3" data-section="experience" contenteditable="true"
+                        data-placeholder="Mô tả công việc 3">Làm việc cùng đội ngũ kỹ thuật để tùy chỉnh phần mềm theo
+                        yêu cầu đặc thù của từng doanh nghiệp (ca
+                        kíp phức tạp, quy định tính công riêng...).</div>
+                    <div data-field="description_4" data-section="experience" contenteditable="true"
+                        data-placeholder="Mô tả công việc 4">Theo dõi hiệu quả sau triển khai và hỗ trợ bảo trì, tiếp
+                        nhận phản hồi và phối hợp cải tiến giải
+                        pháp cho phù hợp với quy mô, nhu cầu thực tế của khách hàng.</div>
+                    <div data-field="description_5" data-section="experience" contenteditable="true"
+                        data-placeholder="Mô tả công việc 5">Tham gia các buổi họp với khách hàng để cập nhật thông tin,
+                        thảo luận về các yêu cầu mới và đưa ra các giải pháp phù hợp.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section" data-section-id="skill">
+            <h2 data-field="sectionTitle" data-section="skill" contenteditable="true" data-placeholder="Kỹ năng">KỸ NĂNG
+            </h2>
+            <table class="skill-table">
+                <tr>
+                    <td class="skill-name" data-field="skillName_0" data-section="skill" contenteditable="true"
+                        data-placeholder="Tên kỹ năng">Kỹ năng giao tiếp </td>
+                    <td class="content" data-field="skillDesc_0" data-section="skill" contenteditable="true"
+                        data-placeholder="Mô tả kỹ năng">Thành thạo trong việc lắng nghe, truyền đạt thông tin rõ ràng
+                        và thuyết phục</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="section" data-section-id="activity">
+            <h2 data-field="sectionTitle" data-section="activity" contenteditable="true" data-placeholder="Hoạt động">
+                HOẠT ĐỘNG</h2>
+            <div class="activity-item" data-template-item data-item-index="0">
+                <div class="row">
+                    <span class="bold" data-field="activityName_0" data-section="activity" contenteditable="true"
+                        data-placeholder="Tên hoạt động">Câu lạc bộ Sự kiện, trường Đại học TopCV</span>
+                    <span data-field="activityDate_0" data-section="activity" contenteditable="true"
+                        data-placeholder="Thời gian">06/2016 - 09/2020</span>
+                </div>
+            </div>
+
+</body>
+
+</html>

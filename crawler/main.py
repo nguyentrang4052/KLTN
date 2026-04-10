@@ -122,6 +122,8 @@ async def search_smart(req: SearchRequest):
     from db_service import get_db_url
     import psycopg2, psycopg2.extras
 
+    print(f"[SearchSmart] Nhận request: query='{req.query}', session_id='{req.session_id}'")
+
     existing_jobs = []
     try:
         conn = psycopg2.connect(get_db_url())
@@ -129,7 +131,7 @@ async def search_smart(req: SearchRequest):
         cur.execute("""
             SELECT * FROM "Job"
             WHERE title ILIKE %s OR description ILIKE %s OR "sourcePlatform" ILIKE %s
-            ORDER BY "discoveredAt" DESC
+            ORDER BY "discoveredAt" DESC NULLS LAST
             LIMIT 20
         """, (f"%{req.query}%", f"%{req.query}%", f"%{req.query}%"))
         existing_jobs = [dict(row) for row in cur.fetchall()]
@@ -139,17 +141,22 @@ async def search_smart(req: SearchRequest):
     except Exception as e:
         print(f"[SearchSmart] Lỗi query DB: {e}")
 
-    # Trigger crawl ngầm (FAST mode)
-    if req.query:
+    # Trigger crawl ngầm (FAST mode) - LUÔN trigger nếu có query
+    should_crawl = bool(req.query and req.query.strip())
+    if should_crawl:
+        print(f"[SearchSmart] Trigger FAST crawl cho query: '{req.query}'")
+        # Dùng create_task để không block response
         asyncio.create_task(trigger_fast_search(req.query))
+    else:
+        print(f"[SearchSmart] Không trigger crawl (query rỗng)")
 
     return {
         "status": "ok",
         "source": "db_first",
         "existing_jobs": existing_jobs,
         "count": len(existing_jobs),
-        "crawling": bool(req.query),
-        "message": f"Hiển thị {len(existing_jobs)} việc làm từ DB. Đang tìm thêm việc mới..."
+        "crawling": should_crawl,
+        "message": f"Hiển thị {len(existing_jobs)} việc làm từ DB. {'Đang tìm thêm việc mới...' if should_crawl else ''}"
     }
 
 @app.post("/crawl")

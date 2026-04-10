@@ -764,14 +764,19 @@ class TopCVCrawler(BaseCrawler):
         try:
             # Format: /tim-viec-lam-business-analyst?type_keyword=1&sba=1...
             # Hoặc đơn giản: /tim-viec-lam?keyword=business+analyst
-            keyword_slug = keyword.lower().replace(' ', '-')
+            keyword_formatted = '-'.join(keyword.split())
+
+            print(f"[TopCV Search] Tìm kiếm: {keyword_formatted} (page {page})")
             
             if page == 1:
-                url = f"https://www.topcv.vn/tim-viec-lam-{keyword_slug}?type_keyword=1&sba=1"
+                url = f"https://www.topcv.vn/tim-viec-lam-{keyword_formatted}?type_keyword=1&sba=1"
+
             else:
-                url = f"https://www.topcv.vn/tim-viec-lam-{keyword_slug}?type_keyword=1&sba=1&page={page}"
+                url = f"https://www.topcv.vn/tim-viec-lam-{keyword_formatted}?type_keyword=1&sba=1&page={page}"
+
+            print(f"[TopCV Search] 🔗 Truy cập: {url}")
+            print(f"[TopCV Search] 🔍 Tìm keyword: '{keyword}' (slug: '{keyword_formatted}')")
             
-            print(f"[TopCV Search] Truy cập: {url}")
             
             await self._rate_limit()
             await page_obj.goto(url, wait_until="domcontentloaded", timeout=30000)
@@ -801,7 +806,27 @@ class TopCVCrawler(BaseCrawler):
                         full = urljoin(BASE_URL, href)
                         if full not in seen and "/viec-lam/" in full:
                             seen.add(full)
-                            links.append(full)
+                            parent = await el.evaluate("el => el.closest('.job-item, .job-listing')")
+                            company_el = None
+                            if parent:
+                                # Tìm trong parent container
+                                company_el = await el.evaluate("""el => {
+                                    const container = el.closest('.job-item, .job-listing, [class*="job"]');
+                                    if (!container) return null;
+                                    const comp = container.querySelector('a[href*="/cong-ty/"], .company-name a, a.name');
+                                    return comp ? comp.getAttribute('href') : null;
+                                }""")
+                            
+                            company_url = urljoin(BASE_URL, company_el) if company_el else ""
+                            
+                            # Format giống CareerLink: "job_url|company_url"
+                            if company_url:
+                                links.append(f"{full}|{company_url}")
+                            else:
+                                links.append(full)  # Fallback nếu không có company
+                            
+
+                            # links.append(full)
                 except:
                     continue
             

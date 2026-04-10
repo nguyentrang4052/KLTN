@@ -455,6 +455,115 @@ async def run_crawl(query: str, quick_mode: bool = False):
 #     return count
 
 
+# async def _process_platform(p, platform: str, CrawlerClass, query: str, max_pages: int, quick_mode: bool) -> int:
+#     count = 0
+#     crawler = CrawlerClass(p)
+    
+#     # ===== QUAN TRỌNG: Nếu có query, search trực tiếp, không lặp category =====
+#     if query and query.strip():
+#         print(f"\n[{platform}] 🔍 SEARCH MODE: '{query}'")
+#         return await _search_by_keyword_stream(crawler, platform, query, max_pages)
+    
+#     # ===== Nếu không có query, fallback về category mode cũ =====
+#     return await _process_by_category(crawler, platform, query, max_pages, quick_mode)
+
+
+# async def _search_by_keyword_stream(crawler, platform: str, keyword: str, max_pages: int) -> int:
+#     """Search trực tiếp keyword"""
+#     count = 0
+    
+#     print(f"[{platform}] 🔍 BẮT ĐẦU SEARCH BY KEYWORD: '{keyword}'")
+#     print(f"[{platform}] Gọi crawler.search_by_keyword()...")
+    
+#     # Kiểm tra crawler có method search_by_keyword không
+#     if not hasattr(crawler, 'search_by_keyword'):
+#         print(f"[{platform}] ❌ crawler không có method search_by_keyword!")
+#         return 0
+    
+#     # Chỉ lấy page 1
+#     links, has_next = await crawler.search_by_keyword(keyword, page=1)
+    
+#     print(f"[{platform}] Kết quả search: {len(links)} links, has_next={has_next}")
+    
+#     if not links:
+#         print(f"[{platform}] ⚠️ Không tìm thấy job nào")
+#         return 0
+    
+#     # Crawl chi tiết...
+#     for idx, link in enumerate(links[:15], 1):  # Giới hạn 15 job cho nhanh
+#         try:
+#             # CareerLink trả về pair "job_url|company_url"
+#             if "|" in link:
+#                 job_url, company_url = link.split("|")
+#             else:
+#                 job_url, company_url = link, ""
+            
+#             if await redis_service.is_already_crawled(platform, job_url):
+#                 continue
+            
+#             print(f"[{platform}] 🔍 Crawling {idx}/{min(len(links), 15)}: {job_url[:50]}...")
+            
+#             # Gọi get_job_detail với URL job
+#             raw = await crawler.get_job_detail(link, keyword)  # link = "job|company" cho CareerLink
+#             if not raw:
+#                 continue
+            
+#             # Check dup
+#             is_dup, _ = await redis_service.check_and_store_fingerprint(raw, link)
+#             if is_dup:
+#                 await redis_service.mark_as_crawled(platform, link)
+#                 continue
+            
+#             # Process
+#             raw["industrySourcePlatform"] = PLATFORM_NAMES.get(platform, platform)
+#             raw["isNewJob"] = True
+#             cleaned = clean_job(raw)
+            
+#             if "skills" not in cleaned:
+#                 cleaned["skills"] = raw.get("skills", [])
+
+#             company = raw.get("company", {})
+#             company_name = (company.get("companyName") or "").strip().lower()
+#             if not company_name or company_name in ["không rõ", "unknown", "n/a"]:
+#                 continue
+
+#             result = db_service.upsert_job(cleaned)
+            
+#             # if result:
+#             #     await redis_service.mark_as_crawled(platform, job_url)
+#             #     await redis_service.publish_job(cleaned)
+#             #     count += 1
+#             #     print(f"[{platform}] ✅ SUCCESS: {cleaned.get('job', {}).get('title', 'N/A')}")
+
+
+
+#             if result and result.get("jobID"):
+#                 # Thêm jobID vào cleaned để publish
+#                 cleaned["jobID"] = result["jobID"]
+#                 cleaned["isNewJob"] = result.get("isNewJob", True)
+                
+#                 await redis_service.publish_job(cleaned)
+#                 count += 1
+#                 print(f"[{platform}] ✅ SUCCESS: jobID={result['jobID']}, {cleaned.get('job', {}).get('title', 'N/A')}")
+                            
+#         except Exception as e:
+#             print(f"[{platform}] ❌ Lỗi: {e}")
+#             continue
+    
+#     print(f"[{platform}] ✅ HOÀN THÀNH SEARCH: {count} jobs")
+#     await redis_service.publish_job({
+#         "__fast_done__": True,  # Signal đặc biệt cho frontend
+#         "platform": platform,
+#         "count": count,
+#         "keyword": keyword
+#     })
+    
+#     return count
+
+
+
+# Trong orchestrator.py - sửa _process_platform để kiểm tra query trước khi chạy category
+
 async def _process_platform(p, platform: str, CrawlerClass, query: str, max_pages: int, quick_mode: bool) -> int:
     count = 0
     crawler = CrawlerClass(p)
@@ -465,40 +574,82 @@ async def _process_platform(p, platform: str, CrawlerClass, query: str, max_page
         return await _search_by_keyword_stream(crawler, platform, query, max_pages)
     
     # ===== Nếu không có query, fallback về category mode cũ =====
-    return await _process_by_category(crawler, platform, query, max_pages, quick_mode)
-
+    if not quick_mode:  # Chỉ crawl category khi không phải quick mode hoặc không có query
+        return await _process_by_category(crawler, platform, query, max_pages, quick_mode)
+    
+    return 0
 
 async def _search_by_keyword_stream(crawler, platform: str, keyword: str, max_pages: int) -> int:
-    """Chế độ search nhanh: chỉ 1 page, crawl ngay từng job"""
+    """Search trực tiếp keyword - FAST MODE"""
     count = 0
-    all_links = []
     
-    # Chỉ lấy 1 page duy nhất (50 jobs) - Đủ nhanh cho user
-    print(f"[{platform}] Lấy page 1 kết quả search...")
-    links, _ = await crawler.search_by_keyword(keyword, page=1)
+    print(f"\n[{platform}] 🚀 === BẮT ĐẦU FAST SEARCH ===")
+    print(f"[{platform}] 🔍 Keyword: '{keyword}'")
     
-    if not links:
-        print(f"[{platform}] Không tìm thấy job nào với keyword '{keyword}'")
+    # Kiểm tra crawler có method search_by_keyword không
+    if not hasattr(crawler, 'search_by_keyword'):
+        print(f"[{platform}] ❌ crawler không có method search_by_keyword!")
         return 0
     
-    print(f"[{platform}] Tìm thấy {len(links)} links, bắt đầu crawl chi tiết ngay...")
+    # Chỉ lấy page 1
+    links, has_next = await crawler.search_by_keyword(keyword, page=1)
     
-    # Crawl chi tiết từng link ngay lập tức (stream)
-    for idx, link in enumerate(links[:20], 1):  # Giới hạn 20 job đầu tiên cho nhanh
+    print(f"[{platform}] 📊 Kết quả: {len(links)} links, has_next={has_next}")
+    
+    # ✅ LOG TẤT CẢ LINKS TÌM ĐƯỢC
+    print(f"[{platform}] 🔗 Links chứa keyword '{keyword}':")
+
+    for i, link in enumerate(links[:20], 1):  # Log tối đa 20 link
+        # Tách job_url nếu là format "job|company" (CareerLink)
+        display_link = link.split("|")[0] if "|" in link else link
+        # Kiểm tra link có chứa keyword không (case insensitive)
+        keyword_in_link = keyword.replace(' ', '-') in display_link
+        match_icon = "✅" if keyword_in_link else "⚠️"
+        print(f"[{platform}]   {match_icon} {i}. {display_link[:80]}")
+    
+    if len(links) > 20:
+        print(f"[{platform}]   ... và {len(links) - 20} links khác")
+    
+    if not links:
+        print(f"[{platform}] ⚠️ Không tìm thấy job nào cho keyword '{keyword}'")
+        return 0
+    
+    # Crawl chi tiết...
+    for idx, link in enumerate(links[:15], 1):
         try:
-            # Check đã crawl chưa
-            if await redis_service.is_already_crawled(platform, link):
+            # CareerLink trả về pair "job_url|company_url"
+            if "|" in link:
+                job_url, company_url = link.split("|")
+            else:
+                job_url, company_url = link, ""
+            
+            # ✅ LOG LINK ĐANG CRAWL
+            print(f"\n[{platform}] 🔍 [{idx}/{min(len(links), 15)}] Crawling: {job_url}")
+            print(f"[{platform}]    📍 Company URL: {company_url or 'N/A'}")
+            
+            if await redis_service.is_already_crawled(platform, job_url):
+                print(f"[{platform}]    ⏩ Đã crawl trước đó, skip")
                 continue
             
-            raw = await crawler.get_job_detail(link, keyword)  # industry = keyword
+            # Gọi get_job_detail
+            raw = await crawler.get_job_detail(link, keyword)
+            
             if not raw:
+                print(f"[{platform}]    ❌ Không lấy được data")
                 continue
             
             # Check dup
-            is_dup, _ = await redis_service.check_and_store_fingerprint(raw, link)
+            is_dup, original = await redis_service.check_and_store_fingerprint(raw, link)
             if is_dup:
+                print(f"[{platform}]    ♻️ Trùng nội dung với: {original or 'N/A'}")
                 await redis_service.mark_as_crawled(platform, link)
                 continue
+            
+            # Log job info tìm được
+            job_title = raw.get('job', {}).get('title', 'N/A')
+            company_name = raw.get('company', {}).get('companyName', 'N/A')
+            print(f"[{platform}]    📋 Title: {job_title}")
+            print(f"[{platform}]    🏢 Company: {company_name}")
             
             # Process
             raw["industrySourcePlatform"] = PLATFORM_NAMES.get(platform, platform)
@@ -509,25 +660,41 @@ async def _search_by_keyword_stream(crawler, platform: str, keyword: str, max_pa
                 cleaned["skills"] = raw.get("skills", [])
 
             company = raw.get("company", {})
-            company_name = (company.get("companyName") or "").strip().lower()
-            if not company_name or company_name in ["không rõ", "unknown", "n/a"]:
+            comp_name_clean = (company.get("companyName") or "").strip().lower()
+            if not comp_name_clean or comp_name_clean in ["không rõ", "unknown", "n/a"]:
+                print(f"[{platform}]    ❌ Company không hợp lệ, skip")
                 continue
 
             result = db_service.upsert_job(cleaned)
             
-            if result:
-                await redis_service.mark_as_crawled(platform, link)
-                await redis_service.publish_job(cleaned)  # Push real-time
-                count += 1
+            if result and result.get("jobID"):
+                # Thêm jobID vào cleaned để publish
+                cleaned["jobID"] = result["jobID"]
+                cleaned["isNewJob"] = result.get("isNewJob", True)
                 
-                if count % 5 == 0:
-                    print(f"[{platform}] Đã crawl {count} jobs mới...")
-                    
+                await redis_service.publish_job(cleaned)
+                count += 1
+                print(f"[{platform}]    ✅ SUCCESS: jobID={result['jobID']}")
+            else:
+                print(f"[{platform}]    ❌ Insert DB thất bại")
+                            
         except Exception as e:
-            print(f"[{platform}] Lỗi crawl {link[:50]}: {e}")
+            print(f"[{platform}]    ❌ Lỗi: {str(e)[:100]}")
             continue
     
-    print(f"[{platform}] ✅ Hoàn thành search: {count} jobs mới")
+    # ✅ LOG KẾT THÚC
+    print(f"\n[{platform}] ✅ === HOÀN THÀNH FAST SEARCH ===")
+    print(f"[{platform}]    Tổng: {count}/{min(len(links), 15)} jobs thành công")
+    print(f"[{platform}]    Keyword: '{keyword}'")
+    
+    # Publish signal fast done
+    await redis_service.publish_job({
+        "__fast_done__": True,
+        "platform": platform,
+        "count": count,
+        "keyword": keyword
+    })
+    
     return count
 
 
@@ -609,12 +776,16 @@ async def _process_by_category(crawler, platform: str, query: str, max_pages: in
                                 continue
 
                             result = db_service.upsert_job(cleaned)
-                            
-                            if result:
+                            if result and result.get("jobID"):
+                                # Thêm jobID vào cleaned để publish
+                                cleaned["jobID"] = result["jobID"]
+                                cleaned["isNewJob"] = result.get("isNewJob", True)
+                                
                                 await redis_service.mark_as_crawled(platform, link)
                                 category_success_links.append(link)
                                 await redis_service.publish_job(cleaned)
                                 count += 1
+                                print(f"[{platform}] ✅ SUCCESS: jobID={result['jobID']}, {cleaned.get('job', {}).get('title', 'N/A')}")
 
                         except Exception as e:
                             print(f"[{platform}] ❌ Lỗi crawl: {link} - {e}")

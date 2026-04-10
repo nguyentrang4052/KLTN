@@ -103,6 +103,7 @@ class DBService:
         - ON CONFLICT: giữ nguyên isNewJob cũ, không update
         """
         now = datetime.now()
+
         
         cur.execute("""
             INSERT INTO "Job" (

@@ -51,7 +51,7 @@ export default function Header({ notifCount }) {
       items: [
         { ico: '🔔', label: 'Thông báo', path: '/notifications', tag: notifCount > 0 ? `${notifCount}` : null },
         { ico: '💳', label: 'Gói dịch vụ', tag: 'Pro', path: '/services' },
-        { ico: '⚙️', label: 'Cài đặt tài khoản', path: '/profile' },
+        { ico: '⚙️', label: 'Cài đặt tài khoản', path: '/settings' },
         { ico: '🚪', label: 'Đăng xuất', action: 'logout', danger: true },
       ],
     },

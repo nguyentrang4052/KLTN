@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import './HomeScreen.css'
 import JobCard from '../../common/JobCard/JobCard'
-import { useNavigate } from 'react-router-dom'
 import { getToken } from '../../../utils/auth'
 
 const API = 'http://localhost:3000/api'
@@ -11,7 +11,6 @@ const PLATFORMS = [
   { value: 'CareerViet', label: 'CareerViet', color: '#1565C0' },
   { value: 'TopCV', label: 'TopCV', color: '#00B14F' },
   { value: 'CareerLink', label: 'CareerLink', color: '#D0392A' },
-  // { value: 'VietnamWorks', label: 'VietnamWorks', color: '#F47820' },
 ]
 
 const COLOR_POOL = [
@@ -45,40 +44,95 @@ const CAT_PAGE_SIZE = 8
 
 export default function HomeScreen() {
   const navigate = useNavigate()
-  const [token, setToken] = useState(() => getToken())
+  const location = useLocation()  // Object từ react-router
+  const [searchParams, setSearchParams] = useSearchParams()
   const resultsRef = useRef(null)
 
+  const [token, setToken] = useState(() => getToken())
+
+  // Đọc state từ URL
+  const [keyword, setKeyword] = useState(() => searchParams.get('keyword') || '')
+  const [locationFilter, setLocationFilter] = useState(() => searchParams.get('location') || '')  // ✅ Đổi tên thành locationFilter
+  const [sort, setSort] = useState(() => searchParams.get('sort') || 'newest')
+  const [page, setPage] = useState(() => parseInt(searchParams.get('page') || '1'))
+  const [industryFilter, setIndustryFilter] = useState(() => {
+    const ind = searchParams.get('industry')
+    return ind ? parseInt(ind) : null
+  })
+  const [activePlatform, setActivePlatform] = useState(() => 
+    searchParams.get('platform') || 'Tất cả'
+  )
+
+  // Các state khác
   const [jobs, setJobs] = useState([])
   const [recommendations, setRecommendations] = useState([])
   const [industries, setIndustries] = useState([])
   const [catPage, setCatPage] = useState(0)
-  const [activePlatform, setActivePlatform] = useState('Tất cả')
-  const [loadingIndustries, setLoadingIndustries] = useState(false)
-
   const [stats, setStats] = useState(null)
   const [meta, setMeta] = useState({ total: 0, totalPages: 1 })
-  const [keyword, setKeyword] = useState('')
-  const [location, setLocation] = useState('')
-  const [sort, setSort] = useState('newest')
-  const [page, setPage] = useState(1)
   const [recPage, setRecPage] = useState(1)
-  const [industryFilter, setIndustryFilter] = useState(null)
   const [loadingJobs, setLoadingJobs] = useState(false)
   const [loadingRecs, setLoadingRecs] = useState(false)
   const [loadingStats, setLoadingStats] = useState(false)
+  const [loadingIndustries, setLoadingIndustries] = useState(false)
   const [savedJobIds, setSavedJobIds] = useState(new Set())
 
-  const pagedRecs = recommendations.slice((recPage - 1) * REC_LIMIT, recPage * REC_LIMIT)
-  const recTotalPages = Math.ceil(recommendations.length / REC_LIMIT)
-  const catTotalPages = Math.ceil(industries.length / CAT_PAGE_SIZE)
-  const pagedIndustries = industries.slice(catPage * CAT_PAGE_SIZE, (catPage + 1) * CAT_PAGE_SIZE)
+  // SSE state
+  const [crawlStatus, setCrawlStatus] = useState(null)
+  const [isRealtime, setIsRealtime] = useState(false)
+  const eventSourceRef = useRef(null)
 
+  // Hàm cập nhật URL
+  const updateURLParams = useCallback((updates) => {
+    const newParams = new URLSearchParams(searchParams)
+    
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null || value === undefined || value === '' || value === 'Tất cả') {
+        newParams.delete(key)
+      } else {
+        newParams.set(key, String(value))
+      }
+    })
+    
+    setSearchParams(newParams, { replace: true })
+  }, [searchParams, setSearchParams])
 
-  const [crawlStatus, setCrawlStatus] = useState(null); // null | {type, message}
-  const [isRealtime, setIsRealtime] = useState(false);
-  const eventSourceRef = useRef(null);
-  const receivedJobsRef = useRef([]); // Buffer jobs nhận được
+  // Sync state vào URL
+  useEffect(() => {
+    updateURLParams({ page: page > 1 ? page : null })
+  }, [page, updateURLParams])
 
+  useEffect(() => {
+    updateURLParams({ sort: sort !== 'newest' ? sort : null })
+  }, [sort, updateURLParams])
+
+  useEffect(() => {
+    const newIndustry = industryFilter || null
+    updateURLParams({ industry: newIndustry })
+  }, [industryFilter, updateURLParams])
+
+  useEffect(() => {
+    updateURLParams({ platform: activePlatform !== 'Tất cả' ? activePlatform : null })
+    setCatPage(0)
+    setIndustryFilter(null)
+    setPage(1)
+  }, [activePlatform, updateURLParams])
+
+  // Khôi phục scroll khi back
+  useEffect(() => {
+    if (location.state?.scrollY) {
+      const timer = setTimeout(() => {
+        window.scrollTo(0, location.state.scrollY)
+        navigate(location.pathname + location.search, { 
+          replace: true, 
+          state: {} 
+        })
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [location, navigate])
+
+  // Các effect cũ
   useEffect(() => {
     const sync = () => setToken(getToken())
     window.addEventListener('focus', sync)
@@ -86,12 +140,16 @@ export default function HomeScreen() {
     return () => window.removeEventListener('focus', sync)
   }, [])
 
-  useEffect(() => { setSort('newest'); setPage(1) }, [token])
+  useEffect(() => { 
+    if (!token) {
+      setSort('newest')
+      setPage(1)
+    }
+  }, [token])
 
   useEffect(() => {
     setLoadingIndustries(true)
     setCatPage(0)
-    setIndustryFilter(null)
     fetch(`${API}/jobs/filter-by-source?source=${encodeURIComponent(activePlatform)}`)
       .then(r => r.json())
       .then(data => {
@@ -112,9 +170,10 @@ export default function HomeScreen() {
     try {
       const params = new URLSearchParams({ page: String(page), limit: '9', sort })
       if (keyword) params.set('keyword', keyword)
-      if (location) params.append('locations', location)
+      if (locationFilter) params.append('locations', locationFilter)  // Dùng locationFilter
       if (industryFilter) params.set('industryId', String(industryFilter))
       if (activePlatform && activePlatform !== 'Tất cả') params.set('source', activePlatform)
+      
       const headers = token ? { Authorization: `Bearer ${token}` } : {}
       const res = await fetch(`${API}/jobs?${params}`, { headers })
       const data = await res.json()
@@ -125,7 +184,7 @@ export default function HomeScreen() {
     } finally {
       setLoadingJobs(false)
     }
-  }, [page, sort, keyword, location, industryFilter, token, activePlatform])
+  }, [page, sort, keyword, locationFilter, industryFilter, token, activePlatform])
 
   useEffect(() => { fetchJobs() }, [fetchJobs])
 
@@ -134,7 +193,10 @@ export default function HomeScreen() {
     setLoadingRecs(true)
     fetch(`${API}/jobs/recommendations`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
-      .then(data => { setRecommendations(Array.isArray(data) ? data : []); setRecPage(1) })
+      .then(data => { 
+        setRecommendations(Array.isArray(data) ? data : [])
+        setRecPage(1) 
+      })
       .catch(console.error)
       .finally(() => setLoadingRecs(false))
   }, [token])
@@ -160,19 +222,14 @@ export default function HomeScreen() {
       .catch(console.error)
   }, [token])
 
-
-
   useEffect(() => {
     return () => {
       if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        console.log('SSE disconnected');
+        eventSourceRef.current.close()
+        console.log('SSE disconnected')
       }
-    };
-  }, []);
-
-
-
+    }
+  }, [])
 
   const trackBehavior = useCallback((jobID, action) => {
     if (!token) return
@@ -184,135 +241,152 @@ export default function HomeScreen() {
   }, [token])
 
   const handleJobClick = (job) => {
+    const currentScrollY = window.scrollY
+    
+    if (!job.jobID || typeof job.jobID !== 'number') {
+      console.error('Lỗi: jobID không hợp lệ!', job)
+      alert('Lỗi: Không tìm thấy ID công việc.')
+      return
+    }
+
     trackBehavior(job.jobID, 'click')
-    navigate(`/home/job/${job.jobID}`)
+    navigate(`/home/job/${job.jobID}`, {
+      state: { 
+        scrollY: currentScrollY,
+        fromPath: location.pathname + location.search
+      }
+    })
   }
 
-  // const handleSearch = () => {
-  //   setPage(1)
-  //   setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
-  // }
   const handleSearch = async () => {
-    setLoading(true);
+    setPage(1)
+    updateURLParams({ 
+      keyword: keyword || null,
+      location: locationFilter || null,  // Thêm location vào URL
+      page: null
+    })
+
+    setLoadingJobs(true)
 
     try {
-      // 1. Gọi search-smart (trả về DB ngay + trigger crawl)
+      const sessionId = `search_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      
       const res = await fetch('http://localhost:8000/search-smart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: keyword })
-      });
+        body: JSON.stringify({ 
+          query: keyword,
+          session_id: sessionId 
+        })
+      })
 
-      const data = await res.json();
+      const data = await res.json()
 
-      // 2. Hiển thị ngay kết quả DB (nếu có)
       if (data.existing_jobs?.length > 0) {
-        setJobs(data.existing_jobs);
-        setMeta({ total: data.count, totalPages: 1 });
+        const normalizedJobs = data.existing_jobs.map(job => ({
+          ...job,
+          jobID: job.jobID || job.id || job.job_id,
+        }))
+        setJobs(normalizedJobs)
+        setMeta({ total: data.count, totalPages: 1 })
       }
 
-      // 3. Mở SSE để nhận job mới crawl về
-      connectToEventStream();
-      setCrawlStatus({ type: 'searching', message: '🔍 Dang tìm việc mới nhất...' });
+      if (data.crawling) {
+        connectToEventStream()
+        setCrawlStatus({ type: 'searching', message: '🔍 Đang tìm việc mới nhất...' })
+      }
 
     } catch (e) {
-      console.error(e);
+      console.error('Search error:', e)
     } finally {
-      setLoading(false);
+      setLoadingJobs(false)
     }
-  };
+
+    setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+  }
+
+  const handleIndustryClick = (indId) => {
+    const newIndustry = industryFilter === indId ? null : indId
+    setIndustryFilter(newIndustry)
+    setPage(1)
+    setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
+  }
 
   const connectToEventStream = () => {
-    // Nếu Python crawler expose endpoint /stream, nếu không thì dùng Redis qua NestJS
-    const es = new EventSource('http://localhost:8000/stream?channel=crawl:jobs');
-    eventSourceRef.current = es;
+    const es = new EventSource('http://localhost:8000/stream?channel=crawl:jobs')
+    eventSourceRef.current = es
+    setIsRealtime(true)
 
-    let fastCount = 0;
-    let deepStarted = false;
+    let fastCount = 0
 
     es.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
+        const data = JSON.parse(event.data)
 
-        // Signal kết thúc từ crawler
-        if (data.__done__) {
+        if (data.__done__ || data.__fast_done__) {
           setCrawlStatus({
             type: 'done',
-            message: `✅ Hoàn thành! Tìm thấy ${data.total} việc làm`
-          });
-          setIsRealtime(false);
-          es.close();
-
-          // Sync với DB chính sau 1 giây để đảm bảo đồng bộ
+            message: `✅ Hoàn thành! ${data.total || fastCount} việc làm`
+          })
+          setIsRealtime(false)
+          es.close()
           setTimeout(() => {
-            fetchJobs();
-            setCrawlStatus(null); // Ẩn banner sau 3 giây
-          }, 3000);
-          return;
+            fetchJobs()
+            setCrawlStatus(null)
+          }, 3000)
+          return
         }
 
-        // Nhận job mới real-time
-        const job = data;
-        fastCount++;
+        const jobID = data.jobID
+        if (!jobID) return
 
-        // Thêm vào đầu danh sách (prepend)
+        fastCount++
+
         setJobs(prev => {
-          // Kiểm tra trùng lặp (tránh race condition)
-          if (prev.find(j => j.jobID === job.job?.sourceLink)) return prev;
-          return [{
-            jobID: job.job?.sourceLink || Date.now(), // Tạm thời dùng sourceLink làm ID
-            title: job.job?.title,
-            companyName: job.company?.companyName,
-            companyLogo: job.company?.companyLogo,
-            location: job.job?.location,
-            shortLocation: job.job?.shortLocation,
-            salary: job.job?.salary,
-            jobType: job.job?.jobType,
-            experienceYear: job.job?.experienceYear,
-            sourcePlatform: job.job?.sourcePlatform,
-            isNewJob: true, // Đánh dấu job mới crawl
-            ...job.job
-          }, ...prev];
-        });
+          if (prev.find(j => j.jobID === jobID)) return prev
+          
+          const newJob = {
+            jobID: jobID,
+            title: data.job?.title,
+            companyName: data.company?.companyName,
+            companyLogo: data.company?.companyLogo,
+            location: data.job?.location,
+            shortLocation: data.job?.shortLocation,
+            salary: data.job?.salary,
+            jobType: data.job?.jobType,
+            experienceYear: data.job?.experienceYear,
+            sourcePlatform: data.job?.sourcePlatform,
+            isNewJob: data.isNewJob ?? true,
+          }
+          
+          return [newJob, ...prev]
+        })
 
-        setMeta(prev => ({ ...prev, total: prev.total + 1 }));
+        setMeta(prev => ({ ...prev, total: prev.total + 1 }))
 
-        // Chuyển trạng thái từ Fast sang Deep sau 10-15 jobs đầu
-        if (fastCount > 10 && !deepStarted) {
-          deepStarted = true;
-          setCrawlStatus({
-            type: 'deep',
-            message: '🔍 Đang tìm kiếm sâu thêm nhiều việc làm khác...'
-          });
-        } else if (fastCount <= 10) {
+        if (fastCount <= 10) {
           setCrawlStatus({
             type: 'streaming',
             message: `📥 Đang nhận dữ liệu (${fastCount} việc làm mới)...`
-          });
+          })
+        } else {
+          setCrawlStatus({
+            type: 'deep',
+            message: '🔍 Đang tìm kiếm sâu thêm...'
+          })
         }
 
       } catch (err) {
-        console.error('SSE parse error:', err);
+        console.error('SSE parse error:', err)
       }
-    };
+    }
 
     es.onerror = (err) => {
-      console.error('SSE error:', err);
-      es.close();
-      setIsRealtime(false);
-      // Không hiển thị lỗi vì có thể crawl vẫn đang chạy background, fetch DB sau
-      setTimeout(fetchJobs, 2000);
-    };
-  };
-
-
-
-
-
-  const handleIndustryClick = (indId) => {
-    setIndustryFilter(prev => prev === indId ? null : indId)
-    setPage(1)
-    setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
+      console.error('SSE error:', err)
+      es.close()
+      setIsRealtime(false)
+      setTimeout(fetchJobs, 2000)
+    }
   }
 
   const renderPages = (curPage, totalPages, onPageChange) => {
@@ -322,6 +396,7 @@ export default function HomeScreen() {
         onClick={() => onPageChange(n)}>{n}</button>
     )
     const addDots = (k) => pages.push(<span key={k} className="hs-pg-dots">…</span>)
+    
     if (totalPages <= 7) {
       for (let i = 1; i <= totalPages; i++) addBtn(i)
     } else {
@@ -358,8 +433,6 @@ export default function HomeScreen() {
   )
 
   const renderJobCard = (job) => (
-    // <div key={job.jobID} style={{ cursor: 'pointer' }}
-    //   onClick={() => handleJobClick(job)}>
     <div key={job.jobID} style={{ cursor: 'pointer', position: 'relative' }}
       onClick={() => handleJobClick(job)}>
       {job.isNewJob && (
@@ -379,7 +452,6 @@ export default function HomeScreen() {
         </span>
       )}
       <JobCard
-        key={`${job.jobID}-${savedJobIds.has(job.jobID)}`}
         token={token}
         job={{
           id: job.jobID,
@@ -404,9 +476,13 @@ export default function HomeScreen() {
     </div>
   )
 
+  const pagedRecs = recommendations.slice((recPage - 1) * REC_LIMIT, recPage * REC_LIMIT)
+  const recTotalPages = Math.ceil(recommendations.length / REC_LIMIT)
+  const catTotalPages = Math.ceil(industries.length / CAT_PAGE_SIZE)
+  const pagedIndustries = industries.slice(catPage * CAT_PAGE_SIZE, (catPage + 1) * CAT_PAGE_SIZE)
+
   return (
     <div className="hs-page">
-
       <div className="hs-hero">
         <div className="hs-hero-noise" />
         <div className="hs-hero-glow1" />
@@ -422,15 +498,23 @@ export default function HomeScreen() {
             <div className="hs-hero-search">
               <div className="hs-sf">
                 <span className="hs-sf-ico">🔍</span>
-                <input className="hs-sf-inp" placeholder="Tên công việc, kỹ năng..."
-                  value={keyword} onChange={e => setKeyword(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSearch()} />
+                <input 
+                  className="hs-sf-inp" 
+                  placeholder="Tên công việc, kỹ năng..."
+                  value={keyword} 
+                  onChange={e => setKeyword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSearch()} 
+                />
               </div>
               <div className="hs-sf hs-sf-loc">
                 <span className="hs-sf-ico">📍</span>
-                <input className="hs-sf-inp" placeholder="Địa điểm..."
-                  value={location} onChange={e => setLocation(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSearch()} />
+                <input 
+                  className="hs-sf-inp" 
+                  placeholder="Địa điểm..."
+                  value={locationFilter}  // ✅ SỬA: dùng locationFilter thay vì location
+                  onChange={e => setLocationFilter(e.target.value)}  // ✅ SỬA: dùng setLocationFilter
+                  onKeyDown={e => e.key === 'Enter' && handleSearch()} 
+                />
               </div>
               <button className="hs-search-btn" onClick={handleSearch}>Tìm kiếm</button>
             </div>
@@ -439,40 +523,17 @@ export default function HomeScreen() {
           <div className="hs-hero-right">
             <div className="hs-stat hs-stat-accent">
               <div className="hs-stat-ico">🎯</div>
-              <div className="hs-stat-n">{loadingStats ? '…' : (stats?.jobMatch.count ?? '—')}</div>
+              <div className="hs-stat-n">{loadingStats ? '…' : (stats?.jobMatch?.count ?? '—')}</div>
               <div className="hs-stat-l">Việc phù hợp hôm nay</div>
               <div className="hs-stat-s">
-                {stats ? `${stats.jobMatch.delta} so với hôm qua` : token ? 'Đang tải...' : 'Đăng nhập để xem'}
+                {stats ? `${stats.jobMatch?.delta} so với hôm qua` : token ? 'Đang tải...' : 'Đăng nhập để xem'}
               </div>
             </div>
-            {/* <div className="hs-stat">
-              <div className="hs-stat-ico">📨</div>
-              <div className="hs-stat-n" style={{ color: '#2E6040' }}>{loadingStats ? '…' : (stats?.applied.count ?? '—')}</div>
-              <div className="hs-stat-l">Đã nộp tháng này</div>
-              <div className="hs-stat-s">
-                {stats ? `${stats.applied.pending} chờ phản hồi` : token ? 'Đang tải...' : 'Đăng nhập để xem'}
-              </div>
-            </div> */}
-            {/* <div className="hs-stat">
-              <div className="hs-stat-ico">📊</div>
-              <div className="hs-stat-n" style={{ color: '#D4820A' }}>{loadingStats ? '…' : stats ? `${stats.replyRate.percent}%` : '—'}</div>
-              <div className="hs-stat-l">Tỷ lệ phản hồi</div>
-              <div className="hs-stat-s">{!token && 'Đăng nhập để xem'}</div>
-            </div> */}
-            {/* <div className="hs-stat">
-              <div className="hs-stat-ico">🗓️</div>
-              <div className="hs-stat-n">{loadingStats ? '…' : (stats?.interviews.count ?? '—')}</div>
-              <div className="hs-stat-l">Phỏng vấn sắp tới</div>
-              <div className="hs-stat-s">
-                {stats?.interviews.next ?? (token ? 'Chưa có lịch' : 'Đăng nhập để xem')}
-              </div>
-            </div> */}
           </div>
         </div>
       </div>
 
       <div className="hs-body">
-
         <div className="hs-cats-wrap" style={{ margin: '0 -32px', padding: '40px 32px 48px' }}>
           <div className="hs-cats-header">
             <div className="hs-cats-titles">
@@ -623,10 +684,6 @@ export default function HomeScreen() {
               </select>
             </div>
 
-
-
-
-            {/* Status Banner */}
             {crawlStatus && (
               <div style={{
                 padding: '16px 24px',
@@ -640,13 +697,12 @@ export default function HomeScreen() {
                 borderRadius: '12px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '12px',
-                animation: 'pulse 2s infinite',
+                gap: '12px'
               }}>
                 <span style={{ fontSize: '20px' }}>
-                  {crawlStatus.type === 'fast' && '🚀'}
-                  {crawlStatus.type === 'deep' && '🔍'}
+                  {crawlStatus.type === 'searching' && '🔍'}
                   {crawlStatus.type === 'streaming' && '📥'}
+                  {crawlStatus.type === 'deep' && '🔍'}
                   {crawlStatus.type === 'done' && '✅'}
                   {crawlStatus.type === 'error' && '❌'}
                 </span>
@@ -657,7 +713,7 @@ export default function HomeScreen() {
                 }}>
                   {crawlStatus.message}
                 </span>
-                {crawlStatus.type !== 'done' && crawlStatus.type !== 'error' && (
+                {(crawlStatus.type === 'searching' || crawlStatus.type === 'streaming' || crawlStatus.type === 'deep') && (
                   <span style={{
                     width: '20px',
                     height: '20px',
@@ -670,18 +726,9 @@ export default function HomeScreen() {
               </div>
             )}
 
-            {/* CSS Animation */}
             <style>{`
-                @keyframes spin { to { transform: rotate(360deg); } }
-                @keyframes pulse { 
-                  0%, 100% { opacity: 1; }
-                  50% { opacity: 0.8; }
-                }
-              `}</style>
-
-
-
-
+              @keyframes spin { to { transform: rotate(360deg); } }
+            `}</style>
 
             <div className="hs-sec-hd">
               <span className="hs-sec-title">💼 Tất cả việc làm</span>
@@ -700,7 +747,6 @@ export default function HomeScreen() {
             )}
           </div>
         )}
-
       </div>
     </div>
   )

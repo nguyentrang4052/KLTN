@@ -1,0 +1,123 @@
+.cv-sidebar {
+  position: relative; /* Changed from absolute */
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s ease;
+  z-index: 50;
+  box-shadow: 2px 0 8px rgba(0,0,0,0.05);
+  flex-shrink: 0; /* Prevent sidebar from shrinking */
+  overflow: hidden;
+}
+
+.cv-sidebar.open {
+  width: 320px;
+}
+
+.cv-sidebar.collapsed {
+  width: 60px;
+}
+
+/* Toggle Button */
+.cv-sidebar-toggle {
+  position: absolute;
+  right: -12px;
+  top: 20px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #6b7280;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 60;
+  transition: all 0.2s;
+}
+
+.cv-sidebar-toggle:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+/* Tabs */
+.cv-sidebar-tabs {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 8px;
+  gap: 8px;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.cv-sidebar-tab {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #6b7280;
+  font-size: 14px;
+  width: 100%;
+  text-align: left;
+}
+
+.cv-sidebar.collapsed .cv-sidebar-tab {
+  justify-content: center;
+  padding: 12px 8px;
+}
+
+.cv-sidebar-tab:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.cv-sidebar-tab.active {
+  background: #fef2f2;
+  color: #C0412A;
+}
+
+.tab-icon {
+  font-size: 20px;
+  width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.tab-label {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Panel Content */
+.cv-sidebar-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  min-width: 0; /* Prevent content overflow */
+}
+
+.cv-sidebar-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.cv-sidebar-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.cv-sidebar-panel::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}

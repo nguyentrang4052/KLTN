@@ -243,6 +243,7 @@ class CareerLinkCrawler(BaseCrawler):
         page = await self._new_page()
         try:
             ok = await self._goto_and_wait(page, job_url)
+            print(f"[CareerLink] Truy cập chi tiết: {job_url} - {'OK' if ok else 'FAIL'}")
             if not ok: return None
 
             await page.wait_for_selector("h1.job-title", timeout=10000)
@@ -297,7 +298,7 @@ class CareerLinkCrawler(BaseCrawler):
                         "companyProfile": await page.evaluate("() => document.querySelector('.company-profile')?.innerText.trim() || ''")
                     })
                 except: pass
-
+            print(f"[CareerLink] Crawled: {title} - {job_url} - OK")
             return {
                 "industry": industry,
                 "job": {
@@ -412,30 +413,50 @@ class CareerLinkCrawler(BaseCrawler):
 
 
     async def search_by_keyword(self, keyword: str, page: int = 1) -> tuple[list[str], bool]:
-        """Search CareerLink: /viec-lam?keyword=..."""
+        """Search CareerLink: /viec-lam/k/{keyword}"""
         if not keyword:
             return await self.get_categories("")
         
         page_obj = await self._new_page()
         
         try:
-            # CareerLink dùng query param
-            url = f"https://www.careerlink.vn/viec-lam?keyword={keyword.replace(' ', '+')}&page={page}"
+            # Format đúng: /viec-lam/k/business (không cần query param)
+            keyword_formatted = '-'.join(keyword.split())
             
-            print(f"[CareerLink Search] Truy cập: {url}")
+            if page == 1:
+                url = f"https://www.careerlink.vn/viec-lam/k/{keyword_formatted}"
+              
+            else:
+                url = f"https://www.careerlink.vn/viec-lam/k/{keyword_formatted}?page={page}"
+   
+            print(f"[CareerLink Search] 🔗 Truy cập: {url}")
+            print(f"[CareerLink Search] 🔍 Tìm: '{keyword}' (slug: '{keyword_formatted}')")
+
             
             ok = await self._goto_and_wait(page_obj, url)
             if not ok:
+                print(f"[CareerLink Search] ❌ Không thể truy cập")
                 return [], False
             
-            # Lấy links
+            # Chờ job links load
+            try:
+                await page_obj.wait_for_selector("a.job-link", timeout=10000)
+            except:
+                pass
+            
+            # Lấy links - giống get_job_links_for_page nhưng từ trang search
             pairs = await page_obj.evaluate("""
                 () => {
                     const data = [];
-                    document.querySelectorAll("a.job-link").forEach(a => {
+                    document.querySelectorAll("a.job-link, .media-body a[href*='/tim-viec-lam/']").forEach(a => {
                         const href = a.getAttribute("href");
-                        if (href && href.includes("/tim-viec-lam/")) {
-                            data.push({job: href});
+                        if (href && href.includes("/tim-viec-lam/") && !href.includes("/tim-viec-lam/c")) {
+                            const container = a.closest(".media-body");
+                            const compA = container ? container.querySelector("a.job-company") : null;
+                            data.push({
+                                job: href,
+                                company: compA ? compA.getAttribute("href") : ""
+                            });
                         }
                     });
                     return data;
@@ -445,16 +466,25 @@ class CareerLinkCrawler(BaseCrawler):
             links = []
             for p in pairs:
                 j_url = urljoin(BASE_URL, p['job']).split('?')[0]
-                if j_url not in links:
-                    links.append(j_url)
+                c_url = urljoin(BASE_URL, p['company']) if p['company'] else ""
+                pair = f"{j_url}|{c_url}"
+                links.append(pair)
             
-            has_next = len(links) >= 20  # CareerLink thường 20-25 job/page
+            # Check next page
+            has_next = False
+            try:
+                next_btn = await page_obj.query_selector("a[rel='next']")
+                has_next = next_btn is not None
+            except:
+                pass
             
-            print(f"[CareerLink Search] Tìm thấy {len(links)} jobs")
+            print(f"[CareerLink Search] Tìm thấy {len(links)} jobs, has_next={has_next}")
             return links, has_next
             
         except Exception as e:
             print(f"[CareerLink Search] ❌ Lỗi: {e}")
+            import traceback
+            traceback.print_exc()
             return [], False
         finally:
             await page_obj.context.close()
