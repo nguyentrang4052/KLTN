@@ -61,7 +61,7 @@ export default function Header({ notifCount }) {
     { id: 'home', label: 'Tổng quan', path: '/home' },
     { id: 'jobs', label: 'Tìm việc', path: '/jobs' },
     { id: 'companies', label: 'Công ty', path: '/companies' },
-    { id: 'cv', label: 'Tạo CV', path: '/cv-builder' },
+    { id: 'cv', label: 'Tạo CV', path: '/cv-templates' },
     { id: 'about', label: 'Về chúng tôi', path: '/about' },
   ]
 

@@ -40,8 +40,7 @@ import { getToken } from './utils/auth'
 
 import { CVStoreProvider } from './store/cvStore'
 import TemplatePickerScreen from './components/screens/TemplatePickerScreen/TemplatePickerScreen'
-// import CVEditorScreen from './components/screens/CVEditorScreen/CVEditorScreen'
-import VisualCVEditorScreen from './components/screens/VisualCVEditorScreen/VisualCVEditorScreen'
+import MyCVScreen from './components/screens/MyCVScreen/MyCVScreen'
 
 
 function ProtectedRoute({ children }) {
@@ -122,6 +121,10 @@ function JobDetailForSavedJobs({ backPath, savedJobPath }) {
       onSavedJobClick={(jobID) => navigate(`${savedJobPath}${jobID}`)}
     />
   )
+}
+
+function CVScreenWrapper({ initialScreen }) {
+  return <CreatedCVScreen initialScreen={initialScreen} />
 }
 
 
@@ -234,9 +237,9 @@ function App() {
           {/* <Route path="/applications" element={
             <ProtectedRoute><ApplicationsScreen /></ProtectedRoute>
           } /> */}
-          <Route path="/my-cv" element={
-            <ProtectedRoute><CVBuilderScreen /></ProtectedRoute>
-          } />
+          {/* <Route path="/my-cv" element={
+            <ProtectedRoute><MyCVScreen /></ProtectedRoute>
+          } /> */}
 
           <Route path="/cv-builder" element={
             <ProtectedRoute><CreatedCVScreen /></ProtectedRoute>
@@ -262,16 +265,17 @@ function App() {
             <ProtectedRoute><NotificationsScreen /></ProtectedRoute>
           } />
 
+         <Route path="/my-cv" element={
+            <ProtectedRoute><CVScreenWrapper initialScreen="myCV" /></ProtectedRoute>
+          } />
+          
           <Route path="/cv-templates" element={
-            <ProtectedRoute><TemplatePickerScreen /></ProtectedRoute>
-          } />
-          <Route path="/cv-editor/:id" element={
-            <ProtectedRoute><VisualCVEditorScreen /></ProtectedRoute>
-          } />
-          <Route path="/cv-editor/new" element={
-            <ProtectedRoute><VisualCVEditorScreen /></ProtectedRoute>
+            <ProtectedRoute><CVScreenWrapper initialScreen="picker" /></ProtectedRoute>
           } />
 
+          <Route path="/cv-builder" element={
+            <ProtectedRoute><CVScreenWrapper initialScreen="myCV" /></ProtectedRoute>
+          } />
 
 
           <Route path="/admin" element={<AdminLayout />}>

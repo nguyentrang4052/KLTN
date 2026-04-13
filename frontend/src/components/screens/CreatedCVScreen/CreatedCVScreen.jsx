@@ -1,664 +1,688 @@
-// // src/components/screens/MyCVScreen/MyCVScreen.jsx
-// import { useState, useRef } from 'react'
-// import './MyCVScreen.css'
+// import { useState, useEffect } from "react";
+// import { loadState, saveState, generateId } from "../../../utils/storage"
+// import { EMPTY_CV } from "../../../utils/constants"
+// import MyCVScreen from "./../MyCVScreen/MyCVScreen"
+// import TemplatePickerScreen from "./../TemplatePickerScreen/TemplatePickerScreen"
+// import EditorScreen from "./../EditorScreen/EditorScreen"  // ← COMPONENT CHÍNH
+// import ReturnDialog from "./../ReturnDialog/ReturnDialog"
 
-// const MY_CVS = [
-//     { id: 1, name: 'CV Senior React Developer', template: 'Modern · Neon Edge', updatedAt: 'Hôm nay, 14:32', completeness: 92, views: 18, downloads: 3, status: 'active', color: '#C0412A', previewBg: 'linear-gradient(135deg,#1C1510,#2A1A10)', thumbnail: 'F' },
-//     { id: 2, name: 'CV Full-stack Developer', template: 'Tech · Terminal', updatedAt: '2 ngày trước', completeness: 78, views: 6, downloads: 1, status: 'draft', color: '#0D47A1', previewBg: 'linear-gradient(135deg,#0D1117,#161B22)', thumbnail: 'F' },
-//     { id: 3, name: 'CV DevOps Engineer', template: 'Classic · Harvard', updatedAt: '1 tuần trước', completeness: 65, views: 2, downloads: 0, status: 'draft', color: '#2E6040', previewBg: 'linear-gradient(135deg,#1A3A2A,#2A3A1A)', thumbnail: 'F' },
-// ]
+// export default function CreatedCVScreen() {
+//   const [screen, setScreen] = useState("myCV");
+//   const [cvList, setCvList] = useState([]);
+//   const [editingCV, setEditingCV] = useState(null);
+//   const [pendingTemplate, setPendingTemplate] = useState(null);
 
-// const UPLOADED_CVS = [
-//     { id: 'u1', name: 'CV_TranVanA_2025.pdf', size: '1.2 MB', uploadedAt: '3 ngày trước', atsScore: 76 },
-//     { id: 'u2', name: 'CV_English_Version.pdf', size: '980 KB', uploadedAt: '1 tháng trước', atsScore: 68 },
-// ]
+//   useEffect(() => {
+//     const state = loadState();
+//     setCvList(state._cvList || []);
+//   }, []);
 
-// const TIPS = [
-//     { icon: '📸', title: 'Thêm ảnh đại diện', desc: 'CV có ảnh tăng 40% tỷ lệ được gọi phỏng vấn.', done: true },
-//     { icon: '🎯', title: 'Thêm kỹ năng', desc: 'Hãy thêm ít nhất 5–8 kỹ năng phù hợp JD.', done: true },
-//     { icon: '📊', title: 'Thêm số liệu thành tích', desc: 'Ví dụ: "Tăng hiệu suất API lên 40%"', done: false },
-//     { icon: '🔗', title: 'Thêm LinkedIn / GitHub', desc: 'Nhà tuyển dụng muốn xem portfolio thực tế.', done: false },
-//     { icon: '📝', title: 'Tóm tắt nghề nghiệp', desc: 'Viết 3–4 câu giới thiệu bản thân súc tích.', done: false },
-// ]
+//   const persistCVList = (list) => {
+//     const state = loadState();
+//     state._cvList = list;
+//     saveState(state);
+//     setCvList(list);
+//   };
 
-// export default function MyCVScreen({ onNavigate }) {
-//     const [activeTab, setActiveTab] = useState('my')
-//     const [cvs, setCvs] = useState(MY_CVS)
-//     const [uploads, setUploads] = useState(UPLOADED_CVS)
-//     const [dragging, setDragging] = useState(false)
-//     const [analyzing, setAnalyzing] = useState(null)
-//     const [deleteModal, setDeleteModal] = useState(null)
-//     const fileRef = useRef()
-
-//     const handleDrop = (e) => {
-//         e.preventDefault(); setDragging(false)
-//         const files = Array.from(e.dataTransfer?.files || [])
-//         handleFiles(files)
+//   const handleTemplateSelect = (result) => {
+//   // result có dạng: { templateId, _action, ... }
+  
+//   if (result._action === 'continue') {
+//     // Tiếp tục chỉnh sửa
+//     continueCV(result);
+//   } 
+//   else if (result._action === 'fresh') {
+//     // Xóa CV cũ rồi tạo mới
+//     if (result._existingId) {
+//       const state = loadState();
+//       delete state[result._existingId];
+//       saveState(state);
+//       persistCVList(cvList.filter(cv => cv.id !== result._existingId));
 //     }
+//     const template = TEMPLATES.find(t => t.id === result.templateId);
+//     startNewCV(template);
+//   }
+//   else if (result._action === 'upload') {
+//     // Tạo mới với data từ upload
+//     const template = TEMPLATES.find(t => t.id === result.templateId);
+//     const id = generateId();
+//     const newCV = {
+//       id,
+//       templateId: template.id,
+//       name: result.name || `CV ${template.name}`,
+//       accent: template.accent,
+//       updatedAt: "Vừa tạo",
+//       data: { ...EMPTY_CV, ...result.data }
+//     };
+//     persistCVList([...cvList, newCV]);
+//     setEditingCV(newCV);
+//     setScreen("editor");
+//   }
+//   else {
+//     // Tạo mới thông thường
+//     const template = TEMPLATES.find(t => t.id === result.templateId);
+//     startNewCV(template);
+//   }
+// };
 
-//     const handleFiles = (files) => {
-//         const pdf = files.filter(f => f.name.endsWith('.pdf') || f.name.endsWith('.docx'))
-//         if (!pdf.length) return
-//         setAnalyzing(pdf[0].name)
-//         setTimeout(() => {
-//             setUploads(p => [{
-//                 id: 'u' + Date.now(),
-//                 name: pdf[0].name,
-//                 size: (pdf[0].size / 1024).toFixed(0) + ' KB',
-//                 uploadedAt: 'Vừa xong',
-//                 atsScore: Math.floor(Math.random() * 20) + 65,
-//             }, ...p])
-//             setAnalyzing(null)
-//             setActiveTab('upload')
-//         }, 2000)
-//     }
+ 
+//   const startNewCV = (template) => {
+//     const id = generateId();
+//     const newCV = {
+//       id,
+//       templateId: template.id,
+//       name: `CV ${template.name}`,
+//       accent: template.accent,
+//       updatedAt: "Vừa tạo",
+//       data: JSON.parse(JSON.stringify(EMPTY_CV))
+//     };
+//     persistCVList([...cvList, newCV]);
+//     setEditingCV(newCV);
+//     setPendingTemplate(null);
+//     setScreen("editor");
+//   };
 
-//     const completenessColor = (n) => n >= 85 ? '#2E6040' : n >= 60 ? '#D4820A' : '#C0412A'
+//   const continueCV = (cv) => {
+//     const state = loadState();
+//     setEditingCV({
+//       ...cv,
+//       data: state[cv.id]?.data || JSON.parse(JSON.stringify(EMPTY_CV))
+//     });
+//     setPendingTemplate(null);
+//     setScreen("editor");
+//   };
 
-//     return (
-//         <div className="mc-page">
+//   return (
+//     <>
+//       {screen === "myCV" && (
+//         <MyCVScreen
+//           cvList={cvList || []}
+//           onNew={() => setScreen("picker")}
+//           onEdit={continueCV}
+//           onDelete={(id) => {
+//             persistCVList(cvList.filter(cv => cv.id !== id));
+//             const state = loadState();
+//             delete state[id];
+//             saveState(state);
+//           }}
+//         />
+//       )}
 
-//             {/* Header */}
-//             <div className="mc-header">
-//                 <div className="mc-header-inner">
-//                     <div>
-//                         <h1 className="mc-title">CV của tôi</h1>
-//                         <p className="mc-sub">Quản lý và tối ưu hồ sơ xin việc của bạn</p>
-//                     </div>
-//                     <div className="mc-header-actions">
-//                         <button className="mc-upload-btn-sm" onClick={() => fileRef.current?.click()}>
-//                             ⬆ Tải lên CV
-//                         </button>
-//                         <button className="mc-create-btn" onClick={() => onNavigate?.('s17')}>
-//                             ✦ Tạo CV mới
-//                         </button>
-//                         <input ref={fileRef} type="file" accept=".pdf,.docx" style={{ display: 'none' }} onChange={e => handleFiles(Array.from(e.target.files))} />
-//                     </div>
-//                 </div>
-//             </div>
+//       {screen === "picker" && (
+//         <TemplatePickerScreen
+//           onSelect={handleTemplateSelect}
+//           existingCVs={cvList}
+//           onBack={() => setScreen("myCV")}
+//         />
+//       )}
 
-//             {/* Tabs */}
-//             <div className="mc-tabs-bar">
-//                 <div className="mc-tabs-inner">
-//                     <button className={`mc-tab${activeTab === 'my' ? ' active' : ''}`} onClick={() => setActiveTab('my')}>
-//                         📄 CV đã tạo <span className="mc-tab-ct">{cvs.length}</span>
-//                     </button>
-//                     <button className={`mc-tab${activeTab === 'upload' ? ' active' : ''}`} onClick={() => setActiveTab('upload')}>
-//                         ⬆ CV tải lên <span className="mc-tab-ct">{uploads.length}</span>
-//                     </button>
-//                     <button className={`mc-tab${activeTab === 'tips' ? ' active' : ''}`} onClick={() => setActiveTab('tips')}>
-//                         💡 Gợi ý cải thiện
-//                         {TIPS.filter(t => !t.done).length > 0 && <span className="mc-tab-badge">{TIPS.filter(t => !t.done).length}</span>}
-//                     </button>
-//                 </div>
-//             </div>
 
-//             <div className="mc-body">
+//       {/* {pendingTemplate && !editingCV && (
+//         <ReturnDialog
+//           template={pendingTemplate.template}
+//           onContinue={() => continueCV(pendingTemplate.existing)}
+//           onFresh={() => {
+//             const state = loadState();
+//             delete state[pendingTemplate.existing.id];
+//             saveState(state);
+//             continueCV({ ...pendingTemplate.existing, data: JSON.parse(JSON.stringify(EMPTY_CV)) });
+//           }}
+//           onCancel={() => setPendingTemplate(null)}
+//         />
+//       )}
+//        */}
 
-//                 {/* ── Tab: My CVs ──────────────────────────────── */}
-//                 {activeTab === 'my' && (
-//                     <div>
-//                         <div className="mc-cv-grid">
-//                             {cvs.map(cv => (
-//                                 <div key={cv.id} className={`mc-cv-card${cv.status === 'active' ? ' active' : ''}`}>
-//                                     {cv.status === 'active' && <div className="mc-active-badge">✓ Đang dùng</div>}
 
-//                                     {/* Preview */}
-//                                     <div className="mc-cv-preview" style={{ background: cv.previewBg }}>
-//                                         <div className="mc-cv-preview-header">
-//                                             <div className="mc-cv-preview-av" style={{ background: cv.color }}>{cv.thumbnail}</div>
-//                                             <div>
-//                                                 <div className="mc-cv-preview-bar long" />
-//                                                 <div className="mc-cv-preview-bar" />
-//                                             </div>
-//                                         </div>
-//                                         <div className="mc-cv-preview-lines">
-//                                             <div className="mc-cv-preview-label" style={{ background: cv.color }} />
-//                                             <div className="mc-cv-preview-bar w80" />
-//                                             <div className="mc-cv-preview-bar w60" />
-//                                             <div className="mc-cv-preview-bar w70" />
-//                                             <div className="mc-cv-preview-label" style={{ background: cv.color }} />
-//                                             <div className="mc-cv-preview-bar w90" />
-//                                             <div className="mc-cv-preview-bar w55" />
-//                                         </div>
+//        {pendingTemplate && (
+//         <ReturnDialog
+//           template={pendingTemplate.template}
+//           hasExistingCV={!!pendingTemplate.existing}
+//           onContinue={() => continueCV(pendingTemplate.existing)}
+//           onFresh={() => {
+//             // Xóa CV cũ rồi tạo mới
+//             if (pendingTemplate.existing) {
+//               const state = loadState();
+//               delete state[pendingTemplate.existing.id];
+//               saveState(state);
+//               // Xóa khỏi list
+//               persistCVList(cvList.filter(cv => cv.id !== pendingTemplate.existing.id));
+//             }
+//             startNewCV(pendingTemplate.template);
+//           }}
+//           onCreateNew={() => startNewCV(pendingTemplate.template)}
+//           onUpload={async (files) => {
+//             const formData = new FormData();
+//             Array.from(files).forEach(file => formData.append('files', file));
 
-//                                         {/* Hover overlay */}
-//                                         <div className="mc-cv-overlay">
-//                                             <button className="mc-ov-btn primary" onClick={() => onNavigate?.('s6')}>✏ Chỉnh sửa</button>
-//                                             <button className="mc-ov-btn">👁 Xem trước</button>
-//                                         </div>
-//                                     </div>
+//             try {
+//               const res = await fetch('/cv-analyzer/analyze', {
+//                 method: 'POST',
+//                 body: formData,
+//               });
+//               const data = await res.json();
 
-//                                     <div className="mc-cv-body">
-//                                         <div className="mc-cv-name">{cv.name}</div>
-//                                         <div className="mc-cv-template">{cv.template}</div>
+//               if (data.success) {
+//                 const cvData = data.data[0];
+//                 const id = generateId();
+//                 const newCV = {
+//                   id,
+//                   templateId: pendingTemplate.template.id,
+//                   name: cvData.name || `CV ${pendingTemplate.template.name}`,
+//                   accent: pendingTemplate.template.accent,
+//                   updatedAt: "Vừa tạo",
+//                   data: {
+//                     ...JSON.parse(JSON.stringify(EMPTY_CV)),
+//                     ...cvData,
+//                   },
+//                 };
+//                 persistCVList([...cvList, newCV]);
+//                 setEditingCV(newCV);
+//                 setPendingTemplate(null);
+//                 setScreen("editor");
+//               } else {
+//                 alert('Phân tích CV thất bại');
+//               }
+//             } catch (err) {
+//               console.error(err);
+//               alert('Lỗi khi tải lên CV');
+//             }
+//           }}
+//           onCancel={() => setPendingTemplate(null)}
+//         />
+//       )}
 
-//                                         {/* Completeness */}
-//                                         <div className="mc-completeness">
-//                                             <div className="mc-comp-row">
-//                                                 <span className="mc-comp-label">Độ hoàn thiện</span>
-//                                                 <span className="mc-comp-n" style={{ color: completenessColor(cv.completeness) }}>{cv.completeness}%</span>
-//                                             </div>
-//                                             <div className="mc-comp-bar-bg">
-//                                                 <div className="mc-comp-bar" style={{ width: `${cv.completeness}%`, background: completenessColor(cv.completeness) }} />
-//                                             </div>
-//                                         </div>
+//       {screen === "editor" && editingCV && (
+//         <EditorScreen
+//           templateId={editingCV.templateId}
+//           initialData={editingCV.data}
+//           cvId={editingCV.id}
+//           onBack={() => {
+//             setEditingCV(null);
+//             setScreen("myCV");
+//           }}
+//         />
+//       )}
 
-//                                         {/* Stats */}
-//                                         <div className="mc-cv-stats">
-//                                             <div className="mc-cv-stat"><span className="mc-cv-stat-n">{cv.views}</span><span className="mc-cv-stat-l">Lượt xem</span></div>
-//                                             <div className="mc-cv-stat"><span className="mc-cv-stat-n">{cv.downloads}</span><span className="mc-cv-stat-l">Tải về</span></div>
-//                                             <div className="mc-cv-stat"><span className="mc-cv-stat-n">{cv.updatedAt}</span><span className="mc-cv-stat-l">Cập nhật</span></div>
-//                                         </div>
-//                                     </div>
-
-//                                     <div className="mc-cv-foot">
-//                                         <button className="mc-cv-action-btn" onClick={() => onNavigate?.('s6')}>✏ Chỉnh sửa</button>
-//                                         <button className="mc-cv-action-btn">⬇ Tải PDF</button>
-//                                         <button className="mc-cv-action-btn">🔗 Chia sẻ</button>
-//                                         <button className="mc-cv-action-btn danger" onClick={() => setDeleteModal(cv.id)}>🗑</button>
-//                                     </div>
-//                                 </div>
-//                             ))}
-
-//                             {/* Add new card */}
-//                             <div className="mc-cv-card mc-cv-add" onClick={() => onNavigate?.('s17')}>
-//                                 <div className="mc-cv-add-inner">
-//                                     <div className="mc-cv-add-ico">✦</div>
-//                                     <div className="mc-cv-add-title">Tạo CV mới</div>
-//                                     <div className="mc-cv-add-sub">Chọn từ 50+ mẫu đẹp</div>
-//                                 </div>
-//                             </div>
-//                         </div>
-//                     </div>
-//                 )}
-
-//                 {/* ── Tab: Uploaded CVs ─────────────────────────── */}
-//                 {activeTab === 'upload' && (
-//                     <div>
-//                         {/* Drop zone */}
-//                         <div
-//                             className={`mc-dropzone${dragging ? ' dragover' : ''}`}
-//                             onDragOver={e => { e.preventDefault(); setDragging(true) }}
-//                             onDragLeave={() => setDragging(false)}
-//                             onDrop={handleDrop}
-//                             onClick={() => fileRef.current?.click()}
-//                         >
-//                             {analyzing ? (
-//                                 <div className="mc-analyzing">
-//                                     <div className="mc-analyzing-spinner" />
-//                                     <div className="mc-analyzing-title">Đang phân tích CV...</div>
-//                                     <div className="mc-analyzing-sub">AI đang đọc và chấm điểm ATS cho "{analyzing}"</div>
-//                                 </div>
-//                             ) : (
-//                                 <>
-//                                     <div className="mc-dz-ico">📎</div>
-//                                     <div className="mc-dz-title">{dragging ? 'Thả file vào đây!' : 'Kéo & thả hoặc nhấn để tải lên CV'}</div>
-//                                     <div className="mc-dz-sub">Hỗ trợ PDF, DOCX · Tối đa 5MB · AI sẽ chấm điểm ATS tự động</div>
-//                                     <button className="mc-dz-btn">Chọn file từ máy</button>
-//                                 </>
-//                             )}
-//                         </div>
-
-//                         {/* Uploaded list */}
-//                         {uploads.length > 0 && (
-//                             <div className="mc-upload-list">
-//                                 <div className="mc-upload-list-title">CV đã tải lên</div>
-//                                 {uploads.map(u => (
-//                                     <div key={u.id} className="mc-upload-row">
-//                                         <div className="mc-upload-ico">📄</div>
-//                                         <div className="mc-upload-info">
-//                                             <div className="mc-upload-name">{u.name}</div>
-//                                             <div className="mc-upload-meta">{u.size} · Tải lên {u.uploadedAt}</div>
-//                                         </div>
-//                                         <div className="mc-ats-score">
-//                                             <div className="mc-ats-n" style={{ color: u.atsScore >= 75 ? '#2E6040' : u.atsScore >= 60 ? '#D4820A' : '#C0412A' }}>{u.atsScore}</div>
-//                                             <div className="mc-ats-l">ATS Score</div>
-//                                         </div>
-//                                         <div className="mc-upload-actions">
-//                                             <button className="mc-ul-btn">⬇ Tải về</button>
-//                                             <button className="mc-ul-btn">🔗 Dùng CV này</button>
-//                                             <button className="mc-ul-btn danger">🗑</button>
-//                                         </div>
-//                                     </div>
-//                                 ))}
-//                             </div>
-//                         )}
-//                     </div>
-//                 )}
-
-//                 {/* ── Tab: Tips ─────────────────────────────────── */}
-//                 {activeTab === 'tips' && (
-//                     <div>
-//                         <div className="mc-tips-header">
-//                             <div className="mc-tips-score-card">
-//                                 <div className="mc-tips-score-ring">
-//                                     <svg viewBox="0 0 80 80" className="mc-ring-svg">
-//                                         <circle cx="40" cy="40" r="34" fill="none" stroke="#EFE9DC" strokeWidth="8" />
-//                                         <circle cx="40" cy="40" r="34" fill="none" stroke="#C0412A" strokeWidth="8"
-//                                             strokeDasharray={`${2 * Math.PI * 34 * 0.92} ${2 * Math.PI * 34 * 0.08}`}
-//                                             strokeDashoffset={2 * Math.PI * 34 * 0.25}
-//                                             strokeLinecap="round" />
-//                                     </svg>
-//                                     <div className="mc-ring-inner"><span className="mc-ring-n">92%</span><span className="mc-ring-l">Độ HT</span></div>
-//                                 </div>
-//                                 <div>
-//                                     <div className="mc-tips-score-title">CV Senior React Developer</div>
-//                                     <div className="mc-tips-score-sub">Hoàn thiện {TIPS.filter(t => t.done).length}/{TIPS.length} mục</div>
-//                                     <div className="mc-tips-score-bar-wrap">
-//                                         <div className="mc-tips-bar-bg"><div className="mc-tips-bar" style={{ width: `${(TIPS.filter(t => t.done).length / TIPS.length) * 100}%` }} /></div>
-//                                     </div>
-//                                 </div>
-//                             </div>
-//                         </div>
-
-//                         <div className="mc-tips-list">
-//                             {TIPS.map((tip, i) => (
-//                                 <div key={i} className={`mc-tip-row${tip.done ? ' done' : ''}`}>
-//                                     <div className={`mc-tip-check${tip.done ? ' on' : ''}`}>{tip.done ? '✓' : ''}</div>
-//                                     <div className="mc-tip-ico">{tip.icon}</div>
-//                                     <div className="mc-tip-info">
-//                                         <div className="mc-tip-title">{tip.title}</div>
-//                                         <div className="mc-tip-desc">{tip.desc}</div>
-//                                     </div>
-//                                     {!tip.done && (
-//                                         <button className="mc-tip-do-btn" onClick={() => onNavigate?.('s6')}>Làm ngay →</button>
-//                                     )}
-//                                     {tip.done && <span className="mc-tip-done-tag">✓ Hoàn thành</span>}
-//                                 </div>
-//                             ))}
-//                         </div>
-//                     </div>
-//                 )}
-//             </div>
-
-//             {/* Delete modal */}
-//             {deleteModal && (
-//                 <div className="mc-modal-overlay" onClick={() => setDeleteModal(null)}>
-//                     <div className="mc-modal" onClick={e => e.stopPropagation()}>
-//                         <div className="mc-modal-ico">🗑️</div>
-//                         <div className="mc-modal-title">Xoá CV này?</div>
-//                         <div className="mc-modal-sub">Hành động này không thể hoàn tác.</div>
-//                         <div className="mc-modal-foot">
-//                             <button className="mc-modal-cancel" onClick={() => setDeleteModal(null)}>Huỷ</button>
-//                             <button className="mc-modal-ok" onClick={() => { setCvs(p => p.filter(c => c.id !== deleteModal)); setDeleteModal(null) }}>Xoá</button>
-//                         </div>
-//                     </div>
-//                 </div>
-//             )}
-//         </div>
-//     )
+//       <style>{`
+//         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=Cormorant+Garamond:wght@400;500;600&family=Syne:wght@400;700;800&family=Lato:wght@300;400;700&family=Roboto:wght@300;400;500;700&family=Montserrat:wght@300;400;500;600;700&display=swap');
+//         * { box-sizing: border-box; margin: 0; padding: 0; }
+//         body { font-family: 'DM Sans', sans-serif; background: #F2F1EE; color: #1a1a1a; }
+//         button { font-family: inherit; cursor: pointer; }
+//         ::-webkit-scrollbar { width: 8px; }
+//         ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+//       `}</style>
+//     </>
+//   );
 // }
 
 
 
 
+// import { useState, useEffect } from "react";
+// import { loadState, saveState, generateId } from "../../../utils/storage"
+// import { EMPTY_CV, TEMPLATES } from "../../../utils/constants"
+// import MyCVScreen from "./../MyCVScreen/MyCVScreen"
+// import TemplatePickerScreen from "./../TemplatePickerScreen/TemplatePickerScreen"
+// import EditorScreen from "./../EditorScreen/EditorScreen"
+
+// export default function CreatedCVScreen({ initialScreen = "myCV" }) {
+//   const [screen, setScreen] = useState(initialScreen);
+//   const [cvList, setCvList] = useState([]);
+//   const [editingCV, setEditingCV] = useState(null);
+
+//   useEffect(() => {
+//     const state = loadState();
+//     setCvList(state._cvList || []);
+//   }, []);
+
+//   const persistCVList = (list) => {
+//     const state = loadState();
+//     state._cvList = list;
+//     saveState(state);
+//     setCvList(list);
+//   };
+
+//   // Lưu data CV vào localStorage khi đang edit
+//   const saveCVData = (cvId, data) => {
+//     const state = loadState();
+//     state[cvId] = { data, lastEdited: new Date().toISOString() };
+//     saveState(state);
+//   };
+
+//   // Xử lý khi chọn template từ TemplatePickerScreen
+//   const handleTemplateSelect = (result) => {
+//     const { templateId, _action, data, name } = result;
+//     const template = TEMPLATES.find(t => t.id === templateId);
+    
+//     if (!template) return;
+
+//     // Tìm CV đã tồn tại của template này
+//     const existingCV = cvList.find(cv => cv.templateId === templateId);
+
+//     if (_action === 'continue' && existingCV) {
+//       // Tiếp tục chỉnh sửa CV cũ - load data từ localStorage
+//       const state = loadState();
+//       const savedData = state[existingCV.id]?.data;
+//       setEditingCV({
+//         ...existingCV,
+//         data: savedData || existingCV.data || JSON.parse(JSON.stringify(EMPTY_CV))
+//       });
+//       setScreen("editor");
+//     } 
+//     else if (_action === 'fresh') {
+//       // Tạo lại từ đầu - reset data nhưng giữ nguyên CV ID nếu đã tồn tại
+//       if (existingCV) {
+//         // Xóa data cũ trong localStorage
+//         const state = loadState();
+//         delete state[existingCV.id];
+//         saveState(state);
+        
+//         // Cập nhật lại trong list với data trống
+//         const updatedCV = {
+//           ...existingCV,
+//           data: JSON.parse(JSON.stringify(EMPTY_CV)),
+//           updatedAt: "Vừa tạo lại"
+//         };
+//         const newList = cvList.map(cv => 
+//           cv.id === existingCV.id ? updatedCV : cv
+//         );
+//         persistCVList(newList);
+//         setEditingCV(updatedCV);
+//       } else {
+//         // Chưa có thì tạo mới
+//         startNewCV(template);
+//       }
+//       setScreen("editor");
+//     }
+//     else if (_action === 'upload') {
+//       // Tạo mới hoặc cập nhật CV với data từ upload
+//       if (existingCV) {
+//         // Cập nhật CV hiện có
+//         const updatedCV = {
+//           ...existingCV,
+//           name: name || existingCV.name,
+//           data: { ...JSON.parse(JSON.stringify(EMPTY_CV)), ...data },
+//           updatedAt: "Vừa cập nhật"
+//         };
+//         const newList = cvList.map(cv => 
+//           cv.id === existingCV.id ? updatedCV : cv
+//         );
+//         persistCVList(newList);
+//         setEditingCV(updatedCV);
+//       } else {
+//         // Tạo mới nếu chưa có
+//         const id = generateId();
+//         const newCV = {
+//           id,
+//           templateId: template.id,
+//           name: name || `CV ${template.name}`,
+//           accent: template.accent,
+//           updatedAt: "Vừa tạo",
+//           data: { ...JSON.parse(JSON.stringify(EMPTY_CV)), ...data }
+//         };
+//         persistCVList([...cvList, newCV]);
+//         setEditingCV(newCV);
+//       }
+//       setScreen("editor");
+//     }
+//     else if (_action === 'create') {
+//       // Tạo mới - nhưng nếu đã tồn tại thì không tạo thêm, vào edit luôn
+//       if (existingCV) {
+//         const state = loadState();
+//         const savedData = state[existingCV.id]?.data;
+//         setEditingCV({
+//           ...existingCV,
+//           data: savedData || existingCV.data || JSON.parse(JSON.stringify(EMPTY_CV))
+//         });
+//       } else {
+//         startNewCV(template);
+//       }
+//       setScreen("editor");
+//     }
+//   };
+
+//   const startNewCV = (template) => {
+//     const id = generateId();
+//     const newCV = {
+//       id,
+//       templateId: template.id,
+//       name: `CV ${template.name}`,
+//       accent: template.accent,
+//       updatedAt: "Vừa tạo",
+//       data: JSON.parse(JSON.stringify(EMPTY_CV))
+//     };
+//     persistCVList([...cvList, newCV]);
+//     setEditingCV(newCV);
+//     return newCV;
+//   };
+
+//   // Khi click "Chỉnh sửa" từ MyCVScreen
+//   const handleEditCV = (cv) => {
+//     const state = loadState();
+//     const savedData = state[cv.id]?.data;
+//     setEditingCV({
+//       ...cv,
+//       data: savedData || cv.data || JSON.parse(JSON.stringify(EMPTY_CV))
+//     });
+//     setScreen("editor");
+//   };
+
+//   // Khi Editor lưu data
+//   const handleEditorSave = (cvId, newData) => {
+//     saveCVData(cvId, newData);
+//     // Cập nhật updatedAt trong list
+//     const newList = cvList.map(cv => 
+//       cv.id === cvId 
+//         ? { ...cv, updatedAt: new Date().toLocaleString('vi-VN') }
+//         : cv
+//     );
+//     persistCVList(newList);
+//   };
+
+//   return (
+//     <>
+//       {screen === "myCV" && (
+//         <MyCVScreen
+//           cvList={cvList || []}
+//           onNew={() => setScreen("picker")}
+//           onEdit={handleEditCV}
+//           onDelete={(id) => {
+//             persistCVList(cvList.filter(cv => cv.id !== id));
+//             const state = loadState();
+//             delete state[id];
+//             saveState(state);
+//           }}
+//         />
+//       )}
+
+//       {screen === "picker" && (
+//         <TemplatePickerScreen
+//           onSelect={handleTemplateSelect}
+//           existingCVs={cvList}
+//           onBack={() => setScreen("myCV")}
+//         />
+//       )}
+
+//       {screen === "editor" && editingCV && (
+//         <EditorScreen
+//           templateId={editingCV.templateId}
+//           initialData={editingCV.data}
+//           cvId={editingCV.id}
+//           onSave={(data) => handleEditorSave(editingCV.id, data)}
+//           onBack={() => {
+//             setEditingCV(null);
+//             setScreen("myCV");
+//           }}
+//         />
+//       )}
+
+//       <style>{`
+//         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=Cormorant+Garamond:wght@400;500;600&family=Syne:wght@400;700;800&family=Lato:wght@300;400;700&family=Roboto:wght@300;400;500;700&family=Montserrat:wght@300;400;500;600;700&display=swap');
+//         * { box-sizing: border-box; margin: 0; padding: 0; }
+//         body { font-family: 'DM Sans', sans-serif; background: #F2F1EE; color: #1a1a1a; }
+//         button { font-family: inherit; cursor: pointer; }
+//         ::-webkit-scrollbar { width: 8px; }
+//         ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+//       `}</style>
+//     </>
+//   );
+// }
 
 
 
-// src/components/screens/MyCVScreen/MyCVScreen.jsx
-import { useState, useRef } from 'react'
-import { useCVStore } from '../../../store/cvStore'
-import { TEMPLATES, getTemplate } from '../../../data/templateRegistry'
-import { useNavigate } from 'react-router-dom'
-import './CreatedCVScreen.css'
 
-const UPLOADED_CVS = [
-    { id: 'u1', name: 'CV_TranVanA_2025.pdf', size: '1.2 MB', uploadedAt: '3 ngày trước', atsScore: 76 },
-    { id: 'u2', name: 'CV_English_Version.pdf', size: '980 KB', uploadedAt: '1 tháng trước', atsScore: 68 },
-]
+import { useState, useEffect } from "react";
+import { loadState, saveState, generateId } from "../../../utils/storage"
+import { EMPTY_CV, TEMPLATES } from "../../../utils/constants"
+import MyCVScreen from "./../MyCVScreen/MyCVScreen"
+import TemplatePickerScreen from "./../TemplatePickerScreen/TemplatePickerScreen"
+import EditorScreen from "./../EditorScreen/EditorScreen"
 
-const TIPS = [
-    { icon: '📸', title: 'Thêm ảnh đại diện', desc: 'CV có ảnh tăng 40% tỷ lệ được gọi phỏng vấn.', done: true },
-    { icon: '🎯', title: 'Thêm kỹ năng', desc: 'Hãy thêm ít nhất 5–8 kỹ năng phù hợp JD.', done: true },
-    { icon: '📊', title: 'Thêm số liệu thành tích', desc: 'Ví dụ: "Tăng hiệu suất API lên 40%"', done: false },
-    { icon: '🔗', title: 'Thêm LinkedIn / GitHub', desc: 'Nhà tuyển dụng muốn xem portfolio thực tế.', done: false },
-    { icon: '📝', title: 'Tóm tắt nghề nghiệp', desc: 'Viết 3–4 câu giới thiệu bản thân súc tích.', done: false },
-]
+const DEFAULT_SECTION_TITLES = {
+  summary: "Mục tiêu nghề nghiệp",
+  experiences: "Kinh nghiệm làm việc",
+  education: "Học vấn",
+  skills: "Kỹ năng",
+  awards: "Thành tích & Giải thưởng",
+  certifications: "Chứng chỉ",
+  activities: "Hoạt động ngoại khóa"
+};
 
-// Modal preview HTML
-function PreviewModal({ cv, onClose }) {
-    const [htmlContent, setHtmlContent] = useState('')
-    const template = getTemplate(cv.templateId)
+const DEFAULT_SECTION_ORDER = ["experiences", "education", "skills", "awards", "certifications", "activities"];
 
-    useState(() => {
-        if (template && cv) {
-            fetch(template.htmlPath)
-                .then(r => r.text())
-                .then(html => {
-                    const injected = template.injectData(html, cv)
-                    setHtmlContent(injected)
-                })
-        }
-    }, [cv, template])
+export default function CreatedCVScreen({ initialScreen = "myCV" }) {
+  const [screen, setScreen] = useState(initialScreen);
+  const [cvList, setCvList] = useState([]);
+  const [editingCV, setEditingCV] = useState(null);
+  const [editingTitles, setEditingTitles] = useState(DEFAULT_SECTION_TITLES);
+  const [editingOrder, setEditingOrder] = useState(DEFAULT_SECTION_ORDER);
 
-    return (
-        <div className="mc-modal-overlay" onClick={onClose}>
-            <div
-                className="mc-modal"
-                onClick={e => e.stopPropagation()}
-                style={{ width: '80%', height: '90%', overflow: 'auto', background: '#fff' }}
-            >
-                <div style={{ padding: '16px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h3 style={{ margin: 0 }}>Xem trước: {cv.name}</h3>
-                    <button style={{ fontSize: '20px', background: 'none', border: 'none', cursor: 'pointer' }} onClick={onClose}>✕</button>
-                </div>
-                <div style={{ padding: '20px' }}>
-                    <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
-                </div>
-            </div>
-        </div>
-    )
-}
+  useEffect(() => {
+    const state = loadState();
+    setCvList(state._cvList || []);
+  }, []);
 
-export default function MyCVScreen({ onNavigate }) {
-    const { cvList, setEditingId, deleteCV } = useCVStore()
-    const [activeTab, setActiveTab] = useState('my')
-    const [uploads, setUploads] = useState(UPLOADED_CVS)
-    const [dragging, setDragging] = useState(false)
-    const [analyzing, setAnalyzing] = useState(null)
-    const [deleteModal, setDeleteModal] = useState(null)
-    const [previewCV, setPreviewCV] = useState(null)
-    const fileRef = useRef()
-    const navigate = useNavigate()
+  const persistCVList = (list) => {
+    const state = loadState();
+    state._cvList = list;
+    saveState(state);
+    setCvList(list);
+  };
 
-    const handleEdit = (cv) => {
-        setEditingId(cv.id)
-        navigate(`/cv-editor/${cv.id}`)
+  // Lưu data CV vào localStorage khi đang edit
+  const saveCVData = (cvId, data, titles, order) => {
+    const state = loadState();
+    state[cvId] = { 
+      data, 
+      titles: titles || DEFAULT_SECTION_TITLES,
+      order: order || DEFAULT_SECTION_ORDER,
+      lastEdited: new Date().toISOString() 
+    };
+    saveState(state);
+  };
+
+  // Xử lý khi chọn template từ TemplatePickerScreen
+  const handleTemplateSelect = (result) => {
+    const { templateId, _action, data, name } = result;
+    const template = TEMPLATES.find(t => t.id === templateId);
+    
+    if (!template) return;
+
+    const existingCV = cvList.find(cv => cv.templateId === templateId);
+    const state = loadState();
+
+    if (_action === 'continue' && existingCV) {
+      // Load data, titles và order đã lưu
+      const saved = state[existingCV.id] || {};
+      setEditingTitles(saved.titles || DEFAULT_SECTION_TITLES);
+      setEditingOrder(saved.order || DEFAULT_SECTION_ORDER);
+      setEditingCV({
+        ...existingCV,
+        data: saved.data || existingCV.data || JSON.parse(JSON.stringify(EMPTY_CV))
+      });
+      setScreen("editor");
+    } 
+    else if (_action === 'fresh') {
+      if (existingCV) {
+        // Reset data nhưng giữ nguyên CV
+        const updatedCV = {
+          ...existingCV,
+          data: JSON.parse(JSON.stringify(EMPTY_CV)),
+          updatedAt: "Vừa tạo lại"
+        };
+        const newList = cvList.map(cv => 
+          cv.id === existingCV.id ? updatedCV : cv
+        );
+        persistCVList(newList);
+        setEditingCV(updatedCV);
+      } else {
+        startNewCV(template);
+      }
+      setEditingTitles({...DEFAULT_SECTION_TITLES});
+      setEditingOrder([...DEFAULT_SECTION_ORDER]);
+      setScreen("editor");
     }
-
-    const handleDrop = (e) => {
-        e.preventDefault()
-        setDragging(false)
-        const files = Array.from(e.dataTransfer?.files || [])
-        handleFiles(files)
+    else if (_action === 'upload') {
+      if (existingCV) {
+        const updatedCV = {
+          ...existingCV,
+          name: name || existingCV.name,
+          data: { ...JSON.parse(JSON.stringify(EMPTY_CV)), ...data },
+          updatedAt: "Vừa cập nhật"
+        };
+        const newList = cvList.map(cv => 
+          cv.id === existingCV.id ? updatedCV : cv
+        );
+        persistCVList(newList);
+        setEditingCV(updatedCV);
+      } else {
+        const id = generateId();
+        const newCV = {
+          id,
+          templateId: template.id,
+          name: name || `CV ${template.name}`,
+          accent: template.accent,
+          updatedAt: "Vừa tạo",
+          data: { ...JSON.parse(JSON.stringify(EMPTY_CV)), ...data }
+        };
+        persistCVList([...cvList, newCV]);
+        setEditingCV(newCV);
+      }
+      setEditingTitles({...DEFAULT_SECTION_TITLES});
+      setEditingOrder([...DEFAULT_SECTION_ORDER]);
+      setScreen("editor");
     }
-
-    const handleFiles = (files) => {
-        const pdf = files.filter(f => f.name.endsWith('.pdf') || f.name.endsWith('.docx'))
-        if (!pdf.length) return
-        setAnalyzing(pdf[0].name)
-        setTimeout(() => {
-            setUploads(p => [{
-                id: 'u' + Date.now(),
-                name: pdf[0].name,
-                size: (pdf[0].size / 1024).toFixed(0) + ' KB',
-                uploadedAt: 'Vừa xong',
-                atsScore: Math.floor(Math.random() * 20) + 65,
-            }, ...p])
-            setAnalyzing(null)
-            setActiveTab('upload')
-        }, 2000)
+    else if (_action === 'create') {
+      if (existingCV) {
+        const saved = state[existingCV.id] || {};
+        setEditingTitles(saved.titles || DEFAULT_SECTION_TITLES);
+        setEditingOrder(saved.order || DEFAULT_SECTION_ORDER);
+        setEditingCV({
+          ...existingCV,
+          data: saved.data || existingCV.data || JSON.parse(JSON.stringify(EMPTY_CV))
+        });
+      } else {
+        startNewCV(template);
+        setEditingTitles({...DEFAULT_SECTION_TITLES});
+        setEditingOrder([...DEFAULT_SECTION_ORDER]);
+      }
+      setScreen("editor");
     }
+  };
 
-    const completenessColor = (n) => n >= 85 ? '#2E6040' : n >= 60 ? '#D4820A' : '#C0412A'
+  const startNewCV = (template) => {
+    const id = generateId();
+    const newCV = {
+      id,
+      templateId: template.id,
+      name: `CV ${template.name}`,
+      accent: template.accent,
+      updatedAt: "Vừa tạo",
+      data: JSON.parse(JSON.stringify(EMPTY_CV))
+    };
+    persistCVList([...cvList, newCV]);
+    setEditingCV(newCV);
+    return newCV;
+  };
 
-    const handleDelete = () => {
-        if (deleteModal) {
-            deleteCV(deleteModal)
-            setDeleteModal(null)
-        }
+  const handleEditCV = (cv) => {
+    const state = loadState();
+    const saved = state[cv.id] || {};
+    setEditingTitles(saved.titles || DEFAULT_SECTION_TITLES);
+    setEditingOrder(saved.order || DEFAULT_SECTION_ORDER);
+    setEditingCV({
+      ...cv,
+      data: saved.data || cv.data || JSON.parse(JSON.stringify(EMPTY_CV))
+    });
+    setScreen("editor");
+  };
+
+  // Lưu khi thay đổi titles hoặc order
+  const handleTitlesChange = (newTitles) => {
+    setEditingTitles(newTitles);
+    if (editingCV) {
+      saveCVData(editingCV.id, editingCV.data, newTitles, editingOrder);
     }
+  };
 
-    // Tính tips dựa trên CV đang active (CV đầu tiên hoặc CV có completeness cao nhất)
-    const activeCV = cvList.length > 0 ? cvList.reduce((prev, current) => (prev.completeness > current.completeness) ? prev : current) : null
+  const handleOrderChange = (newOrder) => {
+    setEditingOrder(newOrder);
+    if (editingCV) {
+      saveCVData(editingCV.id, editingCV.data, editingTitles, newOrder);
+    }
+  };
 
-    return (
-        <div className="mc-page">
-            {/* Header */}
-            <div className="mc-header">
-                <div className="mc-header-inner">
-                    <div>
-                        {/* <h1 className="mc-title">CV của tôi</h1>
-                        <p className="mc-sub">Quản lý và tối ưu hồ sơ xin việc của bạn</p> */}
-                    </div>
-                    <div className="mc-header-actions">
-                        <button className="mc-upload-btn-sm" onClick={() => fileRef.current?.click()}>
-                            ⬆ Tải lên CV
-                        </button>
-                        <button className="mc-create-btn" onClick={() => onNavigate?.('templatePicker')}>
-                            ✦ Tạo CV mới
-                        </button>
-                        <input ref={fileRef} type="file" accept=".pdf,.docx" style={{ display: 'none' }} onChange={e => handleFiles(Array.from(e.target.files))} />
-                    </div>
-                </div>
-            </div>
+  // Lưu data từ Editor
+  const handleEditorSave = (cvId, newData) => {
+    const state = loadState();
+    const existing = state[cvId] || {};
+    state[cvId] = { 
+      ...existing,
+      data: newData, 
+      titles: editingTitles,
+      order: editingOrder,
+      lastEdited: new Date().toISOString() 
+    };
+    saveState(state);
+    
+    // Cập nhật updatedAt trong list
+    const newList = cvList.map(cv => 
+      cv.id === cvId 
+        ? { ...cv, updatedAt: new Date().toLocaleString('vi-VN') }
+        : cv
+    );
+    persistCVList(newList);
+  };
 
-            {/* Tabs */}
-            <div className="mc-tabs-bar">
-                <div className="mc-tabs-inner">
-                    <button className={`mc-tab${activeTab === 'my' ? ' active' : ''}`} onClick={() => setActiveTab('my')}>
-                        📄 CV đã tạo <span className="mc-tab-ct">{cvList.length}</span>
-                    </button>
-                    <button className={`mc-tab${activeTab === 'upload' ? ' active' : ''}`} onClick={() => setActiveTab('upload')}>
-                        ⬆ CV tải lên <span className="mc-tab-ct">{uploads.length}</span>
-                    </button>
-                    <button className={`mc-tab${activeTab === 'tips' ? ' active' : ''}`} onClick={() => setActiveTab('tips')}>
-                        💡 Gợi ý cải thiện
-                        {TIPS.filter(t => !t.done).length > 0 && <span className="mc-tab-badge">{TIPS.filter(t => !t.done).length}</span>}
-                    </button>
-                </div>
-            </div>
+  return (
+    <>
+      {screen === "myCV" && (
+        <MyCVScreen
+          cvList={cvList || []}
+          onNew={() => setScreen("picker")}
+          onEdit={handleEditCV}
+          onDelete={(id) => {
+            persistCVList(cvList.filter(cv => cv.id !== id));
+            const state = loadState();
+            delete state[id];
+            saveState(state);
+          }}
+        />
+      )}
 
-            <div className="mc-body">
-                {/* ── Tab: My CVs ──────────────────────────────── */}
-                {activeTab === 'my' && (
-                    <div>
-                        <div className="mc-cv-grid">
-                            {cvList.map(cv => {
-                                const template = getTemplate(cv.templateId) || {}
-                                return (
-                                    <div key={cv.id} className={`mc-cv-card${cv.status === 'active' ? ' active' : ''}`}>
-                                        {cv.status === 'active' && <div className="mc-active-badge">✓ Đang dùng</div>}
+      {screen === "picker" && (
+        <TemplatePickerScreen
+          onSelect={handleTemplateSelect}
+          existingCVs={cvList}
+          onBack={() => setScreen("myCV")}
+        />
+      )}
 
-                                        {/* Preview */}
-                                        <div className="mc-cv-preview" style={{ background: cv.previewBg || template.previewBg }}>
-                                            <div className="mc-cv-preview-header">
-                                                <div className="mc-cv-preview-av" style={{ background: cv.color || template.color }}>{cv.personal?.fullName?.[0] || 'A'}</div>
-                                                <div>
-                                                    <div className="mc-cv-preview-bar long" />
-                                                    <div className="mc-cv-preview-bar" />
-                                                </div>
-                                            </div>
-                                            <div className="mc-cv-preview-lines">
-                                                <div className="mc-cv-preview-label" style={{ background: cv.color || template.color }} />
-                                                <div className="mc-cv-preview-bar w80" />
-                                                <div className="mc-cv-preview-bar w60" />
-                                                <div className="mc-cv-preview-bar w70" />
-                                                <div className="mc-cv-preview-label" style={{ background: cv.color || template.color }} />
-                                                <div className="mc-cv-preview-bar w90" />
-                                                <div className="mc-cv-preview-bar w55" />
-                                            </div>
+      {screen === "editor" && editingCV && (
+        <EditorScreen
+          templateId={editingCV.templateId}
+          initialData={editingCV.data}
+          cvId={editingCV.id}
+          sectionTitles={editingTitles}
+          setSectionTitles={handleTitlesChange}
+          sectionOrder={editingOrder}
+          setSectionOrder={handleOrderChange}
+          onSave={handleEditorSave}
+          onBack={() => {
+            setEditingCV(null);
+            setScreen("myCV");
+          }}
+        />
+      )}
 
-                                            {/* Hover overlay */}
-                                            <div className="mc-cv-overlay">
-                                                <button className="mc-ov-btn primary" onClick={() => handleEdit(cv)}>✏ Chỉnh sửa</button>
-                                                <button className="mc-ov-btn" onClick={() => setPreviewCV(cv)}>👁 Xem trước</button>
-                                            </div>
-                                        </div>
-
-                                        <div className="mc-cv-body">
-                                            <div className="mc-cv-name">{cv.name}</div>
-                                            <div className="mc-cv-template">{cv.template || template.style}</div>
-
-                                            {/* Completeness */}
-                                            <div className="mc-completeness">
-                                                <div className="mc-comp-row">
-                                                    <span className="mc-comp-label">Độ hoàn thiện</span>
-                                                    <span className="mc-comp-n" style={{ color: completenessColor(cv.completeness) }}>{cv.completeness}%</span>
-                                                </div>
-                                                <div className="mc-comp-bar-bg">
-                                                    <div className="mc-comp-bar" style={{ width: `${cv.completeness}%`, background: completenessColor(cv.completeness) }} />
-                                                </div>
-                                            </div>
-
-                                            {/* Stats */}
-                                            <div className="mc-cv-stats">
-                                                <div className="mc-cv-stat"><span className="mc-cv-stat-n">{cv.views}</span><span className="mc-cv-stat-l">Lượt xem</span></div>
-                                                <div className="mc-cv-stat"><span className="mc-cv-stat-n">{cv.downloads}</span><span className="mc-cv-stat-l">Tải về</span></div>
-                                                <div className="mc-cv-stat"><span className="mc-cv-stat-n">{cv.updatedAt}</span><span className="mc-cv-stat-l">Cập nhật</span></div>
-                                            </div>
-                                        </div>
-
-                                        <div className="mc-cv-foot">
-                                            <button className="mc-cv-action-btn" onClick={() => handleEdit(cv)}>✏ Chỉnh sửa</button>
-                                            <button className="mc-cv-action-btn">⬇ Tải PDF</button>
-                                            <button className="mc-cv-action-btn">🔗 Chia sẻ</button>
-                                            <button className="mc-cv-action-btn danger" onClick={() => setDeleteModal(cv.id)}>🗑</button>
-                                        </div>
-                                    </div>
-                                )
-                            })}
-
-                            {/* Add new card */}
-                            <div className="mc-cv-card mc-cv-add" onClick={() => navigate('/cv-templates')}>
-                                <div className="mc-cv-add-inner">
-                                    <div className="mc-cv-add-ico">✦</div>
-                                    <div className="mc-cv-add-title">Tạo CV mới</div>
-                                    <div className="mc-cv-add-sub">Chọn từ {TEMPLATES.length}+ mẫu đẹp</div>
-                                </div>
-                            </div>
-                        
-                        </div>
-
-                        {cvList.length === 0 && (
-                            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#666' }}>
-                                <div style={{ fontSize: '48px', marginBottom: '16px' }}>📄</div>
-                                <h3>Chưa có CV nào</h3>
-                                <p>Hãy tạo CV mới để bắt đầu</p>
-                                <button
-                                    className="mc-create-btn"
-                                    onClick={() => onNavigate?.('templatePicker')}
-                                    style={{ marginTop: '16px' }}
-                                >
-                                    ✦ Tạo CV ngay
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* ── Tab: Uploaded CVs ─────────────────────────── */}
-                {activeTab === 'upload' && (
-                    <div>
-                        {/* Drop zone */}
-                        <div
-                            className={`mc-dropzone${dragging ? ' dragover' : ''}`}
-                            onDragOver={e => { e.preventDefault(); setDragging(true) }}
-                            onDragLeave={() => setDragging(false)}
-                            onDrop={handleDrop}
-                            onClick={() => fileRef.current?.click()}
-                        >
-                            {analyzing ? (
-                                <div className="mc-analyzing">
-                                    <div className="mc-analyzing-spinner" />
-                                    <div className="mc-analyzing-title">Đang phân tích CV...</div>
-                                    <div className="mc-analyzing-sub">AI đang đọc và chấm điểm ATS cho "{analyzing}"</div>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="mc-dz-ico">📎</div>
-                                    <div className="mc-dz-title">{dragging ? 'Thả file vào đây!' : 'Kéo & thả hoặc nhấn để tải lên CV'}</div>
-                                    <div className="mc-dz-sub">Hỗ trợ PDF, DOCX · Tối đa 5MB · AI sẽ chấm điểm ATS tự động</div>
-                                    <button className="mc-dz-btn">Chọn file từ máy</button>
-                                </>
-                            )}
-                        </div>
-
-                        {/* Uploaded list */}
-                        {uploads.length > 0 && (
-                            <div className="mc-upload-list">
-                                <div className="mc-upload-list-title">CV đã tải lên</div>
-                                {uploads.map(u => (
-                                    <div key={u.id} className="mc-upload-row">
-                                        <div className="mc-upload-ico">📄</div>
-                                        <div className="mc-upload-info">
-                                            <div className="mc-upload-name">{u.name}</div>
-                                            <div className="mc-upload-meta">{u.size} · Tải lên {u.uploadedAt}</div>
-                                        </div>
-                                        <div className="mc-ats-score">
-                                            <div className="mc-ats-n" style={{ color: u.atsScore >= 75 ? '#2E6040' : u.atsScore >= 60 ? '#D4820A' : '#C0412A' }}>{u.atsScore}</div>
-                                            <div className="mc-ats-l">ATS Score</div>
-                                        </div>
-                                        <div className="mc-upload-actions">
-                                            <button className="mc-ul-btn">⬇ Tải về</button>
-                                            <button className="mc-ul-btn">🔗 Dùng CV này</button>
-                                            <button className="mc-ul-btn danger">🗑</button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* ── Tab: Tips ─────────────────────────────────── */}
-                {activeTab === 'tips' && (
-                    <div>
-                        <div className="mc-tips-header">
-                            <div className="mc-tips-score-card">
-                                <div className="mc-tips-score-ring">
-                                    <svg viewBox="0 0 80 80" className="mc-ring-svg">
-                                        <circle cx="40" cy="40" r="34" fill="none" stroke="#EFE9DC" strokeWidth="8" />
-                                        <circle cx="40" cy="40" r="34" fill="none" stroke="#C0412A" strokeWidth="8"
-                                            strokeDasharray={`${2 * Math.PI * 34 * (activeCV?.completeness || 92) / 100} ${2 * Math.PI * 34 * (1 - (activeCV?.completeness || 92) / 100)}`}
-                                            strokeDashoffset={2 * Math.PI * 34 * 0.25}
-                                            strokeLinecap="round" />
-                                    </svg>
-                                    <div className="mc-ring-inner"><span className="mc-ring-n">{activeCV?.completeness || 92}%</span><span className="mc-ring-l">Độ HT</span></div>
-                                </div>
-                                <div>
-                                    <div className="mc-tips-score-title">{activeCV?.name || 'CV Senior React Developer'}</div>
-                                    <div className="mc-tips-score-sub">Hoàn thiện {TIPS.filter(t => t.done).length}/{TIPS.length} mục</div>
-                                    <div className="mc-tips-score-bar-wrap">
-                                        <div className="mc-tips-bar-bg"><div className="mc-tips-bar" style={{ width: `${(TIPS.filter(t => t.done).length / TIPS.length) * 100}%` }} /></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="mc-tips-list">
-                            {TIPS.map((tip, i) => (
-                                <div key={i} className={`mc-tip-row${tip.done ? ' done' : ''}`}>
-                                    <div className={`mc-tip-check${tip.done ? ' on' : ''}`}>{tip.done ? '✓' : ''}</div>
-                                    <div className="mc-tip-ico">{tip.icon}</div>
-                                    <div className="mc-tip-info">
-                                        <div className="mc-tip-title">{tip.title}</div>
-                                        <div className="mc-tip-desc">{tip.desc}</div>
-                                    </div>
-                                    {!tip.done && (
-                                        <button className="mc-tip-do-btn" onClick={() => {
-                                            if (activeCV) {
-                                                setEditingId(activeCV.id)
-                                                onNavigate?.('editor')
-                                            }
-                                        }}>Làm ngay →</button>
-                                    )}
-                                    {tip.done && <span className="mc-tip-done-tag">✓ Hoàn thành</span>}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* Delete modal */}
-            {deleteModal && (
-                <div className="mc-modal-overlay" onClick={() => setDeleteModal(null)}>
-                    <div className="mc-modal" onClick={e => e.stopPropagation()}>
-                        <div className="mc-modal-ico">🗑️</div>
-                        <div className="mc-modal-title">Xoá CV này?</div>
-                        <div className="mc-modal-sub">Hành động này không thể hoàn tác.</div>
-                        <div className="mc-modal-foot">
-                            <button className="mc-modal-cancel" onClick={() => setDeleteModal(null)}>Huỷ</button>
-                            <button className="mc-modal-ok" onClick={handleDelete}>Xoá</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Preview modal */}
-            {previewCV && <PreviewModal cv={previewCV} onClose={() => setPreviewCV(null)} />}
-        </div>
-    )
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=Cormorant+Garamond:wght@400;500;600&family=Syne:wght@400;700;800&family=Lato:wght@300;400;700&family=Roboto:wght@300;400;500;700&family=Montserrat:wght@300;400;500;600;700&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'DM Sans', sans-serif; background: #F2F1EE; color: #1a1a1a; }
+        button { font-family: inherit; cursor: pointer; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+      `}</style>
+    </>
+  );
 }
