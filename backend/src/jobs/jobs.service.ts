@@ -27,7 +27,7 @@ const JOB_TYPE_MAP: Record<string, string> = {
 
 @Injectable()
 export class JobsService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async getJobs(dto: QueryJobsDto, accountID?: number) {
     const {
@@ -45,7 +45,12 @@ export class JobsService {
     } = dto;
 
     const skip = (page - 1) * limit;
-    const where: Prisma.JobWhereInput = { isActive: true};
+    const now = new Date();
+    const where: Prisma.JobWhereInput = {
+      isActive: true,
+      deadline: { gt: now },
+    };
+
     const andConditions: Prisma.JobWhereInput[] = [];
 
     if (keyword) {
@@ -132,11 +137,12 @@ export class JobsService {
       }
     }
 
-    const filteredJobs = jobs.filter(j =>
-      j.deadline && new Date(j.deadline) > new Date()
-    );
 
-    let jobList = filteredJobs.map((j) => ({
+    // const filteredJobs = jobs.filter(j =>
+    //   j.deadline && new Date(j.deadline) > new Date()
+    // );
+
+    let jobList = jobs.map((j) => ({
       jobID: j.jobID,
       title: j.title,
       companyID: j.company.companyID,
@@ -455,17 +461,16 @@ export class JobsService {
 
   async getSavedJobs(dto: QueryJobsDto, accountID: number) {
     const user = await this.prisma.user.findUnique({ where: { accountID } });
-    const {
-      page = 1,
-      limit = 9,
-    } = dto;
+
+    const { page = 1, limit = 9 } = dto;
 
     if (!user) throw new Error('User not found');
 
     const skip = (page - 1) * limit;
 
     const total = await this.prisma.savedJob.count({
-      where: { userID: user.userID }
+
+      where: { userID: user.userID },
     });
 
     const savedJobs = await this.prisma.savedJob.findMany({
@@ -487,35 +492,41 @@ export class JobsService {
   }
 
   async getFilterOptions() {
+    const now = new Date();
+    const baseWhere: Prisma.JobWhereInput = {
+      isActive: true,
+      deadline: { gt: now },
+    };
+
     const [jobTypes, sources, locations, experiences, industries] =
       await Promise.all([
         this.prisma.job.groupBy({
           by: ['jobType'],
-          where: { isActive: true, jobType: { not: null } },
+          where: { ...baseWhere, jobType: { not: null } },
           _count: { jobID: true },
           orderBy: { _count: { jobID: 'desc' } },
         }),
         this.prisma.job.groupBy({
           by: ['sourcePlatform'],
-          where: { isActive: true, sourcePlatform: { not: null } },
+          where: { ...baseWhere, sourcePlatform: { not: null } },
           _count: { jobID: true },
           orderBy: { _count: { jobID: 'desc' } },
         }),
         this.prisma.job.groupBy({
           by: ['shortLocation'],
-          where: { isActive: true, shortLocation: { not: null } },
+          where: { ...baseWhere, shortLocation: { not: null } },
           _count: { jobID: true },
           orderBy: { _count: { jobID: 'desc' } },
         }),
         this.prisma.job.groupBy({
           by: ['experienceYear'],
-          where: { isActive: true, experienceYear: { not: null } },
+          where: { ...baseWhere, experienceYear: { not: null } },
           _count: { jobID: true },
           orderBy: { _count: { jobID: 'desc' } },
         }),
         this.prisma.industry.findMany({
           include: {
-            _count: { select: { jobs: { where: { isActive: true } } } },
+            _count: { select: { jobs: { where: baseWhere } } },
           },
           orderBy: { id: 'asc' },
         }),
@@ -589,7 +600,10 @@ export class JobsService {
   }
 
   async getFilterOptionsBySource(source?: string) {
-    const where: Prisma.JobWhereInput = { isActive: true };
+    const where: Prisma.JobWhereInput = {
+      isActive: true,
+      deadline: { gt: new Date() },
+    };
     if (source) where.sourcePlatform = source;
 
     const [jobTypes, industries] = await Promise.all([

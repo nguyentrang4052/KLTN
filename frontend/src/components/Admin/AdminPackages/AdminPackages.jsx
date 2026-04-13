@@ -1,11 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { adminFetch } from '../../../utils/auth'
 import './AdminPackages.css'
-
-const INIT_PACKAGES = [
-  { id: 1, name: 'Free', price: 0, color: '#6B5E50', bg: '#F5F0E8', features: { dailyJobSuggestions: 5, cvAnalysis: 1, compatibilityCheck: 3 }, users: 8234 },
-  { id: 2, name: 'Pro', price: 99000, color: '#342893', bg: '#ECEAF8', features: { dailyJobSuggestions: 50, cvAnalysis: 10, compatibilityCheck: 30 }, users: 1204 },
-  { id: 3, name: 'Enterprise', price: 299000, color: '#C0412A', bg: '#FAEAE6', features: { dailyJobSuggestions: 999, cvAnalysis: 999, compatibilityCheck: 999 }, users: 43 },
-]
 
 const FEATURE_LABELS = {
   dailyJobSuggestions: 'Đề xuất việc làm / ngày',
@@ -13,61 +8,100 @@ const FEATURE_LABELS = {
   compatibilityCheck: 'Kiểm tra độ phù hợp CV',
 }
 
-const EMPTY_FORM = { name: '', price: 0, dailyJobSuggestions: 5, cvAnalysis: 1, compatibilityCheck: 3 }
+const EMPTY_FORM = { name: '', monthlyPrice: 0, yearlyPrice: 0, dailyJobSuggestions: 5, cvAnalysis: 1, compatibilityCheck: 3 }
+
+
+const PALETTE = [
+  { color: '#6B5E50', bg: '#F5F0E8' },
+  { color: '#342893', bg: '#ECEAF8' },
+  { color: '#C0412A', bg: '#FAEAE6' },
+  { color: '#2E6040', bg: '#E8F2EC' },
+  { color: '#B07A10', bg: '#FBF3E0' },
+]
 
 export default function AdminPackages() {
-  const [packages, setPackages] = useState(INIT_PACKAGES)
+  const [packages, setPackages] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState({})
   const [deleteTarget, setDeleteTarget] = useState(null)
 
+  const loadPackages = async () => {
+    try {
+      const data = await adminFetch('/admin/packages')
+      setPackages(data.map((p, i) => ({ ...p, ...PALETTE[i % PALETTE.length] })))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { loadPackages() }, [])
+
   const openEdit = pkg => {
-    setForm({ id: pkg.id, name: pkg.name, price: pkg.price, ...pkg.features })
+    setForm({
+      id: pkg.id,
+      name: pkg.name,
+      monthlyPrice: pkg.monthlyPrice,
+      yearlyPrice: pkg.yearlyPrice,
+      dailyJobSuggestions: pkg.features.dailyJobSuggestions,
+      cvAnalysis: pkg.features.cvAnalysis,
+      compatibilityCheck: pkg.features.compatibilityCheck,
+    })
     setModal('edit')
   }
 
-  const savePackage = () => {
+  const savePackage = async () => {
     if (!form.name?.trim()) return
-    setPackages(prev => prev.map(p => p.id === form.id ? {
-      ...p, price: Number(form.price),
-      features: {
-        dailyJobSuggestions: Number(form.dailyJobSuggestions),
-        cvAnalysis: Number(form.cvAnalysis),
-        compatibilityCheck: Number(form.compatibilityCheck),
-      }
-    } : p))
-    setModal(null)
+    try {
+      await adminFetch(`/admin/packages/${form.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: form.name,
+          monthlyPrice: Number(form.monthlyPrice),
+          yearlyPrice: Number(form.yearlyPrice),
+          dailyJobSuggestions: Number(form.dailyJobSuggestions),
+          cvAnalysis: Number(form.cvAnalysis),
+          compatibilityCheck: Number(form.compatibilityCheck),
+        }),
+      })
+      await loadPackages()
+      setModal(null)
+    } catch (err) { alert(err.message) }
   }
 
-  const createPackage = () => {
+  const createPackage = async () => {
     if (!form.name?.trim()) return
-    const palette = [
-      { color: '#342893', bg: '#ECEAF8' },
-      { color: '#2E6040', bg: '#E8F2EC' },
-      { color: '#B07A10', bg: '#FBF3E0' },
-    ]
-    const p = palette[packages.length % palette.length]
-    setPackages(prev => [...prev, {
-      id: Date.now(), name: form.name, price: Number(form.price),
-      color: p.color, bg: p.bg,
-      features: {
-        dailyJobSuggestions: Number(form.dailyJobSuggestions),
-        cvAnalysis: Number(form.cvAnalysis),
-        compatibilityCheck: Number(form.compatibilityCheck),
-      },
-      users: 0,
-    }])
-    setModal(null)
+    try {
+      await adminFetch('/admin/packages', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: form.name,
+          monthlyPrice: Number(form.monthlyPrice),
+          yearlyPrice: Number(form.yearlyPrice),
+          dailyJobSuggestions: Number(form.dailyJobSuggestions),
+          cvAnalysis: Number(form.cvAnalysis),
+          compatibilityCheck: Number(form.compatibilityCheck),
+        }),
+      })
+      await loadPackages()
+      setModal(null)
+    } catch (err) { alert(err.message) }
   }
 
-  const deletePackage = id => {
-    setPackages(prev => prev.filter(p => p.id !== id))
-    setDeleteTarget(null); setModal(null)
+  const deletePackage = async (id) => {
+    try {
+      await adminFetch(`/admin/packages/${id}`, { method: 'DELETE' })
+      setPackages(prev => prev.filter(p => p.id !== id))
+      setDeleteTarget(null)
+      setModal(null)
+    } catch (err) { alert(err.message) }
   }
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
-
-  const fmtVal = v => v >= 999 ? '∞' : v
+  const fmtVal = v => (v < 0 || v >= 999) ? '∞' : v
 
   const PKG_FORM = (
     <div className="adm-modal__body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -76,10 +110,17 @@ export default function AdminPackages() {
         <input className="adm-form-input" placeholder="VD: Basic, Premium..."
           value={form.name || ''} onChange={e => set('name', e.target.value)} autoFocus />
       </div>
-      <div className="adm-form-field">
-        <label>Giá (VNĐ/tháng) — nhập 0 nếu miễn phí</label>
-        <input className="adm-form-input" type="number" min="0"
-          value={form.price} onChange={e => set('price', e.target.value)} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div className="adm-form-field">
+          <label>Giá tháng (VNĐ) </label>
+          <input className="adm-form-input" type="number" min="0"
+            value={form.monthlyPrice ?? 0} onChange={e => set('monthlyPrice', e.target.value)} />
+        </div>
+        <div className="adm-form-field">
+          <label>Giá năm (VNĐ)</label>
+          <input className="adm-form-input" type="number" min="0"
+            value={form.yearlyPrice ?? 0} onChange={e => set('yearlyPrice', e.target.value)} />
+        </div>
       </div>
       {Object.entries(FEATURE_LABELS).map(([k, label]) => (
         <div className="adm-form-field" key={k}>
@@ -93,12 +134,17 @@ export default function AdminPackages() {
     </div>
   )
 
+  if (loading) return <div className="adm-db__loading">Đang tải...</div>
+  if (error) return <div className="adm-db__error">⚠ {error}</div>
+
   return (
     <div className="adm-pkgs">
       <div className="adm-pkgs__header">
         <div>
           <h1 className="adm-page-title">Quản lý gói dịch vụ</h1>
-          <p className="adm-page-sub">{packages.length} gói đang hoạt động · {packages.reduce((a, p) => a + p.users, 0).toLocaleString()} người dùng</p>
+          <p className="adm-page-sub">
+            {packages.length} gói đang hoạt động · {packages.reduce((a, p) => a + (p.users ?? 0), 0).toLocaleString()} người dùng
+          </p>
         </div>
         <button className="adm-add-btn" onClick={() => { setForm({ ...EMPTY_FORM }); setModal('create') }}>
           + Tạo gói mới
@@ -111,33 +157,36 @@ export default function AdminPackages() {
             <div className="adm-pkg2__strip">
               <span className="adm-pkg2__rank">{idx + 1}</span>
             </div>
-
             <div className="adm-pkg2__info">
-              <div className="adm-pkg2__name" style={{ color: pkg.color }}>{pkg.name}</div>
+              <div className="adm-pkg2__name" style={{ color: pkg.color }}>{pkg.displayName ?? pkg.name}</div>
               <div className="adm-pkg2__price">
-                {pkg.price === 0
+                {pkg.monthlyPrice === 0
                   ? <span className="adm-pkg2__free">Miễn phí</span>
-                  : <><strong>{pkg.price.toLocaleString()}</strong><span>đ / tháng</span></>
+                  : <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <div><strong>{pkg.monthlyPrice.toLocaleString()}</strong><span>đ / tháng</span></div>
+                    {pkg.yearlyPrice > 0 &&
+                      <div style={{ fontSize: 11, color: '#9A8D80' }}>
+                        {pkg.yearlyPrice.toLocaleString()}đ / năm
+                      </div>
+                    }
+                  </div>
                 }
               </div>
               <div className="adm-pkg2__users">
                 <span className="adm-pkg2__users-dot" style={{ background: pkg.color }} />
-                {pkg.users.toLocaleString()} người dùng
+                {(pkg.users ?? 0).toLocaleString()} người dùng
               </div>
             </div>
-
             <div className="adm-pkg2__feats">
               {Object.entries(pkg.features).map(([k, v]) => (
                 <div className="adm-pkg2__feat" key={k}>
                   <span className="adm-pkg2__feat-lbl">{FEATURE_LABELS[k]}</span>
                   <span className="adm-pkg2__feat-val" style={{ color: pkg.color }}>
-                    {v >= 999 ? '∞' : v}
+                    {fmtVal(v)}
                   </span>
                 </div>
               ))}
             </div>
-
-        
             <div className="adm-pkg2__acts">
               <button className="adm-pkg2__edit" onClick={() => openEdit(pkg)}>Chỉnh sửa</button>
               <button className="adm-pkg2__del" onClick={() => { setDeleteTarget(pkg); setModal('delete') }}>✕</button>
@@ -156,7 +205,7 @@ export default function AdminPackages() {
               <th>Tính năng</th>
               {packages.map(p => (
                 <th key={p.id}>
-                  <span style={{ color: p.color, fontWeight: 800 }}>{p.name}</span>
+                  <span style={{ color: p.color, fontWeight: 800 }}>{p.displayName ?? p.name}</span>
                 </th>
               ))}
             </tr>
@@ -177,14 +226,13 @@ export default function AdminPackages() {
             <tr>
               <td className="adm-table__muted">Người dùng hiện tại</td>
               {packages.map(p => (
-                <td key={p.id} className="adm-table__muted">{p.users.toLocaleString()}</td>
+                <td key={p.id} className="adm-table__muted">{(p.users ?? 0).toLocaleString()}</td>
               ))}
             </tr>
           </tbody>
         </table>
       </div>
 
-  
       {modal === 'edit' && (
         <div className="adm-modal-overlay" onClick={() => setModal(null)}>
           <div className="adm-modal" onClick={e => e.stopPropagation()}>
@@ -201,7 +249,6 @@ export default function AdminPackages() {
         </div>
       )}
 
-
       {modal === 'create' && (
         <div className="adm-modal-overlay" onClick={() => setModal(null)}>
           <div className="adm-modal" onClick={e => e.stopPropagation()}>
@@ -217,7 +264,6 @@ export default function AdminPackages() {
           </div>
         </div>
       )}
-
 
       {modal === 'delete' && deleteTarget && (
         <div className="adm-modal-overlay" onClick={() => setModal(null)}>

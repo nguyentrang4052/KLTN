@@ -55,6 +55,7 @@ export class CompaniesService {
     const { keyword, location, size, sort = 'jobs', page = 1, limit = 9 } = dto;
 
     const skip = (page - 1) * limit;
+    const now = new Date();
     const conditions: Prisma.CompanyWhereInput[] = [];
 
     if (keyword?.trim()) {
@@ -87,7 +88,9 @@ export class CompaniesService {
       where,
       include: {
         _count: {
-          select: { jobs: { where: { isActive: true } } },
+          select: {
+            jobs: { where: { isActive: true, deadline: { gt: now } } },
+          },
         },
       },
     });
@@ -117,10 +120,13 @@ export class CompaniesService {
   }
 
   async getTopCompanies(limit = 5) {
+    const now = new Date();
     const companies = await this.prisma.company.findMany({
       include: {
         _count: {
-          select: { jobs: { where: { isActive: true } } },
+          select: {
+            jobs: { where: { isActive: true, deadline: { gt: now } } },
+          },
         },
       },
       orderBy: { jobs: { _count: 'desc' } },
@@ -162,18 +168,23 @@ export class CompaniesService {
   }
 
   async getCompanyById(companyID: number) {
+    const now = new Date();
     const company = await this.prisma.company.findUnique({
       where: { companyID },
       include: {
-        _count: { select: { jobs: { where: { isActive: true } } } },
+        _count: {
+          select: {
+            jobs: { where: { isActive: true, deadline: { gt: now } } },
+          },
+        },
         jobs: {
-          where: { isActive: true },
+          where: { isActive: true, deadline: { gt: now } },
           include: {
             skills: { include: { skill: { select: { name: true } } }, take: 5 },
             industry: { select: { name: true } },
           },
           orderBy: { postedAt: 'desc' },
-          take: 20,
+          // take: 20,
         },
       },
     });

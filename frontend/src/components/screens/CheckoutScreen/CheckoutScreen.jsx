@@ -1,129 +1,342 @@
-// src/components/screens/CheckoutScreen/CheckoutScreen.jsx
 import { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { getToken } from '../../../utils/auth'
+import { QRCodeSVG } from 'qrcode.react'
 import './CheckoutScreen.css'
 
-/* ── QR code SVG generator (tạo QR giả dạng đủ thuyết phục) ── */
-function QRCodeSVG({ value, size = 180 }) {
-    // Tạo pattern giả có vẻ như QR thật (không cần thư viện)
-    const cells = 25
-    const cell = size / cells
+const API = 'http://localhost:3000/api'
+const PLAN_COLORS = { free: '#9A8D80', pro: '#C0412A', elite: '#D4820A' }
+const PLAN_ICONS = { free: '🌱', pro: '⚡', elite: '👑' }
 
-    // Seed từ value string để luôn nhất quán
-    const seed = value.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
-    const rand = (i) => ((seed * (i + 1) * 2654435761) >>> 0) % 2 === 0
+const REFUND_INIT = {
+    reason: '',
+    accountNumber: '',
+    accountName: '',
+    bankName: '',
+}
 
-    const isFinderPattern = (r, c) => {
-        const inCorner = (rr, cc, size) => rr >= 0 && rr < size && cc >= 0 && cc < size
-        return (inCorner(r, c, 7) || inCorner(r, c - 18, 7) || inCorner(r - 18, c, 7))
+function RefundForm({ refundForm, setRefundForm, refundError, refundLoading, inputStyle, onClose, onSubmit }) {
+    return (
+        <>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                <div style={{ fontFamily: 'Fraunces, serif', fontSize: 18, fontWeight: 700, color: '#1C1510' }}>
+                    💸 Yêu cầu hoàn tiền
+                </div>
+                <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#9A8D80', lineHeight: 1 }}>×</button>
+            </div>
+
+            <div style={{ background: '#FFF8E7', border: '1px solid #F0D080', borderRadius: 10, padding: '10px 14px', marginBottom: 20, fontSize: 12.5, color: '#6B5E50', lineHeight: 1.65 }}>
+                ⚠ Chỉ áp dụng trong <strong>7 ngày</strong> kể từ ngày thanh toán gần nhất. Sau khi xác nhận, gói dịch vụ đang dùng sẽ bị huỷ ngay.
+            </div>
+
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#6B5E50', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.6px' }}>
+                Lý do hoàn tiền <span style={{ color: '#C0412A' }}>*</span>
+            </label>
+            <textarea
+                rows={3}
+                placeholder="Vd: Tôi không dùng được tính năng phân tích CV..."
+                value={refundForm.reason}
+                onChange={e => setRefundForm(f => ({ ...f, reason: e.target.value }))}
+                style={{ ...inputStyle(false), resize: 'vertical', minHeight: 80 }}
+            />
+
+            <div style={{ height: 1, background: '#EFE9DC', margin: '4px 0 16px' }} />
+
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#6B5E50', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '.6px' }}>
+                Thông tin tài khoản nhận tiền
+            </div>
+
+            <label style={{ display: 'block', fontSize: 12.5, color: '#6B5E50', marginBottom: 5 }}>
+                Số tài khoản / Số thẻ <span style={{ color: '#C0412A' }}>*</span>
+            </label>
+            <input type="text" placeholder="Vd: 0123456789"
+                value={refundForm.accountNumber}
+                onChange={e => setRefundForm(f => ({ ...f, accountNumber: e.target.value }))}
+                style={inputStyle(false)}
+            />
+
+            <label style={{ display: 'block', fontSize: 12.5, color: '#6B5E50', marginBottom: 5 }}>
+                Tên chủ tài khoản <span style={{ color: '#C0412A' }}>*</span>
+            </label>
+            <input type="text" placeholder="Vd: NGUYEN VAN A"
+                value={refundForm.accountName}
+                onChange={e => setRefundForm(f => ({ ...f, accountName: e.target.value.toUpperCase() }))}
+                style={inputStyle(false)}
+            />
+
+            <label style={{ display: 'block', fontSize: 12.5, color: '#6B5E50', marginBottom: 5 }}>
+                Ngân hàng <span style={{ color: '#C0412A' }}>*</span>
+            </label>
+            <input type="text" placeholder="Vd: Vietcombank, Techcombank, MB Bank..."
+                value={refundForm.bankName}
+                onChange={e => setRefundForm(f => ({ ...f, bankName: e.target.value }))}
+                style={inputStyle(false)}
+            />
+
+            {refundError && (
+                <div style={{ padding: '9px 12px', borderRadius: 8, background: 'rgba(192,65,42,.1)', color: '#C0412A', fontSize: 12.5, fontWeight: 600, marginBottom: 12 }}>
+                    ⚠ {refundError}
+                </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                <button onClick={onClose} style={{
+                    flex: 1, padding: '12px', borderRadius: 10,
+                    border: '1.5px solid #DDD6C6', background: 'transparent',
+                    fontSize: 13, fontWeight: 700, color: '#6B5E50',
+                    cursor: 'pointer', fontFamily: 'inherit',
+                }}>Huỷ</button>
+                <button onClick={onSubmit} disabled={refundLoading} style={{
+                    flex: 2, padding: '12px', borderRadius: 10, border: 'none',
+                    background: refundLoading ? '#ccc' : '#C0412A',
+                    color: '#fff', fontSize: 13, fontWeight: 700,
+                    cursor: refundLoading ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+                }}>
+                    {refundLoading ? '⏳ Đang gửi...' : 'Gửi yêu cầu hoàn tiền'}
+                </button>
+            </div>
+        </>
+    )
+}
+
+export default function CheckoutScreen() {
+    const navigate = useNavigate()
+    const location = useLocation()
+    const token = getToken()
+
+    const isRefundOnly = !location.state?.planName && location.state?.openRefund
+
+    if (!location.state?.planName && !location.state?.openRefund) {
+        navigate('/services', { replace: true })
+        return null
     }
 
-    const cells_arr = Array.from({ length: cells }, (_, r) =>
-        Array.from({ length: cells }, (_, c) => {
-            if (isFinderPattern(r, c)) {
-                const inOuter = (rr, cc, dr, dc) => rr >= dr && rr <= dr + 6 && cc >= dc && cc <= dc + 6
-                if (inOuter(r, c, 0, 0) || inOuter(r, c, 0, 18) || inOuter(r, c, 18, 0)) {
-                    const lr = r % 7 === 0 ? r : r - Math.floor(r / 7) * 7
-                    const lc = c % 7 === 0 ? c : c - Math.floor(c / 7) * 7
-                    const br = r >= 18 ? r - 18 : r
-                    const bc = c >= 18 ? c - 18 : c
-                    const rr = r < 7 ? r : r >= 18 ? r - 18 : r
-                    const rc = c < 7 ? c : c >= 18 ? c - 18 : c
-                    return (rr === 0 || rr === 6 || rc === 0 || rc === 6 || (rr >= 2 && rr <= 4 && rc >= 2 && rc <= 4))
-                }
-            }
-            return rand(r * cells + c)
-        })
-    )
+    const { planName, planDisplayName, billing, monthlyPrice, yearlyPrice, limits } = location.state ?? {}
+    const price = billing === 'yearly' ? yearlyPrice : monthlyPrice
+    const planColor = PLAN_COLORS[planName] ?? '#C0412A'
+    const fmt = (n) => n?.toLocaleString('vi-VN') + 'đ'
 
-    return (
-        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} xmlns="http://www.w3.org/2000/svg">
-            <rect width={size} height={size} fill="white" rx="4" />
-            {cells_arr.map((row, r) => row.map((filled, c) =>
-                filled ? <rect key={`${r}-${c}`} x={c * cell} y={r * cell} width={cell} height={cell} fill="#1C1510" /> : null
-            ))}
-        </svg>
-    )
-}
+    const [error, setError] = useState('')
+    const [transactionRef, setTransactionRef] = useState('')
+    const [qrCodeUrl, setQrCodeUrl] = useState('')
+    const [checkoutUrl, setCheckoutUrl] = useState('')
+    const [qrLoading, setQrLoading] = useState(false)
+    const [paymentVerified, setPaymentVerified] = useState(false)
+    const [countdown, setCountdown] = useState(300)
+    const [countdownActive, setCountdownActive] = useState(false)
+    const [copied, setCopied] = useState('')
 
-const BANKS = [
-    { id: 'vcb', name: 'Vietcombank', logo: 'VCB', color: '#008E44', accountNo: '1234567890' },
-    { id: 'tcb', name: 'Techcombank', logo: 'TCB', color: '#E8192C', accountNo: '1234567891' },
-    { id: 'acb', name: 'ACB', logo: 'ACB', color: '#1A5276', accountNo: '1234567892' },
-    { id: 'mb', name: 'MB Bank', logo: 'MB', color: '#1F3C88', accountNo: '1234567893' },
-    { id: 'momo', name: 'Ví MoMo', logo: 'MM', color: '#A50064', accountNo: '0901234567' },
-    { id: 'zalopay', name: 'ZaloPay', logo: 'ZP', color: '#0068FF', accountNo: '0901234568' },
-]
+    const [showRefund, setShowRefund] = useState(false)
+    const [refundForm, setRefundForm] = useState(REFUND_INIT)
+    const [refundLoading, setRefundLoading] = useState(false)
+    const [refundError, setRefundError] = useState('')
+    const [refundSuccess, setRefundSuccess] = useState(false)
 
-const PLANS_MAP = {
-    free: { name: 'Free', price: 0, color: '#9A8D80' },
-    pro: { name: 'Pro', price: 99000, color: '#C0412A' },
-    elite: { name: 'Elite', price: 249000, color: '#D4820A' },
-}
-
-export default function CheckoutScreen({ planId = 'pro', billing = 'monthly', onBack, onSuccess }) {
-    const plan = PLANS_MAP[planId] || PLANS_MAP.pro
-    const price = billing === 'yearly' ? Math.round(plan.price * 10 * 0.8) : plan.price
-    const [bank, setBank] = useState('vcb')
-    const [step, setStep] = useState('select') // select | qr | confirm | done
-    const [countdown, setCountdown] = useState(300) // 5 phút
-    const [copied, setCopied] = useState(null)
-
-    const selectedBank = BANKS.find(b => b.id === bank)
-    const txCode = `GZC${Date.now().toString().slice(-8)}`
-    const qrValue = `${selectedBank?.accountNo}|${price}|${txCode}|GZCONNECT ${plan.name}`
-    const fmt = (n) => n.toLocaleString('vi') + 'đ'
+    useEffect(() => { if (!token) navigate('/login') }, [])
 
     useEffect(() => {
-        if (step !== 'qr') return
-        if (countdown <= 0) return
+        if (location.state?.openRefund) setShowRefund(true)
+    }, [])
+
+    useEffect(() => {
+        if (!isRefundOnly) handleGenerateQR()
+    }, [])
+
+    useEffect(() => {
+        if (!countdownActive || countdown <= 0) return
         const t = setInterval(() => setCountdown(c => c - 1), 1000)
         return () => clearInterval(t)
-    }, [step, countdown])
+    }, [countdownActive, countdown])
+
+    useEffect(() => {
+        if (!transactionRef || !countdownActive || paymentVerified) return
+        const interval = setInterval(async () => {
+            try {
+                const res = await fetch(`${API}/subscriptions/confirm-payment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ transactionRef }),
+                })
+                const data = await res.json()
+                if (data.success) {
+                    setPaymentVerified(true)
+                    setCountdownActive(false)
+                    clearInterval(interval)
+                    setTimeout(() => navigate('/services/payment', {
+                        state: { fromCheckout: true, planDisplayName, transactionRef }
+                    }), 1500)
+                }
+            } catch { /* silent */ }
+        }, 3000)
+        return () => clearInterval(interval)
+    }, [transactionRef, countdownActive, paymentVerified])
 
     const mmss = `${String(Math.floor(countdown / 60)).padStart(2, '0')}:${String(countdown % 60).padStart(2, '0')}`
 
-    const copy = (text, key) => {
-        navigator.clipboard?.writeText(text)
+    const handleGenerateQR = async () => {
+        setQrLoading(true)
+        setError('')
+        setPaymentVerified(false)
+        setCountdownActive(false)
+        setQrCodeUrl('')
+        setCheckoutUrl('')
+        setTransactionRef('')
+        try {
+            const res = await fetch(`${API}/subscriptions/subscribe`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ planName, billing }),
+            })
+            const data = await res.json()
+            if (!res.ok) { setError(data.message || 'Không thể khởi tạo giao dịch'); return }
+            setTransactionRef(data.payment.transactionRef)
+            setQrCodeUrl(data.payment.qrCode)
+            setCheckoutUrl(data.payment.checkoutUrl)
+            setCountdown(300)
+            setCountdownActive(true)
+        } catch {
+            setError('Lỗi kết nối máy chủ')
+        } finally {
+            setQrLoading(false)
+        }
+    }
+
+    const handleCopy = (val, key) => {
+        navigator.clipboard?.writeText(val)
         setCopied(key)
-        setTimeout(() => setCopied(null), 1800)
+        setTimeout(() => setCopied(''), 1500)
+    }
+
+    const handleRefundSubmit = async () => {
+        const { reason, accountNumber, accountName, bankName } = refundForm
+        if (!reason.trim()) { setRefundError('Vui lòng nhập lý do hoàn tiền'); return }
+        if (!accountNumber.trim()) { setRefundError('Vui lòng nhập số tài khoản'); return }
+        if (!accountName.trim()) { setRefundError('Vui lòng nhập tên chủ tài khoản'); return }
+        if (!bankName.trim()) { setRefundError('Vui lòng nhập tên ngân hàng'); return }
+        setRefundLoading(true)
+        setRefundError('')
+        try {
+            const res = await fetch(`${API}/subscriptions/refund`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ reason, accountNumber, accountName, bankName }),
+            })
+            const data = await res.json()
+            if (!res.ok) { setRefundError(data.message || 'Không thể gửi yêu cầu hoàn tiền'); return }
+            setRefundSuccess(true)
+        } catch {
+            setRefundError('Lỗi kết nối máy chủ')
+        } finally {
+            setRefundLoading(false)
+        }
+    }
+
+    const closeRefund = () => {
+        setShowRefund(false)
+        setRefundForm(REFUND_INIT)
+        setRefundError('')
+        setRefundSuccess(false)
+        if (isRefundOnly) navigate('/services')
+    }
+
+    const inputStyle = (hasError) => ({
+        width: '100%', padding: '10px 12px', borderRadius: 8, fontSize: 13,
+        fontFamily: 'inherit', outline: 'none', marginBottom: 12,
+        border: `1.5px solid ${hasError ? '#C0412A' : '#DDD6C6'}`,
+        background: '#FEFCF7', color: '#1C1510', boxSizing: 'border-box',
+    })
+
+    const RefundModal = (
+        <div
+            onClick={(e) => e.target === e.currentTarget && closeRefund()}
+            style={{
+                position: 'fixed', inset: 0, background: 'rgba(28,21,16,.55)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                zIndex: 1000, padding: 16,
+            }}
+        >
+            <div style={{
+                background: '#FEFCF7', borderRadius: 20, padding: 28,
+                width: '100%', maxWidth: 480,
+                boxShadow: '0 24px 64px rgba(28,21,16,.25)',
+                maxHeight: '90vh', overflowY: 'auto',
+            }}>
+                {refundSuccess ? (
+                    <div style={{ textAlign: 'center', padding: '16px 0' }}>
+                        <div style={{ fontSize: 52, marginBottom: 16 }}>✅</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: '#1C1510', marginBottom: 8, fontFamily: 'Fraunces, serif' }}>
+                            Yêu cầu đã được ghi nhận!
+                        </div>
+                        <div style={{ fontSize: 13, color: '#6B5E50', lineHeight: 1.7, marginBottom: 24 }}>
+                            Chúng tôi sẽ hoàn tiền trong vòng <strong>7–14 ngày làm việc</strong>.
+                        </div>
+                        <button onClick={closeRefund} style={{
+                            padding: '11px 28px', borderRadius: 10, border: 'none',
+                            background: '#1C1510', color: '#F5EED8',
+                            fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                        }}>Đóng</button>
+                    </div>
+                ) : (
+                    <RefundForm
+                        refundForm={refundForm}
+                        setRefundForm={setRefundForm}
+                        refundError={refundError}
+                        refundLoading={refundLoading}
+                        inputStyle={inputStyle}
+                        onClose={closeRefund}
+                        onSubmit={handleRefundSubmit}
+                    />
+                )}
+            </div>
+        </div>
+    )
+
+    if (isRefundOnly) {
+        return showRefund ? RefundModal : null
     }
 
     return (
         <div className="ck-page">
-
-            {/* ── Header ─────────────────────────────────────── */}
             <div className="ck-header">
                 <div className="ck-header-inner">
-                    <button className="ck-back" onClick={onBack}>← Quay lại</button>
+                    <button className="ck-back" onClick={() => navigate('/services')}>← Quay lại</button>
                     <div className="ck-header-title">Thanh toán</div>
-                    <div className="ck-header-secure">🔒 SSL Bảo mật</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <button onClick={() => navigate('/services/payment')} style={{
+                            background: 'none', border: '1.5px solid #DDD6C6', borderRadius: 8,
+                            padding: '5px 12px', fontSize: 12, fontWeight: 700,
+                            color: '#6B5E50', cursor: 'pointer', fontFamily: 'inherit',
+                        }}>
+                            🧾 Lịch sử
+                        </button>
+                        <div className="ck-header-secure">🔒 SSL Bảo mật</div>
+                    </div>
                 </div>
             </div>
 
             <div className="ck-body">
                 <div className="ck-layout">
-
-                    {/* ── Left: payment form ──────────────────────── */}
                     <div className="ck-left">
 
-                        {/* Order summary */}
                         <div className="ck-order-card">
                             <div className="ck-order-title">Đơn hàng của bạn</div>
                             <div className="ck-order-row">
                                 <div className="ck-order-plan">
-                                    <div className="ck-order-plan-icon" style={{ background: `linear-gradient(135deg,${plan.color},${plan.color}cc)` }}>
-                                        {planId === 'elite' ? '👑' : planId === 'pro' ? '⚡' : '🌱'}
+                                    <div className="ck-order-plan-icon" style={{ background: `linear-gradient(135deg,${planColor},${planColor}cc)` }}>
+                                        {PLAN_ICONS[planName] ?? '⚡'}
                                     </div>
                                     <div>
-                                        <div className="ck-order-plan-name">Gói {plan.name}</div>
-                                        <div className="ck-order-plan-period">{billing === 'yearly' ? 'Thanh toán hàng năm' : 'Thanh toán hàng tháng'}</div>
+                                        <div className="ck-order-plan-name">Gói {planDisplayName}</div>
+                                        <div className="ck-order-plan-period">
+                                            {billing === 'yearly' ? 'Thanh toán hàng năm' : 'Thanh toán hàng tháng'}
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="ck-order-price" style={{ color: plan.color }}>{fmt(price)}</div>
+                                <div className="ck-order-price" style={{ color: planColor }}>{fmt(price)}</div>
                             </div>
-                            {billing === 'yearly' && plan.price > 0 && (
+                            {billing === 'yearly' && monthlyPrice > 0 && (
                                 <div className="ck-order-saving">
-                                    🎉 Bạn tiết kiệm <strong>{fmt(plan.price * 12 - price)}</strong> so với trả theo tháng
+                                    🎉 Bạn tiết kiệm <strong>{fmt(monthlyPrice * 12 - price)}</strong> so với trả theo tháng
                                 </div>
                             )}
                             <div className="ck-order-divider" />
@@ -134,144 +347,182 @@ export default function CheckoutScreen({ planId = 'pro', billing = 'monthly', on
                             <div className="ck-order-vat">Đã bao gồm VAT 10%</div>
                         </div>
 
-                        {/* Step 1: Select method */}
-                        {step === 'select' && (
-                            <div className="ck-method-card">
-                                <div className="ck-method-title">Chọn phương thức thanh toán</div>
-                                <div className="ck-method-grid">
-                                    {BANKS.map(b => (
-                                        <button key={b.id} className={`ck-bank-btn${bank === b.id ? ' selected' : ''}`} onClick={() => setBank(b.id)}>
-                                            <div className="ck-bank-logo" style={{ background: b.color }}>{b.logo}</div>
-                                            <span className="ck-bank-name">{b.name}</span>
-                                            {bank === b.id && <span className="ck-bank-check">✓</span>}
-                                        </button>
-                                    ))}
-                                </div>
-                                <button
-                                    className="ck-proceed-btn"
-                                    style={{ background: `linear-gradient(135deg,${plan.color},${plan.color}cc)` }}
-                                    onClick={() => { setStep('qr'); setCountdown(300) }}
-                                >
-                                    Tiếp tục → Xem mã QR thanh toán
-                                </button>
-                                <div className="ck-method-note">Quét mã QR bằng app ngân hàng hoặc ví điện tử</div>
-                            </div>
+                        {error && (
+                            <div style={{
+                                padding: '10px 14px', borderRadius: 8, marginBottom: 12,
+                                background: 'rgba(192,65,42,.1)', color: '#C0412A', fontSize: 13, fontWeight: 600,
+                            }}>⚠ {error}</div>
                         )}
 
-                        {/* Step 2: QR code */}
-                        {step === 'qr' && (
-                            <div className="ck-qr-card">
-                                <div className="ck-qr-bank-row">
-                                    <div className="ck-qr-bank-logo" style={{ background: selectedBank?.color }}>{selectedBank?.logo}</div>
-                                    <div>
-                                        <div className="ck-qr-bank-name">{selectedBank?.name}</div>
-                                        <div className="ck-qr-bank-sub">Quét QR để thanh toán</div>
-                                    </div>
+                        <div className="ck-qr-card">
+                            <div className="ck-qr-bank-row">
+                                <div className="ck-qr-bank-logo" style={{ background: '#0066CC' }}>QR</div>
+                                <div>
+                                    <div className="ck-qr-bank-name">Chuyển khoản ngân hàng</div>
+                                    <div className="ck-qr-bank-sub">Quét mã QR hoặc mở link thanh toán</div>
+                                </div>
+                                {countdownActive && (
                                     <div className={`ck-countdown${countdown < 60 ? ' urgent' : ''}`}>
                                         <div className="ck-countdown-n">{mmss}</div>
                                         <div className="ck-countdown-l">còn lại</div>
                                     </div>
-                                </div>
+                                )}
+                            </div>
 
-                                {/* QR */}
-                                <div className="ck-qr-wrap">
-                                    <div className="ck-qr-container">
-                                        <QRCodeSVG value={qrValue} size={200} />
-                                        <div className="ck-qr-amount-overlay">
-                                            <span>{fmt(price)}</span>
+                            <div className="ck-qr-wrap">
+                                <div className="ck-qr-container">
+                                    {qrLoading ? (
+                                        <div style={{ width: 200, height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8, color: '#9A8D80', fontSize: 13, fontWeight: 600 }}>
+                                            <div style={{ fontSize: 28 }}>⏳</div>
+                                            Đang tạo mã QR...
                                         </div>
-                                    </div>
-                                    <div className="ck-qr-hint">Mở app {selectedBank?.name} → Quét mã</div>
+                                    ) : paymentVerified ? (
+                                        <div style={{ width: 200, height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8, color: '#2E6040', fontSize: 13, fontWeight: 700 }}>
+                                            <div style={{ fontSize: 52 }}>✅</div>
+                                            Thanh toán thành công!
+                                        </div>
+                                    ) : qrCodeUrl ? (
+                                        <QRCodeSVG value={qrCodeUrl} size={200} level="M" includeMargin={true} />
+                                    ) : (
+                                        <div style={{ width: 200, height: 200, border: '2px dashed #DDD6C6', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9A8D80', fontSize: 13, padding: 20, textAlign: 'center' }}>
+                                            Mã QR sẽ xuất hiện ở đây
+                                        </div>
+                                    )}
+                                    {qrCodeUrl && !qrLoading && !paymentVerified && (
+                                        <div className="ck-qr-amount-overlay"><span>{fmt(price)}</span></div>
+                                    )}
                                 </div>
+                                <div className="ck-qr-hint">Mở app ngân hàng → Quét mã → Thanh toán và chờ xác nhận tự động</div>
+                            </div>
 
-                                {/* Transfer info */}
+                            {checkoutUrl && !paymentVerified && (
+                                <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                                    <a href={checkoutUrl} target="_blank" rel="noopener noreferrer"
+                                        style={{ display: 'inline-block', padding: '8px 20px', background: '#0066CC', color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+                                        🌐 Mở trang thanh toán
+                                    </a>
+                                </div>
+                            )}
+
+                            {transactionRef && !paymentVerified && (
                                 <div className="ck-transfer-info">
-                                    <div className="ck-ti-title">Thông tin chuyển khoản thủ công</div>
+                                    <div className="ck-ti-title">Thông tin giao dịch</div>
                                     {[
-                                        ['Ngân hàng / Ví', selectedBank?.name, 'bank'],
-                                        ['Số tài khoản', selectedBank?.accountNo, 'acc'],
-                                        ['Số tiền', fmt(price), 'amount'],
-                                        ['Nội dung CK', txCode, 'content'],
-                                    ].map(([label, val, key]) => (
+                                        { label: 'Mã giao dịch', val: transactionRef, key: 'ref' },
+                                        { label: 'Số tiền', val: fmt(price), key: 'amt' },
+                                    ].map(({ label, val, key }) => (
                                         <div key={key} className="ck-ti-row">
                                             <span className="ck-ti-label">{label}</span>
                                             <div className="ck-ti-val-wrap">
                                                 <span className="ck-ti-val">{val}</span>
-                                                <button className={`ck-copy-btn${copied === key ? ' copied' : ''}`} onClick={() => copy(val, key)}>
-                                                    {copied === key ? '✓ Đã sao' : '⎘ Sao chép'}
+                                                <button
+                                                    className={`ck-copy-btn${copied === key ? ' copied' : ''}`}
+                                                    onClick={() => handleCopy(val, key)}
+                                                >
+                                                    {copied === key ? '✓ Đã chép' : '⎘ Sao chép'}
                                                 </button>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
+                            )}
 
-                                <div className="ck-qr-actions">
-                                    <button className="ck-back-method-btn" onClick={() => setStep('select')}>← Đổi phương thức</button>
-                                    <button
-                                        className="ck-done-btn"
-                                        style={{ background: `linear-gradient(135deg,${plan.color},${plan.color}cc)` }}
-                                        onClick={() => setStep('done')}
-                                    >
-                                        Tôi đã thanh toán ✓
+                            {!paymentVerified && (
+                                <div style={{ background: '#FFF8E7', border: '1px solid #F0D080', borderRadius: 10, padding: '12px 14px', marginBottom: 16, fontSize: 13, color: '#6B5E50', lineHeight: 1.7 }}>
+                                    ⚠ Không hỗ trợ tự động gia hạn. Bạn sẽ cần thanh toán lại khi gói hết hạn.<br />
+                                    Yêu cầu hoàn tiền được xử lý trong 7–14 ngày làm việc.
+                                </div>
+                            )}
+
+                            <div className="ck-qr-actions">
+                                {!paymentVerified && (
+                                    <button className="ck-back-method-btn" onClick={handleGenerateQR} disabled={qrLoading}>
+                                        🔄 Tạo lại QR
                                     </button>
+                                )}
+                                <div style={{
+                                    flex: 1, padding: '13px', borderRadius: 10,
+                                    background: paymentVerified ? '#2E6040' : '#F7F2EA',
+                                    border: `1.5px solid ${paymentVerified ? '#2E6040' : '#DDD6C6'}`,
+                                    color: paymentVerified ? '#fff' : '#9A8D80',
+                                    fontSize: 13, fontWeight: 600, textAlign: 'center',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                }}>
+                                    {paymentVerified
+                                        ? '✔ Thanh toán thành công! Đang chuyển trang...'
+                                        : countdown <= 0
+                                            ? '⏰ Hết thời gian — Nhấn Tạo lại QR'
+                                            : <>
+                                                <span style={{
+                                                    display: 'inline-block', width: 14, height: 14,
+                                                    border: '2px solid #DDD6C6', borderTopColor: '#9A8D80',
+                                                    borderRadius: '50%', animation: 'spin 1s linear infinite',
+                                                }} />
+                                                Đang chờ thanh toán...
+                                            </>
+                                    }
                                 </div>
                             </div>
-                        )}
 
-                        {/* Done */}
-                        {step === 'done' && (
-                            <div className="ck-done-card">
-                                <div className="ck-done-ico">🎉</div>
-                                <div className="ck-done-title">Cảm ơn bạn!</div>
-                                <div className="ck-done-sub">
-                                    Giao dịch của bạn đang được xử lý. Gói <strong>{plan.name}</strong> sẽ được kích hoạt trong vài phút.
-                                    Biên lai sẽ gửi về email của bạn.
-                                </div>
-                                <div className="ck-done-tx">Mã giao dịch: <strong>{txCode}</strong></div>
-                                <button className="ck-proceed-btn" style={{ background: `linear-gradient(135deg,${plan.color},${plan.color}cc)` }} onClick={onSuccess}>
-                                    Về trang chủ →
-                                </button>
-                            </div>
-                        )}
+                            <p style={{ textAlign: 'center', fontSize: 12, color: '#9A8D80', marginTop: 10 }}>
+                                Sau khi thanh toán, gói sẽ được kích hoạt tự động trong vài giây.
+                            </p>
+                        </div>
+
+                        <div style={{ marginTop: 12, textAlign: 'center' }}>
+                            <button onClick={() => setShowRefund(true)} style={{
+                                background: 'none', border: 'none', fontSize: 13,
+                                color: '#9A8D80', cursor: 'pointer', textDecoration: 'underline',
+                                fontFamily: 'inherit',
+                            }}>
+                                Đã thanh toán trước đó? Yêu cầu hoàn tiền
+                            </button>
+                        </div>
                     </div>
 
-                    {/* ── Right: benefits ──────────────────────────── */}
                     <div className="ck-right">
                         <div className="ck-benefits-card">
                             <div className="ck-benefits-title">Bạn sẽ nhận được</div>
-                            {(planId === 'elite' ? [
-                                ['👑', 'Tất cả tính năng Pro', 'Không giới hạn từng tính năng'],
-                                ['🤝', 'Tư vấn 1-1 với HR', '2 buổi tư vấn chuyên gia mỗi tháng'],
-                                ['📄', 'Review CV thực tế', 'Chuyên gia HR đọc và góp ý CV của bạn'],
-                                ['🎭', 'Mock Interview AI', 'Luyện phỏng vấn với AI thông minh'],
-                                ['🛡️', 'Bảo đảm tìm việc', 'Hoàn tiền nếu không tìm được việc 60 ngày'],
-                            ] : planId === 'pro' ? [
-                                ['⚡', 'Auto Apply 1-click', 'Nộp đơn tự động tới 15+ nền tảng'],
-                                ['🎯', 'AI Match nâng cao', 'Lý do tại sao việc này phù hợp với bạn'],
-                                ['📄', '30+ Mẫu CV đẹp', 'Tạo CV chuyên nghiệp không giới hạn'],
-                                ['🙈', 'Ẩn hồ sơ', 'Không hiển thị với công ty hiện tại'],
-                                ['📊', 'Phân tích lương', 'Biết bạn đang được trả đúng không'],
-                            ] : []).map(([ico, title, sub]) => (
-                                <div key={title} className="ck-benefit-row">
-                                    <div className="ck-benefit-ico" style={{ background: `${plan.color}18` }}>{ico}</div>
+                            {limits ? (
+                                [
+                                    { field: 'jobSuggestPerDay', ico: '💡', label: 'Đề xuất việc làm', format: (v) => v >= 999 ? 'Không giới hạn mỗi ngày' : `${v} lần/ngày` },
+                                    { field: 'cvAnalysisPerMonth', ico: '🔍', label: 'Phân tích CV', format: (v) => v >= 999 ? 'Không giới hạn mỗi tháng' : v === 0 ? 'Không có' : `${v} lần/tháng` },
+                                    { field: 'cvMatchCheckCount', ico: '🎯', label: 'Kiểm tra độ phù hợp CV', format: (v) => v >= 999 ? 'Không giới hạn mỗi tháng' : v === 0 ? 'Không có' : `${v} lần/tháng` },
+                                ].map(({ field, ico, label, format }) => {
+                                    const val = limits[field]
+                                    return (
+                                        <div key={field} className="ck-benefit-row" style={val === 0 ? { opacity: 0.4 } : {}}>
+                                            <div className="ck-benefit-ico" style={{ background: `${planColor}18` }}>{ico}</div>
+                                            <div>
+                                                <div className="ck-benefit-title">{label}</div>
+                                                <div className="ck-benefit-sub">{format(val)}</div>
+                                            </div>
+                                        </div>
+                                    )
+                                })
+                            ) : (
+                                <div className="ck-benefit-row">
+                                    <div className="ck-benefit-ico" style={{ background: `${planColor}18` }}>⚠️</div>
                                     <div>
-                                        <div className="ck-benefit-title">{title}</div>
-                                        <div className="ck-benefit-sub">{sub}</div>
+                                        <div className="ck-benefit-title">Không có thông tin giới hạn</div>
+                                        <div className="ck-benefit-sub">Vui lòng liên hệ hỗ trợ.</div>
                                     </div>
                                 </div>
-                            ))}
+                            )}
                         </div>
 
                         <div className="ck-guarantee-card">
                             <div className="ck-guarantee-ico">🔒</div>
                             <div className="ck-guarantee-title">Bảo đảm hoàn tiền 7 ngày</div>
-                            <div className="ck-guarantee-sub">Nếu không hài lòng trong 7 ngày đầu, chúng tôi hoàn tiền 100% — không cần hỏi lý do.</div>
+                            <div className="ck-guarantee-sub">
+                                Nếu không hài lòng trong 7 ngày đầu, chúng tôi hoàn tiền 100% — không cần hỏi lý do.
+                            </div>
                         </div>
 
                         <div className="ck-reviews-mini">
                             <div className="ck-reviews-title">💬 Người dùng nói gì</div>
                             {[
-                                { name: 'Minh K.', text: '"Tìm việc mới trong 3 tuần nhờ Auto Apply. Tiết kiệm cả tháng nộp tay!"', rating: '⭐⭐⭐⭐⭐' },
+                                { name: 'Minh K.', text: '"Tìm việc mới trong 3 tuần nhờ AI gợi ý. Tiết kiệm cả tháng tìm tay!"', rating: '⭐⭐⭐⭐⭐' },
                                 { name: 'Lan A.', text: '"AI gợi ý đúng loại việc tôi muốn, không cần tìm nhiều nữa."', rating: '⭐⭐⭐⭐⭐' },
                             ].map(r => (
                                 <div key={r.name} className="ck-review-mini">
@@ -284,6 +535,8 @@ export default function CheckoutScreen({ planId = 'pro', billing = 'monthly', on
                     </div>
                 </div>
             </div>
+
+            {showRefund && RefundModal}
         </div>
     )
 }

@@ -18,6 +18,7 @@ import AboutScreen from './components/screens/AboutScreen/AboutScreen'
 import AccountSettingScreen from './components/screens/AccountSettingScreen/AccountSettingScreen'
 import SavedJobScreen from './components/screens/SavedJobScreen/SavedJobScreen'
 import CreatedCVScreen from './components/screens/CreatedCVScreen/CreatedCVScreen'
+
 import AIScreen from './components/screens/AIScreen/AIScreen'
 import PricingScreen from './components/screens/PricingScreen/PricingScreen'
 import CheckoutScreen from './components/screens/CheckoutScreen/CheckoutScreen'
@@ -33,6 +34,7 @@ import AdminDashboard from './components/Admin/AdminDashboard/AdminDashboard'
 import AdminUsers from './components/Admin/AdminUsers/AdminUsers'
 import AdminCategories from './components/Admin/AdminCategories/AdminCategories'
 import AdminPackages from './components/Admin/AdminPackages/AdminPackages'
+import AdminRefunds from './components/Admin/AdminRefunds/AdminRefunds'
 
 import { useParams, useNavigate } from 'react-router-dom'
 import { getToken } from './utils/auth'
@@ -49,6 +51,28 @@ function ProtectedRoute({ children }) {
   if (!token) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
+  return children
+}
+
+function AdminRoute({ children }) {
+  const location = useLocation()
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+
+  if (!token) {
+    return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  try {
+    const user = JSON.parse(
+      localStorage.getItem('user') || sessionStorage.getItem('user') || '{}'
+    )
+    if (user.role !== 'admin') {
+      return <Navigate to="/home" replace />
+    }
+  } catch {
+    return <Navigate to="/login" replace />
+  }
+
   return children
 }
 
@@ -141,6 +165,7 @@ function App() {
     '/admin/users',
     '/admin/categories',
     '/admin/packages',
+    '/admin/refunds',
   ]
 
   const hideHeader =
@@ -234,16 +259,6 @@ function App() {
             <ProtectedRoute><AccountSettingScreen /></ProtectedRoute>
           } />
 
-          {/* <Route path="/applications" element={
-            <ProtectedRoute><ApplicationsScreen /></ProtectedRoute>
-          } /> */}
-          {/* <Route path="/my-cv" element={
-            <ProtectedRoute><MyCVScreen /></ProtectedRoute>
-          } /> */}
-
-          <Route path="/cv-builder" element={
-            <ProtectedRoute><CreatedCVScreen /></ProtectedRoute>
-          } />
 
           <Route path="/ai-assistant" element={
             <ProtectedRoute><AIScreen /></ProtectedRoute>
@@ -253,11 +268,13 @@ function App() {
             <ProtectedRoute><PricingScreen /></ProtectedRoute>
           } />
 
-          <Route path="/checkout" element={
+
+
+          <Route path="/services/checkout" element={
             <ProtectedRoute><CheckoutScreen /></ProtectedRoute>
           } />
 
-          <Route path="/payment" element={
+          <Route path="/services/payment" element={
             <ProtectedRoute><PaymentScreen /></ProtectedRoute>
           } />
 
@@ -265,10 +282,10 @@ function App() {
             <ProtectedRoute><NotificationsScreen /></ProtectedRoute>
           } />
 
-         <Route path="/my-cv" element={
+          <Route path="/my-cv" element={
             <ProtectedRoute><CVScreenWrapper initialScreen="myCV" /></ProtectedRoute>
           } />
-          
+
           <Route path="/cv-templates" element={
             <ProtectedRoute><CVScreenWrapper initialScreen="picker" /></ProtectedRoute>
           } />
@@ -278,11 +295,17 @@ function App() {
           } />
 
 
-          <Route path="/admin" element={<AdminLayout />}>
+
+          <Route path="/admin" element={
+            <AdminRoute>
+              <AdminLayout />
+            </AdminRoute>
+          }>
             <Route index element={<AdminDashboard />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="categories" element={<AdminCategories />} />
             <Route path="packages" element={<AdminPackages />} />
+            <Route path="refunds" element={<AdminRefunds />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

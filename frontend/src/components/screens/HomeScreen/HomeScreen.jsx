@@ -68,13 +68,15 @@ export default function HomeScreen() {
   const [recommendations, setRecommendations] = useState([])
   const [industries, setIndustries] = useState([])
   const [catPage, setCatPage] = useState(0)
+  // const [activePlatform, setActivePlatform] = useState('Tất cả')
+  const [loadingIndustries, setLoadingIndustries] = useState(false)
+
   const [stats, setStats] = useState(null)
   const [meta, setMeta] = useState({ total: 0, totalPages: 1 })
   const [recPage, setRecPage] = useState(1)
   const [loadingJobs, setLoadingJobs] = useState(false)
   const [loadingRecs, setLoadingRecs] = useState(false)
   const [loadingStats, setLoadingStats] = useState(false)
-  const [loadingIndustries, setLoadingIndustries] = useState(false)
   const [savedJobIds, setSavedJobIds] = useState(new Set())
 
   // SSE state
@@ -173,7 +175,7 @@ export default function HomeScreen() {
       if (locationFilter) params.append('locations', locationFilter)  // Dùng locationFilter
       if (industryFilter) params.set('industryId', String(industryFilter))
       if (activePlatform && activePlatform !== 'Tất cả') params.set('source', activePlatform)
-      
+
       const headers = token ? { Authorization: `Bearer ${token}` } : {}
       const res = await fetch(`${API}/jobs?${params}`, { headers })
       const data = await res.json()
@@ -527,11 +529,12 @@ export default function HomeScreen() {
               <div className="hs-stat-l">Việc phù hợp hôm nay</div>
               <div className="hs-stat-s">
                 {stats ? `${stats.jobMatch?.delta} so với hôm qua` : token ? 'Đang tải...' : 'Đăng nhập để xem'}
+
               </div>
             </div>
+              </div>
+            </div> 
           </div>
-        </div>
-      </div>
 
       <div className="hs-body">
         <div className="hs-cats-wrap" style={{ margin: '0 -32px', padding: '40px 32px 48px' }}>

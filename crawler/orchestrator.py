@@ -708,8 +708,8 @@ async def _process_by_category(crawler, platform: str, query: str, max_pages: in
         print(f"[{platform}] ❌ Lỗi get_categories: {e}")
         return 0
 
+
     print(f"[{platform}] {len(categories)} categories | Max {max_pages} pages/cate")
-    
     for category in categories:
         if not quick_mode and MAX_JOBS_PER_SESSION > 0 and count >= MAX_JOBS_PER_SESSION:
             print(f"[{platform}] Đạt giới hạn MAX_JOBS_PER_SESSION")
@@ -719,6 +719,7 @@ async def _process_by_category(crawler, platform: str, query: str, max_pages: in
         cat_url = category.get("url", "N/A")
         print(f"\n[{platform}/{cat_name}] Bắt đầu stream crawl...")
         print(f"[{platform}/{cat_name}] URL: {cat_url}")
+
         
         page_num = 1
         category_success_links = []
@@ -731,6 +732,7 @@ async def _process_by_category(crawler, platform: str, query: str, max_pages: in
             try:
                 links, has_next = await crawler.get_job_links_for_page(category, page_num)
                 total_pages_processed += 1
+
                 
                 if not links:
                     print(f"[{platform}/{cat_name}] Page {page_num}: Không có links")

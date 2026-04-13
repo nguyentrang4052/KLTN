@@ -192,3 +192,11 @@ button.adm-ind-item.active { color: #342893; }
   border-top: 1px solid #EFE9DC;
 }
 .adm-cats__skill-info { font-size: 12px; color: #9A8D80; }
+
+.adm-pager__dots {
+  padding: 0 4px;
+  color: #9A8D80;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+}

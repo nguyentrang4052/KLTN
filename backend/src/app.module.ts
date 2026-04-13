@@ -12,8 +12,9 @@ import { ProfileModule } from './profile/profile.module';
 import { JobAlertModule } from './job-alert/job-alert.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { SettingModule } from './setting/setting.module';
-// import for cv ana
 import { CvAnalyzerModule } from './cv-analyzer/cv-analyzer.module';
+import { SubscriptionModule } from './subscription/subscription.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -30,9 +31,9 @@ import { CvAnalyzerModule } from './cv-analyzer/cv-analyzer.module';
     ProfileModule,
     SettingModule,
     JobAlertModule,
-
-    // New modules for CV Analysis
     CvAnalyzerModule,
+    SubscriptionModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

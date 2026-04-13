@@ -1,63 +1,67 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { adminFetch } from '../../../utils/auth'
 import './AdminCategories.css'
 
 function Pager({ page, total, onChange }) {
   if (total <= 1) return null
+
+  const getPages = () => {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+
+    const pages = []
+    pages.push(1)
+
+    if (page > 3) pages.push('...')
+
+    for (let i = Math.max(2, page - 1); i <= Math.min(total - 1, page + 1); i++) {
+      pages.push(i)
+    }
+
+    if (page < total - 2) pages.push('...')
+
+    pages.push(total)
+    return pages
+  }
+
   return (
     <div className="adm-pager">
       <button className="adm-pager__btn" disabled={page === 1} onClick={() => onChange(page - 1)}>‹</button>
-      {Array.from({ length: total }, (_, i) => i + 1).map(p => (
-        <button key={p} className={`adm-pager__btn${page === p ? ' active' : ''}`} onClick={() => onChange(p)}>{p}</button>
-      ))}
+      {getPages().map((p, i) =>
+        p === '...'
+          ? <span key={`dot-${i}`} className="adm-pager__dots">…</span>
+          : <button key={p} className={`adm-pager__btn${page === p ? ' active' : ''}`} onClick={() => onChange(p)}>{p}</button>
+      )}
       <button className="adm-pager__btn" disabled={page === total} onClick={() => onChange(page + 1)}>›</button>
     </div>
   )
 }
 
-const INIT_INDUSTRIES = [
-  { id: 1,  name: 'Công nghệ thông tin',      active: true  },
-  { id: 2,  name: 'Tài chính - Ngân hàng',    active: true  },
-  { id: 3,  name: 'Marketing - Truyền thông', active: true  },
-  { id: 4,  name: 'Thiết kế - Sáng tạo',      active: true  },
-  { id: 5,  name: 'Giáo dục - Đào tạo',       active: true  },
-  { id: 6,  name: 'Y tế - Dược phẩm',         active: false },
-  { id: 7,  name: 'Trí tuệ nhân tạo',         active: true  },
-]
-
-const INIT_SKILLS = [
-  { id: 1,  name: 'React',               industryId: 1 },
-  { id: 2,  name: 'Node.js',             industryId: 1 },
-  { id: 3,  name: 'Python',              industryId: 1 },
-  { id: 4,  name: 'TypeScript',          industryId: 1 },
-  { id: 5,  name: 'AWS',                 industryId: 1 },
-  { id: 6,  name: 'SQL',                 industryId: 1 },
-  { id: 7,  name: 'Docker',              industryId: 1 },
-  { id: 8,  name: 'Phân tích tài chính', industryId: 2 },
-  { id: 9,  name: 'Excel nâng cao',      industryId: 2 },
-  { id: 10, name: 'SEO / SEM',           industryId: 3 },
-  { id: 11, name: 'Content Marketing',   industryId: 3 },
-  { id: 12, name: 'Figma',               industryId: 4 },
-  { id: 13, name: 'Adobe XD',            industryId: 4 },
-  { id: 14, name: 'Prompt Engineering',  industryId: 7 },
-  { id: 15, name: 'Machine Learning',    industryId: 7 },
-]
-
-const IND_PER_PAGE   = 6
+const IND_PER_PAGE = 6
 const SKILL_PER_PAGE = 8
 
 export default function AdminCategories() {
-  const [industries, setIndustries]   = useState(INIT_INDUSTRIES)
-  const [skills, setSkills]           = useState(INIT_SKILLS)
+  const [industries, setIndustries] = useState([])
+  const [skills, setSkills] = useState([])
   const [selectedInd, setSelectedInd] = useState(null)
-  const [search, setSearch]           = useState('')
-  const [modal, setModal]             = useState(null)
-  const [form, setForm]               = useState({})
-  const [indPage, setIndPage]         = useState(1)
-  const [skillPage, setSkillPage]     = useState(1)
+  const [search, setSearch] = useState('')
+  const [modal, setModal] = useState(null)
+  const [form, setForm] = useState({})
+  const [indPage, setIndPage] = useState(1)
+  const [skillPage, setSkillPage] = useState(1)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    Promise.all([
+      adminFetch('/admin/industries/by-platform'),
+      adminFetch('/admin/skills'),
+    ]).then(([ind, s]) => {
+      setIndustries(ind)
+      setSkills(s)
+    }).finally(() => setLoading(false))
+  }, [])
 
   const currentIndustry = industries.find(i => i.id === selectedInd)
-  const skillCountFor   = id => skills.filter(s => s.industryId === id).length
-
+  const skillCountFor = id => skills.filter(s => s.industryId === id).length
 
   const filteredSkills = useMemo(() => {
     let list = selectedInd ? skills.filter(s => s.industryId === selectedInd) : skills
@@ -67,53 +71,80 @@ export default function AdminCategories() {
   }, [skills, selectedInd, search])
 
   const totalSkillPages = Math.ceil(filteredSkills.length / SKILL_PER_PAGE)
-  const pagedSkills     = filteredSkills.slice((skillPage - 1) * SKILL_PER_PAGE, skillPage * SKILL_PER_PAGE)
-
+  const pagedSkills = filteredSkills.slice((skillPage - 1) * SKILL_PER_PAGE, skillPage * SKILL_PER_PAGE)
   const totalIndPages = Math.ceil(industries.length / IND_PER_PAGE)
-  const pagedInds     = industries.slice((indPage - 1) * IND_PER_PAGE, indPage * IND_PER_PAGE)
+  const pagedInds = industries.slice((indPage - 1) * IND_PER_PAGE, indPage * IND_PER_PAGE)
 
   const handleSearch = v => { setSearch(v); setSkillPage(1) }
   const handleSelectInd = id => { setSelectedInd(id); setSkillPage(1) }
 
-  const saveIndustry = () => {
+  const saveIndustry = async () => {
     if (!form.name?.trim()) return
-    if (form.id) {
-      setIndustries(p => p.map(i => i.id === form.id ? { ...i, name: form.name } : i))
-    } else {
-      setIndustries(p => [...p, { id: Date.now(), name: form.name, active: true }])
-    }
-    setModal(null)
+    try {
+      if (form.id) {
+        await adminFetch(`/admin/industries/${form.id}`, {
+          method: 'PUT', body: JSON.stringify({ name: form.name }),
+        })
+        setIndustries(p => p.map(i => i.id === form.id ? { ...i, name: form.name } : i))
+      } else {
+        const res = await adminFetch('/admin/industries', {
+          method: 'POST', body: JSON.stringify({ name: form.name }),
+        })
+        setIndustries(p => [...p, { ...res, skillCount: 0, jobCount: 0 }])
+      }
+      setModal(null)
+    } catch (err) { alert(err.message) }
   }
 
-  const deleteIndustry = id => {
-    setIndustries(p => p.filter(i => i.id !== id))
-    setSkills(p => p.filter(s => s.industryId !== id))
-    if (selectedInd === id) setSelectedInd(null)
-    setModal(null)
+  const deleteIndustry = async (id) => {
+    try {
+      await adminFetch(`/admin/industries/${id}`, { method: 'DELETE' })
+      setIndustries(p => p.filter(i => i.id !== id))
+      setSkills(p => p.filter(s => s.industryId !== id))
+      if (selectedInd === id) setSelectedInd(null)
+      setModal(null)
+    } catch (err) { alert(err.message) }
   }
 
-  const saveSkill = () => {
+  const saveSkill = async () => {
     if (!form.name?.trim() || !form.industryId) return
-    if (form.id) {
-      setSkills(p => p.map(s => s.id === form.id
-        ? { ...s, name: form.name, industryId: Number(form.industryId) } : s))
-    } else {
-      setSkills(p => [...p, { id: Date.now(), name: form.name, industryId: Number(form.industryId) }])
-    }
-    setModal(null)
+    try {
+      if (form.id) {
+        const res = await adminFetch(`/admin/skills/${form.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ name: form.name, industryId: Number(form.industryId) }),
+        })
+        setSkills(p => p.map(s => s.id === form.id
+          ? { ...s, name: res.name, industryId: res.industryID, industryName: res.industry.name } : s))
+      } else {
+        const res = await adminFetch('/admin/skills', {
+          method: 'POST',
+          body: JSON.stringify({ name: form.name, industryId: Number(form.industryId) }),
+        })
+        setSkills(p => [...p, { id: res.skillID, name: res.name, industryId: res.industryID, industryName: res.industry.name }])
+      }
+      setModal(null)
+    } catch (err) { alert(err.message) }
   }
 
-  const deleteSkill = id => setSkills(p => p.filter(s => s.id !== id))
+  const deleteSkill = async (id) => {
+    try {
+      await adminFetch(`/admin/skills/${id}`, { method: 'DELETE' })
+      setSkills(p => p.filter(s => s.id !== id))
+    } catch (err) { alert(err.message) }
+  }
+
+  if (loading) return <div className="adm-db__loading">Đang tải...</div>
 
   return (
     <div className="adm-cats">
       <div className="adm-cats__header">
-        <h1 className="adm-page-title">Danh mục dữ liệu nền tảng</h1>
-        <p className="adm-page-sub">Chọn lĩnh vực để xem và quản lý kỹ năng tương ứng</p>
+        <h1 className="adm-page-title">Danh mục dữ liệu</h1>
+        <p className="adm-page-sub">Chọn lĩnh vực để xem kỹ năng tương ứng</p>
       </div>
 
-      <div className="adm-cats__layout">
 
+      <div className="adm-cats__layout">
         <div className="adm-cats__left">
           <div className="adm-cats__left-head">
             <span className="adm-card__title">Lĩnh vực</span>
@@ -125,18 +156,16 @@ export default function AdminCategories() {
             onClick={() => handleSelectInd(null)}
           >
             <span className="adm-ind-item__name">Tất cả lĩnh vực</span>
-            <span className="adm-ind-item__count">{skills.length}</span>
           </button>
 
           {pagedInds.map(ind => (
             <div
               key={ind.id}
-              className={`adm-ind-item${selectedInd === ind.id ? ' active' : ''}${!ind.active ? ' inactive' : ''}`}
+              className={`adm-ind-item${selectedInd === ind.id ? ' active' : ''}`}
             >
               <button className="adm-ind-item__main" onClick={() => handleSelectInd(ind.id)}>
-                <span className="adm-ind-item__dot" style={{ background: ind.active ? '#2E6040' : '#DDD6C6' }} />
+                <span className="adm-ind-item__dot" style={{ background: '#2E6040' }} />
                 <span className="adm-ind-item__name">{ind.name}</span>
-                <span className="adm-ind-item__count">{skillCountFor(ind.id)}</span>
               </button>
               <div className="adm-ind-item__acts">
                 <button className="adm-ind-act"
@@ -159,7 +188,6 @@ export default function AdminCategories() {
                 <span className="adm-card__title">
                   {currentIndustry ? `Kỹ năng — ${currentIndustry.name}` : 'Tất cả kỹ năng'}
                 </span>
-                <span className="adm-cats__skill-count">{filteredSkills.length} kỹ năng</span>
               </div>
               <button className="adm-add-btn"
                 onClick={() => { setForm({ industryId: selectedInd || '' }); setModal('skill') }}>
@@ -178,11 +206,7 @@ export default function AdminCategories() {
 
             <table className="adm-table">
               <thead>
-                <tr>
-                  <th>Tên kỹ năng</th>
-                  <th>Lĩnh vực</th>
-                  <th>Thao tác</th>
-                </tr>
+                <tr><th>Tên kỹ năng</th><th>Lĩnh vực</th><th>Thao tác</th></tr>
               </thead>
               <tbody>
                 {pagedSkills.map(sk => {
@@ -190,7 +214,7 @@ export default function AdminCategories() {
                   return (
                     <tr key={sk.id}>
                       <td className="adm-table__name">{sk.name}</td>
-                      <td><span className="adm-skill-cat">{ind?.name || '—'}</span></td>
+                      <td><span className="adm-skill-cat">{sk.industryName || ind?.name || '—'}</span></td>
                       <td>
                         <div className="adm-users__actions">
                           <button className="adm-act-btn adm-act-btn--view"

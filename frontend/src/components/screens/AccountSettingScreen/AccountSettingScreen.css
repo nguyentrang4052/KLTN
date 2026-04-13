@@ -169,7 +169,6 @@
     gap: 10px;
 }
 
-Social
 .as-social-row {
     display: flex;
     align-items: center;
@@ -275,7 +274,6 @@ Social
     background: #C0412A;
     border-color: #C0412A;
 }
-
 
 /* Thông báo lỗi / thành công */
 .as-message {

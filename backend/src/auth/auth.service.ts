@@ -55,7 +55,11 @@ export class AuthService {
 
     return {
       message: 'Đăng ký thành công.',
-      accessToken: this.signToken(account.accountID, account.email),
+      accessToken: this.signToken(
+        account.accountID,
+        account.email,
+        account.role,
+      ),
       user: {
         accountID: account.accountID,
         email: account.email,
@@ -83,12 +87,17 @@ export class AuthService {
 
     return {
       message: 'Đăng nhập thành công.',
-      accessToken: this.signToken(account.accountID, account.email),
+      accessToken: this.signToken(
+        account.accountID,
+        account.email,
+        account.role,
+      ),
       user: {
         accountID: account.accountID,
         email: account.email,
         fullName: account.user?.fullName,
         avatar: account.user?.avatar ?? null,
+        role: account.role,
       },
     };
   }
@@ -102,6 +111,10 @@ export class AuthService {
       where: { email: oauthUser.email },
       include: { user: true },
     });
+
+    if (account && !account.active) {
+      throw new UnauthorizedException('Tài khoản đã bị vô hiệu hóa.');
+    }
 
     if (!account) {
       account = await this.prisma.account.create({
@@ -121,11 +134,16 @@ export class AuthService {
 
     return {
       message: 'Đăng nhập thành công.',
-      accessToken: this.signToken(account.accountID, account.email),
+      accessToken: this.signToken(
+        account.accountID,
+        account.email,
+        account.role,
+      ),
       user: {
         accountID: account.accountID,
         email: account.email,
         fullName: account.user?.fullName,
+        role: account.role,
       },
     };
   }
@@ -185,12 +203,24 @@ export class AuthService {
     return { message: 'Đặt lại mật khẩu thành công.' };
   }
 
-  refreshToken(accountID: number, email: string): string {
-    return this.signToken(accountID, email);
+  refreshToken(
+    accountID: number,
+    email: string,
+    role: string = 'user',
+  ): string {
+    return this.signToken(accountID, email, role);
   }
 
-  private signToken(accountID: number, email: string): string {
-    return this.jwtService.sign({ sub: accountID, email }, { expiresIn: '24h' });
+
+  private signToken(
+    accountID: number,
+    email: string,
+    role: string = 'user',
+  ): string {
+    return this.jwtService.sign(
+      { sub: accountID, email, role },
+      { expiresIn: '24h' },
+    );
   }
 
   async getMe(accountID: number) {

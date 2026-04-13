@@ -1,32 +1,27 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { adminFetch } from '../../../utils/auth'
 import './AdminUsers.css'
-
-const MOCK_USERS = [
-  { id: 1, name: 'Nguyễn Văn An', email: 'vanan@gmail.com', plan: 'Enterprise', status: 'active', provider: 'local', joined: '18/03/2026' },
-  { id: 2, name: 'Trần Thị Bích', email: 'thibich@yahoo.com', plan: 'Free', status: 'active', provider: 'google', joined: '17/03/2026' },
-  { id: 3, name: 'Lê Hoàng Cường', email: 'hoangcuong@gmail.com', plan: 'Free', status: 'locked', provider: 'local', joined: '16/03/2026' },
-  { id: 4, name: 'Phạm Minh Đức', email: 'minhduc@outlook.com', plan: 'Pro', status: 'active', provider: 'google', joined: '15/03/2026' },
-  { id: 5, name: 'Đỗ Quốc Đạt', email: 'quocdat@gmail.com', plan: 'Free', status: 'locked', provider: 'local', joined: '14/03/2026' },
-  { id: 6, name: 'Võ Thị Lan', email: 'vothilan@gmail.com', plan: 'Pro', status: 'active', provider: 'google', joined: '13/03/2026' },
-  { id: 7, name: 'Hoàng Văn Mạnh', email: 'vanmanh@gmail.com', plan: 'Enterprise', status: 'active', provider: 'local', joined: '12/03/2026' },
-  { id: 8, name: 'Ngô Thị Nga', email: 'thinga@yahoo.com', plan: 'Pro', status: 'locked', provider: 'local', joined: '11/03/2026' },
-  { id: 9, name: 'Bùi Thanh Hải', email: 'thanhhai@gmail.com', plan: 'Free', status: 'active', provider: 'google', joined: '10/03/2026' },
-  { id: 10, name: 'Lý Thị Kim', email: 'thikim@yahoo.com', plan: 'Free', status: 'active', provider: 'local', joined: '09/03/2026' },
-  { id: 11, name: 'Trịnh Văn Long', email: 'vanlong@gmail.com', plan: 'Free', status: 'locked', provider: 'google', joined: '08/03/2026' },
-  { id: 12, name: 'Phan Thị Mai', email: 'thimaipl@gmail.com', plan: 'Free', status: 'active', provider: 'google', joined: '07/03/2026' },
-]
 
 const STATUS_LABEL = { active: 'Hoạt động', locked: 'Đã khóa' }
 const PROVIDER_LABEL = { local: '✉ Email', google: '⬛ Google' }
 const PAGE_SIZE = 7
 
 export default function AdminUsers() {
-  const [users, setUsers] = useState(MOCK_USERS)
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [filterStatus, setFStatus] = useState('all')
   const [filterPlan, setFPlan] = useState('all')
   const [modal, setModal] = useState(null)
   const [page, setPage] = useState(1)
+
+  useEffect(() => {
+    adminFetch('/admin/users')
+      .then(data => setUsers(data))
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false))
+  }, [])
 
   const filtered = useMemo(() => users.filter(u => {
     const matchSearch = u.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -41,18 +36,26 @@ export default function AdminUsers() {
 
   const handleFilter = (setter, val) => { setter(val); setPage(1) }
 
-  const toggleStatus = id => {
-    setUsers(prev => prev.map(u =>
-      u.id === id ? { ...u, status: u.status === 'active' ? 'locked' : 'active' } : u
-    ))
-    setModal(null)
+  const toggleStatus = async (id) => {
+    try {
+      const res = await adminFetch(`/admin/users/${id}/toggle-status`, { method: 'PATCH' })
+      setUsers(prev => prev.map(u => u.id === id ? { ...u, status: res.status } : u))
+      setModal(null)
+    } catch (err) {
+      alert(err.message)
+    }
   }
+
+  if (loading) return <div className="adm-db__loading">Đang tải...</div>
+  if (error) return <div className="adm-db__error">⚠ {error}</div>
 
   return (
     <div className="adm-users">
       <div className="adm-users__header">
         <h1 className="adm-page-title">Quản lý người dùng</h1>
-        <p className="adm-page-sub">Tổng {users.length} tài khoản · {users.filter(u => u.status === 'locked').length} bị khóa</p>
+        <p className="adm-page-sub">
+          Tổng {users.length} tài khoản · {users.filter(u => u.status === 'locked').length} bị khóa
+        </p>
       </div>
 
       <div className="adm-users__filters">
@@ -93,7 +96,9 @@ export default function AdminUsers() {
                 <td className="adm-table__muted">{u.id}</td>
                 <td className="adm-table__name">{u.name}</td>
                 <td className="adm-table__muted">{u.email}</td>
-                <td className="adm-table__muted" style={{ fontSize: 11 }}>{PROVIDER_LABEL[u.provider]}</td>
+                <td className="adm-table__muted" style={{ fontSize: 11 }}>
+                  {PROVIDER_LABEL[u.provider] ?? u.provider}
+                </td>
                 <td><span className={`adm-badge adm-badge--${u.plan.toLowerCase()}`}>{u.plan}</span></td>
                 <td><span className={`adm-status adm-status--${u.status}`}>{STATUS_LABEL[u.status]}</span></td>
                 <td className="adm-table__muted">{u.joined}</td>
@@ -116,7 +121,6 @@ export default function AdminUsers() {
           </tbody>
         </table>
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="adm-users__pager">
             <span className="adm-users__pager-info">
@@ -133,7 +137,6 @@ export default function AdminUsers() {
         )}
       </div>
 
-      {/* Modal detail */}
       {modal?.type === 'detail' && (
         <div className="adm-modal-overlay" onClick={() => setModal(null)}>
           <div className="adm-modal" onClick={e => e.stopPropagation()}>
@@ -142,13 +145,13 @@ export default function AdminUsers() {
               <button onClick={() => setModal(null)}>✕</button>
             </div>
             <div className="adm-modal__body">
-              <div className="adm-modal__av">{modal.user.name[0]}</div>
+              <div className="adm-modal__av">{modal.user.name?.[0] ?? '?'}</div>
               <div className="adm-modal__name">{modal.user.name}</div>
               <div className="adm-modal__email">{modal.user.email}</div>
               <div className="adm-modal__rows">
                 {[
                   ['ID tài khoản', modal.user.id],
-                  ['Đăng nhập qua', PROVIDER_LABEL[modal.user.provider]],
+                  ['Đăng nhập qua', PROVIDER_LABEL[modal.user.provider] ?? modal.user.provider],
                   ['Gói dịch vụ', modal.user.plan],
                   ['Trạng thái', STATUS_LABEL[modal.user.status]],
                   ['Ngày đăng ký', modal.user.joined],
@@ -171,7 +174,6 @@ export default function AdminUsers() {
         </div>
       )}
 
-      {/* Modal confirm */}
       {modal?.type === 'confirm' && (
         <div className="adm-modal-overlay" onClick={() => setModal(null)}>
           <div className="adm-modal adm-modal--sm" onClick={e => e.stopPropagation()}>

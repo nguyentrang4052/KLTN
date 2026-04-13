@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from "react-router-dom"
 import './Login.css'
 
@@ -58,8 +58,14 @@ export default function Login({ onGoRegister, onGoForgot, onLoginSuccess }) {
       const storage = remember ? localStorage : sessionStorage
       storage.setItem('token', data.accessToken)
       storage.setItem('user', JSON.stringify(data.user))
+      console.log('user data:', data.user)       // xem có role không
+      console.log('role:', data.user.role)
 
-      navigate("/home")
+      if (data.user.role === 'admin') {
+        navigate('/admin')
+      } else {
+        navigate('/home')
+      }
     } catch (err) {
       setError(err.message)
     } finally {
@@ -70,6 +76,15 @@ export default function Login({ onGoRegister, onGoForgot, onLoginSuccess }) {
   const handleGoogle = () => {
     window.location.href = 'http://localhost:3000/api/auth/google'
   }
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const err = params.get('error')
+    if (err) {
+      setError(decodeURIComponent(err))
+      window.history.replaceState({}, document.title, '/login')
+    }
+  }, [])
 
 
   return (

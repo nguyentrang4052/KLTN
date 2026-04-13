@@ -35,8 +35,16 @@ export default function Header({ notifCount }) {
   const location = useLocation()
   const navigate = useNavigate()
   const [savedCount, setSavedCount] = useState(0)
+  const planName = user?.plan?.name ?? 'free'
+  const planDisplay = user?.plan?.displayName ?? 'Free'
 
-  const getDD_MENU = (savedCount,  notifCount ) => [
+  const PLAN_DOT_COLOR = {
+    free: '#9A8D80',
+    pro: '#D4820A',
+    premium: '#2E6040',
+  }
+
+  const getDD_MENU = (savedCount, notifCount) => [
     {
       label: 'Tài khoản',
       items: [
@@ -50,7 +58,7 @@ export default function Header({ notifCount }) {
       label: 'Cài đặt',
       items: [
         { ico: '🔔', label: 'Thông báo', path: '/notifications', tag: notifCount > 0 ? `${notifCount}` : null },
-        { ico: '💳', label: 'Gói dịch vụ', tag: 'Pro', path: '/services' },
+        { ico: '💳', label: 'Gói dịch vụ', tag: planDisplay, path: '/services' },
         { ico: '⚙️', label: 'Cài đặt tài khoản', path: '/settings' },
         { ico: '🚪', label: 'Đăng xuất', action: 'logout', danger: true },
       ],
@@ -166,8 +174,11 @@ export default function Header({ notifCount }) {
                   {user?.fullName ?? 'Người dùng'}
                 </span>
                 <span className="app-header__av-plan">
-                  <span className="app-header__av-plan-dot" />
-                  AI Pro
+                  <span
+                    className="app-header__av-plan-dot"
+                    style={{ background: PLAN_DOT_COLOR[planName] ?? '#9A8D80' }}
+                  />
+                  {planDisplay}
                 </span>
               </div>
               <span className="app-header__av-caret">▾</span>
@@ -191,7 +202,7 @@ export default function Header({ notifCount }) {
                       {/* <div className="app-header__dd-email">
                         {user?.email ?? ''}
                       </div> */}
-                      <div className="app-header__dd-badge">⚡ AI Pro</div>
+                      <div className="app-header__dd-badge">⚡ {planDisplay}</div>
                     </div>
                   </div>
 

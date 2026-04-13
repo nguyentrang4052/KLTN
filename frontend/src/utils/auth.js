@@ -54,3 +54,24 @@ export async function logoutRequest() {
     }
     clearAuth();
 }
+
+export async function adminFetch(path, options = {}) {
+    const token = getToken()
+    if (!token) throw new Error('Unauthorized')
+
+    const res = await fetch(`http://localhost:3000/api${path}`, {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            ...(options.headers || {}),
+        },
+    })
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.message || 'Lỗi server')
+    }
+
+    return res.json()
+}
