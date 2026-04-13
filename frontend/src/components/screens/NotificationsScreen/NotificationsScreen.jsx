@@ -13,7 +13,7 @@ function NotificationsScreen({ onNavigate }) {
 
   const tabs = [
     { id: 'all', label: 'Tất cả', count: 0, active: true },
-    { id: 'jobs', label: 'Việc mới', count: 0, active: false }
+    // { id: 'jobs', label: 'Việc mới', count: 0, active: true }
   ]
 
   const [notifications, setNotifications] = useState([])
@@ -45,48 +45,49 @@ function NotificationsScreen({ onNavigate }) {
         const now = new Date()
         const readMap = JSON.parse(localStorage.getItem('readNotifs') || '{}')
 
-        // lọc job sắp hết hạn (<= 3 ngày)
+        // // lọc job sắp hết hạn (<= 3 ngày)
+        // const filtered = jobs.filter(item => {
+        //   if (!item.job?.deadline) return false
+        //   const deadline = new Date(item.job.deadline)
+        //   const diffDays = (deadline - now) / (1000 * 60 * 60 * 24)
+        //   return diffDays > 0 && diffDays <= 3
+        // })
+
+
         const filtered = jobs.filter(item => {
           if (!item.job?.deadline) return false
           const deadline = new Date(item.job.deadline)
           const diffDays = (deadline - now) / (1000 * 60 * 60 * 24)
-          return diffDays > 0 && diffDays <= 3
+
+          return diffDays <= 3 // gồm cả đã hết hạn (diffDays <= 0)
         })
 
         const dynamicNotifs = filtered.map(item => {
           const job = item.job
           const deadline = new Date(job.deadline)
-
-          // Kiểm tra và lấy createdAt đã lưu hoặc tạo mới
-          // const key = `createdAt-deadline-${job.jobID}`
-          // let createdAt = localStorage.getItem(key)
-          // if (!createdAt) {
-          //   // Giả định thời điểm thông báo tạo = deadline - 3 ngày
-          //   const createdDate = new Date(deadline.getTime() - 3 * 24 * 60 * 60 * 1000)
-          //   createdAt = createdDate.toISOString()
-          //   localStorage.setItem(key, createdAt)
-          // }
-
           const savedAt = new Date(item.savedAt)
 
+          const diffMs = deadline - new Date()
+          const isExpired = diffMs <= 0
+
           return {
-            id: `deadline-${job.jobID}`,
-            icon: '⏰',
-            bg: '#FDE8E4',
-            title: 'Việc làm đã lưu sắp hết hạn',
+            id: `${isExpired ? 'expired' : 'deadline'}-${job.jobID}`,
+            icon: isExpired ? '❌' : '⏰',
+            bg: isExpired ? '#FEE2E2' : '#FDE8E4',
+            title: isExpired
+              ? 'Việc làm đã lưu đã hết hạn'
+              : 'Việc làm đã lưu sắp hết hạn',
             createdAt: savedAt.toISOString(),
-            unread: !readMap[`deadline-${job.jobID}`],
+            unread: !readMap[`${isExpired ? 'expired' : 'deadline'}-${job.jobID}`],
             jobInfo: {
               jobID: job.jobID,
               title: job.title,
-              // Tính giờ còn lại như bạn làm
-              hoursLeft: Math.max(0, Math.floor((deadline - new Date()) / (1000 * 60 * 60))),
+              hoursLeft: isExpired
+                ? 0
+                : Math.max(0, Math.floor(diffMs / (1000 * 60 * 60))),
             }
           }
         })
-
-
-
         setNotifications(dynamicNotifs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
 
       } catch (err) {
@@ -110,6 +111,22 @@ function NotificationsScreen({ onNavigate }) {
 
   const unreadCount = notifications.filter(n => n.unread).length
 
+  const handleReadAll = () => {
+  // update state
+  setNotifications(prev =>
+    prev.map(n => ({ ...n, unread: false }))
+  )
+
+  // update localStorage
+  const map = JSON.parse(localStorage.getItem('readNotifs') || '{}')
+
+  notifications.forEach(n => {
+    map[n.id] = true
+  })
+
+  localStorage.setItem('readNotifs', JSON.stringify(map))
+}
+
   useEffect(() => {
     const interval = setInterval(() => {
       setTick(t => t + 1)
@@ -128,7 +145,7 @@ function NotificationsScreen({ onNavigate }) {
 
         <div className="main-content">
           <Topbar title="🔔 Thông báo">
-            <button className="btn btn-outline btn-sm">Đọc tất cả</button>
+            <button className="btn btn-outline btn-sm" onClick={handleReadAll}>Đọc tất cả</button>
           </Topbar>
 
           <div className="notif-wrap">

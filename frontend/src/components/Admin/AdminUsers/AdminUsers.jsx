@@ -73,7 +73,7 @@ export default function AdminUsers() {
           ))}
         </div>
         <div className="adm-filter-group">
-          {['all', 'free', 'pro', 'enterprise'].map(p => (
+          {['all', 'free', 'pro', 'elite'].map(p => (
             <button key={p} className={`adm-filter-btn${filterPlan === p ? ' active' : ''}`}
               onClick={() => handleFilter(setFPlan, p)}>
               {p === 'all' ? 'Mọi gói' : p.toUpperCase()}

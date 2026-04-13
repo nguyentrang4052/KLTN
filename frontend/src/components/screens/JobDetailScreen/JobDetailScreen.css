@@ -134,6 +134,25 @@
   color: var(--ink4);
 }
 
+.jd-card-ribbon {
+  position: absolute;
+  top: 25px;            /* nâng lên gần góc trên */
+  right: 10px;         /* kéo sát góc phải hơn */
+  width: 220px;        /* hơi giảm chiều rộng cho vừa vặn */
+  height: 32px;        /* tăng chiều cao để đủ padding */
+  line-height: 32px;   /* căn giữa chữ theo chiều dọc */
+  background: #ff4d4f;
+  color: #fff;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 0;          /* padding bỏ, dùng height + line-height */
+  transform: rotate(45deg);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  z-index: 10;
+  border-radius: 4px;  /* bo góc nhẹ cho mềm mại */
+}
+
 .ai-box {
   background: var(--cream);
   border: 1.5px solid #E8D4B8;

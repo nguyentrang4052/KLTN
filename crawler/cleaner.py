@@ -197,58 +197,105 @@ def clean_experience(s: Optional[str]) -> Optional[str]:
 # MAIN CLEAN FUNCTION
 # ─────────────────────────────────────────────────────────────
 
-def clean_job(raw: dict) -> dict:
-    """
-    Hàm chính — nhận raw dict từ bất kỳ crawler nào,
-    trả về dict sạch khớp với Prisma Job + Company schema.
+# def clean_job(raw: dict) -> dict:
+#     """
+#     Hàm chính — nhận raw dict từ bất kỳ crawler nào,
+#     trả về dict sạch khớp với Prisma Job + Company schema.
 
-    Raw format (chuẩn từ cả 3 crawler):
-    {
-        "industry": "Công nghệ thông tin",
-        "job": {
-            title, shortLocation, location, salary,
-            description, requirement, benefit, other,
-            jobType, workingTime, experienceYear,
-            postedAt, deadline, sourcePlatform, sourceLink
-        },
-        "company": {
-            companyName, companyWebsite, address,
-            companyLogo, companySize, companyProfile
-        }
-    }
-    """
+#     Raw format (chuẩn từ cả 3 crawler):
+#     {
+#         "industry": "Công nghệ thông tin",
+#         "job": {
+#             title, shortLocation, location, salary,
+#             description, requirement, benefit, other,
+#             jobType, workingTime, experienceYear,
+#             postedAt, deadline, sourcePlatform, sourceLink
+#         },
+#         "company": {
+#             companyName, companyWebsite, address,
+#             companyLogo, companySize, companyProfile
+#         }
+#     }
+#     """
+#     j = raw.get("job", {})
+#     c = raw.get("company", {})
+
+#     return {
+#         "industry": clean_text(raw.get("industry")),
+
+#         "job": {
+#             "title":          clean_text(j.get("title")),
+#             "shortLocation":  clean_text(j.get("shortLocation")),
+#             "location":       clean_text(j.get("location")),
+#             "salary":         clean_salary(j.get("salary")),
+#             "description":    clean_text(j.get("description")),
+#             "requirement":    clean_text(j.get("requirement")),
+#             "benefit":        clean_text(j.get("benefit")),
+#             "other":          clean_text(j.get("other")),
+#             "jobType":        clean_text(j.get("jobType")),
+#             "workingTime":    clean_text(j.get("workingTime")),
+#             "experienceYear": clean_experience(j.get("experienceYear")),
+#             # parse_date trả về datetime object — psycopg2 tự convert sang PostgreSQL TIMESTAMP
+#             "postedAt":       parse_date(j.get("postedAt")),
+#             "deadline":       parse_date(j.get("deadline")),
+#             "sourcePlatform": clean_text(j.get("sourcePlatform")),
+#             "sourceLink":     clean_text(j.get("sourceLink")),
+#         },
+
+#         "company": {
+#             # companyName không được None vì là UNIQUE key để upsert
+#             "companyName":    clean_text(c.get("companyName")) or "Không rõ",
+#             "companyWebsite": clean_text(c.get("companyWebsite")),
+#             "address":        clean_text(c.get("address")),
+#             "companyLogo":    clean_text(c.get("companyLogo")),
+#             "companySize":    clean_text(c.get("companySize")),
+#             "companyProfile": clean_text(c.get("companyProfile")),
+#         },
+#     }
+
+
+
+
+
+def clean_job(raw: dict) -> dict:
     j = raw.get("job", {})
     c = raw.get("company", {})
 
-    return {
+    cleaned = {
         "industry": clean_text(raw.get("industry")),
-
         "job": {
-            "title":          clean_text(j.get("title")),
-            "shortLocation":  clean_text(j.get("shortLocation")),
-            "location":       clean_text(j.get("location")),
-            "salary":         clean_salary(j.get("salary")),
-            "description":    clean_text(j.get("description")),
-            "requirement":    clean_text(j.get("requirement")),
-            "benefit":        clean_text(j.get("benefit")),
-            "other":          clean_text(j.get("other")),
-            "jobType":        clean_text(j.get("jobType")),
-            "workingTime":    clean_text(j.get("workingTime")),
+            "title": clean_text(j.get("title")),
+            "shortLocation": clean_text(j.get("shortLocation")),
+            "location": clean_text(j.get("location")),
+            "salary": clean_salary(j.get("salary")),
+            "description": clean_text(j.get("description")),
+            "requirement": clean_text(j.get("requirement")),
+            "benefit": clean_text(j.get("benefit")),
+            "other": clean_text(j.get("other")),
+            "jobType": clean_text(j.get("jobType")),
+            "workingTime": clean_text(j.get("workingTime")),
             "experienceYear": clean_experience(j.get("experienceYear")),
-            # parse_date trả về datetime object — psycopg2 tự convert sang PostgreSQL TIMESTAMP
-            "postedAt":       parse_date(j.get("postedAt")),
-            "deadline":       parse_date(j.get("deadline")),
+            "postedAt": parse_date(j.get("postedAt")),
+            "deadline": parse_date(j.get("deadline")),
             "sourcePlatform": clean_text(j.get("sourcePlatform")),
-            "sourceLink":     clean_text(j.get("sourceLink")),
+            "sourceLink": clean_text(j.get("sourceLink")),
         },
-
         "company": {
-            # companyName không được None vì là UNIQUE key để upsert
-            "companyName":    clean_text(c.get("companyName")) or "Không rõ",
+            "companyName": clean_text(c.get("companyName")) or "Không rõ",
             "companyWebsite": clean_text(c.get("companyWebsite")),
-            "address":        clean_text(c.get("address")),
-            "companyLogo":    clean_text(c.get("companyLogo")),
-            "companySize":    clean_text(c.get("companySize")),
+            "address": clean_text(c.get("address")),
+            "companyLogo": clean_text(c.get("companyLogo")),
+            "companySize": clean_text(c.get("companySize")),
             "companyProfile": clean_text(c.get("companyProfile")),
         },
     }
+    
+    # ✅ Giữ lại các metadata từ orchestrator (không nằm trong job/company)
+    if "isNewJob" in raw:
+        cleaned["isNewJob"] = raw["isNewJob"]
+    if "industrySourcePlatform" in raw:
+        cleaned["industrySourcePlatform"] = raw["industrySourcePlatform"]
+    if "skills" in raw:
+        cleaned["skills"] = raw["skills"]
+        
+    return cleaned

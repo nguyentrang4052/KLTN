@@ -50,6 +50,7 @@ export class JobsService {
       isActive: true,
       deadline: { gt: now },
     };
+
     const andConditions: Prisma.JobWhereInput[] = [];
 
     if (keyword) {
@@ -135,6 +136,7 @@ export class JobsService {
         );
       }
     }
+
 
     // const filteredJobs = jobs.filter(j =>
     //   j.deadline && new Date(j.deadline) > new Date()
@@ -459,6 +461,7 @@ export class JobsService {
 
   async getSavedJobs(dto: QueryJobsDto, accountID: number) {
     const user = await this.prisma.user.findUnique({ where: { accountID } });
+
     const { page = 1, limit = 9 } = dto;
 
     if (!user) throw new Error('User not found');
@@ -466,6 +469,7 @@ export class JobsService {
     const skip = (page - 1) * limit;
 
     const total = await this.prisma.savedJob.count({
+
       where: { userID: user.userID },
     });
 

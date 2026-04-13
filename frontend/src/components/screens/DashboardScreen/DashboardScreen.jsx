@@ -4,7 +4,7 @@ import Topbar from '../../layout/Topbar/Topbar'
 import JobCard from '../../common/JobCard/JobCard'
 import Badge from '../../common/Badge/Badge'
 import Button from '../../common/Button/Button'
-import { jobData } from '../../../data/mockData'
+// import { jobData } from '../../../data/mockData'
 
 function DashboardScreen({onNavigate}) {
   const metrics = [
@@ -48,9 +48,9 @@ function DashboardScreen({onNavigate}) {
                   </div>
                 </div>
                 
-                {jobData.map(job => (
+                {/* {jobData.map(job => (
                   <JobCard key={job.id} job={job} />
-                ))}
+                ))} */}
               </div>
 
               <div className="rpanel">

@@ -211,6 +211,7 @@ export class AuthService {
     return this.signToken(accountID, email, role);
   }
 
+
   private signToken(
     accountID: number,
     email: string,

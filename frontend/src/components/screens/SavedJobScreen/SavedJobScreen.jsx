@@ -50,7 +50,20 @@ export default function SavedJobsScreen({ onNavigate }) {
         const list = data.data ?? data
 
         // normalize job
-        const normalized = list.map(j => j.job ?? j)
+        // const normalized = list.map(j => j.job ?? j)
+
+        const now = new Date();
+
+        const normalized = list.map(j => {
+          const job = j.job ?? j;
+
+          const isExpired = job.deadline ? new Date(job.deadline) < now : false;
+
+          return {
+            ...job,
+            isExpired
+          }
+        });
 
         setJobs(normalized)
 
@@ -94,8 +107,6 @@ export default function SavedJobsScreen({ onNavigate }) {
     return true
   })
 
-
-
   const renderJobCard = (job) => (
     <div key={job.jobID} style={{ cursor: 'pointer' }}
       onClick={() => handleJobClick(job)}>
@@ -118,6 +129,7 @@ export default function SavedJobsScreen({ onNavigate }) {
           type: job.jobType,
           match: job.matchPercent != null ? Math.round(job.matchPercent) : null,
           isSaved: savedJobIds.has(job.jobID),
+          isExpired: job.isExpired
         }}
         onSave={(jobID) => {
           if (!savedJobIds.has(jobID)) trackBehavior(jobID, 'save')
@@ -126,6 +138,8 @@ export default function SavedJobsScreen({ onNavigate }) {
       />
     </div>
   )
+
+
 
   // pagination UI
   const renderPages = (curPage, totalPages, onPageChange) => {

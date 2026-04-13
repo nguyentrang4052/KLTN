@@ -309,7 +309,6 @@ export default function CheckoutScreen() {
                         }}>
                             🧾 Lịch sử
                         </button>
-                        <div className="ck-header-secure">🔒 SSL Bảo mật</div>
                     </div>
                 </div>
             </div>
@@ -519,19 +518,7 @@ export default function CheckoutScreen() {
                             </div>
                         </div>
 
-                        <div className="ck-reviews-mini">
-                            <div className="ck-reviews-title">💬 Người dùng nói gì</div>
-                            {[
-                                { name: 'Minh K.', text: '"Tìm việc mới trong 3 tuần nhờ AI gợi ý. Tiết kiệm cả tháng tìm tay!"', rating: '⭐⭐⭐⭐⭐' },
-                                { name: 'Lan A.', text: '"AI gợi ý đúng loại việc tôi muốn, không cần tìm nhiều nữa."', rating: '⭐⭐⭐⭐⭐' },
-                            ].map(r => (
-                                <div key={r.name} className="ck-review-mini">
-                                    <div className="ck-review-mini-stars">{r.rating}</div>
-                                    <div className="ck-review-mini-text">{r.text}</div>
-                                    <div className="ck-review-mini-name">— {r.name}</div>
-                                </div>
-                            ))}
-                        </div>
+                       
                     </div>
                 </div>
             </div>

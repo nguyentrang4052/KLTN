@@ -11,8 +11,12 @@ import { CompaniesModule } from './companies/companies.module';
 import { ProfileModule } from './profile/profile.module';
 import { JobAlertModule } from './job-alert/job-alert.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { SettingModule } from './setting/setting.module';
+import { CvAnalyzerModule } from './cv-analyzer/cv-analyzer.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { AdminModule } from './admin/admin.module';
+import { CacheModule } from '@nestjs/cache-manager';
+import { redisStore } from 'cache-manager-redis-yet';
 
 @Module({
   imports: [
@@ -27,11 +31,25 @@ import { AdminModule } from './admin/admin.module';
     IndustriesModule,
     CompaniesModule,
     ProfileModule,
+    SettingModule,
     JobAlertModule,
+    CvAnalyzerModule,
     SubscriptionModule,
     AdminModule,
+    CacheModule.registerAsync({
+      useFactory: async () => ({
+        store: await redisStore({
+          socket: {
+            host: 'localhost',
+            port: 6379,
+          },
+          ttl: 3600, // 1 giờ (giây)
+        }),
+      }),
+    }),
   ],
   controllers: [AppController],
   providers: [AppService],
+  
 })
 export class AppModule {}

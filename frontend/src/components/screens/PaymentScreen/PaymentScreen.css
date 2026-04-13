@@ -555,10 +555,10 @@
     }
 
     /* ẩn cột Chu kỳ và Phương thức trên mobile */
-    .pay-th-row  > span:nth-child(4),
-    .pay-tr-row  > span:nth-child(4),
-    .pay-th-row  > span:nth-child(6),
-    .pay-tr-row  > span:nth-child(6) {
+    .pay-th-row>span:nth-child(4),
+    .pay-tr-row>span:nth-child(4),
+    .pay-th-row>span:nth-child(6),
+    .pay-tr-row>span:nth-child(6) {
         display: none;
     }
 }
@@ -574,8 +574,8 @@
     }
 
     /* ẩn thêm cột Gói trên màn rất nhỏ */
-    .pay-th-row  > span:nth-child(3),
-    .pay-tr-row  > span:nth-child(3) {
+    .pay-th-row>span:nth-child(3),
+    .pay-tr-row>span:nth-child(3) {
         display: none;
     }
 }

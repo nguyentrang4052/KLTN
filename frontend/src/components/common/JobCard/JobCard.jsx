@@ -121,7 +121,7 @@ function JobCard({ job, showMatch = true, showActions = true, token, onSave, onC
               {logoLetter}
             </div>
           )}
-
+          {/* <div className={`card jcard${job.isExpired ? ' jcard--expired' : ''}`}></div> */}
           <div className="jcard-info">
             <div className="jcard-title">{job.title}</div>
             <div className="jcard-co">
@@ -139,10 +139,26 @@ function JobCard({ job, showMatch = true, showActions = true, token, onSave, onC
               <div>{job.shortLocation && ` • ${job.shortLocation}`}</div>
               <div>{job.type && ` • ${job.type}`}</div>
             </div>
+            {/* <div className="jcard-tags">
+              {(job.tags ?? []).map((tag, idx) => (
+                <span key={idx} className="jtag">{tag}</span>
+              ))}
+              {job.platform && (
+                <Badge variant={getPlatformBadge(job.platform)} className="platform-badge">
+                  {job.platform}
+                </Badge>
+              )}
+            </div> */}
             <div className="jcard-tags">
               {(job.tags ?? []).map((tag, idx) => (
                 <span key={idx} className="jtag">{tag}</span>
               ))}
+
+              {job.isExpired && (
+                <span className="jcard-ribbon">Đã hết hạn</span>
+              )}
+
+
               {job.platform && (
                 <Badge variant={getPlatformBadge(job.platform)} className="platform-badge">
                   {job.platform}
@@ -168,7 +184,7 @@ function JobCard({ job, showMatch = true, showActions = true, token, onSave, onC
               <button className="btn btn-outline btn-md" onClick={handleSave}>
                 {saved ? '🔖 Đã lưu' : '🔖 Lưu'}
               </button>
-              <button className="btn btn-rust btn-md" onClick={(e) => { e.stopPropagation(); handleApply(e, job.id); }}>
+              <button className="btn btn-rust btn-md" onClick={(e) => { e.stopPropagation(); handleApply(e, job.id); }} disabled={job.isExpired}>
                 ⚡ Apply
               </button>
             </div>

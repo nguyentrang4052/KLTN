@@ -1,11 +1,16 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from "react-router-dom"
 
 
 function OAuthCallback({ onLoginSuccess }) {
   const navigate = useNavigate()
+  const hasRun = useRef(false)
+
 
   useEffect(() => {
+    if (hasRun.current) return
+    hasRun.current = true
+
     const params = new URLSearchParams(window.location.search)
 
     const token = params.get('token')?.trim()
@@ -21,13 +26,12 @@ function OAuthCallback({ onLoginSuccess }) {
         role: role,
       }))
 
-      window.history.replaceState({}, document.title, '/')
-      // onLoginSuccess()
       if (role === 'admin') {
         navigate('/admin')
       } else {
         navigate('/home')
       }
+
     } else {
       navigate("/login")
     }

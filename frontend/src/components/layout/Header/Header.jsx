@@ -59,7 +59,7 @@ export default function Header({ notifCount }) {
       items: [
         { ico: '🔔', label: 'Thông báo', path: '/notifications', tag: notifCount > 0 ? `${notifCount}` : null },
         { ico: '💳', label: 'Gói dịch vụ', tag: planDisplay, path: '/services' },
-        { ico: '⚙️', label: 'Cài đặt tài khoản', path: '/profile' },
+        { ico: '⚙️', label: 'Cài đặt tài khoản', path: '/settings' },
         { ico: '🚪', label: 'Đăng xuất', action: 'logout', danger: true },
       ],
     },
@@ -69,7 +69,7 @@ export default function Header({ notifCount }) {
     { id: 'home', label: 'Tổng quan', path: '/home' },
     { id: 'jobs', label: 'Tìm việc', path: '/jobs' },
     { id: 'companies', label: 'Công ty', path: '/companies' },
-    { id: 'cv', label: 'Tạo CV', path: '/cv-builder' },
+    { id: 'cv', label: 'Tạo CV', path: '/cv-templates' },
     { id: 'about', label: 'Về chúng tôi', path: '/about' },
   ]
 
