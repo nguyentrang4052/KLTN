@@ -29,12 +29,19 @@ export class ProfileService {
         },
         skills: { include: { skill: { include: { industry: true } } } },
         cvs: { select: { id: true, title: true } },
+        subscriptions: {
+          where: { status: 'active' },
+          orderBy: { expiresAt: 'desc' },
+          take: 1,
+          include: { plan: { select: { displayName: true, name: true } } },
+        },
       },
     });
 
     if (!user) throw new NotFoundException('User not found');
 
     const profile = user.profiles[0] ?? null;
+    const activeSub = user.subscriptions[0] ?? null;
 
     return {
       userID: user.userID,
@@ -61,6 +68,13 @@ export class ProfileService {
         industry: s.skill.industry.name,
       })),
       cvs: user.cvs,
+      plan: activeSub
+        ? {
+            name: activeSub.plan.name,
+            displayName: activeSub.plan.displayName,
+            expiresAt: activeSub.expiresAt,
+          }
+        : { name: 'free', displayName: 'Free', expiresAt: null },
     };
   }
 

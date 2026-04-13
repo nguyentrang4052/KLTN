@@ -11,6 +11,8 @@ import { CompaniesModule } from './companies/companies.module';
 import { ProfileModule } from './profile/profile.module';
 import { JobAlertModule } from './job-alert/job-alert.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { SubscriptionModule } from './subscription/subscription.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -26,6 +28,8 @@ import { ScheduleModule } from '@nestjs/schedule';
     CompaniesModule,
     ProfileModule,
     JobAlertModule,
+    SubscriptionModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

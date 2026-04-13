@@ -13,7 +13,7 @@ function Sidebar() {
   const navItems = [
     { id: 'profile', icon: '👤', label: 'Hồ sơ của tôi', path: '/profile' },
     { id: 'save-jobs', icon: '⭐', label: 'Việc đã lưu', path: '/saved-jobs' },
-    { id: 'cv', icon: '📄', label: 'CV của tôi', path: '/mycv' },
+    { id: 'my-cv', icon: '📄', label: 'CV của tôi', path: '/my-cv' },
   ];
 
   const toolItems = [
@@ -72,9 +72,22 @@ function Sidebar() {
 
   return (
     <div className="sidebar">
-      <div className="sb-logo" onClick={() => navigate('/home')} style={{ cursor: 'pointer' }}>
-        <span>GZCONNECT</span>
-      </div>
+      {/* <div className="sb-logo" onClick={() => navigate('/home')} style={{ cursor: 'pointer' }}>
+      </div>  */}
+      <div className="sb-section">Tổng quan</div>
+      {/* <div className="sb-divider">
+        {navItems.map((item) => (
+          <div
+            key={item.id}
+            className={`nav-item ${activeItem === item.id ? 'active' : ''}`}
+            onClick={() => item.path && navigate(item.path)}
+          >
+            <span className="nav-icon">{item.icon}</span>
+            {item.label}
+            {item.badge && <span className="nav-badge">{item.badge}</span>}
+          </div>
+        ))}
+      </div> */}
 
       <div className="sb-menu-scroll">
         {navItems.map((item) => (
@@ -89,7 +102,6 @@ function Sidebar() {
         ))}
 
         <div className="sb-section">Công cụ</div>
-
         {toolItems.map((item) => (
           <div
             key={item.id}

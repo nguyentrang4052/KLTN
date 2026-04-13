@@ -8,6 +8,7 @@ const NAV = [
   { id: 'users',      icon: '◉', label: 'Người dùng',       path: '/admin/users' },
   { id: 'categories', icon: '◫', label: 'Danh mục dữ liệu', path: '/admin/categories' },
   { id: 'packages',   icon: '◪', label: 'Gói dịch vụ',      path: '/admin/packages' },
+  { id: 'refunds', icon: '💸', label: 'Xử lý hoàn tiền', path: '/admin/refunds' },
 ]
 
 export default function AdminLayout() {

@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "PlanLimit" ADD COLUMN     "cvAnalysisPerMonth" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "cvMatchCheckCount" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "jobSuggestPerDay" INTEGER NOT NULL DEFAULT 3;

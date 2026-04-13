@@ -15,6 +15,7 @@ model Account {
   createdAt DateTime @default(now())
   active    Boolean  @default(true)
   user      User?
+  role      String   @default("user")
 }
 
 model User {
@@ -34,6 +35,10 @@ model User {
   behaviors          UserBehavior[]
   profiles           UserProfile[]
   skills             UserSkill[]
+  subscriptions UserSubscription[]
+  payments      Payment[]
+  quotas UserQuota[]
+  refundRequests RefundRequest[]
 }
 
 model UserProfile {
@@ -191,4 +196,90 @@ model JobSourceTracking {
   externalJobID String
   crawledAt     DateTime @default(now())
   job           Job      @relation(fields: [jobID], references: [jobID])
+}
+
+model SubscriptionPlan {
+  id           Int      @id @default(autoincrement())
+  name         String   @unique  
+  displayName  String
+  monthlyPrice Int      @default(0)
+  yearlyPrice  Int      @default(0)
+  createdAt    DateTime @default(now())
+  subscriptions UserSubscription[]
+  limits        PlanLimit?
+}
+
+model PlanLimit {
+  id                  Int    @id @default(autoincrement())
+  planID              Int    @unique
+  jobSuggestPerDay    Int    @default(3)    
+  cvAnalysisPerMonth  Int    @default(0)  
+  cvMatchCheckCount   Int    @default(0) 
+  plan                SubscriptionPlan @relation(fields: [planID], references: [id])
+}
+
+model UserSubscription {
+  id         Int      @id @default(autoincrement())
+  userID     Int
+  planID     Int
+  billing    String
+  status     String
+  startedAt  DateTime @default(now())
+  expiresAt  DateTime
+  autoRenew  Boolean  @default(true)
+  user       User     @relation(fields: [userID], references: [userID])
+  plan       SubscriptionPlan @relation(fields: [planID], references: [id])
+  payments   Payment[]
+}
+
+model Payment {
+  id             Int      @id @default(autoincrement())
+  userID         Int
+  subscriptionID Int
+  amount         Int
+  currency       String   @default("VND")
+  status         String
+  method         String?
+  transactionRef String?  @unique
+  paidAt         DateTime?
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userID], references: [userID])
+  subscription   UserSubscription @relation(fields: [subscriptionID], references: [id])
+  refundRequest  RefundRequest?
+}
+
+
+model UserQuota {
+  id                  Int      @id @default(autoincrement())
+  userID              Int
+  month               String  
+  
+  jobSuggestPerDay    Int      @default(3)   
+  cvAnalysisTotal     Int      @default(0)   
+  cvMatchCheckTotal   Int      @default(0)  
+  
+  cvAnalysisUsed      Int      @default(0)
+  cvMatchCheckUsed    Int      @default(0)
+
+  updatedAt           DateTime @updatedAt
+  user                User     @relation(fields: [userID], references: [userID])
+
+  @@unique([userID, month])
+}
+
+model RefundRequest {
+  id            Int      @id @default(autoincrement())
+  userID        Int
+  paymentID     Int      @unique
+  reason        String
+  accountNumber String
+  accountName   String
+  bankName      String
+  status        String   @default("pending") // pending | approved | rejected
+  createdAt     DateTime @default(now())
+  resolvedAt    DateTime?
+  note          String?  
+
+  user    User    @relation(fields: [userID], references: [userID])
+  payment Payment @relation(fields: [paymentID], references: [id])
 }

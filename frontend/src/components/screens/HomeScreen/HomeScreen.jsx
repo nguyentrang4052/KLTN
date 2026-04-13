@@ -7,10 +7,11 @@ import { getToken } from '../../../utils/auth'
 const API = 'http://localhost:3000/api'
 
 const PLATFORMS = [
+  { value: 'Tất cả', label: 'Tất cả', color: '#efa85c' },
   { value: 'CareerViet', label: 'CareerViet', color: '#1565C0' },
   { value: 'TopCV', label: 'TopCV', color: '#00B14F' },
   { value: 'CareerLink', label: 'CareerLink', color: '#D0392A' },
-  { value: 'VietnamWorks', label: 'VietnamWorks', color: '#F47820' },
+  // { value: 'VietnamWorks', label: 'VietnamWorks', color: '#F47820' },
 ]
 
 const COLOR_POOL = [
@@ -51,7 +52,7 @@ export default function HomeScreen() {
   const [recommendations, setRecommendations] = useState([])
   const [industries, setIndustries] = useState([])
   const [catPage, setCatPage] = useState(0)
-  const [activePlatform, setActivePlatform] = useState('CareerViet')
+  const [activePlatform, setActivePlatform] = useState('Tất cả')
   const [loadingIndustries, setLoadingIndustries] = useState(false)
 
   const [stats, setStats] = useState(null)
@@ -107,7 +108,7 @@ export default function HomeScreen() {
       if (keyword) params.set('keyword', keyword)
       if (location) params.append('locations', location)
       if (industryFilter) params.set('industryId', String(industryFilter))
-      if (activePlatform) params.set('source', activePlatform)
+      if (activePlatform && activePlatform !== 'Tất cả') params.set('source', activePlatform)
       const headers = token ? { Authorization: `Bearer ${token}` } : {}
       const res = await fetch(`${API}/jobs?${params}`, { headers })
       const data = await res.json()
@@ -262,7 +263,7 @@ export default function HomeScreen() {
               Khám phá <em>cơ hội</em><br />dành riêng cho bạn
             </h1>
             <p className="hs-hero-sub">
-              AI tổng hợp từ TopCV, CareerLink, CareerViet, VietnamWorks.
+              AI tổng hợp từ TopCV, CareerLink, CareerViet.
             </p>
             <div className="hs-hero-search">
               <div className="hs-sf">
@@ -290,28 +291,28 @@ export default function HomeScreen() {
                 {stats ? `${stats.jobMatch.delta} so với hôm qua` : token ? 'Đang tải...' : 'Đăng nhập để xem'}
               </div>
             </div>
-            <div className="hs-stat">
+            {/* <div className="hs-stat">
               <div className="hs-stat-ico">📨</div>
               <div className="hs-stat-n" style={{ color: '#2E6040' }}>{loadingStats ? '…' : (stats?.applied.count ?? '—')}</div>
               <div className="hs-stat-l">Đã nộp tháng này</div>
               <div className="hs-stat-s">
                 {stats ? `${stats.applied.pending} chờ phản hồi` : token ? 'Đang tải...' : 'Đăng nhập để xem'}
               </div>
-            </div>
-            <div className="hs-stat">
+            </div> */}
+            {/* <div className="hs-stat">
               <div className="hs-stat-ico">📊</div>
               <div className="hs-stat-n" style={{ color: '#D4820A' }}>{loadingStats ? '…' : stats ? `${stats.replyRate.percent}%` : '—'}</div>
               <div className="hs-stat-l">Tỷ lệ phản hồi</div>
               <div className="hs-stat-s">{!token && 'Đăng nhập để xem'}</div>
-            </div>
-            <div className="hs-stat">
+            </div> */}
+            {/* <div className="hs-stat">
               <div className="hs-stat-ico">🗓️</div>
               <div className="hs-stat-n">{loadingStats ? '…' : (stats?.interviews.count ?? '—')}</div>
               <div className="hs-stat-l">Phỏng vấn sắp tới</div>
               <div className="hs-stat-s">
                 {stats?.interviews.next ?? (token ? 'Chưa có lịch' : 'Đăng nhập để xem')}
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

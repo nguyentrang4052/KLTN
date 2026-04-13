@@ -1,6 +1,6 @@
 import './CVSectionNav.css'
 
-function CVSectionNav() {
+function CVSectionNav({ onSelectTemplate, selectedTemplateId = 'classic' }) {
   const templates = [
     { id: 'classic', name: 'Classic', icon: '🏛', class: 't-classic' },
     { id: 'modern', name: 'Modern', icon: '💎', class: 't-modern' },
@@ -23,24 +23,41 @@ function CVSectionNav() {
     { id: 'reference', icon: '🤝', label: 'Người tham chiếu', hasData: false }
   ]
 
+  const handleTemplateClick = (tpl) => {
+    if (onSelectTemplate) {
+      onSelectTemplate(tpl)
+    }
+  }
+
   return (
     <div className="cvb-nav">
       <div className="tpl-section">
         <div className="tpl-title">Mẫu CV</div>
         <div className="tpl-grid">
           {templates.map(tpl => (
-            <div key={tpl.id} className={`tpl-thumb ${tpl.id === 'classic' ? 'sel' : ''}`}>
+            <button
+              key={tpl.id}
+              className={`tpl-thumb ${selectedTemplateId === tpl.id ? 'sel' : ''}`}
+              onClick={() => handleTemplateClick(tpl)}
+              style={{
+                borderColor: selectedTemplateId === tpl.id ? tpl.color : 'transparent',
+                background: selectedTemplateId === tpl.id ? `${tpl.color}15` : '#f8f9fa'
+              }}
+            >
               <div className={`tpl-inner ${tpl.class}`}>
                 <span style={{ fontSize: '18px' }}>{tpl.icon}</span>
-                {tpl.name}
+                <span className="tpl-name">{tpl.name}</span>
               </div>
-            </div>
+              {selectedTemplateId === tpl.id && (
+                <div className="tpl-check" style={{ background: tpl.color }}>✓</div>
+              )}
+            </button>
           ))}
         </div>
       </div>
 
       <div className="cvb-nav-title">Các mục nội dung</div>
-      
+
       {sections.map(section => (
         <div key={section.id} className={`cvb-item ${section.id === 'personal' ? 'on' : ''}`}>
           <span className="cvb-icon">{section.icon}</span>

@@ -11,18 +11,24 @@ function OAuthCallback({ onLoginSuccess }) {
     const token = params.get('token')?.trim()
     const email = params.get('email')?.trim()
     const name = params.get('name')?.trim()
+    const role = params.get('role')?.trim() || 'user'
 
     if (token) {
       localStorage.setItem('token', token)
       localStorage.setItem('user', JSON.stringify({
         email: email ? decodeURIComponent(email) : '',
         fullName: name ? decodeURIComponent(name) : '',
+        role: role,
       }))
 
       window.history.replaceState({}, document.title, '/')
       // onLoginSuccess()
-      navigate("/home")
-    }else{
+      if (role === 'admin') {
+        navigate('/admin')
+      } else {
+        navigate('/home')
+      }
+    } else {
       navigate("/login")
     }
   }, [navigate])

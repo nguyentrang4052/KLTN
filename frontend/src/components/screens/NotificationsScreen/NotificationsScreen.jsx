@@ -1,86 +1,131 @@
 import './NotificationsScreen.css'
 import Sidebar from '../../layout/Sidebar/Sidebar'
-import Topbar from '../..//layout/Topbar/Topbar'
+import Topbar from '../../layout/Topbar/Topbar'
+import { useState, useEffect } from 'react'
+import { getToken } from '../../../utils/auth'
+import { useNavigate } from 'react-router-dom'
 
-function NotificationsScreen({onNavigate}) {
+const API = 'http://localhost:3000/api'
+
+function NotificationsScreen({ onNavigate }) {
+  const token = getToken()
+  const navigate = useNavigate()
+
   const tabs = [
-    { id: 'all', label: 'Tất cả', count: 12, active: true },
-    { id: 'jobs', label: 'Việc mới', count: 5, active: false },
-    { id: 'applications', label: 'Ứng tuyển', count: 4, active: false },
-    { id: 'system', label: 'Hệ thống', count: 3, active: false }
+    { id: 'all', label: 'Tất cả', count: 0, active: true },
+    { id: 'jobs', label: 'Việc mới', count: 0, active: false }
   ]
 
-  const notifications = [
-    {
-      id: 1,
-      icon: '🎉',
-      bg: '#E0F0E6',
-      title: 'VNPay đã gửi Offer Letter!',
-      desc: 'Chúc mừng! VNPay offer vị trí Frontend Tech Lead, mức 45-55tr/tháng. Hạn phản hồi 10/03/2026.',
-      time: '5 phút trước',
-      unread: true
-    },
-    {
-      id: 2,
-      icon: '📅',
-      bg: '#FEF0D0',
-      title: 'Nhắc phỏng vấn — Tiki Corporation',
-      desc: 'Lịch phỏng vấn lúc 14:00 ngày mai (06/03). AI đã chuẩn bị danh sách câu hỏi thường gặp.',
-      time: '1 giờ trước',
-      unread: true
-    },
-    {
-      id: 3,
-      icon: '⚡',
-      bg: '#FDE8E4',
-      title: 'Auto Apply thành công — CareerLink',
-      desc: 'Đã tự động nộp CV vào "Frontend Lead" tại Shopee trên CareerLink. Mã: #CL20260302.',
-      time: '3 giờ trước',
-      unread: true
-    },
-    {
-      id: 4,
-      icon: '🤖',
-      bg: '#E4E5F8',
-      title: 'AI tìm thấy 12 việc mới phù hợp',
-      desc: 'Dựa trên hành vi hôm nay, AI tìm 12 tin React Developer mới, trong đó 3 tin có match >90%.',
-      time: '5 giờ trước',
-      unread: true
-    },
-    {
-      id: 5,
-      icon: '⏰',
-      bg: '#FDE8E4',
-      title: 'Sắp hết hạn — 3 tin tuyển dụng',
-      desc: 'Grab (còn 6h), Sea Group (còn 18h), Lazada (còn 23h) — nộp ngay!',
-      time: '8 giờ trước',
-      unread: true
-    },
-    {
-      id: 6,
-      icon: '📊',
-      bg: 'var(--bg2)',
-      title: 'Báo cáo tuần — Hoạt động tìm việc',
-      desc: 'Xem 47 tin, lưu 8 tin, apply 3 tin. Tỷ lệ phản hồi 66% — cao hơn TB 21%.',
-      time: '1 ngày trước',
-      unread: false
-    },
-    {
-      id: 7,
-      icon: '✅',
-      bg: '#E0F0E6',
-      title: 'Zalo xem CV của bạn 3 lần',
-      desc: 'Nhà tuyển dụng Zalo đã xem CV 3 lần trong 2 ngày qua — tín hiệu tích cực!',
-      time: '2 ngày trước',
-      unread: false
+  const [notifications, setNotifications] = useState([])
+  const [tick, setTick] = useState(0)
+
+  const formatTimeAgo = (dateStr) => {
+    if (!dateStr) return ''
+    const diff = Date.now() - new Date(dateStr).getTime()
+    const minutes = Math.floor(diff / 60000)
+    const hours = Math.floor(diff / 3600000)
+    if (minutes < 1) return 'Vừa xong'
+    if (minutes < 60) return `${minutes} phút trước`
+    if (hours < 24) return `${hours} giờ trước`
+    const days = Math.floor(diff / 86400000)
+    return `${days} ngày trước`
+  }
+
+  useEffect(() => {
+    if (!token) return
+
+    const load = async () => {
+      try {
+        const res = await fetch(`${API}/jobs/saved`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+
+        const data = await res.json()
+        const jobs = Array.isArray(data?.data) ? data.data : []
+        const now = new Date()
+        const readMap = JSON.parse(localStorage.getItem('readNotifs') || '{}')
+
+        // lọc job sắp hết hạn (<= 3 ngày)
+        const filtered = jobs.filter(item => {
+          if (!item.job?.deadline) return false
+          const deadline = new Date(item.job.deadline)
+          const diffDays = (deadline - now) / (1000 * 60 * 60 * 24)
+          return diffDays > 0 && diffDays <= 3
+        })
+
+        const dynamicNotifs = filtered.map(item => {
+          const job = item.job
+          const deadline = new Date(job.deadline)
+
+          // Kiểm tra và lấy createdAt đã lưu hoặc tạo mới
+          // const key = `createdAt-deadline-${job.jobID}`
+          // let createdAt = localStorage.getItem(key)
+          // if (!createdAt) {
+          //   // Giả định thời điểm thông báo tạo = deadline - 3 ngày
+          //   const createdDate = new Date(deadline.getTime() - 3 * 24 * 60 * 60 * 1000)
+          //   createdAt = createdDate.toISOString()
+          //   localStorage.setItem(key, createdAt)
+          // }
+
+          const savedAt = new Date(item.savedAt)
+
+          return {
+            id: `deadline-${job.jobID}`,
+            icon: '⏰',
+            bg: '#FDE8E4',
+            title: 'Việc làm đã lưu sắp hết hạn',
+            createdAt: savedAt.toISOString(),
+            unread: !readMap[`deadline-${job.jobID}`],
+            jobInfo: {
+              jobID: job.jobID,
+              title: job.title,
+              // Tính giờ còn lại như bạn làm
+              hoursLeft: Math.max(0, Math.floor((deadline - new Date()) / (1000 * 60 * 60))),
+            }
+          }
+        })
+
+
+
+        setNotifications(dynamicNotifs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
+
+      } catch (err) {
+        console.error(err)
+      }
     }
-  ]
+
+    load()
+    const interval = setInterval(load, 30000)
+    return () => clearInterval(interval)
+  }, [token])
+
+  const handleClickNotif = (id) => {
+    setNotifications(prev =>
+      prev.map(n => n.id === id ? { ...n, unread: false } : n)
+    )
+    const map = JSON.parse(localStorage.getItem('readNotifs') || '{}')
+    map[id] = true
+    localStorage.setItem('readNotifs', JSON.stringify(map))
+  }
+
+  const unreadCount = notifications.filter(n => n.unread).length
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTick(t => t + 1)
+    }, 60000)
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <div id="s9">
       <div className="app-layout">
-        <Sidebar activeItem="notifications" badgeCounts={{ notifications: 5 }} onNavigate={onNavigate}/>
-        
+        <Sidebar
+          activeItem="notifications"
+          badgeCounts={{ notifications: unreadCount }}
+          onNavigate={onNavigate}
+        />
+
         <div className="main-content">
           <Topbar title="🔔 Thông báo">
             <button className="btn btn-outline btn-sm">Đọc tất cả</button>
@@ -90,22 +135,48 @@ function NotificationsScreen({onNavigate}) {
             <div className="notif-tabs">
               {tabs.map(tab => (
                 <div key={tab.id} className={`ntab ${tab.active ? 'on' : ''}`}>
-                  {tab.label} ({tab.count})
+                  {tab.label} ({notifications.length})
                 </div>
               ))}
             </div>
 
-            {notifications.map(notif => (
-              <div key={notif.id} className={`notif-item ${notif.unread ? 'unread' : ''}`}>
-                <div className="n-ico" style={{ background: notif.bg }}>{notif.icon}</div>
-                <div className="n-content">
-                  <div className="n-title">{notif.title}</div>
-                  <div className="n-desc">{notif.desc}</div>
-                  <div className="n-time">{notif.time}</div>
-                </div>
-                {notif.unread && <div className="n-unread-dot"></div>}
+            {notifications.length === 0 ? (
+              <div style={{ padding: 40, textAlign: 'center', color: '#888' }}>
+                Không có thông báo nào
               </div>
-            ))}
+            ) : (
+              notifications.map(notif => (
+                <div
+                  key={notif.id}
+                  className={`notif-item ${notif.unread ? 'unread' : ''}`}
+                  onClick={() => handleClickNotif(notif.id)}
+                >
+                  <div className="n-ico" style={{ background: notif.bg }}>
+                    {notif.icon}
+                  </div>
+
+                  <div className="n-content">
+                    <div className="n-title">{notif.title}</div>
+
+                    {notif.jobInfo && (
+                      <div className="job-table">
+                        <div
+                          className="job-row"
+                          onClick={() => navigate(`/home/job/${notif.jobInfo.jobID}`)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <div className="job-left clickable-title">{notif.jobInfo.title}</div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="n-time">{formatTimeAgo(notif.createdAt)}</div>
+                  </div>
+
+                  {notif.unread && <div className="n-unread-dot"></div>}
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

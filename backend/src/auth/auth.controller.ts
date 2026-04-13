@@ -71,16 +71,25 @@ export class AuthController {
     @Req() req: Request & { user: OAuthUser },
     @Res() res: Response,
   ) {
-    const result = await this.authService.oauthLogin(req.user);
-    const name = result.user.fullName ?? '';
-    const url = `${this.config.get<string>('FRONTEND_URL')}/oauth-callback?token=${result.accessToken}&email=${encodeURIComponent(result.user.email)}&name=${encodeURIComponent(name)}`;
-    res.redirect(url);
+    try {
+      const result = await this.authService.oauthLogin(req.user);
+      const name = result.user.fullName ?? '';
+      const url = `${this.config.get<string>('FRONTEND_URL')}/oauth-callback?token=${result.accessToken}&email=${encodeURIComponent(result.user.email)}&name=${encodeURIComponent(name)}&role=${result.user.role ?? 'user'}`;
+      res.redirect(url);
+    } catch (err) {
+      const url = `${this.config.get<string>('FRONTEND_URL')}/login?error=${encodeURIComponent(err.message)}`;
+      res.redirect(url);
+    }
   }
 
   @Get('refresh')
   @UseGuards(JwtAuthGuard)
   refreshToken(@GetUser() user: jwtUserInterface.JwtUser) {
-    const newToken = this.authService.refreshToken(user.sub, user.email);
+    const newToken = this.authService.refreshToken(
+      user.sub,
+      user.email,
+      user.role,
+    );
     return { accessToken: newToken };
   }
 

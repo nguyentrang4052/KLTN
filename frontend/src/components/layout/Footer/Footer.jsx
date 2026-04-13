@@ -38,9 +38,9 @@ const FOOTER_LINKS = {
     { label: "Việc làm Fresher", href: "/jobs/fresher" },
   ],
   "Công cụ": [
-    { label: "CV Builder AI", href: "/cv-builder"},
+    { label: "CV Builder AI", href: "/cv-builder" },
     { label: "AI Match Score", href: "/ai-match" },
-    { label: "Auto Apply", href: "/auto-apply"},
+    { label: "Auto Apply", href: "/auto-apply" },
     { label: "Salary Insights", href: "/salary" },
     { label: "Interview Prep AI", href: "/interview-prep" },
     { label: "Career Roadmap", href: "/career-roadmap" },
@@ -72,7 +72,7 @@ const STATS = [
 ];
 
 const PLATFORMS = [
-  "TopCV", "CareerLink", "CareerViet", "VietnamWorks"];
+  "TopCV", "CareerLink", "CareerViet"];
 
 const BOTTOM_LINKS = [
   { label: "Chính sách bảo mật", href: "/privacy" },
@@ -99,9 +99,6 @@ export default function Footer() {
   return (
     <footer className="f">
       <div className="f__noise" />
-
-
-
       <div className="f__wrap">
         <div className="f__body">
 
@@ -164,7 +161,7 @@ export default function Footer() {
             ))}
           </div>
         </div>
-      </div>  
+      </div>
       <div className="f__wrap">
         <div className="f__bottom">
           <div className="f__copy">

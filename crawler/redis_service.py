@@ -9,6 +9,7 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 TTL_LINK_LIST   = 3_600 * 3     # 3 giờ - danh sách link để detect mới
 TTL_CRAWLED_SET = 86_400 * 7    # 7 ngày - link đã crawl thành công
 TTL_CONTENT_HASH = 86_400 * 7   # 7 ngày - hash nội dung job
+TTL_FINGERPRINT = 86_400 * 30  # 30 ngày - fingerprint để detect job trùng nội dung (dù URL khác)
 
 
 class RedisService:
@@ -156,6 +157,59 @@ class RedisService:
             "crawl:jobs",
             json.dumps({"__done__": True, "total": total})
         )
+
+    # ─────────────────────────────────────────────
+    # NHÓM 5: Content Fingerprint — chống job trùng nội dung
+    # Khác NHÓM 3 (hash để detect UPDATE):
+    #   - NHÓM 3: hash theo sourceLink → biết job đó ĐÃ THAY ĐỔI chưa
+    #   - NHÓM 5: hash theo nội dung   → biết job này ĐÃ TỒN TẠI chưa
+    #             dù URL khác nhau hoàn toàn
+    # ─────────────────────────────────────────────
+
+    def _compute_fingerprint(self, raw: dict) -> str:
+        """
+        Tạo fingerprint từ các field cốt lõi.
+        Không dùng URL vì đó chính là thứ ta đang muốn bỏ qua.
+        companyName đưa vào để tránh nhầm: 2 công ty khác nhau
+        cùng đăng "Senior Python Developer" không bị coi là trùng.
+        """
+        j = raw.get("job", {})
+        c = raw.get("company", {})
+        parts = [
+            (j.get("title")       or "").strip().lower(),
+            (j.get("salary")      or "").strip().lower(),
+            (j.get("jobType")     or "").strip().lower(),
+            (j.get("shortLocation") or "").strip().lower(),
+            (c.get("companyName") or "").strip().lower(),
+        ]
+        content = "|".join(parts)
+        return hashlib.md5(content.encode("utf-8")).hexdigest()
+
+    def _fingerprint_key(self, fingerprint: str) -> str:
+        return f"job_fingerprint:{fingerprint}"
+
+    async def check_and_store_fingerprint(
+        self, raw: dict, source_link: str
+    ) -> tuple[bool, str | None]:
+        """
+        Kiểm tra xem nội dung job này đã tồn tại chưa (dù URL khác).
+
+        Trả về:
+            (is_duplicate, original_link)
+            - is_duplicate=True  → đã có job trùng nội dung, original_link là URL gốc
+            - is_duplicate=False → job mới, đã lưu fingerprint vào Redis
+        """
+        fingerprint = self._compute_fingerprint(raw)
+        key = self._fingerprint_key(fingerprint)
+
+        existing = await self.client.get(key)
+        if existing:
+            # Đã có job trùng nội dung
+            return True, existing
+
+        # Chưa có → lưu fingerprint với sourceLink hiện tại làm "bản gốc"
+        await self.client.setex(key, TTL_FINGERPRINT, source_link)
+        return False, None
 
 
 redis_service = RedisService()

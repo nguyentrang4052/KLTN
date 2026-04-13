@@ -15,7 +15,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  validate(req: Request, payload: { sub: number; email: string }) {
+  validate(
+    req: Request,
+    payload: { sub: number; email: string; role: string },
+  ) {
     const token = ExtractJwt.fromAuthHeaderAsBearerToken()(req);
 
     if (token && this.blacklistService.has(token)) {
@@ -24,6 +27,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       );
     }
 
-    return { sub: payload.sub, email: payload.email };
+    return { sub: payload.sub, email: payload.email, role: payload.role };
   }
 }

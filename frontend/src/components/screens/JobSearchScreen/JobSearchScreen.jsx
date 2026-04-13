@@ -120,7 +120,6 @@ function JobSearchScreen() {
   const [myAlerts, setMyAlerts] = useState([]);
   const [showMyAlerts, setShowMyAlerts] = useState(false);
 
-  // ── sync token ────────────────────────────────────────────
   useEffect(() => {
     const sync = () => setToken(getToken());
     window.addEventListener('focus', sync);
@@ -131,7 +130,6 @@ function JobSearchScreen() {
     if (!token && sort === 'match') setSort('newest');
   }, [token]);
 
-  // ── email từ JWT ──────────────────────────────────────────
   useEffect(() => {
     if (token) {
       try {
@@ -143,7 +141,6 @@ function JobSearchScreen() {
     }
   }, [token]);
 
-  // ── alerts ────────────────────────────────────────────────
   const loadMyAlerts = useCallback(async (email) => {
     if (!email) return;
     try {
@@ -157,7 +154,6 @@ function JobSearchScreen() {
     if (alertEmail) loadMyAlerts(alertEmail);
   }, [alertEmail]);
 
-  // ── saved jobs ────────────────────────────────────────────
   useEffect(() => {
     if (!token) { setSavedJobIds(new Set()); return; }
     fetch(`${API}/jobs/saved`, { headers: { Authorization: `Bearer ${token}` } })
@@ -169,7 +165,7 @@ function JobSearchScreen() {
       .catch(console.error);
   }, [token]);
 
-  // ── static filters + polling ──────────────────────────────
+
   useEffect(() => {
     const loadStatic = () =>
       Promise.all([
@@ -192,14 +188,12 @@ function JobSearchScreen() {
     return () => clearInterval(interval);
   }, []);
 
-  // auto-select source đầu tiên
   useEffect(() => {
     if (filterOptions.sources.length > 0 && activeFilters.source.length === 0) {
       setActiveFilters(prev => ({ ...prev, source: [filterOptions.sources[0].value] }));
     }
   }, [filterOptions.sources]);
 
-  // ── dynamic industries theo source ───────────────────────
   useEffect(() => {
     setLoadingDynamic(true);
     const source = activeFilters.source[0] ?? '';
@@ -213,7 +207,6 @@ function JobSearchScreen() {
       .finally(() => setLoadingDynamic(false));
   }, [activeFilters.source]);
 
-  // ── recommendations ───────────────────────────────────────
   useEffect(() => {
     if (sort !== 'match' || !token) return;
     setLoadingRecs(true);
@@ -224,7 +217,6 @@ function JobSearchScreen() {
       .finally(() => setLoadingRecs(false));
   }, [sort, token]);
 
-  // ── fetch jobs ────────────────────────────────────────────
   const fetchJobs = useCallback(async () => {
     if (sort === 'match' && token) return;
     setLoadingJobs(true);
@@ -252,7 +244,6 @@ function JobSearchScreen() {
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
-  // polling 20s
   useEffect(() => {
     const interval = setInterval(() => {
       if (sort !== 'match' || !token) fetchJobs();
@@ -263,7 +254,6 @@ function JobSearchScreen() {
   const displayJobs = sort === 'match' && token ? recommendations : jobs;
   const displayLoading = sort === 'match' && token ? loadingRecs : loadingJobs;
 
-  // ── track ─────────────────────────────────────────────────
   const trackBehavior = useCallback((jobID, action) => {
     if (!token) return;
     fetch(`${API}/jobs/${jobID}/track`, {
@@ -273,7 +263,6 @@ function JobSearchScreen() {
     }).catch(console.error);
   }, [token]);
 
-  // ── detail ────────────────────────────────────────────────
   const openDetail = async (jobID) => {
     try {
       const res = await fetch(`${API}/jobs/${jobID}`);
@@ -294,7 +283,6 @@ function JobSearchScreen() {
     navigate(`/jobs/companies/${companyID}`);
   };
 
-  // ── save ──────────────────────────────────────────────────
   const handleSave = async (jobID, e) => {
     if (e) e.stopPropagation();
     if (!token) { setShowLoginModal(true); return; }
@@ -314,14 +302,24 @@ function JobSearchScreen() {
     } catch (err) { console.error(err); }
   };
 
-  const handleApply = (e, jobID) => {
+  const handleApply = async (e, jobID) => {
     if (e) e.stopPropagation();
     if (!token) { setShowLoginModal(true); return; }
     if (jobID) trackBehavior(jobID, 'apply');
+
+    if (!selectedJob || selectedJob.jobID !== jobID) {
+      try {
+        const res = await fetch(`${API}/jobs/${jobID}`);
+        const data = await res.json();
+        setSelectedJob(data);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
     openApply(e);
   };
 
-  // ── alert handlers ────────────────────────────────────────
   const handleCreateAlert = async () => {
     if (!alertKeyword.trim() || !alertEmail.trim()) return;
     setAlertLoading(true); setAlertMsg('');
@@ -355,7 +353,6 @@ function JobSearchScreen() {
     } catch { }
   };
 
-  // ── filters ───────────────────────────────────────────────
   const toggleFilter = (category, value) => {
     setActiveFilters(prev => {
       const current = prev[category] || [];
@@ -402,7 +399,6 @@ function JobSearchScreen() {
     setSalaryMin(0); setSalaryMax(0); setSalaryRange(100); setCurrentPage(1);
   };
 
-  // ── helpers ───────────────────────────────────────────────
   const showToast = (message) => {
     const t = document.createElement('div');
     t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1C1510;color:#F5EED8;padding:10px 20px;border-radius:9px;font-size:13px;font-weight:600;z-index:9999;animation:fadeIn .2s ease-out';
@@ -447,7 +443,6 @@ function JobSearchScreen() {
     p.label.toLowerCase().includes(provinceSearch.toLowerCase())
   );
 
-  // ── pagination ────────────────────────────────────────────
   const renderPages = () => {
     const pages = [];
     const total = meta.totalPages;
@@ -553,7 +548,6 @@ function JobSearchScreen() {
       )}
 
       <div className="page">
-        {/* ══ SIDEBAR ══════════════════════════════════════════ */}
         <aside className="sidebar">
           <div className="filter-card">
             <div className="filter-header">
@@ -561,7 +555,6 @@ function JobSearchScreen() {
               <span className="filter-clear" onClick={clearFilters}>Xoá tất cả</span>
             </div>
 
-            {/* 1. NGUỒN */}
             <div className="filter-section">
               <div className="filter-section-title">Nguồn tuyển dụng</div>
               {loadingFilters
@@ -580,7 +573,6 @@ function JobSearchScreen() {
                 ))}
             </div>
 
-            {/* 2. NGÀNH NGHỀ — dynamic theo source */}
             <div className="filter-section">
               <div className="filter-section-title">
                 Ngành nghề
@@ -605,7 +597,6 @@ function JobSearchScreen() {
                   ))}
             </div>
 
-            {/* 3. LOẠI HÌNH — cứng hoàn toàn */}
             <div className="filter-section">
               <div className="filter-section-title">Loại hình công việc</div>
               {JOB_TYPE_OPTIONS.map(item => (
@@ -618,7 +609,6 @@ function JobSearchScreen() {
               ))}
             </div>
 
-            {/* 4. LƯƠNG — cứng */}
             <div className="filter-section">
               <div className="filter-section-title">Mức lương (triệu/tháng)</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
@@ -632,7 +622,6 @@ function JobSearchScreen() {
               </div>
             </div>
 
-            {/* 5. KINH NGHIỆM — cứng */}
             <div className="filter-section">
               <div className="filter-section-title">Kinh nghiệm</div>
               {EXPERIENCE_OPTIONS.map(item => (
@@ -645,7 +634,6 @@ function JobSearchScreen() {
               ))}
             </div>
 
-            {/* 6. ĐỊA ĐIỂM */}
             <div className="filter-section">
               <div className="filter-section-title">Địa điểm</div>
               {activeFilters.locations.length > 0 && (
@@ -680,7 +668,6 @@ function JobSearchScreen() {
           </div>
         </aside>
 
-        {/* ══ MAIN ═════════════════════════════════════════════ */}
         <main className="main">
           <div style={{
             display: 'flex', gap: '8px', marginBottom: '16px',
@@ -844,7 +831,6 @@ function JobSearchScreen() {
         </main>
       </div>
 
-      {/* ══ BOTTOM CARDS ═════════════════════════════════════ */}
       <div style={{
         maxWidth: '1360px', margin: '0 auto', padding: '0 28px 40px',
         display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px',
@@ -959,7 +945,6 @@ function JobSearchScreen() {
         </div>
       </div>
 
-      {/* ══ DETAIL PANEL ═════════════════════════════════════ */}
       <div className={`detail-overlay ${detailOpen ? 'open' : ''}`} onClick={closeDetail}>
         <div className="detail-panel" onClick={e => e.stopPropagation()}>
           {selectedJob && (
@@ -1088,7 +1073,6 @@ function JobSearchScreen() {
         </div>
       </div>
 
-      {/* ══ APPLY MODAL ══════════════════════════════════════ */}
       {applyModalOpen && (
         <div style={{
           display: 'flex', position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)',

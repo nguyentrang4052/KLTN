@@ -262,8 +262,8 @@ function ProfileScreen({ onNavigate }) {
         <Sidebar activeItem="profile" onNavigate={onNavigate} />
         <div className="main-content">
           <Topbar title="👤 Hồ sơ & Cài đặt AI">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 15, paddingRight: 15, borderRight: '1px solid var(--border)' }}>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>{profile?.fullName}</span>
+            {/* <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 15, paddingRight: 15, borderRight: '1px solid var(--border)' }}> */}
+              {/* <span style={{ fontSize: 13, fontWeight: 600 }}>{profile?.fullName}</span>
               <div style={{
                 width: 32, height: 32, borderRadius: '50%', overflow: 'hidden',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, background: 'rgb(189, 114, 71)'
@@ -272,8 +272,8 @@ function ProfileScreen({ onNavigate }) {
                   ? <img src={`${API}${profile.avatar}`} alt="avt" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   : avatarLetters
                 }
-              </div>
-            </div>
+              </div> */}
+            {/* </div> */}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {saveMsg && (

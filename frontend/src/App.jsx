@@ -8,13 +8,20 @@ import DashboardScreen from './components/screens/DashboardScreen/DashboardScree
 import HomeScreen from './components/screens/HomeScreen/HomeScreen'
 import JobDetailScreen from './components/screens/JobDetailScreen/JobDetailScreen'
 import CVBuilderScreen from './components/screens/CVBuilderScreen/CVBuilderScreen'
-import ApplicationsScreen from './components/screens/ApplicationsScreen/ApplicationsScreen'
+// import ApplicationsScreen from './components/screens/ApplicationsScreen/ApplicationsScreen'
 import ProfileScreen from './components/screens/ProfileScreen/ProfileScreen'
 import NotificationsScreen from './components/screens/NotificationsScreen/NotificationsScreen'
 import JobSearchScreen from './components/screens/JobSearchScreen/JobSearchScreen'
 import CompaniesScreen from './components/screens/CompaniesScreen/CompaniesScreen'
 import CompanyDetailScreen from './components/screens/CompanyDetailScreen/CompanyDetailScreen'
 import AboutScreen from './components/screens/AboutScreen/AboutScreen'
+import AccountSettingScreen from './components/screens/AccountSettingScreen/AccountSettingScreen'
+import SavedJobScreen from './components/screens/SavedJobScreen/SavedJobScreen'
+import MyCVScreen from './components/screens/MyCVScreen/MyCVScreen'
+import AIScreen from './components/screens/AIScreen/AIScreen'
+import PricingScreen from './components/screens/PricingScreen/PricingScreen'
+import CheckoutScreen from './components/screens/CheckoutScreen/CheckoutScreen'
+import PaymentScreen from './components/screens/PaymentScreen/PaymentScreen'
 
 import Login from './components/Authentication/Login/Login'
 import Register from './components/Authentication/Register/Register'
@@ -26,6 +33,7 @@ import AdminDashboard from './components/Admin/AdminDashboard/AdminDashboard'
 import AdminUsers from './components/Admin/AdminUsers/AdminUsers'
 import AdminCategories from './components/Admin/AdminCategories/AdminCategories'
 import AdminPackages from './components/Admin/AdminPackages/AdminPackages'
+import AdminRefunds from './components/Admin/AdminRefunds/AdminRefunds'
 
 import { useParams, useNavigate } from 'react-router-dom'
 import { getToken } from './utils/auth'
@@ -36,6 +44,28 @@ function ProtectedRoute({ children }) {
   if (!token) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
+  return children
+}
+
+function AdminRoute({ children }) {
+  const location = useLocation()
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+
+  if (!token) {
+    return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  try {
+    const user = JSON.parse(
+      localStorage.getItem('user') || sessionStorage.getItem('user') || '{}'
+    )
+    if (user.role !== 'admin') {
+      return <Navigate to="/home" replace />
+    }
+  } catch {
+    return <Navigate to="/login" replace />
+  }
+
   return children
 }
 
@@ -95,6 +125,22 @@ function JobDetailScreenRoute({ backPath, companyBasePath }) {
   )
 }
 
+
+function JobDetailForSavedJobs({ backPath, savedJobPath }) {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const token = getToken()
+  return (
+    <JobDetailScreen
+      jobID={Number(id)}
+      onBack={() => navigate(backPath)}
+      token={token}
+      onSavedJobClick={(jobID) => navigate(`${savedJobPath}${jobID}`)}
+    />
+  )
+}
+
+
 function App() {
   const location = useLocation()
 
@@ -108,6 +154,7 @@ function App() {
     '/admin/users',
     '/admin/categories',
     '/admin/packages',
+    '/admin/refunds',
   ]
 
   const hideHeader =
@@ -136,20 +183,44 @@ function App() {
           <Route path="/jobs/job/:id" element={
             <JobDetailScreenRoute backPath="/jobs" companyBasePath="/jobs/companies" />
           } />
+
           <Route path="/jobs/companies/:id" element={<CompanyDetailScreenRouteForJobs />} />
+
           <Route path="/jobs/companies/:companyId/jobs/:id" element={
             <JobDetailScreenRoute backPath="/jobs" companyBasePath="/jobs/companies" />
           } />
 
           <Route path="/companies" element={<CompaniesScreen />} />
           <Route path="/companies/:id" element={<CompanyDetailScreenRouteForCompanies />} />
+
           <Route path="/companies/:companyId/jobs/:id" element={
             <JobDetailScreenRoute backPath="/companies" companyBasePath="/companies" />
           } />
 
+
+          <Route
+            path="/saved-jobs"
+            element={
+              <ProtectedRoute>
+                <SavedJobScreen />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/saved-jobs/job/:id"
+            element={
+              <JobDetailForSavedJobs
+                backPath="/saved-jobs"
+                savedJobPath="/saved-jobs/job/"
+              />
+            }
+          />
+
           <Route path="/home" element={
             <ProtectedRoute><HomeScreen /></ProtectedRoute>
           } />
+
           <Route path="/home/job/:id" element={
             <ProtectedRoute>
               <JobDetailScreenRoute backPath="/home" companyBasePath="/home/companies" />
@@ -170,21 +241,53 @@ function App() {
           <Route path="/profile" element={
             <ProtectedRoute><ProfileScreen /></ProtectedRoute>
           } />
-          <Route path="/applications" element={
-            <ProtectedRoute><ApplicationsScreen /></ProtectedRoute>
+          <Route path="/settings" element={
+            <ProtectedRoute><AccountSettingScreen /></ProtectedRoute>
           } />
+
+          {/* <Route path="/applications" element={
+            <ProtectedRoute><ApplicationsScreen /></ProtectedRoute>
+          } /> */}
           <Route path="/cv-builder" element={
             <ProtectedRoute><CVBuilderScreen /></ProtectedRoute>
           } />
+
+          <Route path="/my-cv" element={
+            <ProtectedRoute><MyCVScreen /></ProtectedRoute>
+          } />
+
+          <Route path="/ai-assistant" element={
+            <ProtectedRoute><AIScreen /></ProtectedRoute>
+          } />
+
+          <Route path="/services" element={
+            <ProtectedRoute><PricingScreen /></ProtectedRoute>
+          } />
+
+
+          <Route path="/services/checkout" element={
+            <ProtectedRoute><CheckoutScreen /></ProtectedRoute>
+          } />
+
+          <Route path="/services/payment" element={
+            <ProtectedRoute><PaymentScreen /></ProtectedRoute>
+          } />
+
           <Route path="/notifications" element={
             <ProtectedRoute><NotificationsScreen /></ProtectedRoute>
           } />
 
-          <Route path="/admin" element={<AdminLayout />}>
+
+          <Route path="/admin" element={
+            <AdminRoute>
+              <AdminLayout />
+            </AdminRoute>
+          }>
             <Route index element={<AdminDashboard />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="categories" element={<AdminCategories />} />
             <Route path="packages" element={<AdminPackages />} />
+            <Route path="refunds" element={<AdminRefunds />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
