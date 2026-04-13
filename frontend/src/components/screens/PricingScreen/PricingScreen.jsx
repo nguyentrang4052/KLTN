@@ -144,11 +144,10 @@ export default function PricingScreen() {
         <div className="pr-hero-inner">
           <div className="pr-hero-tag">
             <span className="pr-hero-dot" />
-            {currentSub && currentSub.planName !== 'free' ? (
-              <>Đang dùng Gói <strong>{currentSub.displayName}</strong>
+            
+              Đang dùng Gói <strong>{currentSub.displayName}</strong>
                 {currentSub.expiresAt && ` · Gia hạn ${formatDate(currentSub.expiresAt)}`}
-              </>
-            ) : 'Nâng tầm sự nghiệp cùng AI'}
+
           </div>
           <h1 className="pr-hero-title">
             Chọn gói phù hợp với<br /><em>hành trình của bạn</em>

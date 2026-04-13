@@ -282,7 +282,7 @@ function App() {
             <ProtectedRoute><NotificationsScreen /></ProtectedRoute>
           } />
 
-          <Route path="/my-cv" element={
+          {/* <Route path="/my-cv" element={
             <ProtectedRoute><CVScreenWrapper initialScreen="myCV" /></ProtectedRoute>
           } />
 
@@ -292,6 +292,25 @@ function App() {
 
           <Route path="/cv-builder" element={
             <ProtectedRoute><CVScreenWrapper initialScreen="myCV" /></ProtectedRoute>
+          } />
+ */}
+
+          <Route path="/my-cv" element={
+            <ProtectedRoute>
+              <CVScreenWrapper key="my-cv" initialScreen="myCV" />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/cv-templates" element={
+            <ProtectedRoute>
+              <CVScreenWrapper key="cv-templates" initialScreen="picker" />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/cv-builder" element={
+            <ProtectedRoute>
+              <CVScreenWrapper key="cv-builder" initialScreen="myCV" />
+            </ProtectedRoute>
           } />
 
 

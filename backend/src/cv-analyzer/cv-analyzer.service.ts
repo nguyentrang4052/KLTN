@@ -107,10 +107,13 @@ import { GeminiService } from '../gemini/gemini.service';
 import { FileConverterUtil } from './utils/file-converter.util';
 import { CVAnalysisResultDto } from './dto/cv-analysis-result.dto';
 import * as fs from 'fs/promises';
+import PQueue from 'p-queue';
 
 @Injectable()
 export class CvAnalyzerService {
     private readonly logger = new Logger(CvAnalyzerService.name);
+
+    private readonly queue = new PQueue({ concurrency: 2 });
 
     constructor(private readonly geminiService: GeminiService) { }
 
@@ -207,4 +210,10 @@ export class CvAnalyzerService {
 
         return result;
     }
+
+     private async analyzeSingleCV(file: any) {
+        // Gọi GeminiService ở đây
+        return this.geminiService.analyzeCV(file.text);
+    }
+
 }

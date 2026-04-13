@@ -15,6 +15,8 @@ import { SettingModule } from './setting/setting.module';
 import { CvAnalyzerModule } from './cv-analyzer/cv-analyzer.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { AdminModule } from './admin/admin.module';
+import { CacheModule } from '@nestjs/cache-manager';
+import { redisStore } from 'cache-manager-redis-yet';
 
 @Module({
   imports: [
@@ -34,8 +36,20 @@ import { AdminModule } from './admin/admin.module';
     CvAnalyzerModule,
     SubscriptionModule,
     AdminModule,
+    CacheModule.registerAsync({
+      useFactory: async () => ({
+        store: await redisStore({
+          socket: {
+            host: 'localhost',
+            port: 6379,
+          },
+          ttl: 3600, // 1 giờ (giây)
+        }),
+      }),
+    }),
   ],
   controllers: [AppController],
   providers: [AppService],
+  
 })
 export class AppModule {}

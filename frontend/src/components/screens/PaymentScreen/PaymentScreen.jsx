@@ -158,7 +158,7 @@ export default function PaymentScreen() {
                 )
               })}
             </div>
-            <div className="pay-compare-note">🔒 Thanh toán bảo mật SSL · Hủy bất cứ lúc nào · Hoàn tiền trong 7 ngày nếu không hài lòng</div>
+           
           </div>
         )}
 

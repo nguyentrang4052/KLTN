@@ -233,7 +233,7 @@ export class GeminiService {
     private readonly genAI: GoogleGenerativeAI;
 
     // Danh sách model theo thứ tự ưu tiên
-    private readonly model = 'gemini-2.5-flash';
+    private readonly model = 'gemini-3-flash-preview';
 
     constructor(private readonly configService: ConfigService) {
         const apiKey = this.configService.get<string>('GEMINI_API_KEY');
@@ -244,20 +244,18 @@ export class GeminiService {
     }
 
     async analyzeCV(cvText: string, retryCount = 0): Promise<any> {
+    try {
+        this.logger.log(`Analyzing with model: ${this.model} (attempt ${retryCount + 1})`);
 
+        const generativeModel = this.genAI.getGenerativeModel({
+            model: this.model,
+            generationConfig: {
+                temperature: 0.1,
+                maxOutputTokens: 4000,
+            }
+        });
 
-        try {
-            this.logger.log(`Analyzing with model: ${this.model} (attempt ${retryCount + 1})`);
-
-            const generativeModel = this.genAI.getGenerativeModel({
-                model: this.model,
-                generationConfig: {
-                    temperature: 0.1,
-                    maxOutputTokens: 4000,
-                }
-            });
-
-            const systemPrompt = `You are a professional CV analyzer. Extract information from the CV and return ONLY a valid JSON object with this exact structure:
+          const systemPrompt = `You are a professional CV analyzer. Extract information from the CV and return ONLY a valid JSON object with this exact structure:
 {
   "personalInfo": {
     "fullName": "string",
@@ -356,31 +354,189 @@ Awards:
                     },
                 ],
             });
+// ... prompt và chat logic giữ nguyên ...
 
-            const result = await chat.sendMessage(
-                `Extract information from this CV into JSON format:\n\n${cvText}`
-            );
+        const result = await chat.sendMessage(
+            `Extract information from this CV into JSON format:\n\n${cvText}`
+        );
 
-            const response = await result.response;
-            const text = response.text();
+        const response = await result.response;
+        const text = response.text();
+        this.logger.log(`Analysis successful (attempt ${retryCount + 1})`);
 
-            this.logger.log(`Analysis successful with ${this.model}`);
+        return this.extractJsonFromResponse(text);
 
-            return this.extractJsonFromResponse(text);
+    } catch (error: any) {
+        // ✅ FIX: Kiểm tra status code đúng cách
+        const statusCode = error?.status || error?.response?.status || 
+                          (error?.message?.includes('503') ? 503 : null) ||
+                          (error?.message?.includes('429') ? 429 : null);
 
-        } catch (error: any) {
-            // Lỗi 503 (Service Unavailable) hoặc 429 (Rate Limit) -> retry hoặc chuyển model
-            if ((error.status === 503 || error.status === 429) && retryCount < 2) {
-                this.logger.warn(`${this.model} overloaded, waiting 3s and retrying...`);
-                await this.delay(3000);
-                return this.analyzeCV(cvText, retryCount + 1);
-            } throw new HttpException(
-                `Gemini API Error: ${error.message}`,
-                HttpStatus.BAD_REQUEST,
-            );
+        this.logger.error(`Attempt ${retryCount + 1} failed:`, {
+            statusCode,
+            message: error?.message,
+            errorType: error?.constructor?.name
+        });
 
+        // ✅ FIX: Retry với điều kiện đúng
+        const isRetryableError = statusCode === 503 || statusCode === 429;
+        const shouldRetry = isRetryableError && retryCount < 2;
+
+        if (shouldRetry) {
+            const delayMs = 3000 * (retryCount + 1); // 3s, 6s
+            this.logger.warn(`Retry ${retryCount + 1}/2 after ${delayMs}ms...`);
+            await this.delay(delayMs);
+            return this.analyzeCV(cvText, retryCount + 1);
         }
+
+        // ✅ FIX: Throw với status code chính xác
+        const finalStatus = statusCode === 503 ? HttpStatus.SERVICE_UNAVAILABLE : HttpStatus.BAD_REQUEST;
+        
+        throw new HttpException(
+            `Gemini API Error: ${error?.message || 'Unknown error'}`,
+            finalStatus,
+        );
     }
+}
+
+//     async analyzeCV(cvText: string, retryCount = 0): Promise<any> {
+
+
+//         try {
+//             this.logger.log(`Analyzing with model: ${this.model} (attempt ${retryCount + 1})`);
+
+//             const generativeModel = this.genAI.getGenerativeModel({
+//                 model: this.model,
+//                 generationConfig: {
+//                     temperature: 0.1,
+//                     maxOutputTokens: 4000,
+//                 }
+//             });
+
+//             const systemPrompt = `You are a professional CV analyzer. Extract information from the CV and return ONLY a valid JSON object with this exact structure:
+// {
+//   "personalInfo": {
+//     "fullName": "string",
+//     "email": "string", 
+//     "phone": "string",
+//     "address": "string",
+//     "linkedin": "string",
+//     "portfolio": "string"
+//   },
+//   "experiences": [
+//     {
+//       "company": "string",
+//       "position": "string",
+//       "duration": "string",
+//       "description": "string"
+//     }
+//   ],
+//   "education": [
+//     {
+//       "institution": "string",
+//       "degree": "string",
+//       "year": "string",
+//       "gpa": "string",
+//     }
+//   ],
+//   "skills": [
+//     {
+//       "category": "string",
+//       "items": "string"
+//     }
+//   ],
+//   "activities": [
+//     {
+//       "organization": "string",
+//       "role": "string",
+//       "duration": "string",
+//       "description": "string"
+//     }
+//   ],
+//   "awards": [
+//     {
+//       "title": "string",
+//       "issuer": "string",
+//       "year": "string",
+//       "description": "string"
+//     }
+//   ],
+//   "certifications": [
+//     {
+//       "name": "string",
+//       "issuer": "string",
+//       "year": "string",
+//       "score": "string"
+//     }
+//   ],
+//   "summary": "string - brief summary of the candidate"
+// }
+
+// Rules:
+// - Return ONLY the JSON, no markdown formatting (no \`\`\`json), no explanation text
+// - Use null or empty string for missing fields
+// - Ensure valid JSON syntax
+// - Be precise with dates and contact information
+
+// Education:
+// - Extract GPA if explicitly mentioned
+// - GPA examples: "3.6/4.0", "8.5/10", "Distinction", "First Class"
+// - Do NOT infer or calculate GPA
+
+// Certifications:
+// - Extract score/grade if explicitly mentioned
+// - Examples:
+//   - "TOEIC 850" → score = "850"
+//   - "IELTS 7.5" → score = "7.5"
+//   - "AWS Certified - 820/1000" → score = "820/1000"
+//   - "Passed" → score = "Passed"
+// - Extract credentialId only if explicitly present
+// - Extract credentialUrl only if explicitly present
+// - Do NOT hallucinate IDs or scores
+
+// Activities:
+// - Include extracurricular, volunteering, clubs, organizations
+
+// Awards:
+// - Include honors, achievements, scholarships, competitions`;
+
+//             const chat = generativeModel.startChat({
+//                 history: [
+//                     {
+//                         role: 'user',
+//                         parts: [{ text: systemPrompt }],
+//                     },
+//                     {
+//                         role: 'model',
+//                         parts: [{ text: 'I understand. I will extract CV information and return only valid JSON without any markdown formatting or explanation.' }],
+//                     },
+//                 ],
+//             });
+
+//             const result = await chat.sendMessage(
+//                 `Extract information from this CV into JSON format:\n\n${cvText}`
+//             );
+
+//             const response = await result.response;
+//             const text = response.text();
+
+//             this.logger.log(`Analysis successful with ${this.model}`);
+
+//             return this.extractJsonFromResponse(text);
+
+//         } catch (error: any) {
+            
+//             if ((error.status === 503 || error.status === 429) && retryCount < 2) {
+//                 this.logger.warn(`${this.model} overloaded, waiting 3s and retrying...`);
+//                 await this.delay(5000);
+//                 return this.analyzeCV(cvText, retryCount + 1);
+//             } throw new HttpException(
+//                 `Gemini API Error: ${error.message}`,
+//                 HttpStatus.BAD_REQUEST,
+//             );
+
+//         }
+//     }
 
     /**
      * Multi-turn analysis với verification (tương tự reasoning của OpenRouter)
