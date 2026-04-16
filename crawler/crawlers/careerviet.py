@@ -72,6 +72,24 @@ class CareerVietCrawler(BaseCrawler):
     async def _random_wait(self, min_ms=500, max_ms=1200):
         await asyncio.sleep(random.uniform(min_ms, max_ms) / 1000)
 
+    def _clean_section_text(self, text: str) -> str:
+        if not text:
+            return ""
+
+        patterns = [
+            r"^\s*MÔ TẢ CÔNG VIỆC\s*:?\s*",
+            r"^\s*YÊU CẦU CÔNG VIỆC\s*:?\s*",
+            r"^\s*THÔNG TIN KHÁC\s*:?\s*",
+            r"^\s*JOB DESCRIPTION\s*:?\s*",
+            r"^\s*REQUIREMENT[S]?\s*:?\s*",
+            r"^\s*ADDITIONAL INFORMATION\s*:?\s*",
+        ]
+
+        for p in patterns:
+            text = re.sub(p, "", text, flags=re.IGNORECASE)
+
+        return text.strip()
+
     # =========================
     # STEP 1: CATEGORIES
     # =========================
@@ -81,8 +99,8 @@ class CareerVietCrawler(BaseCrawler):
         seen = set()
 
         try:
-            await page.goto(BASE_URL, timeout=30000, wait_until="domcontentloaded")
-            await page.wait_for_timeout(1000)
+            await page.goto(BASE_URL, timeout=50000, wait_until="domcontentloaded")
+            await page.wait_for_timeout(2000)
 
             for _ in range(10):
                 try:
@@ -130,12 +148,8 @@ class CareerVietCrawler(BaseCrawler):
         
         try:
             await page.goto(category["url"], timeout=30000, wait_until="domcontentloaded")
-
-            # ✅ FIX 1: scroll để trigger lazy load
             await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
             await page.wait_for_timeout(1000)
-
-            # ✅ FIX 2: wait đúng element (QUAN TRỌNG NHẤT)
             await page.wait_for_function(
                 "() => document.querySelectorAll('a.job_link').length > 0",
                 timeout=15000
@@ -148,8 +162,6 @@ class CareerVietCrawler(BaseCrawler):
                     break
 
                 print(f"[CareerViet] Page {page_num}")
-
-                # scroll mỗi page
                 await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
                 await page.wait_for_timeout(800)
 
@@ -162,31 +174,40 @@ class CareerVietCrawler(BaseCrawler):
                             continue
                             
                         job_link = urljoin(BASE_URL, href)
+                        if job_link in seen:
+                            continue
+                        
+                        seen.add(job_link)
 
-                        # ✅ FIX 3: bỏ filter /viec-lam/
-                        if job_link not in seen:
-                            seen.add(job_link)
+                        # Lấy company_url từ container và embed vào link
+                        company_href = await job.evaluate("""(el) => {
+                            let container = el.closest('.job-item, .job-box, .item-job, [class*="job-item"]');
+                            if (!container) container = el.parentElement?.parentElement?.parentElement;
+                            if (container) {
+                                const compLink = container.querySelector('a[href*="/company/"], .company-name a, a.employer-name');
+                                if (compLink) return compLink.getAttribute('href');
+                            }
+                            return null;
+                        }""")
+                        
+                        if company_href:
+                            company_url = urljoin(BASE_URL, company_href)
+                            job_links.append(f"{job_link}|{company_url}")
+                        else:
                             job_links.append(job_link)
 
                     except:
                         continue
 
-                # ===== PAGINATION =====
+                # Pagination
                 next_page_num = page_num + 1
-
-                page_btn = await page.query_selector(
-                    f".pagination li a:has-text('{next_page_num}')"
-                )
-
+                page_btn = await page.query_selector(f".pagination li a:has-text('{next_page_num}')")
                 if not page_btn:
                     break
 
                 try:
                     first_job_before = await page.get_attribute("a.job_link", "href")
-
                     await page_btn.click()
-
-                    # ✅ FIX 4: wait page change đúng cách
                     await page.wait_for_function(
                         """(oldLink) => {
                             const el = document.querySelector('a.job_link');
@@ -195,9 +216,7 @@ class CareerVietCrawler(BaseCrawler):
                         arg=first_job_before,
                         timeout=10000,
                     )
-
                     page_num += 1
-
                 except:
                     break
 
@@ -213,28 +232,22 @@ class CareerVietCrawler(BaseCrawler):
     # =========================
     # STEP 3: JOB DETAIL
     # =========================
-    def _clean_section_text(self, text: str) -> str:
-        if not text:
-            return ""
-
-        patterns = [
-            r"^\s*MÔ TẢ CÔNG VIỆC\s*:?\s*",
-            r"^\s*YÊU CẦU CÔNG VIỆC\s*:?\s*",
-            r"^\s*THÔNG TIN KHÁC\s*:?\s*",
-            r"^\s*JOB DESCRIPTION\s*:?\s*",
-            r"^\s*REQUIREMENT[S]?\s*:?\s*",
-            r"^\s*ADDITIONAL INFORMATION\s*:?\s*",
-        ]
-
-        for p in patterns:
-            text = re.sub(p, "", text, flags=re.IGNORECASE)
-
-        return text.strip()
     async def get_job_detail(self, url: str, industry: str) -> dict:
+        """
+        url có thể là:
+          - "https://careerviet.vn/vi/...html"                  (không có company)
+          - "https://careerviet.vn/vi/...html|https://...company" (có company embed)
+        """
+        # ─── Parse company_url từ link nếu có ───────────────────
+        if "|" in url:
+            job_url, company_url_hint = url.split("|", 1)
+        else:
+            job_url, company_url_hint = url, ""
+
         ctx, page = await self._new_page()
         
         try:
-            await page.goto(url, timeout=30000, wait_until="networkidle")
+            await page.goto(job_url, timeout=30000, wait_until="networkidle")
             
             await page.wait_for_selector(
                 "h1.title, .head-right h2, .head-left .title h2, "
@@ -294,7 +307,6 @@ class CareerVietCrawler(BaseCrawler):
             ])
 
             # Description/Requirement/Other
-
             description = requirement = other = ""
             
             sections = await page.query_selector_all(".full-content")
@@ -338,7 +350,7 @@ class CareerVietCrawler(BaseCrawler):
                     except:
                         continue
 
-            # Fallback
+            # Fallback description/requirement
             if not description or not requirement:
                 blocks = await page.query_selector_all(".detail-row")
                 for block in blocks:
@@ -356,35 +368,53 @@ class CareerVietCrawler(BaseCrawler):
                     except:
                         continue
 
+            # ─── Lấy company_url ────────────────────────────────
+            # Ưu tiên 1: URL embed trong link (chính xác 100% vì lấy từ cùng row job)
+            company_url = company_url_hint
+            company_name_from_page = ""
 
-            # Company
-            company_name = ""
-            company_url = ""
+            # Ưu tiên 2: Lấy từ trang job detail (nhiều selector)
+            if not company_url:
+                for sel in [
+                    "a.company-name[href*='/company/']",
+                    ".box-company a[href*='/company/']",
+                    ".company-info a[href*='/company/']",
+                    ".head-company a[href*='/company/']",
+                    "a[href*='/nha-tuyen-dung/']",
+                    "a[href*='/company/']",
+                ]:
+                    el = await page.query_selector(sel)
+                    if el:
+                        href = await el.get_attribute("href")
+                        if href:
+                            company_url = urljoin(BASE_URL, href)
+                            company_name_from_page = (await el.inner_text()).strip()
+                            break
 
-            company_a = await page.query_selector(
-                ".company-info a.company-name, "
-                ".logo-company a, "
-                ".company-name a, "
-                "a.company-name"
-            )
+            # Fallback company name nếu chưa có
+            if not company_name_from_page:
+                for sel in [
+                    "a.company-name",
+                    ".box-company .company-name",
+                    ".company-info .company-name",
+                    ".head-company .company-name",
+                    ".employer-name",
+                ]:
+                    company_name_from_page = await gt(sel)
+                    if company_name_from_page:
+                        break
 
-            if company_a:
-                company_name = (await company_a.inner_text()).strip()
-                href = await company_a.get_attribute("href")
-                if href:
-                    company_url = urljoin(BASE_URL, href)
+            print(f"[CareerViet] company_url={'(from link)' if company_url_hint else '(from page)'}: {company_url or 'KHÔNG CÓ'}")
+            print(f"[CareerViet] company_name_from_page: {company_name_from_page or 'KHÔNG CÓ'}")
 
-            # 🚀 fallback nếu không có link
-            if not company_name:
-                company_name = await gt(".company-info .company-name") or "Không rõ"
-
+            # ─── Crawl company detail ────────────────────────────
             company = await self._crawl_company(company_url)
 
-            # 🚀 ensure name luôn có
-            if not company.get("companyName"):
-                company["companyName"] = company_name or "Không rõ"
+            # Đảm bảo companyName luôn có
+            if not company.get("companyName") or company.get("companyName") == "Không rõ":
+                company["companyName"] = company_name_from_page or "Không rõ"
 
-            print(f"[CareerViet] Crawled: {title} - {url} - OK")
+            print(f"[CareerViet] Crawled: {title} | company: {company.get('companyName')} | {job_url}")
 
             return {
                 "industry": industry,
@@ -403,7 +433,7 @@ class CareerVietCrawler(BaseCrawler):
                     "postedAt": posted_at,
                     "deadline": deadline,
                     "sourcePlatform": "CareerViet",
-                    "sourceLink": url,
+                    "sourceLink": job_url,
                 },
                 "company": company,
             }
@@ -440,17 +470,15 @@ class CareerVietCrawler(BaseCrawler):
         
         try:
             await page.goto(url, timeout=30000, wait_until="networkidle")
-            # await page.wait_for_selector(".company-info, #cp_company_name", timeout=10000)
             try:
                 await page.wait_for_selector(
-                    ".company-info, #cp_company_name",
+                    ".company-info, #cp_company_name, .head-company",
                     timeout=20000
                 )
             except:
-                # retry lần 2 (nhiều page load chậm)
                 await page.wait_for_timeout(2000)
                 await page.wait_for_selector(
-                    ".company-info, #cp_company_name",
+                    ".company-info, #cp_company_name, .head-company",
                     timeout=10000
                 )
 
@@ -461,8 +489,19 @@ class CareerVietCrawler(BaseCrawler):
                 except:
                     return default
 
-            # Name
-            name = await gt(".company-info h1.name") or await gt("#cp_company_name") or await gt(".company-info .company-name")
+            # Name — nhiều selector fallback
+            name = ""
+            for sel in [
+                ".company-info h1.name",
+                "#cp_company_name",
+                ".company-info .company-name",
+                ".head-company h1",
+                ".head-company .name",
+                "h1.employer-name",
+            ]:
+                name = await gt(sel)
+                if name:
+                    break
 
             # Size
             size = ""
@@ -483,7 +522,7 @@ class CareerVietCrawler(BaseCrawler):
 
             # Logo
             logo = ""
-            for sel in [".company-info .img img", ".logo img"]:
+            for sel in [".company-info .img img", ".logo img", ".head-company .logo img"]:
                 img = await page.query_selector(sel)
                 if img:
                     src = await img.get_attribute("src") or ""
@@ -510,10 +549,15 @@ class CareerVietCrawler(BaseCrawler):
 
             # Address
             address = ""
-            for sel in [".company-info .content p", "#cp_company_name + ul li:first-child", ".company-info .company-location"]:
+            for sel in [
+                ".company-info .content p",
+                "#cp_company_name + ul li:first-child",
+                ".company-info .company-location",
+                "li:has-text('Địa chỉ')",
+            ]:
                 address = await gt(sel)
                 if address:
-                    address = re.sub(r"Địa chỉ", "", address, flags=re.IGNORECASE).strip()
+                    address = re.sub(r"Địa chỉ\s*:?\s*", "", address, flags=re.IGNORECASE).strip()
                     break
 
             return {
@@ -525,23 +569,15 @@ class CareerVietCrawler(BaseCrawler):
                 "companyProfile": profile,
             }
         except Exception as e:
-            print(f"[CareerViet] Lỗi company {url} - {name or 'Không rõ'}: {e}")
+            print(f"[CareerViet] Lỗi company {url}: {e}")
             return {"companyName": "Không rõ", "companyWebsite": url}
         finally:
             await self._save_cookies(ctx)
             await ctx.close()
 
-
-
-
-
-
-
-
-
-
-
-
+    # =========================
+    # STEP 2b: GET LINKS FOR PAGE
+    # =========================
     async def get_job_links_for_page(self, category: dict, page: int) -> tuple[list[str], bool]:
         ctx, page_obj = await self._new_page()
         job_links = []
@@ -550,51 +586,63 @@ class CareerVietCrawler(BaseCrawler):
         try:
             base_url = category["url"]
             
-            # ===== FIX: CareerViet dùng /trang-{page}-vi.html =====
             if page > 1:
-                # Tách phần base: nhân-su-c22-vi.html → nhân-su-c22-trang-2-vi.html
-                # Hoặc: ...c22.html → ...c22-trang-2.html
                 if "-vi.html" in base_url:
                     url = base_url.replace("-vi.html", f"-trang-{page}-vi.html")
                 elif ".html" in base_url:
                     url = base_url.replace(".html", f"-trang-{page}.html")
                 else:
-                    # Fallback nếu không có .html
                     url = f"{base_url}?currentPage={page}"
             else:
                 url = base_url
 
-            print(f"[CareerViet Debug] Truy cập: {url}")
+            print(f"[CareerViet] Truy cập: {url}")
             
             await page_obj.goto(url, timeout=30000, wait_until="domcontentloaded")
             await page_obj.evaluate("window.scrollTo(0, document.body.scrollHeight)")
             await page_obj.wait_for_timeout(1500)
 
-            # Chờ element
             try:
                 await page_obj.wait_for_function(
                     "() => document.querySelectorAll('a.job_link').length > 0",
                     timeout=15000
                 )
             except:
-                print(f"[CareerViet Debug] Không tìm thấy job_link")
+                print(f"[CareerViet] Không tìm thấy job_link tại page {page}")
                 return [], False
 
             job_nodes = await page_obj.query_selector_all("a.job_link")
-            print(f"[CareerViet Debug] Tìm thấy {len(job_nodes)} jobs")
+            print(f"[CareerViet] Page {page}: {len(job_nodes)} jobs")
 
             for job in job_nodes:
                 try:
                     href = await job.get_attribute("href")
-                    if href:
-                        job_link = urljoin(BASE_URL, href)
-                        if job_link not in seen:
-                            seen.add(job_link)
-                            job_links.append(job_link)
+                    if not href:
+                        continue
+                    job_link = urljoin(BASE_URL, href)
+                    if job_link in seen:
+                        continue
+                    seen.add(job_link)
+
+                    # Lấy company_url từ cùng row và embed vào link
+                    company_href = await job.evaluate("""(el) => {
+                        let container = el.closest('.job-item, .job-box, .item-job, [class*="job-item"]');
+                        if (!container) container = el.parentElement?.parentElement?.parentElement;
+                        if (container) {
+                            const comp = container.querySelector('a[href*="/company/"], .company-name a, a.employer-name');
+                            if (comp) return comp.getAttribute('href');
+                        }
+                        return null;
+                    }""")
+                    
+                    if company_href:
+                        company_url = urljoin(BASE_URL, company_href)
+                        job_links.append(f"{job_link}|{company_url}")
+                    else:
+                        job_links.append(job_link)
                 except:
                     continue
 
-            # Check next
             has_next = False
             try:
                 next_page_num = page + 1
@@ -612,36 +660,31 @@ class CareerVietCrawler(BaseCrawler):
             await self._save_cookies(ctx)
             await ctx.close()
 
-
+    # =========================
+    # SEARCH BY KEYWORD
+    # =========================
     async def search_by_keyword(self, keyword: str, page: int = 1) -> tuple[list[str], bool]:
-        """Search CareerViet với URL đúng: /viec-lam/{Keyword}-k-vi.html"""
+        """Search CareerViet với URL: /viec-lam/{Keyword}-k-vi.html"""
         if not keyword:
             return await self.get_categories("")
         
         ctx, page_obj = await self._new_page()
         
         try:
-            # Format: /viec-lam/Business-Analyst-k-vi.html
-            # Keyword viết hoa chữ cái đầu, thay space bằng -
             keyword_formatted = '-'.join(keyword.split())
             
             if page == 1:
                 url = f"https://careerviet.vn/viec-lam/{keyword_formatted}-k-vi.html"
-
             else:
-                # Page 2+: thêm ?currentPage=2
                 url = f"https://careerviet.vn/viec-lam/{keyword_formatted}-k-trang-{page}-vi.html"
 
-            
             print(f"[CareerViet Search] 🔗 Truy cập: {url}")
             print(f"[CareerViet Search] 🔍 Tìm: '{keyword}' (formatted: '{keyword_formatted}')")
         
-            
             await page_obj.goto(url, timeout=30000, wait_until="domcontentloaded")
             await page_obj.evaluate("window.scrollTo(0, document.body.scrollHeight)")
             await page_obj.wait_for_timeout(1500)
             
-            # Chờ job links
             try:
                 await page_obj.wait_for_function(
                     "() => document.querySelectorAll('a.job_link').length > 0",
@@ -657,30 +700,31 @@ class CareerVietCrawler(BaseCrawler):
             for job in job_nodes:
                 try:
                     href = await job.get_attribute("href")
-                    if href:
-                        job_link = urljoin(BASE_URL, href)
-                        if job_link not in seen:
-                            seen.add(job_link)
-                            company_el = await job.evaluate("""el => {
-                                const container = el.closest('.job-item, .job-list-item');
-                                if (!container) return null;
-                                const comp = container.querySelector('.company-name a, .logo-company a, a[href*="/company/"]');
-                                return comp ? comp.getAttribute('href') : null;
-                            }""")
-                            
-                            company_url = urljoin(BASE_URL, company_el) if company_el else ""
-                            
-                            if company_url:
-                                links.append(f"{job_link}|{company_url}")
-                            else:
-                                links.append(job_link)
+                    if not href:
+                        continue
+                    job_link = urljoin(BASE_URL, href)
+                    if job_link in seen:
+                        continue
+                    seen.add(job_link)
+
+                    # Lấy company_url từ cùng row
+                    company_el = await job.evaluate("""el => {
+                        const container = el.closest('.job-item, .job-list-item');
+                        if (!container) return null;
+                        const comp = container.querySelector('.company-name a, .logo-company a, a[href*="/company/"]');
+                        return comp ? comp.getAttribute('href') : null;
+                    }""")
+                    
+                    if company_el:
+                        company_url = urljoin(BASE_URL, company_el)
+                        links.append(f"{job_link}|{company_url}")
+                    else:
+                        links.append(job_link)
                 except:
                     continue
             
-            # Check next page
             has_next = False
             try:
-                # CareerViet dùng ?currentPage=
                 next_page = page + 1
                 next_btn = await page_obj.query_selector(f".pagination a[href*='currentPage={next_page}']")
                 has_next = next_btn is not None

@@ -17,6 +17,8 @@ import { SubscriptionModule } from './subscription/subscription.module';
 import { AdminModule } from './admin/admin.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-yet';
+import {NotificationModule} from './notification/notification.module';
+
 
 @Module({
   imports: [
@@ -47,6 +49,7 @@ import { redisStore } from 'cache-manager-redis-yet';
         }),
       }),
     }),
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

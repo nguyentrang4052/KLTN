@@ -49,11 +49,11 @@ export default function MyCVScreen({ cvList = [], onNew, onEdit, onDelete }) {
                     <button
                       onClick={() => onEdit(cv)}
                       className="btn-edit"
-                      style={{ background: cv.accent || "#333" }}
+                      style={{ background: "#333" }}
                     >
                       Chỉnh sửa
                     </button>
-                    <button
+                    <button 
                       onClick={() => onDelete(cv.id)}
                       className="btn-delete"
                     >

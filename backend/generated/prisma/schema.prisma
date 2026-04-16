@@ -1,0 +1,208 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  accountID Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  provider  String
+  createdAt DateTime @default(now())
+  active    Boolean  @default(true)
+
+  user User?
+}
+
+model User {
+  userID    Int     @id @default(autoincrement())
+  fullName  String?
+  birthYear Int?
+  phone     String?
+  gender    String?
+  address   String?
+
+  accountID Int     @unique
+  account   Account @relation(fields: [accountID], references: [accountID])
+
+  profiles           UserProfile[]
+  skills             UserSkill[]
+  cvs                CV[]
+  savedJobs          SavedJob[]
+  behaviors          UserBehavior[]
+  applications       ApplyHistory[]
+  jobRecommendations JobRecommendation[]
+}
+
+model UserProfile {
+  id             Int      @id @default(autoincrement())
+  jobTitle       String?
+  experienceYear Int?
+  careerLevel    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  userID     Int
+  user       User      @relation(fields: [userID], references: [userID])
+  industryID Int?
+  industry   Industry? @relation(fields: [industryID], references: [id])
+}
+
+model UserSkill {
+  id      Int @id @default(autoincrement())
+  userID  Int
+  skillID Int
+
+  user  User  @relation(fields: [userID], references: [userID])
+  skill Skill @relation(fields: [skillID], references: [skillID])
+}
+
+model CV {
+  id     Int    @id @default(autoincrement())
+  userID Int
+  title  String
+
+  user User @relation(fields: [userID], references: [userID])
+
+  applications ApplyHistory[]
+}
+
+model Company {
+  companyID      Int     @id @default(autoincrement())
+  companyName    String
+  companyWebsite String?
+  companyProfile String?
+  address        String?
+  companySize    String?
+  companyLogo    String?
+
+  jobs Job[]
+}
+
+model Job {
+  jobID          Int       @id @default(autoincrement())
+  companyID      Int
+  industryID     Int?
+  title          String?
+  location       String?
+  salary         String?
+  description    String?
+  requirement    String?
+  benefit        String?
+  jobType        String?
+  workingTime    String?
+  experienceYear Int?
+  postedAt       DateTime  @default(now())
+  deadline       DateTime?
+  sourcePlatform String?
+  sourceLink     String?
+  isActive       Boolean   @default(true)
+
+  company  Company   @relation(fields: [companyID], references: [companyID])
+  industry Industry? @relation(fields: [industryID], references: [id])
+
+  skills          JobSkill[]
+  savedJobs       SavedJob[]
+  behaviors       UserBehavior[]
+  applyHistories  ApplyHistory[]
+  sourceTrackings JobSourceTracking[]
+  recommendations JobRecommendation[]
+}
+
+model JobRecommendation {
+  id           Int      @id @default(autoincrement())
+  userID       Int
+  jobID        Int
+  matchPercent Float
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userID], references: [userID])
+  job  Job  @relation(fields: [jobID], references: [jobID])
+
+  @@unique([userID, jobID])
+}
+
+model JobSkill {
+  id      Int @id @default(autoincrement())
+  jobID   Int
+  skillID Int
+
+  job   Job   @relation(fields: [jobID], references: [jobID])
+  skill Skill @relation(fields: [skillID], references: [skillID])
+}
+
+model SavedJob {
+  id      Int      @id @default(autoincrement())
+  userID  Int
+  jobID   Int
+  savedAt DateTime @default(now())
+
+  user User @relation(fields: [userID], references: [userID])
+  job  Job  @relation(fields: [jobID], references: [jobID])
+}
+
+model Industry {
+  id   Int    @id @default(autoincrement())
+  name String
+
+  skills Skill[]
+  jobs   Job[]
+
+  userProfiles UserProfile[]
+}
+
+model Skill {
+  skillID    Int    @id @default(autoincrement())
+  industryID Int
+  name       String
+
+  industry Industry @relation(fields: [industryID], references: [id])
+
+  users UserSkill[]
+  jobs  JobSkill[]
+}
+
+model UserBehavior {
+  id        Int      @id @default(autoincrement())
+  userID    Int
+  jobID     Int
+  action    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userID], references: [userID])
+  job  Job  @relation(fields: [jobID], references: [jobID])
+}
+
+model ApplyHistory {
+  id        Int      @id @default(autoincrement())
+  userID    Int
+  jobID     Int
+  cvID      Int
+  status    String
+  appliedAt DateTime @default(now())
+
+  user User @relation(fields: [userID], references: [userID])
+  job  Job  @relation(fields: [jobID], references: [jobID])
+  cv   CV   @relation(fields: [cvID], references: [id])
+}
+
+model JobSourceTracking {
+  id            Int      @id @default(autoincrement())
+  jobID         Int
+  platform      String
+  externalJobID String
+  crawledAt     DateTime @default(now())
+
+  job Job @relation(fields: [jobID], references: [jobID])
+}

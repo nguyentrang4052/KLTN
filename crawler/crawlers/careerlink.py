@@ -56,7 +56,6 @@ class CareerLinkCrawler(BaseCrawler):
         categories = []
         try:
             ok = await self._goto_and_wait(page, BASE_URL)
-            print("ALLOOOOOOOOOOOOOOOOO")
             if not ok: 
                 print("[CareerLink] ❌ Không thể truy cập trang chủ")
                 return []

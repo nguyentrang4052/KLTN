@@ -39,6 +39,8 @@ model User {
   payments      Payment[]
   quotas UserQuota[]
   refundRequests RefundRequest[]
+  emailNotificationsEnabled Boolean      @default(false)
+  notifications Notification[]
 }
 
 model UserProfile {
@@ -114,6 +116,7 @@ model Job {
   sourceTrackings JobSourceTracking[]
   savedJobs       SavedJob[]
   behaviors       UserBehavior[]
+  notifications Notification[]
 }
 
 model JobRecommendation {
@@ -282,4 +285,22 @@ model RefundRequest {
 
   user    User    @relation(fields: [userID], references: [userID])
   payment Payment @relation(fields: [paymentID], references: [id])
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userID    Int
+  title     String
+  content   String
+  type      String   // 'deadline' | 'expired'
+  isRead    Boolean  @default(false)
+  emailSent Boolean  @default(false)  
+  jobID    Int?     
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userID], references: [userID])
+  job       Job?     @relation(fields: [jobID], references: [jobID])
+  
+  @@index([userID])
+  @@index([jobID])
 }
