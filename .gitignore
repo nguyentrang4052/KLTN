@@ -81,3 +81,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+venv/
+ai_service/venv/
+crawl/venv/
