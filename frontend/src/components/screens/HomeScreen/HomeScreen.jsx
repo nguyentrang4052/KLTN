@@ -44,22 +44,22 @@ const CAT_PAGE_SIZE = 8
 
 export default function HomeScreen() {
   const navigate = useNavigate()
-  const location = useLocation()  // Object từ react-router
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const resultsRef = useRef(null)
 
   const [token, setToken] = useState(() => getToken())
 
-  // Đọc state từ URL
+  // Đọc state từ URL - chỉ đọc 1 lần khi mount
   const [keyword, setKeyword] = useState(() => searchParams.get('keyword') || '')
-  const [locationFilter, setLocationFilter] = useState(() => searchParams.get('location') || '')  // ✅ Đổi tên thành locationFilter
+  const [locationFilter, setLocationFilter] = useState(() => searchParams.get('location') || '')
   const [sort, setSort] = useState(() => searchParams.get('sort') || 'newest')
   const [page, setPage] = useState(() => parseInt(searchParams.get('page') || '1'))
   const [industryFilter, setIndustryFilter] = useState(() => {
     const ind = searchParams.get('industry')
     return ind ? parseInt(ind) : null
   })
-  const [activePlatform, setActivePlatform] = useState(() => 
+  const [activePlatform, setActivePlatform] = useState(() =>
     searchParams.get('platform') || 'Tất cả'
   )
 
@@ -68,7 +68,6 @@ export default function HomeScreen() {
   const [recommendations, setRecommendations] = useState([])
   const [industries, setIndustries] = useState([])
   const [catPage, setCatPage] = useState(0)
-  // const [activePlatform, setActivePlatform] = useState('Tất cả')
   const [loadingIndustries, setLoadingIndustries] = useState(false)
 
   const [stats, setStats] = useState(null)
@@ -84,50 +83,55 @@ export default function HomeScreen() {
   const [isRealtime, setIsRealtime] = useState(false)
   const eventSourceRef = useRef(null)
 
-  // Hàm cập nhật URL
+  // Hàm cập nhật URL - KHÔNG dùng searchParams trong dependency để tránh loop
   const updateURLParams = useCallback((updates) => {
-    const newParams = new URLSearchParams(searchParams)
-    
-    Object.entries(updates).forEach(([key, value]) => {
-      if (value === null || value === undefined || value === '' || value === 'Tất cả') {
-        newParams.delete(key)
-      } else {
-        newParams.set(key, String(value))
-      }
-    })
-    
-    setSearchParams(newParams, { replace: true })
-  }, [searchParams, setSearchParams])
+    setSearchParams(prevParams => {
+      const newParams = new URLSearchParams(prevParams)
+      
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value === null || value === undefined || value === '' || value === 'Tất cả') {
+          newParams.delete(key)
+        } else {
+          newParams.set(key, String(value))
+        }
+      })
+      
+      return newParams
+    }, { replace: true })
+  }, [setSearchParams])
 
-  // Sync state vào URL
-  useEffect(() => {
-    updateURLParams({ page: page > 1 ? page : null })
-  }, [page, updateURLParams])
-
+  // Chỉ sync URL khi sort thay đổi (KHÔNG gọi setPage)
   useEffect(() => {
     updateURLParams({ sort: sort !== 'newest' ? sort : null })
   }, [sort, updateURLParams])
 
+  // Chỉ sync URL khi industry thay đổi (KHÔNG gọi setPage)
   useEffect(() => {
     const newIndustry = industryFilter || null
     updateURLParams({ industry: newIndustry })
   }, [industryFilter, updateURLParams])
 
-  useEffect(() => {
-    updateURLParams({ platform: activePlatform !== 'Tất cả' ? activePlatform : null })
+  // Khi đổi platform: reset page về 1 và sync URL
+  const handlePlatformChange = useCallback((platform) => {
+    setActivePlatform(platform)
     setCatPage(0)
     setIndustryFilter(null)
     setPage(1)
-  }, [activePlatform, updateURLParams])
+    updateURLParams({ 
+      platform: platform !== 'Tất cả' ? platform : null,
+      page: null,
+      industry: null
+    })
+  }, [updateURLParams])
 
   // Khôi phục scroll khi back
   useEffect(() => {
     if (location.state?.scrollY) {
       const timer = setTimeout(() => {
         window.scrollTo(0, location.state.scrollY)
-        navigate(location.pathname + location.search, { 
-          replace: true, 
-          state: {} 
+        navigate(location.pathname + location.search, {
+          replace: true,
+          state: {}
         })
       }, 100)
       return () => clearTimeout(timer)
@@ -142,7 +146,7 @@ export default function HomeScreen() {
     return () => window.removeEventListener('focus', sync)
   }, [])
 
-  useEffect(() => { 
+  useEffect(() => {
     if (!token) {
       setSort('newest')
       setPage(1)
@@ -167,37 +171,62 @@ export default function HomeScreen() {
       .finally(() => setLoadingIndustries(false))
   }, [activePlatform])
 
-  const fetchJobs = useCallback(async () => {
-    setLoadingJobs(true)
-    try {
-      const params = new URLSearchParams({ page: String(page), limit: '9', sort })
-      if (keyword) params.set('keyword', keyword)
-      if (locationFilter) params.append('locations', locationFilter)  // Dùng locationFilter
-      if (industryFilter) params.set('industryId', String(industryFilter))
-      if (activePlatform && activePlatform !== 'Tất cả') params.set('source', activePlatform)
-
-      const headers = token ? { Authorization: `Bearer ${token}` } : {}
-      const res = await fetch(`${API}/jobs?${params}`, { headers })
-      const data = await res.json()
-      setJobs(data.data ?? [])
-      setMeta(data.meta ?? { total: 0, totalPages: 1 })
-    } catch (err) {
-      console.error('Fetch jobs error:', err)
-    } finally {
-      setLoadingJobs(false)
+  // Handler chuyển trang - chỉ set state, không gọi updateURLParams ở đây
+  const handlePageChange = useCallback((newPage) => {
+    if (newPage >= 1 && newPage <= meta.totalPages && newPage !== page) {
+      setPage(newPage)
+      resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
-  }, [page, sort, keyword, locationFilter, industryFilter, token, activePlatform])
+  }, [page, meta.totalPages])
 
-  useEffect(() => { fetchJobs() }, [fetchJobs])
+  // Effect fetch jobs - chạy khi page hoặc filter thay đổi, đồng thời update URL
+  useEffect(() => {
+    console.log('Fetching jobs with page:', page)
+    
+    const fetchJobs = async () => {
+      setLoadingJobs(true)
+      try {
+        const params = new URLSearchParams({ page: String(page), limit: '9', sort })
+        if (keyword) params.set('keyword', keyword)
+        if (locationFilter) params.append('locations', locationFilter)
+        if (industryFilter) params.set('industryId', String(industryFilter))
+        if (activePlatform && activePlatform !== 'Tất cả') params.set('source', activePlatform)
+
+        const headers = token ? { Authorization: `Bearer ${token}` } : {}
+        const res = await fetch(`${API}/jobs?${params}`, { headers })
+        const data = await res.json()
+        setJobs(data.data ?? [])
+        setMeta(data.meta ?? { total: 0, totalPages: 1 })
+
+        // Update URL sau khi fetch thành công - dùng functional update để tránh dependency loop
+        setSearchParams(prev => {
+          const newParams = new URLSearchParams(prev)
+          if (page > 1) {
+            newParams.set('page', String(page))
+          } else {
+            newParams.delete('page')
+          }
+          return newParams
+        }, { replace: true })
+        
+      } catch (err) {
+        console.error('Fetch jobs error:', err)
+      } finally {
+        setLoadingJobs(false)
+      }
+    }
+
+    fetchJobs()
+  }, [page, sort, keyword, locationFilter, industryFilter, token, activePlatform, setSearchParams])
 
   useEffect(() => {
     if (!token) { setRecommendations([]); return }
     setLoadingRecs(true)
     fetch(`${API}/jobs/recommendations`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
-      .then(data => { 
+      .then(data => {
         setRecommendations(Array.isArray(data) ? data : [])
-        setRecPage(1) 
+        setRecPage(1)
       })
       .catch(console.error)
       .finally(() => setLoadingRecs(false))
@@ -244,7 +273,7 @@ export default function HomeScreen() {
 
   const handleJobClick = (job) => {
     const currentScrollY = window.scrollY
-    
+
     if (!job.jobID || typeof job.jobID !== 'number') {
       console.error('Lỗi: jobID không hợp lệ!', job)
       alert('Lỗi: Không tìm thấy ID công việc.')
@@ -253,7 +282,7 @@ export default function HomeScreen() {
 
     trackBehavior(job.jobID, 'click')
     navigate(`/home/job/${job.jobID}`, {
-      state: { 
+      state: {
         scrollY: currentScrollY,
         fromPath: location.pathname + location.search
       }
@@ -262,9 +291,9 @@ export default function HomeScreen() {
 
   const handleSearch = async () => {
     setPage(1)
-    updateURLParams({ 
+    updateURLParams({
       keyword: keyword || null,
-      location: locationFilter || null,  // Thêm location vào URL
+      location: locationFilter || null,
       page: null
     })
 
@@ -272,13 +301,13 @@ export default function HomeScreen() {
 
     try {
       const sessionId = `search_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      
+
       const res = await fetch('http://localhost:8000/search-smart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           query: keyword,
-          session_id: sessionId 
+          session_id: sessionId
         })
       })
 
@@ -333,7 +362,7 @@ export default function HomeScreen() {
           setIsRealtime(false)
           es.close()
           setTimeout(() => {
-            fetchJobs()
+            // Không gọi fetchJobs() ở đây nữa để tránh loop
             setCrawlStatus(null)
           }, 3000)
           return
@@ -346,7 +375,7 @@ export default function HomeScreen() {
 
         setJobs(prev => {
           if (prev.find(j => j.jobID === jobID)) return prev
-          
+
           const newJob = {
             jobID: jobID,
             title: data.job?.title,
@@ -360,7 +389,7 @@ export default function HomeScreen() {
             sourcePlatform: data.job?.sourcePlatform,
             isNewJob: data.isNewJob ?? true,
           }
-          
+
           return [newJob, ...prev]
         })
 
@@ -387,7 +416,6 @@ export default function HomeScreen() {
       console.error('SSE error:', err)
       es.close()
       setIsRealtime(false)
-      setTimeout(fetchJobs, 2000)
     }
   }
 
@@ -398,7 +426,7 @@ export default function HomeScreen() {
         onClick={() => onPageChange(n)}>{n}</button>
     )
     const addDots = (k) => pages.push(<span key={k} className="hs-pg-dots">…</span>)
-    
+
     if (totalPages <= 7) {
       for (let i = 1; i <= totalPages; i++) addBtn(i)
     } else {
@@ -500,22 +528,22 @@ export default function HomeScreen() {
             <div className="hs-hero-search">
               <div className="hs-sf">
                 <span className="hs-sf-ico">🔍</span>
-                <input 
-                  className="hs-sf-inp" 
+                <input
+                  className="hs-sf-inp"
                   placeholder="Tên công việc, kỹ năng..."
-                  value={keyword} 
+                  value={keyword}
                   onChange={e => setKeyword(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSearch()} 
+                  onKeyDown={e => e.key === 'Enter' && handleSearch()}
                 />
               </div>
               <div className="hs-sf hs-sf-loc">
                 <span className="hs-sf-ico">📍</span>
-                <input 
-                  className="hs-sf-inp" 
+                <input
+                  className="hs-sf-inp"
                   placeholder="Địa điểm..."
-                  value={locationFilter}  // ✅ SỬA: dùng locationFilter thay vì location
-                  onChange={e => setLocationFilter(e.target.value)}  // ✅ SỬA: dùng setLocationFilter
-                  onKeyDown={e => e.key === 'Enter' && handleSearch()} 
+                  value={locationFilter}
+                  onChange={e => setLocationFilter(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSearch()}
                 />
               </div>
               <button className="hs-search-btn" onClick={handleSearch}>Tìm kiếm</button>
@@ -532,9 +560,9 @@ export default function HomeScreen() {
 
               </div>
             </div>
-              </div>
-            </div> 
           </div>
+        </div>
+      </div>
 
       <div className="hs-body">
         <div className="hs-cats-wrap" style={{ margin: '0 -32px', padding: '40px 32px 48px' }}>
@@ -554,7 +582,7 @@ export default function HomeScreen() {
           <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
             {PLATFORMS.map(p => (
               <button key={p.value}
-                onClick={() => setActivePlatform(p.value)}
+                onClick={() => handlePlatformChange(p.value)}
                 style={{
                   padding: '7px 18px', borderRadius: 9,
                   border: `2px solid ${activePlatform === p.value ? p.color : '#DDD6C6'}`,
@@ -650,7 +678,7 @@ export default function HomeScreen() {
               <div className="hs-grid">{jobs.map(job => renderJobCard(job))}</div>
             )}
             {meta.totalPages > 1 && (
-              <Pagination curPage={page} totalPages={meta.totalPages} onPageChange={setPage} />
+              <Pagination curPage={page} totalPages={meta.totalPages} onPageChange={handlePageChange} />
             )}
           </div>
         )}
@@ -746,7 +774,7 @@ export default function HomeScreen() {
               <div className="hs-grid">{jobs.map(job => renderJobCard(job))}</div>
             )}
             {meta.totalPages > 1 && (
-              <Pagination curPage={page} totalPages={meta.totalPages} onPageChange={setPage} />
+              <Pagination curPage={page} totalPages={meta.totalPages} onPageChange={handlePageChange} />
             )}
           </div>
         )}

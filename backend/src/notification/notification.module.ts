@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { NotificationsService } from '../notification/notification.service'
-import { NotificationsController } from '../notification/notification.controller';
+import { NotificationController } from '../notification/notification.controller';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PrismaModule } from '../../prisma/prisma.module';
@@ -27,7 +27,7 @@ import { PrismaModule } from '../../prisma/prisma.module';
       inject: [ConfigService],
     }),
   ],
-  controllers: [NotificationsController],
+  controllers: [NotificationController],
   providers: [NotificationsService],
   exports: [NotificationsService],
 })
