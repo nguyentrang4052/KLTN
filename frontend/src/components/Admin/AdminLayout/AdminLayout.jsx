@@ -4,18 +4,18 @@ import { clearAuth, getUser } from '../../../utils/auth'
 import './AdminLayout.css'
 
 const NAV = [
-  { id: 'dashboard',  icon: '◈', label: 'Tổng quan',        path: '/admin' },
-  { id: 'users',      icon: '◉', label: 'Người dùng',       path: '/admin/users' },
+  { id: 'dashboard', icon: '◈', label: 'Tổng quan', path: '/admin' },
+  { id: 'users', icon: '◉', label: 'Người dùng', path: '/admin/users' },
   { id: 'categories', icon: '◫', label: 'Danh mục dữ liệu', path: '/admin/categories' },
-  { id: 'packages',   icon: '◪', label: 'Gói dịch vụ',      path: '/admin/packages' },
+  { id: 'packages', icon: '◪', label: 'Gói dịch vụ', path: '/admin/packages' },
   { id: 'refunds', icon: '💸', label: 'Xử lý hoàn tiền', path: '/admin/refunds' },
 ]
 
 export default function AdminLayout() {
-  const navigate  = useNavigate()
-  const location  = useLocation()
+  const navigate = useNavigate()
+  const location = useLocation()
   const [collapsed, setCollapsed] = useState(false)
-  const [userMenu, setUserMenu]   = useState(false)
+  const [userMenu, setUserMenu] = useState(false)
 
   const user = getUser()
   const displayName = user?.fullName || 'Quản trị viên'
@@ -69,7 +69,7 @@ export default function AdminLayout() {
             <span>Admin</span>
             {active && active !== 'dashboard' && (
               <><span className="adm-topbar__sep">›</span>
-              <span>{NAV.find(n => n.id === active)?.label}</span></>
+                <span>{NAV.find(n => n.id === active)?.label}</span></>
             )}
           </div>
 
@@ -95,13 +95,6 @@ export default function AdminLayout() {
                         <div className="adm-user-dd__role">Quản trị viên hệ thống</div>
                       </div>
                     </div>
-                    <div className="adm-user-dd__divider" />
-                    <button className="adm-user-dd__item" onClick={() => { setUserMenu(false); navigate('/home') }}>
-                      <span>🏠</span> Về trang chủ
-                    </button>
-                    <button className="adm-user-dd__item" onClick={() => { setUserMenu(false); navigate('/profile') }}>
-                      <span>👤</span> Hồ sơ cá nhân
-                    </button>
                     <div className="adm-user-dd__divider" />
                     <button className="adm-user-dd__item adm-user-dd__item--logout" onClick={handleLogout}>
                       <span>🚪</span> Đăng xuất

@@ -399,6 +399,43 @@ Awards:
     }
 }
 
+  async scoreJobs(prompt: string): Promise<any> {
+    try {
+      this.logger.log(`Scoring jobs with model: ${this.model}`);
+      const generativeModel = this.genAI.getGenerativeModel({
+        model: this.model,
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 8192,
+        },
+      });
+
+      const result = await generativeModel.generateContent(prompt);
+      const text = result.response.text();
+
+      this.logger.log('Job scoring response received');
+      return this.extractJsonFromResponse(text);
+    } catch (error: any) {
+      const statusCode =
+        error?.status ||
+        error?.response?.status ||
+        (error?.message?.includes('503') ? 503 : null) ||
+        (error?.message?.includes('429') ? 429 : null);
+ 
+      this.logger.error('Gemini scoreJobs error:', {
+        statusCode,
+        message: error?.message,
+      });
+ 
+      throw new HttpException(
+        `Gemini API Error: ${error?.message || 'Unknown error'}`,
+        statusCode === 503
+          ? HttpStatus.SERVICE_UNAVAILABLE
+          : HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
 //     async analyzeCV(cvText: string, retryCount = 0): Promise<any> {
 
 
@@ -651,4 +688,6 @@ Return corrected JSON only:`;
             throw new Error('Cannot extract JSON from response');
         }
     }
+
+
 }

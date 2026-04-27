@@ -1,100 +1,100 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { MailService } from '../../mail/mail.service';
+import { Injectable } from '@nestjs/common';
+import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Cron } from '@nestjs/schedule';
-import { CreateAlertDto, RemoveAlertDto } from '../dto/alert-job.dto';
-import * as fs from 'fs';
-import * as path from 'path';
-
-interface JobAlert {
-  email: string;
-  keyword: string;
-  createdAt: string;
-  active: boolean;
-}
-
-const ALERT_FILE = path.join(process.cwd(), 'job-alerts.json');
+import { NotificationService } from 'src/notification/notification.service';
 
 @Injectable()
-export class JobAlertService implements OnModuleInit {
-  private alerts: JobAlert[] = [];
-
+export class JobAlertService {
   constructor(
     private prisma: PrismaService,
     private mail: MailService,
+    private notificationService: NotificationService,
   ) {}
 
-  onModuleInit() {
-    if (fs.existsSync(ALERT_FILE)) {
-      try {
-        this.alerts = JSON.parse(fs.readFileSync(ALERT_FILE, 'utf-8'));
-      } catch {
-        this.alerts = [];
-      }
-    }
-  }
+  async createAlert(accountID: number, keyword: string) {
+    const existing = await this.prisma.jobAlert.findUnique({
+      where: { accountID_keyword: { accountID, keyword } },
+    });
 
-  private save() {
-    fs.writeFileSync(ALERT_FILE, JSON.stringify(this.alerts, null, 2), 'utf-8');
-  }
-
-  async createAlert(dto: CreateAlertDto) {
-    const { email, keyword } = dto;
-
-    const already = this.alerts.find(
-      (a) =>
-        a.email === email &&
-        a.keyword.toLowerCase() === keyword.toLowerCase() &&
-        a.active,
-    );
-    if (already) {
+    if (existing?.active) {
       return { message: 'Bạn đã đăng ký thông báo cho từ khóa này rồi.' };
     }
 
-    this.alerts.push({
-      email,
-      keyword,
-      createdAt: new Date().toISOString(),
-      active: true,
+    await this.prisma.jobAlert.upsert({
+      where: { accountID_keyword: { accountID, keyword } },
+      update: { active: true },
+      create: { accountID, keyword },
     });
-    this.save();
 
-    await this.mail.sendAlertConfirmation(email, keyword);
-    return {
-      message:
-        'Đăng ký thành công! Chúng tôi sẽ gửi thông báo khi có việc mới.',
-    };
+    const account = await this.prisma.account.findUnique({
+      where: { accountID },
+      include: { user: true },
+    });
+
+    if (account?.email) {
+      await this.mail.sendAlertConfirmation(account.email, keyword);
+    }
+
+    if (account?.user?.userID) {
+      await this.notificationService
+        .create({
+          userID: account.user.userID,
+          type: 'job_alert',
+          title: `Đăng ký thông báo thành công`,
+          body: `Bạn sẽ nhận thông báo khi có việc làm mới phù hợp với từ khóa "${keyword}".`,
+          metadata: { keyword },
+        })
+        .catch((err) =>
+          console.error('[Notification] createAlert error:', err),
+        );
+    }
+
+    return { message: 'Đăng ký thành công!' };
   }
 
-  async unsubscribe(dto: RemoveAlertDto) {
-    const { email, keyword } = dto;
+  async unsubscribe(accountID: number, keyword: string) {
+    const existing = await this.prisma.jobAlert.findUnique({
+      where: { accountID_keyword: { accountID, keyword } },
+    });
 
-    const exists = this.alerts.find(
-      (a) =>
-        a.email === email &&
-        a.keyword.toLowerCase() === keyword.toLowerCase() &&
-        a.active,
-    );
-    if (!exists) {
+    if (!existing?.active) {
       return { message: 'Không tìm thấy đăng ký phù hợp.' };
     }
 
-    this.alerts = this.alerts.map((a) =>
-      a.email === email && a.keyword.toLowerCase() === keyword.toLowerCase()
-        ? { ...a, active: false }
-        : a,
-    );
-    this.save();
+    await this.prisma.jobAlert.update({
+      where: { accountID_keyword: { accountID, keyword } },
+      data: { active: false },
+    });
 
     return { message: 'Đã huỷ đăng ký thông báo.' };
   }
 
+  async getAlertsByAccount(accountID: number) {
+    return this.prisma.jobAlert.findMany({
+      where: { accountID, active: true },
+      select: { keyword: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   @Cron('0 8 * * *')
   async sendDailyAlerts() {
-    const activeAlerts = this.alerts.filter((a) => a.active);
+    const activeAlerts = await this.prisma.jobAlert.findMany({
+      where: { active: true },
+      include: {
+        account: {
+          select: {
+            email: true,
+            user: { select: { userID: true } },
+          },
+        },
+      },
+    });
     if (activeAlerts.length === 0) return;
 
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const today = new Date().toISOString().slice(0, 10);
 
     for (const alert of activeAlerts) {
       try {
@@ -103,34 +103,18 @@ export class JobAlertService implements OnModuleInit {
             isActive: true,
             postedAt: { gte: since },
             OR: [
-              {
-                title: {
-                  contains: alert.keyword,
-                  mode: 'insensitive',
-                },
-              },
-              {
-                description: {
-                  contains: alert.keyword,
-                  mode: 'insensitive',
-                },
-              },
+              { title: { contains: alert.keyword, mode: 'insensitive' } },
+              { description: { contains: alert.keyword, mode: 'insensitive' } },
               {
                 company: {
-                  companyName: {
-                    contains: alert.keyword,
-                    mode: 'insensitive',
-                  },
+                  companyName: { contains: alert.keyword, mode: 'insensitive' },
                 },
               },
               {
                 skills: {
                   some: {
                     skill: {
-                      name: {
-                        contains: alert.keyword,
-                        mode: 'insensitive',
-                      },
+                      name: { contains: alert.keyword, mode: 'insensitive' },
                     },
                   },
                 },
@@ -139,28 +123,33 @@ export class JobAlertService implements OnModuleInit {
           },
           include: {
             company: { select: { companyName: true } },
-            skills: {
-              include: {
-                skill: { select: { name: true } },
-              },
-            },
+            skills: { include: { skill: { select: { name: true } } } },
           },
-          take: 5,
+          // take: 5,
           orderBy: { postedAt: 'desc' },
         });
 
         if (jobs.length === 0) continue;
 
-        await this.mail.sendJobAlert(alert.email, alert.keyword, jobs);
+        const userID = alert.account.user?.userID;
+
+        if (userID) {
+          const alreadySent = await this.notificationService.createIfNotExists({
+            userID,
+            type: 'job_alert',
+            title: `Việc làm mới cho "${alert.keyword}"`,
+            body: `Có ${jobs.length} việc làm mới phù hợp với từ khóa "${alert.keyword}" hôm nay.`,
+            metadata: { keyword: alert.keyword, jobIDs: jobs.map((j) => j.jobID) },
+            dedupeKey: `job_alert_${userID}_${alert.keyword}_${today}`,
+          });
+
+          if (!alreadySent) continue;
+        }
+
+        await this.mail.sendJobAlert(alert.account.email, alert.keyword, jobs);
       } catch (err) {
-        console.error(`Lỗi gửi alert cho ${alert.email}:`, err);
+        console.error(`Lỗi gửi alert cho accountID=${alert.accountID}:`, err);
       }
     }
-  }
-
-  getAlertsByEmail(email: string) {
-    return this.alerts
-      .filter((a) => a.email === email && a.active)
-      .map((a) => ({ keyword: a.keyword, createdAt: a.createdAt }));
   }
 }

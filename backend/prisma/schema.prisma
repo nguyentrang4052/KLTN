@@ -16,6 +16,7 @@ model Account {
   active    Boolean  @default(true)
   user      User?
   role      String   @default("user")
+  jobAlerts JobAlert[]
 }
 
 model User {
@@ -39,6 +40,7 @@ model User {
   payments      Payment[]
   quotas UserQuota[]
   refundRequests RefundRequest[]
+  notifications Notification[]
 }
 
 model UserProfile {
@@ -121,6 +123,7 @@ model JobRecommendation {
   userID       Int
   jobID        Int
   matchPercent Float
+  reason       String? 
   createdAt    DateTime @default(now())
   job          Job      @relation(fields: [jobID], references: [jobID])
   user         User     @relation(fields: [userID], references: [userID])
@@ -282,4 +285,29 @@ model RefundRequest {
 
   user    User    @relation(fields: [userID], references: [userID])
   payment Payment @relation(fields: [paymentID], references: [id])
+}
+
+model JobAlert {
+  id        Int      @id @default(autoincrement())
+  accountID Int
+  keyword   String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  account   Account  @relation(fields: [accountID], references: [accountID])
+
+  @@unique([accountID, keyword])
+}
+
+model Notification {
+  id        Int       @id @default(autoincrement())
+  userID    Int
+  type      String    // 'subscription_expiry' | 'job_deadline' | 'job_alert' | 'payment_success'
+  title     String
+  body      String
+  isRead    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+  metadata  Json?     // jobID, planName, ... tuỳ type
+
+  user User @relation(fields: [userID], references: [userID])
 }

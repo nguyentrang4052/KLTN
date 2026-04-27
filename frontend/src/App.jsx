@@ -39,20 +39,38 @@ import AdminRefunds from './components/Admin/AdminRefunds/AdminRefunds'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getToken } from './utils/auth'
 
+import { jwtDecode } from 'jwt-decode'
+import { useNotifications } from './hook/useNotifications'
+
 
 import { CVStoreProvider } from './store/cvStore'
 import TemplatePickerScreen from './components/screens/TemplatePickerScreen/TemplatePickerScreen'
 import MyCVScreen from './components/screens/MyCVScreen/MyCVScreen'
 
 
+function isTokenExpired(token) {
+  try {
+    const decoded = jwtDecode(token)
+    return decoded.exp * 1000 < Date.now()
+  } catch {
+    return true
+  }
+}
+
+
 function ProtectedRoute({ children }) {
   const location = useLocation()
   const token = localStorage.getItem('token') || sessionStorage.getItem('token')
-  if (!token) {
+
+  if (!token || isTokenExpired(token)) {
+    localStorage.removeItem('token')
+    sessionStorage.removeItem('token')
     return <Navigate to="/login" state={{ from: location }} replace />
   }
+
   return children
 }
+
 
 function AdminRoute({ children }) {
   const location = useLocation()
@@ -154,6 +172,7 @@ function CVScreenWrapper({ initialScreen }) {
 
 function App() {
   const location = useLocation()
+  const notifContext = useNotifications()
 
   const HIDE_HEADER_ROUTES = [
     '/',
@@ -182,11 +201,22 @@ function App() {
 
   return (
     <div className="app">
-      {!hideHeader && <Header />}
+      {!hideHeader && <Header notifCount={notifContext.unreadCount} />}
 
       <div className="screen-container">
         <Routes>
-          <Route path="/" element={<LandingScreen />} />
+          {/* <Route path="/" element={<LandingScreen />} /> */}
+          <Route path="/" element={
+            (() => {
+              const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+              if (!token) return <LandingScreen />
+              try {
+                const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}')
+                if (user.role === 'admin') return <Navigate to="/admin" replace />
+              } catch { }
+              return <Navigate to="/home" replace />
+            })()
+          } />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -279,7 +309,9 @@ function App() {
           } />
 
           <Route path="/notifications" element={
-            <ProtectedRoute><NotificationsScreen /></ProtectedRoute>
+            <ProtectedRoute>
+              <NotificationsScreen notifContext={notifContext} />
+            </ProtectedRoute>
           } />
 
           {/* <Route path="/my-cv" element={

@@ -14,10 +14,10 @@ const PLAN_STYLES = {
 const PLAN_RANK = { free: 0, pro: 1, elite: 2 };
 
 const LIMIT_ROWS = [
-  { field: 'jobSuggestPerDay', label: 'Đề xuất việc làm', unit: ' lần/ngày', icon: '💡' },
-  { field: 'cvAnalysisPerMonth', label: 'Phân tích CV', unit: ' lần/tháng', icon: '🔍' },
-  { field: 'cvMatchCheckCount', label: 'Kiểm tra độ phù hợp CV', unit: ' lần/tháng', icon: '🎯' },
-];
+  { field: 'jobSuggestPerDay', totalField: null, usedField: null, label: 'Đề xuất việc làm', unit: ' lần/ngày', icon: '💡' },
+  { field: 'cvAnalysisPerMonth', totalField: 'cvAnalysisTotal', usedField: 'cvAnalysisUsed', label: 'Phân tích CV', unit: ' lần/tháng', icon: '🔍' },
+  { field: 'cvMatchCheckCount', totalField: 'cvMatchCheckTotal', usedField: 'cvMatchCheckUsed', label: 'Kiểm tra độ phù hợp CV', unit: ' lần/tháng', icon: '🎯' },
+]
 
 const FAQ_ITEMS = [
   // { q: 'Tôi có thể huỷ gói bất cứ lúc nào không?', a: 'Có, bạn có thể huỷ bất cứ lúc nào. Gói sẽ tiếp tục đến hết chu kỳ đã thanh toán.' },
@@ -37,6 +37,7 @@ export default function PricingScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [toast, setToast] = useState('');
+  const [quota, setQuota] = useState(null)
 
   useEffect(() => {
     const sync = () => setToken(getToken());
@@ -60,6 +61,12 @@ export default function PricingScreen() {
         if (resSub.ok) setCurrentSub(await resSub.json());
       } else {
         setCurrentSub(null);
+      }
+      if (token) {
+        const resQuota = await fetch(`${API}/subscriptions/quota`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (resQuota.ok) setQuota(await resQuota.json())
       }
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
@@ -110,14 +117,13 @@ export default function PricingScreen() {
   const currentRank = PLAN_RANK[currentSub?.planName] ?? 0;
 
   const getBtnLabel = (plan) => {
-    if (isCurrent(plan.name)) return '✓ Gói hiện tại của bạn';
-    if (plan.name === 'free') return 'Mặc định';
-    if (submitting) return '⏳ Đang xử lý...';
-    if (!token) return 'Đăng nhập để nâng cấp';
-    if (currentSub && currentSub.planName !== 'free' && (PLAN_RANK[plan.name] ?? 0) < currentRank)
-      return `Hạ xuống ${plan.displayName} →`;
-    return `Nâng cấp lên ${plan.displayName} →`;
-  };
+    if (isCurrent(plan.name)) return '✓ Gói hiện tại của bạn'
+    if (plan.name === 'free') return 'Mặc định'
+    if (!token) return 'Đăng nhập để nâng cấp'
+    if (submitting) return '⏳ Đang xử lý...'
+    if ((PLAN_RANK[plan.name] ?? 0) < currentRank) return `Gói thấp hơn gói hiện tại`
+    return `Nâng cấp lên ${plan.displayName} →`
+  }
 
   if (loading) return (
     <div className="pr-loading-screen">
@@ -144,10 +150,12 @@ export default function PricingScreen() {
         <div className="pr-hero-inner">
           <div className="pr-hero-tag">
             <span className="pr-hero-dot" />
-            
-              Đang dùng Gói <strong>{currentSub.displayName}</strong>
+            {currentSub
+              ? <>Đang dùng Gói <strong>{currentSub.displayName}</strong>
                 {currentSub.expiresAt && ` · Gia hạn ${formatDate(currentSub.expiresAt)}`}
-
+              </>
+              : 'Chọn gói phù hợp với bạn'
+            }
           </div>
           <h1 className="pr-hero-title">
             Chọn gói phù hợp với<br /><em>hành trình của bạn</em>
@@ -272,25 +280,55 @@ export default function PricingScreen() {
                 </div>
 
                 <div className="pr-limits">
-                  {LIMIT_ROWS.map(({ field, label, unit, icon }) => {
-                    const val = limits?.[field];
-                    const unlimited = val === 999;
+                  {LIMIT_ROWS.map(({ field, label, unit, icon, totalField, usedField }) => {
+                    const val = limits?.[field]
+                    const unlimited = val === 999
+
+                    const isActivePlan = current && quota && totalField && usedField
+                    const used = isActivePlan ? (quota[usedField] ?? 0) : null
+                    const total = isActivePlan ? (quota[totalField] ?? 0) : null
+                    const remaining = isActivePlan && !unlimited ? Math.max(0, total - used) : null
+                    const pct = isActivePlan && !unlimited && total > 0 ? Math.round((used / total) * 100) : 0
+
                     return (
                       <div key={field} className={`pr-limit-item${unlimited ? ' unlimited' : ''}`}>
                         <span className="pr-limit-icon">{icon}</span>
                         <span className="pr-limit-val">
-                          {val == null ? '—' : unlimited ? '∞' : `${val.toLocaleString('vi-VN')}${unit}`}
+                          {val == null ? '—'
+                            : unlimited ? '∞'
+                              : isActivePlan
+                                ? <span style={{ color: remaining === 0 ? '#C0412A' : '#2E6040' }}>
+                                  còn {remaining}/{total}
+                                </span>
+                                : `${val.toLocaleString('vi-VN')}${unit}`
+                          }
                         </span>
                         <span className="pr-limit-lbl">{label}</span>
+
+                        {isActivePlan && !unlimited && (
+                          <div style={{ marginTop: 4, height: 4, borderRadius: 4, background: '#EFE9DC', overflow: 'hidden' }}>
+                            <div style={{
+                              height: '100%', borderRadius: 4,
+                              width: `${pct}%`,
+                              background: pct >= 90 ? '#C0412A' : pct >= 60 ? '#D4820A' : '#2E6040',
+                              transition: 'width .4s ease',
+                            }} />
+                          </div>
+                        )}
                       </div>
-                    );
+                    )
                   })}
                 </div>
 
                 <button
                   className="pr-plan-btn"
-                  style={!current ? { background: style.gradient } : {}}
-                  disabled={current || plan.name === 'free' || submitting}
+                  style={!current && (PLAN_RANK[plan.name] ?? 0) >= currentRank ? { background: style.gradient } : {}}
+                  disabled={
+                    current ||
+                    plan.name === 'free' ||
+                    submitting ||
+                    (PLAN_RANK[plan.name] ?? 0) < currentRank
+                  }
                   onClick={() => handleSubscribe(plan.name)}
                 >
                   {getBtnLabel(plan)}

@@ -189,7 +189,7 @@ export default function AdminPackages() {
             </div>
             <div className="adm-pkg2__acts">
               <button className="adm-pkg2__edit" onClick={() => openEdit(pkg)}>Chỉnh sửa</button>
-              <button className="adm-pkg2__del" onClick={() => { setDeleteTarget(pkg); setModal('delete') }}>✕</button>
+              {/* <button className="adm-pkg2__del" onClick={() => { setDeleteTarget(pkg); setModal('delete') }}>✕</button> */}
             </div>
           </div>
         ))}
@@ -223,12 +223,12 @@ export default function AdminPackages() {
                 ))}
               </tr>
             ))}
-            <tr>
+            {/* <tr>
               <td className="adm-table__muted">Người dùng hiện tại</td>
               {packages.map(p => (
                 <td key={p.id} className="adm-table__muted">{(p.users ?? 0).toLocaleString()}</td>
               ))}
-            </tr>
+            </tr> */}
           </tbody>
         </table>
       </div>

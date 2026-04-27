@@ -29,7 +29,7 @@ function Avatar({ avatar, initials, className }) {
   return <div className={className}>{initials}</div>
 }
 
-export default function Header({ notifCount }) {
+export default function Header({ notifCount = 0 }) {
   const [ddOpen, setDdOpen] = useState(false)
   const [user, setUser] = useState(getUser)
   const location = useLocation()
@@ -107,7 +107,7 @@ export default function Header({ notifCount }) {
   const handleLogout = async () => {
     setDdOpen(false)
     await logoutRequest()
-    navigate('/login', { replace: true })
+    navigate('/', { replace: true })
   }
 
   const handleDdItem = (item) => {

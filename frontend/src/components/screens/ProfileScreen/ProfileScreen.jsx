@@ -8,21 +8,21 @@ import { getToken } from '../../../utils/auth'
 
 const API = 'http://localhost:3000/api'
 
-const AI_INSIGHTS = [
-  { icon: '👁', text: 'Bạn thường xem kỹ JD có "React", "TypeScript" và lương >25tr', source: 'Từ 47 lần xem' },
-  { icon: '🔖', text: '80% tin bạn lưu là Hybrid hoặc Remote', source: 'Từ 23 lần lưu' },
-  { icon: '⚡', text: 'Bạn apply trong 24h đầu khi lương >30tr', source: 'Từ 14 lần apply' },
-  { icon: '🏢', text: 'Ưu tiên Fintech và E-commerce hơn 60%', source: 'Phân tích toàn lịch sử' },
-]
-const AI_PREFERENCES = [
-  { key: 'Ngành ưu tiên', value: 'Fintech, E-commerce, SaaS' },
-  { key: 'Quy mô công ty', value: '100 – 1,000 người' },
-  { key: 'Ngôn ngữ làm việc', value: 'Việt / English' },
-]
-const AI_TOGGLES = [
-  { key: 'Thông báo việc mới', active: true },
-  { key: 'Auto apply khi match >90%', active: false },
-]
+// const AI_INSIGHTS = [
+//   { icon: '👁', text: 'Bạn thường xem kỹ JD có "React", "TypeScript" và lương >25tr', source: 'Từ 47 lần xem' },
+//   { icon: '🔖', text: '80% tin bạn lưu là Hybrid hoặc Remote', source: 'Từ 23 lần lưu' },
+//   { icon: '⚡', text: 'Bạn apply trong 24h đầu khi lương >30tr', source: 'Từ 14 lần apply' },
+//   { icon: '🏢', text: 'Ưu tiên Fintech và E-commerce hơn 60%', source: 'Phân tích toàn lịch sử' },
+// ]
+// const AI_PREFERENCES = [
+//   { key: 'Ngành ưu tiên', value: 'Fintech, E-commerce, SaaS' },
+//   { key: 'Quy mô công ty', value: '100 – 1,000 người' },
+//   { key: 'Ngôn ngữ làm việc', value: 'Việt / English' },
+// ]
+// const AI_TOGGLES = [
+//   { key: 'Thông báo việc mới', active: true },
+//   { key: 'Auto apply khi match >90%', active: false },
+// ]
 const CONNECTED_ACCOUNTS = [
   { name: 'TopCV', code: 'T', color: '#00B14F', connected: true },
   { name: 'CareerLink', code: 'C', color: '#D0392A', connected: true },
@@ -46,6 +46,8 @@ function ProfileScreen({ onNavigate }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
+  const [aiData, setAiData] = useState({ insights: [], preferences: [] })
+
 
   const [personalForm, setPersonalForm] = useState({
     fullName: '', birthYear: '', phone: '', gender: 'Nam', address: '',
@@ -86,6 +88,14 @@ function ProfileScreen({ onNavigate }) {
       if (syncForm) setLoading(false)
     }
   }, [token])
+
+  useEffect(() => {
+    if (!profile?.userID) return
+    fetch(`${API}/profile/${profile.userID}/insights`, { headers: authRef.current })
+      .then(r => r.json())
+      .then(data => setAiData(data))
+      .catch(console.error)
+  }, [profile?.userID])
 
   const fetchStats = useCallback(async (userID) => {
     try {
@@ -263,7 +273,7 @@ function ProfileScreen({ onNavigate }) {
         <div className="main-content">
           <Topbar title="👤 Hồ sơ & Cài đặt AI">
             {/* <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 15, paddingRight: 15, borderRight: '1px solid var(--border)' }}> */}
-              {/* <span style={{ fontSize: 13, fontWeight: 600 }}>{profile?.fullName}</span>
+            {/* <span style={{ fontSize: 13, fontWeight: 600 }}>{profile?.fullName}</span>
               <div style={{
                 width: 32, height: 32, borderRadius: '50%', overflow: 'hidden',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, background: 'rgb(189, 114, 71)'
@@ -371,6 +381,7 @@ function ProfileScreen({ onNavigate }) {
                         ))}
                       </div>
                     </div>
+
                   )}
 
                   <div className="card profile-card">
@@ -526,21 +537,30 @@ function ProfileScreen({ onNavigate }) {
 
                   <div className="card profile-card">
                     <div className="profile-section-title">Tùy chỉnh AI đề xuất</div>
-                    {AI_PREFERENCES.map((pref, idx) => (
-                      <div key={idx} className="pref-row">
-                        <span className="pref-k">{pref.key}</span>
-                        <span className="pref-v">{pref.value}</span>
+                    {aiData.preferences.length > 0 ? (
+                      aiData.preferences.map((pref, idx) => (
+                        <div key={idx} className="pref-row">
+                          <span className="pref-k">{pref.key}</span>
+                          <span className="pref-v">{pref.value}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ fontSize: 13, color: 'var(--ink4)' }}>
+                        Hãy cập nhật hồ sơ nghề nghiệp để AI cá nhân hóa đề xuất.
                       </div>
-                    ))}
-                    {AI_TOGGLES.map((toggle, idx) => (
-                      <div key={idx} className="pref-row">
+                    )}
+                    {[
+                      { key: 'Thông báo việc mới', active: true },
+                      { key: 'Auto apply khi match >90%', active: false },
+                    ].map((toggle, idx) => (
+                      <div key={idx} className="pref-row" style={{ opacity: 0.5 }}>
                         <span className="pref-k">{toggle.key}</span>
                         <div className="toggle-wrap">
                           <div className={`toggle ${toggle.active ? 'on' : 'off'}`}>
                             <div className="toggle-dot" />
                           </div>
-                          <span className={`toggle-label ${toggle.active ? 'on' : 'off'}`}>
-                            {toggle.active ? 'Bật' : 'Tắt'}
+                          <span className="toggle-label" style={{ fontSize: 11, color: 'var(--ink4)' }}>
+                            Sắp ra mắt
                           </span>
                         </div>
                       </div>
@@ -553,42 +573,37 @@ function ProfileScreen({ onNavigate }) {
 
                   <div className="card profile-card">
                     <div className="profile-section-title">🧠 AI đã học gì từ bạn</div>
-                    {AI_INSIGHTS.map((insight, idx) => (
-                      <div key={idx} className="act-item">
-                        <div className="act-icon">{insight.icon}</div>
-                        <div className="act-content">
-                          <div className="act-text">{insight.text}</div>
-                          <div className="act-time">{insight.source}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
 
-                  {/* <div className="card profile-card">
-                      <div className="profile-section-title">🔗 Tài khoản kết nối</div>
-                      <div className="account-list">
-                        {CONNECTED_ACCOUNTS.map((acc, idx) => (
-                          <div key={idx} className="account-row">
-                            <div className="account-icon" style={{
-                              background: acc.color,
-                              color: acc.connected ? '#FFF' : 'var(--ink3)',
-                              border: acc.connected ? 'none' : '1px solid var(--border)',
-                            }}>
-                              {acc.code}
-                            </div>
-                            <div className="account-info">
-                              <div className="account-name">{acc.name}</div>
-                              <div className={`account-status ${acc.connected ? 'connected' : ''}`}>
-                                {acc.connected ? '✓ Đã kết nối' : 'Chưa kết nối'}
-                              </div>
-                            </div>
-                            <button className={`btn btn-${acc.connected ? 'outline' : 'rust'} btn-sm`}>
-                              {acc.connected ? 'Ngắt' : '+ Kết nối'}
-                            </button>
+                    {aiData.insights.length === 0 ? (
+                      <div style={{ fontSize: 13, color: 'var(--ink4)', padding: '8px 0' }}>
+                        Chưa đủ dữ liệu — hãy xem thêm việc làm để AI phân tích hành vi của bạn.
+                      </div>
+                    ) : (
+                      aiData.insights.map((insight, idx) => (
+                        <div key={idx} className="act-item">
+                          <div className="act-icon">{insight.icon}</div>
+                          <div className="act-content">
+                            <div className="act-text">{insight.text}</div>
+                            <div className="act-time">{insight.source}</div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+
+                    {aiData.preferences.length > 0 && (
+                      <>
+                        <div className="profile-section-title" style={{ marginTop: 16 }}>
+                          Sở thích nghề nghiệp
+                        </div>
+                        {aiData.preferences.map((pref, idx) => (
+                          <div key={idx} className="pref-row">
+                            <span className="pref-k">{pref.key}</span>
+                            <span className="pref-v">{pref.value}</span>
                           </div>
                         ))}
-                      </div>
-                    </div> */}
+                      </>
+                    )}
+                  </div>
 
                   {profile && (
                     <div className="card profile-card">

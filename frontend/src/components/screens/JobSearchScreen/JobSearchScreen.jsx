@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getToken } from '../../../utils/auth';
 import './JobSearchScreen.css';
 
@@ -120,6 +120,16 @@ function JobSearchScreen() {
   const [myAlerts, setMyAlerts] = useState([]);
   const [showMyAlerts, setShowMyAlerts] = useState(false);
 
+  const [searchParams] = useSearchParams()
+
+  useEffect(() => {
+    const kw = searchParams.get('keyword')
+    if (kw) {
+      setKeyword(kw)
+      setCurrentPage(1)
+    }
+  }, [])
+
   useEffect(() => {
     const sync = () => setToken(getToken());
     window.addEventListener('focus', sync);
@@ -141,18 +151,20 @@ function JobSearchScreen() {
     }
   }, [token]);
 
-  const loadMyAlerts = useCallback(async (email) => {
-    if (!email) return;
+  const loadMyAlerts = useCallback(async () => {
+    if (!token) return;
     try {
-      const res = await fetch(`${API}/job-alerts?email=${encodeURIComponent(email)}`);
+      const res = await fetch(`${API}/job-alerts`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json();
       setMyAlerts(Array.isArray(data) ? data : []);
     } catch { }
-  }, []);
+  }, [token]);
 
   useEffect(() => {
-    if (alertEmail) loadMyAlerts(alertEmail);
-  }, [alertEmail]);
+    loadMyAlerts();
+  }, [loadMyAlerts]);
 
   useEffect(() => {
     if (!token) { setSavedJobIds(new Set()); return; }
@@ -321,18 +333,22 @@ function JobSearchScreen() {
   };
 
   const handleCreateAlert = async () => {
-    if (!alertKeyword.trim() || !alertEmail.trim()) return;
+    if (!token) { setShowLoginModal(true); return; }
+    if (!alertKeyword.trim()) return;
     setAlertLoading(true); setAlertMsg('');
     try {
       const res = await fetch(`${API}/job-alerts`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keyword: alertKeyword.trim(), email: alertEmail.trim() }),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`, // ← thêm token
+        },
+        body: JSON.stringify({ keyword: alertKeyword.trim() }), // ← bỏ email
       });
       const data = await res.json();
       setAlertMsg(data.message ?? 'Đăng ký thành công!');
       setAlertKeyword('');
-      loadMyAlerts(alertEmail);
+      loadMyAlerts();
     } catch {
       setAlertMsg('Có lỗi xảy ra, thử lại sau.');
     } finally {
@@ -345,10 +361,13 @@ function JobSearchScreen() {
     try {
       await fetch(`${API}/job-alerts`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keyword: kw, email: alertEmail }),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ keyword: kw }),
       });
-      loadMyAlerts(alertEmail);
+      loadMyAlerts();
       showToast('Đã huỷ thông báo');
     } catch { }
   };
@@ -897,7 +916,7 @@ function JobSearchScreen() {
           )}
           <button className="btn btn-rust" style={{ width: '100%', justifyContent: 'center' }}
             onClick={handleCreateAlert}
-            disabled={alertLoading || !alertKeyword.trim() || !alertEmail.trim()}>
+            disabled={alertLoading || !alertKeyword.trim()}>
             {alertLoading ? '⏳ Đang đăng ký...' : '🔔 Tạo thông báo miễn phí'}
           </button>
           <div style={{ fontSize: '11px', color: 'var(--ink4)', marginTop: '8px', textAlign: 'center' }}>

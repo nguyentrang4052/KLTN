@@ -17,6 +17,7 @@ import { SubscriptionModule } from './subscription/subscription.module';
 import { AdminModule } from './admin/admin.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-yet';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { redisStore } from 'cache-manager-redis-yet';
     CvAnalyzerModule,
     SubscriptionModule,
     AdminModule,
+    NotificationModule,
     CacheModule.registerAsync({
       useFactory: async () => ({
         store: await redisStore({
@@ -50,6 +52,5 @@ import { redisStore } from 'cache-manager-redis-yet';
   ],
   controllers: [AppController],
   providers: [AppService],
-  
 })
-export class AppModule {}
+export class AppModule { }

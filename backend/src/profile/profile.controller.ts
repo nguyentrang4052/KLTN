@@ -94,4 +94,10 @@ export class ProfileController {
   getStats(@Param('userID', ParseIntPipe) userID: number) {
     return this.profileService.getStats(userID);
   }
+
+  @Get(':userID/insights')
+  @UseGuards(JwtAuthGuard)
+  getInsights(@Param('userID', ParseIntPipe) userID: number) {
+    return this.profileService.getInsights(userID);
+  }
 }

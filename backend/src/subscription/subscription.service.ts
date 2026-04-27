@@ -4,6 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 import { ConfigService } from '@nestjs/config';
 import {
   CreateSubscriptionDto,
@@ -12,11 +13,12 @@ import {
 } from '../dto/subscription.dto';
 
 import { PayOS } from '@payos/node';
+import { NotificationService } from 'src/notification/notification.service';
 
 const PLANS_CONFIG = {
   free: { displayName: 'Free', monthlyPrice: 0, yearlyPrice: 0 },
-  pro: { displayName: 'Pro', monthlyPrice: 10000, yearlyPrice: 15000 },
-  elite: { displayName: 'Elite', monthlyPrice: 10000, yearlyPrice: 15000 },
+  pro: { displayName: 'Pro', monthlyPrice: 10000, yearlyPrice: 96000 },
+  elite: { displayName: 'Elite', monthlyPrice: 10000, yearlyPrice: 96000 },
 };
 
 @Injectable()
@@ -26,6 +28,8 @@ export class SubscriptionService {
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
+    private mailService: MailService,
+    private notificationService: NotificationService,
   ) {
     this.payos = new PayOS({
       clientId: this.config.get('PAYOS_CLIENT_ID'),
@@ -338,7 +342,6 @@ export class SubscriptionService {
     };
   }
 
-
   async confirmPayment(dto: ConfirmPaymentDto) {
     const payment = await this.prisma.payment.findUnique({
       where: { transactionRef: dto.transactionRef },
@@ -387,6 +390,42 @@ export class SubscriptionService {
           );
         });
 
+        const account = await this.prisma.account.findFirst({
+          where: { user: { userID: payment.userID } },
+          include: { user: true },
+        });
+        if (account) {
+          this.mailService
+            .sendPaymentInvoice(account.email, {
+              fullName: account.user?.fullName ?? undefined,
+              planDisplayName: payment.subscription.plan.displayName,
+              billing: payment.subscription.billing,
+              amount: payment.amount,
+              transactionRef: payment.transactionRef!,
+              paidAt: new Date(),
+              expiresAt: payment.subscription.expiresAt,
+            })
+            .catch((err) =>
+              console.error('[Mail] sendPaymentInvoice error:', err),
+            );
+        }
+        this.notificationService
+          .create({
+            userID: payment.userID,
+            type: 'payment_success',
+            title: `Kích hoạt gói ${payment.subscription.plan.displayName} thành công`,
+            body: `Thanh toán ${payment.amount.toLocaleString('vi-VN')}đ thành công. Gói có hiệu lực đến ${payment.subscription.expiresAt.toLocaleDateString('vi-VN')}.`,
+            metadata: {
+              planName: payment.subscription.plan.name,
+              amount: payment.amount,
+              transactionRef: payment.transactionRef,
+              expiresAt: payment.subscription.expiresAt,
+            },
+          })
+          .catch((err) =>
+            console.error('[Notification] payment_success error:', err),
+          );
+
         return {
           success: true,
           status: 'success',
@@ -408,7 +447,6 @@ export class SubscriptionService {
       };
     }
   }
-
 
   async requestRefund(accountID: number, dto: RefundDto) {
     const user = await this.prisma.user.findFirst({
@@ -586,11 +624,36 @@ export class SubscriptionService {
   }
 
   async seedPlans() {
+    const LIMITS_CONFIG = {
+      free: {
+        jobSuggestPerDay: 3,
+        cvAnalysisPerMonth: 0,
+        cvMatchCheckCount: 0,
+      },
+      pro: {
+        jobSuggestPerDay: 20,
+        cvAnalysisPerMonth: 5,
+        cvMatchCheckCount: 10,
+      },
+      elite: {
+        jobSuggestPerDay: 999,
+        cvAnalysisPerMonth: 999,
+        cvMatchCheckCount: 999,
+      },
+    };
+
     for (const [name, config] of Object.entries(PLANS_CONFIG)) {
-      await this.prisma.subscriptionPlan.upsert({
+      const plan = await this.prisma.subscriptionPlan.upsert({
         where: { name },
         update: config,
         create: { name, ...config },
+      });
+
+      const limits = LIMITS_CONFIG[name];
+      await this.prisma.planLimit.upsert({
+        where: { planID: plan.id },
+        update: limits,
+        create: { planID: plan.id, ...limits },
       });
     }
   }

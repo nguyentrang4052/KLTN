@@ -412,4 +412,67 @@ export class AdminService {
 
     return { success: true, action };
   }
+
+  async getMonthlyRegistrations() {
+    const months: { label: string; count: number }[] = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const start = new Date(d.getFullYear(), d.getMonth(), 1);
+      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
+      const count = await this.prisma.account.count({
+        where: { role: 'user', createdAt: { gte: start, lte: end } },
+      });
+      months.push({
+        label: `T${d.getMonth() + 1}`,
+        count,
+      });
+    }
+    return months;
+  }
+
+  async getWeeklyStatus() {
+    const weeks: { label: string; active: number; locked: number }[] = []
+    const now = new Date();
+    for (let i = 3; i >= 0; i--) {
+      const start = new Date(now);
+      start.setDate(now.getDate() - i * 7 - 6);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(now);
+      end.setDate(now.getDate() - i * 7);
+      end.setHours(23, 59, 59, 999);
+      const [active, locked] = await Promise.all([
+        this.prisma.account.count({
+          where: { role: 'user', active: true, createdAt: { lte: end } },
+        }),
+        this.prisma.account.count({
+          where: { role: 'user', active: false, createdAt: { lte: end } },
+        }),
+      ]);
+      weeks.push({ label: `Tuần ${4 - i}`, active, locked });
+    }
+    return weeks;
+  }
+
+  async getPlanDistribution() {
+    const plans = await this.prisma.subscriptionPlan.findMany({
+      include: {
+        _count: { select: { subscriptions: { where: { status: 'active' } } } },
+      },
+      orderBy: { monthlyPrice: 'asc' },
+    });
+
+    const totalUsers = await this.prisma.account.count({
+      where: { role: 'user' },
+    });
+    const paidUsers = plans
+      .filter((p) => p.name !== 'free')
+      .reduce((sum, p) => sum + p._count.subscriptions, 0);
+
+    return plans.map((p) => ({
+      label: p.displayName ?? p.name,
+      count:
+        p.name === 'free' ? totalUsers - paidUsers : p._count.subscriptions,
+    }));
+  }
 }

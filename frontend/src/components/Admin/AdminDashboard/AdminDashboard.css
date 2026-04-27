@@ -94,3 +94,48 @@
   color: #C0412A;
   border: 1px solid rgba(192,65,42,0.2);
 }
+
+.adm-stat--clickable { cursor: pointer; transition: border-color .2s, transform .15s; }
+.adm-stat--clickable:hover { border-color: var(--border-secondary, #CBC1AE); transform: translateY(-2px); }
+.adm-stat--sel { border: 1.5px solid #342893 !important; }
+.adm-stat__hint { font-size: 10px; color: #9A8D80; margin-top: 4px; }
+
+.adm-db__detail {
+  background: #FAF7F2; border: 1.5px solid #DDD6C6;
+  border-radius: 12px; padding: 14px 18px; margin-bottom: 16px;
+}
+.adm-db__detail-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px; font-size: 13px; font-weight: 700; color: #1C1510;
+}
+.adm-db__detail-head button { background: none; border: none; color: #9A8D80; cursor: pointer; font-size: 14px; }
+.adm-db__detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.adm-db__detail-item {
+  background: #FEFCF7; border: 1px solid #EFE9DC;
+  border-radius: 8px; padding: 12px 14px;
+}
+.adm-db__detail-lbl { font-size: 11px; color: #9A8D80; margin-bottom: 4px; }
+.adm-db__detail-val { font-size: 20px; font-weight: 700; color: #1C1510; }
+
+.adm-db__charts {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 14px; margin-bottom: 16px;
+}
+.adm-db__full { grid-column: 1 / -1; }
+.adm-db__chart-body { padding: 16px 18px; }
+.adm-db__chart-wrap { position: relative; width: 100%; }
+.adm-db__legend { display: flex; flex-wrap: wrap; gap: 12px; padding: 0 18px 14px; font-size: 11px; color: #6B5E50; }
+.adm-db__leg { display: flex; align-items: center; gap: 5px; }
+.adm-db__leg-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+.adm-db__badge { font-size: 10px; padding: 3px 8px; border-radius: 20px; font-weight: 600; }
+.adm-db__badge--purple { background: rgba(52,40,147,.08); color: #342893; }
+.adm-db__badge--green  { background: rgba(46,96,64,.08);  color: #2E6040; }
+.adm-db__badge--red    { background: rgba(192,65,42,.08); color: #C0412A; }
+.adm-db__chart-hint { font-size: 10px; color: #9A8D80; margin-bottom: 8px; font-style: italic; }
+.adm-db__detail-action {
+  margin-top: 12px; padding: 7px 14px; border-radius: 7px;
+  background: #342893; border: none; color: #fff;
+  font-size: 12px; font-weight: 700; font-family: 'Roboto', sans-serif;
+  cursor: pointer;
+}
+.adm-db__detail-action:hover { background: rgb(6,12,121); }

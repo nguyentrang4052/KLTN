@@ -137,7 +137,6 @@ export class JobsService {
       }
     }
 
-
     // const filteredJobs = jobs.filter(j =>
     //   j.deadline && new Date(j.deadline) > new Date()
     // );
@@ -329,6 +328,7 @@ export class JobsService {
       salary: r.job.salary,
       skills: r.job.skills.map((s) => s.skill.name),
       matchPercent: r.matchPercent,
+      matchReason: r.reason,
       sourcePlatform: r.job.sourcePlatform,
     }));
   }
@@ -342,6 +342,12 @@ export class JobsService {
     await this.prisma.userBehavior.create({
       data: { userID: user.userID, jobID, action },
     });
+
+    if (action === 'apply' || action === 'save') {
+      await this.prisma.jobRecommendation.deleteMany({
+        where: { userID: user.userID },
+      });
+    }
   }
 
   async getUserStats(accountID: number) {
@@ -371,12 +377,14 @@ export class JobsService {
       this.prisma.jobRecommendation.count({
         where: {
           userID: user.userID,
+          matchPercent: { gt: 49 },
           createdAt: { gte: todayStart, lt: todayEnd },
         },
       }),
       this.prisma.jobRecommendation.count({
         where: {
           userID: user.userID,
+          matchPercent: { gt: 49 },
           createdAt: {
             gte: new Date(todayStart.getTime() - 24 * 60 * 60 * 1000),
             lt: todayStart,
@@ -469,7 +477,6 @@ export class JobsService {
     const skip = (page - 1) * limit;
 
     const total = await this.prisma.savedJob.count({
-
       where: { userID: user.userID },
     });
 
@@ -661,6 +668,26 @@ export class JobsService {
         name: ind.name,
         count: ind._count.jobs,
       })),
+    };
+  }
+
+  async getJobMatch(accountID: number, jobID: number) {
+    const user = await this.prisma.user.findFirst({
+      where: { accountID },
+      select: { userID: true },
+    });
+    if (!user) return null;
+
+    const rec = await this.prisma.jobRecommendation.findUnique({
+      where: { userID_jobID: { userID: user.userID, jobID } },
+      select: { matchPercent: true, reason: true },
+    });
+
+    if (!rec) return null;
+
+    return {
+      matchPercent: rec.matchPercent,
+      reason: rec.reason,
     };
   }
 }

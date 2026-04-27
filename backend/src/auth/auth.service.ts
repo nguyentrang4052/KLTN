@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
-import { MailService } from '../../mail/mail.service';
+import { MailService } from '../mail/mail.service';
 import { TokenBlacklistService } from './token-blacklist.service';
 import * as bcrypt from 'bcrypt';
 import { RegisterDto } from '../dto/register.dto';
@@ -25,7 +25,7 @@ export class AuthService {
     private jwtService: JwtService,
     private mailService: MailService,
     private blacklistService: TokenBlacklistService,
-  ) {}
+  ) { }
 
   async register(dto: RegisterDto) {
     const existing = await this.prisma.account.findUnique({
@@ -211,7 +211,6 @@ export class AuthService {
     return this.signToken(accountID, email, role);
   }
 
-
   private signToken(
     accountID: number,
     email: string,
@@ -242,6 +241,16 @@ export class AuthService {
 
     const latestProfile = account.user?.profiles?.[0];
 
+    const sub = await this.prisma.userSubscription.findFirst({
+      where: {
+        userID: account.user?.userID,
+        status: 'active',
+        expiresAt: { gt: new Date() },
+      },
+      include: { plan: true },
+      orderBy: { startedAt: 'desc' },
+    });
+
     return {
       accountID: account.accountID,
       email: account.email,
@@ -253,6 +262,7 @@ export class AuthService {
       provider: account.provider,
       avatar: account.user?.avatar ?? null,
       jobTitle: latestProfile?.jobTitle ?? 'Thành viên',
+      plan: sub?.plan ?? { name: 'free', displayName: 'Free' },
     };
   }
 
