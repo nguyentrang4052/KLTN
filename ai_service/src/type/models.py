@@ -136,7 +136,7 @@ class SessionContext(BaseModel):
     current_focus_job: Optional[Dict[str, Any]] = None
     conversation_history: List[ChatMessage] = Field(default_factory=list)
     last_updated: float = Field(default_factory=lambda: __import__('time').time())
-    search_result_jobs: List[Dict[str, Any]] = Field(default_factory=list)
+    search_result_jobs: List[Dict[str, Any]] = Field(default_factory=list) 
 
 
 class JobMatch(BaseModel):

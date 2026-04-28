@@ -234,6 +234,8 @@ class SessionManager:
         logger.warning(f"Job {job_id} not found in session")
         return None
     
+    # Thêm vào class SessionManager
+
     def set_search_result_jobs(self, user_id: str, jobs: List[Dict]):
         """Lưu kết quả tìm kiếm jobs vào session"""
         session = self.get_or_create(user_id)
@@ -246,3 +248,4 @@ class SessionManager:
         """Lấy kết quả tìm kiếm jobs từ session"""
         session = self.get_or_create(user_id)
         return getattr(session, 'search_result_jobs', [])
+    

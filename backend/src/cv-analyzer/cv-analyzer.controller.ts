@@ -85,7 +85,7 @@ export class CvAnalyzerController {
   }
 
 
-   // ─── Map CV đã phân tích → profile (CẢI THIỆN: trả đủ field) ───────────
+  // ─── Map CV đã phân tích → profile (CẢI THIỆN: trả đủ field) ───────────
   @Post('map-to-profile/:cvAnalysisId')
   @UseGuards(JwtAuthGuard)
   async mapToProfile(
@@ -102,12 +102,12 @@ export class CvAnalyzerController {
       data: {
         // Personal
         fullName: mapped.fullName,
-        phone:    mapped.phone,
-        address:  mapped.address,
+        phone: mapped.phone,
+        address: mapped.address,
         // Career
-        jobTitle:       mapped.jobTitle,
+        jobTitle: mapped.jobTitle,
         experienceYear: mapped.experienceYear,
-        careerLevel:    mapped.careerLevel,
+        careerLevel: mapped.careerLevel,
       },
     };
   }
@@ -143,7 +143,6 @@ export class CvAnalyzerController {
     @Request() req,
     @Param('id') id: string,
   ) {
-    console.log(req.user); // Kiểm tra thông tin user
     const cv = await this.cvAnalyzerService.getCVById(parseInt(id), req.user.sub);
     if (!cv) {
       throw new BadRequestException('CV not found');

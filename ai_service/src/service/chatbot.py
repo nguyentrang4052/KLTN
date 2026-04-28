@@ -13,6 +13,7 @@ from src.service.session_manager import SessionManager
 from src.prompt.templates import Prompts
 from src.service.job_advisor import JobAdvisor
 import structlog
+from src.database.data_access.job import JobDataAccess
 
 logger = structlog.get_logger()
 
@@ -45,93 +46,6 @@ class Chatbot:
         if cv_bytes and cv_mime_type:
             return await self._handle_cv_upload(user_id, cv_bytes, cv_mime_type)
         return await self._handle_chat(user_id, message, stream)
-
-
-    # async def _handle_cv_upload(
-    #     self, user_id: str, cv_bytes: bytes, mime_type: str) -> Dict[str, Any]:
-    #     try:
-    #         cv_hash = self.cv_cache.compute_file_hash(cv_bytes)
-    #         logger.info("cv_upload_started", user_id=user_id, size=len(cv_bytes), hash=cv_hash[:16])
-
-    #         # ========== CHECK CACHE ==========
-    #         cached = await self.cv_cache.get(cv_hash)
-    #         if cached and cached.get("analysis"):
-    #             logger.info("cv_cache_hit", user_id=user_id, hash=cv_hash[:16])
-    #             analysis = CVAnalysis(**cached["analysis"])
-    #             job_matches = cached.get("job_matches", [])
-    #             self.cv_hashes[user_id] = cv_hash
-                
-    #             # Lưu vào session
-    #             self.session_manager.set_cv_analysis(user_id, analysis)
-    #             self.session_manager.set_matched_jobs(user_id, job_matches)
-
-    #             return {
-    #                 "type": "cv_analysis_complete",
-    #                 "analysis": analysis.dict(),
-    #                 "job_matches": job_matches,
-    #                 "cached": True,
-    #                 "message": self._format_cv_response(analysis, job_matches, cached=True),
-    #                 "success": True,
-    #             }
-
-    #         # ========== EXTRACT TEXT ==========
-    #         logger.info("step1_extract_start")
-    #         cv_text = await asyncio.wait_for(
-    #             self.cv_processor.extract_text(cv_bytes, mime_type), timeout=30.0
-    #         )
-    #         logger.info("step1_extract_done", text_length=len(cv_text))
-
-    #         if not cv_text or len(cv_text.strip()) < 50:
-    #             return {"type": "error", "message": "Không đọc được CV", "error": True}
-
-    #         # ========== ANALYZE CV ==========
-    #         logger.info("step2_analyze_start")
-    #         try:
-    #             analysis = await asyncio.wait_for(
-    #                 self.rag_engine.analyze_cv(cv_text), timeout=240.0
-    #             )
-    #             logger.info("step2_analyze_done", level=analysis.suitable_level)
-    #         except asyncio.TimeoutError:
-    #             logger.warning("step2_analyze_timeout_using_fallback")
-    #             analysis = self._quick_cv_analysis(cv_text)
-    #         except Exception as e:
-    #             logger.error("step2_analyze_error", error=str(e))
-    #             analysis = self._quick_cv_analysis(cv_text)
-
-    #         # ========== JOB MATCHING - DÙNG JOB MATCHER MỚI ==========
-    #         logger.info("step3_job_matching_start")
-    #         job_matches = []
-    #         try:
-    #             # Gọi job matcher mới
-    #             job_matches = await self.job_matcher.match_jobs_for_cv(analysis, limit=10)
-    #             logger.info("step3_job_matching_done", matches_count=len(job_matches))
-    #         except Exception as e:
-    #             logger.error("step3_job_matching_error", error=str(e))
-
-    #         # ========== LƯU VÀO SESSION ==========
-    #         self.session_manager.set_cv_analysis(user_id, analysis)
-    #         self.session_manager.set_matched_jobs(user_id, job_matches)
-
-    #         # ========== SAVE CACHE ==========
-    #         asyncio.create_task(
-    #             self._save_cache(user_id, cv_hash, analysis, job_matches)
-    #         )
-
-    #         self.cv_hashes[user_id] = cv_hash
-    #         await self.cache_service.invalidate_user(user_id)
-
-    #         return {
-    #             "type": "cv_analysis_complete",
-    #             "analysis": analysis.dict(),
-    #             "job_matches": job_matches,
-    #             "cached": False,
-    #             "message": self._format_cv_response(analysis, job_matches, cached=False),
-    #             "success": True,
-    #         }
-
-    #     except Exception as e:
-    #         logger.error("cv_upload_unexpected", error=str(e))
-    #         return {"type": "error", "message": f"Lỗi: {str(e)}", "error": True}
 
     async def _handle_cv_upload(
         self, user_id: str, cv_bytes: bytes, mime_type: str
@@ -329,6 +243,61 @@ class Chatbot:
             # Sử dụng translated_message để xử lý intent và logic
             msg_lower = translated_message.lower().strip()
             
+            # ========== KIỂM TRA TÌM KIẾM JOB TRƯỚC TIÊN ==========
+            search_indicators = [
+                "tìm việc", "list job", "danh sách job", "gợi ý job", "job liên quan",
+                "việc làm", "công việc", "jobs at", "việc tại", "tuyển dụng",
+                "dua ra list", "đưa ra danh sách"
+            ]
+            
+            if any(kw in msg_lower for kw in search_indicators):
+                # Thêm user_id vào criteria
+                search_criteria = await self._extract_search_criteria(translated_message)
+                search_criteria["user_id"] = user_id
+                
+                jobs = await self._search_jobs_from_db(search_criteria, limit=8)
+                
+                if jobs:
+                    response = self._format_job_list_response(jobs, search_criteria)
+                    # Lưu jobs tìm được vào session để hỏi sâu
+                    self.session_manager.set_search_result_jobs(user_id, jobs)
+                else:
+                    response = f"Tôi chưa tìm thấy job phù hợp với '{message[:100]}'. Bạn có thể thử với từ khóa khác hoặc upload CV để tôi gợi ý job phù hợp hơn!"
+                
+                # Dịch câu trả lời nếu cần
+                final_response = await self._translate_response_if_needed(response, original_message)
+                
+                # Lưu vào lịch sử
+                self.session_manager.add_message(user_id, ChatMessage(role="user", content=original_message))
+                self.session_manager.add_message(user_id, ChatMessage(role="assistant", content=final_response))
+                
+                return {
+                    "type": "text",
+                    "content": final_response,
+                    "cached": False,
+                }
+            
+            # ========== KIỂM TRA JOB INQUIRY (ứng tuyển vào job cụ thể) ==========
+            job_inquiry_keywords = [
+                "ứng tuyển", "có thể ứng tuyển", "apply được không", "có nên apply",
+                "phù hợp không", "có phù hợp"
+            ]
+            
+            if any(kw in msg_lower for kw in job_inquiry_keywords):
+                result = await self._handle_job_inquiry(user_id, translated_message)
+                if result and result.get('response'):
+                    response = result['response']
+                    final_response = await self._translate_response_if_needed(response, original_message)
+                    
+                    self.session_manager.add_message(user_id, ChatMessage(role="user", content=original_message))
+                    self.session_manager.add_message(user_id, ChatMessage(role="assistant", content=final_response))
+                    
+                    return {
+                        "type": "text",
+                        "content": final_response,
+                        "cached": False,
+                    }
+            
             # Lấy current focus job từ session
             current_focus_job = self.session_manager.get_current_focus_job(user_id)
             
@@ -367,24 +336,6 @@ class Chatbot:
                             response = self._clean_response(response)
                         except asyncio.TimeoutError:
                             response = "Xin lỗi, tôi đang bận. Bạn thử hỏi lại nhé!"
-                            search_indicators = [
-                            "tìm việc", "list job", "danh sách job", "gợi ý job", "job liên quan",
-                            "việc làm", "công việc", "jobs at", "việc tại", "tuyển dụng"
-                        ]
-        
-            if any(kw in msg_lower for kw in search_indicators):
-                # Thêm user_id vào criteria
-                search_criteria = await self._extract_search_criteria(translated_message)
-                search_criteria["user_id"] = user_id
-                
-                jobs = await self._search_jobs_from_db(search_criteria, limit=8)
-                
-                if jobs:
-                    response = self._format_job_list_response(jobs, search_criteria)
-                    # Lưu jobs tìm được vào session để hỏi sâu
-                    self.session_manager.set_search_result_jobs(user_id, jobs)
-                else:
-                    response = f"Tôi chưa tìm thấy job phù hợp với '{message[:100]}'. Bạn có thể thử với từ khóa khác hoặc upload CV để tôi gợi ý job phù hợp hơn!"
             
             # Dịch câu trả lời nếu câu hỏi gốc bằng tiếng Anh
             final_response = await self._translate_response_if_needed(response, original_message)
@@ -392,7 +343,7 @@ class Chatbot:
             # Lưu vào lịch sử (lưu câu hỏi gốc)
             self.session_manager.add_message(user_id, ChatMessage(role="user", content=original_message))
             self.session_manager.add_message(user_id, ChatMessage(role="assistant", content=final_response))
-     
+            
             return {
                 "type": "text",
                 "content": final_response,
@@ -406,91 +357,6 @@ class Chatbot:
                 "content": f"Có lỗi: {str(e)[:100]}",
                 "error": True,
             }
-
-
-    # async def _handle_quick_intent(self, user_id: str, message: str) -> Optional[str]:
-    #     """Xử lý nhanh các câu hỏi phổ biến - hỗ trợ cả Anh và Việt"""
-    #     msg_lower = message.lower().strip()
-    #     session = self.session_manager.get_or_create(user_id)
-    #     has_cv = session.cv_analysis is not None
-        
-    #     # 1. Greetings
-    #     if msg_lower in ["chào", "hi", "hello", "xin chào", "hey", "good morning", "good afternoon"]:
-    #         return "Xin chào! Tôi là AI tư vấn việc làm. Bạn cần giúp gì về CV hay tìm việc ạ?"
-        
-    #     # 2. Job suggestions
-    #     job_keywords = ["gợi ý việc", "tìm việc", "việc phù hợp", "job cho tôi", 
-    #                     "job suggestion", "find job", "recommend job"]
-    #     if any(kw in msg_lower for kw in job_keywords):
-    #         if has_cv and session.matched_jobs:
-    #             jobs = session.matched_jobs[:3]
-    #             job_list = ", ".join([f"{j.get('job_title')} ({j.get('match_score')}%)" for j in jobs])
-    #             return f"Dựa trên CV của bạn, 3 việc phù hợp nhất: {job_list}. Bạn muốn tìm hiểu kỹ job nào?"
-    #         elif has_cv:
-    #             return "Tôi đã phân tích CV của bạn nhưng chưa tìm thấy việc phù hợp. Bạn có thể upload lại CV hoặc cho tôi biết ngành nghề bạn quan tâm?"
-    #         else:
-    #             return "Bạn chưa upload CV. Hãy upload CV để tôi phân tích và gợi ý việc phù hợp nhé!"
-        
-    #     # 3. CV analysis
-    #     cv_keywords = ["phân tích cv", "xem cv", "cv của tôi", "analyze cv", "my cv"]
-    #     if any(kw in msg_lower for kw in cv_keywords):
-    #         if has_cv:
-    #             cv = session.cv_analysis
-    #             return f"CV của bạn: Điểm {cv.format_score}/10, cấp bậc {cv.suitable_level}, {cv.experience_years} năm KN. Điểm mạnh: {cv.strengths[0] if cv.strengths else 'chưa rõ'}. Bạn muốn cải thiện phần nào?"
-    #         else:
-    #             return "Bạn chưa upload CV. Hãy gửi file PDF/DOCX lên để tôi phân tích giúp bạn!"
-        
-    #     # 4. Salary questions
-    #     salary_keywords = ["lương", "salary"]
-    #     if any(kw in msg_lower for kw in salary_keywords):
-    #         import re
-    #         positions = re.findall(r'(react|java|python|frontend|backend|fullstack|devops|data|kế toán|accounting|marketing|sales)', msg_lower, re.IGNORECASE)
-    #         if positions:
-    #             pos = positions[0].lower()
-    #             salary_ranges = {
-    #                 "react": "React Developer: Junior 15-25tr, Mid 25-45tr, Senior 45-70tr",
-    #                 "java": "Java Developer: Junior 12-20tr, Mid 20-40tr, Senior 40-60tr",
-    #                 "python": "Python Dev: Junior 15-22tr, Mid 22-38tr, Senior 38-55tr",
-    #                 "frontend": "Frontend: Junior 12-20tr, Mid 20-35tr, Senior 35-50tr",
-    #                 "backend": "Backend: Junior 15-25tr, Mid 25-40tr, Senior 40-60tr",
-    #                 "kế toán": "Kế toán: Nhân viên 8-15tr, Trưởng phòng 20-35tr, Kế toán trưởng 30-50tr",
-    #                 "accounting": "Accounting Officer: Staff 8-15tr, Senior 15-25tr, Manager 25-40tr",
-    #             }
-    #             return salary_ranges.get(pos, f"Mức lương {pos} thường 15-40tr tùy cấp bậc và kinh nghiệm.")
-    #         else:
-    #             return "Bạn muốn hỏi lương ngành nào? Ví dụ: React, Java, Python, Kế toán, Marketing..."
-        
-    #     # 5. Skills needed
-    #     skill_keywords = ["học gì", "kỹ năng", "cần học", "thiếu kỹ năng", 
-    #                     "what to learn", "skills needed", "missing skills"]
-    #     if any(kw in msg_lower for kw in skill_keywords):
-    #         if has_cv and session.matched_jobs and session.matched_jobs[0].get('skill_gap'):
-    #             skills = session.matched_jobs[0].get('skill_gap', [])[:5]
-    #             if skills:
-    #                 return f"Theo phân tích, bạn nên học: {', '.join(skills)}. Đây là những kỹ năng quan trọng cho việc làm bạn đang quan tâm."
-    #         return "Để tôi gợi ý, bạn nên tập trung vào: kỹ năng chuyên môn chính, tiếng Anh, và các công cụ phổ biến trong ngành."
-        
-    #     # 6. Specific job description request (like in the image)
-    #     job_desc_keywords = ["description", "mô tả", "tell me about", "cho tôi biết về"]
-    #     if any(kw in msg_lower for kw in job_desc_keywords) and session.matched_jobs:
-    #         # Try to find matching job
-    #         for job in session.matched_jobs:
-    #             title_lower = job.get('job_title', '').lower()
-    #             company_lower = job.get('company', '').lower()
-    #             if title_lower in msg_lower or company_lower in msg_lower:
-    #                 desc = job.get('description', '')[:500]
-    #                 return f"""**{job.get('job_title')}** tại {job.get('company')}
-
-    # 📍 {job.get('location', 'N/A')} | 💰 {job.get('salary', 'Thương lượng')}
-
-    # **Mô tả công việc:**
-    # {desc}
-
-    # **Yêu cầu:** {job.get('requirements', '')[:200]}
-
-    # Bạn muốn hỏi thêm gì về vị trí này không? (ví dụ: cần học gì, có nên apply không?)"""
-        
-    #     return None
 
 
     async def _handle_quick_intent(self, user_id: str, message: str) -> Optional[str]:
@@ -635,15 +501,15 @@ class Chatbot:
         
         return criteria
 
-
     async def _search_jobs_from_db(self, criteria: Dict[str, Any], limit: int = 8) -> List[Dict]:
         """Tìm kiếm job từ database theo tiêu chí"""
         
+        # Khởi tạo JobDataAccess ở đầu method
         job_da = JobDataAccess()
         
         # Ưu tiên 1: Tìm theo cấp bậc
         if criteria.get("level"):
-            jobs = await job_da.search_jobs_by_level(criteria["level"], limit=limit)
+            jobs = await self._search_jobs_by_level(job_da, criteria["level"], limit)
             if jobs:
                 return jobs
         
@@ -669,24 +535,85 @@ class Chatbot:
         
         # Ưu tiên 4: Tìm theo skills
         if criteria.get("skills"):
-            # Lấy user skills từ CV nếu có
             user_skills = self.session_manager.get_cv_skills(criteria.get("user_id", "")) if criteria.get("user_id") else []
             all_skills = list(set(criteria["skills"] + user_skills))
             
             if all_skills:
-                # Sử dụng search_by_skills từ job_data_access
-                from src.database.data_access.job import JobDataAccess
-                job_da = JobDataAccess()
-                jobs = await job_da.search_by_skills(all_skills, limit=limit)
-                if jobs:
-                    # Convert to dict format
-                    return [job_da._format_row(job.dict()) if hasattr(job, 'dict') else job for job in jobs]
+                try:
+                    # Gọi search_by_skills từ job_da
+                    jobs = await job_da.search_by_skills(all_skills, limit=limit)
+                    if jobs:
+                        # Convert jobs sang dict format
+                        result = []
+                        for job in jobs:
+                            if hasattr(job, 'dict'):
+                                job_dict = job.dict()
+                            elif isinstance(job, dict):
+                                job_dict = job
+                            else:
+                                job_dict = {
+                                    'id': str(getattr(job, 'id', '')),
+                                    'title': getattr(job, 'title', 'N/A'),
+                                    'company': getattr(job, 'company', 'N/A'),
+                                    'location': getattr(job, 'location', 'N/A'),
+                                    'salary': getattr(job, 'salary', 'Thương lượng'),
+                                    'skills': getattr(job, 'skills', [])
+                                }
+                            result.append(job_dict)
+                        return result
+                except Exception as e:
+                    logger.error(f"search_by_skills error: {str(e)}")
         
         # Fallback: Lấy jobs mới nhất
-        job_da = JobDataAccess()
-        jobs = await job_da.get_all_active_jobs(limit=limit)
-        return [job_da._format_row(job.dict()) if hasattr(job, 'dict') else job for job in jobs]
+        try:
+            jobs = await job_da.get_all_active_jobs(limit=limit)
+            result = []
+            for job in jobs:
+                if hasattr(job, 'dict'):
+                    job_dict = job.dict()
+                elif isinstance(job, dict):
+                    job_dict = job
+                else:
+                    job_dict = {
+                        'id': str(getattr(job, 'id', '')),
+                        'title': getattr(job, 'title', 'N/A'),
+                        'company': getattr(job, 'company', 'N/A'),
+                        'location': getattr(job, 'location', 'N/A'),
+                        'salary': getattr(job, 'salary', 'Thương lượng'),
+                        'skills': getattr(job, 'skills', [])
+                    }
+                result.append(job_dict)
+            return result
+        except Exception as e:
+            logger.error(f"fallback search error: {str(e)}")
+            return []
 
+
+    async def _search_jobs_by_level(self, job_da: JobDataAccess, level: str, limit: int) -> List[Dict]:
+        """Tìm kiếm job theo cấp bậc"""
+        level_keywords = {
+            "fresher": ["fresher", "mới tốt nghiệp", "entry level", "entry"],
+            "junior": ["junior", "nhân viên", "chuyên viên"],
+            "mid": ["mid", "middle", "chuyên viên cao cấp"],
+            "senior": ["senior", "trưởng nhóm", "lead"],
+            "intern": ["intern", "thực tập", "thực tập sinh", "internship"]
+        }
+        
+        keywords = level_keywords.get(level.lower(), [level])
+        
+        # Tìm kiếm với từng keyword
+        all_jobs = []
+        seen_ids = set()
+        
+        for kw in keywords:
+            jobs = await job_da.search_jobs_by_keywords(keywords=[kw], limit=limit)
+            for job in jobs:
+                job_id = job.get('id') if isinstance(job, dict) else getattr(job, 'id', None)
+                if job_id and job_id not in seen_ids:
+                    seen_ids.add(job_id)
+                    all_jobs.append(job)
+        
+        return all_jobs[:limit]
 
     def _format_job_list_response(self, jobs: List[Dict], criteria: Dict) -> str:
         """Format danh sách job trả về cho user"""
