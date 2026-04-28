@@ -133,22 +133,22 @@ export default function Header({ notifCount: propNotifCount }) {
   }, [])
 
 
-  useEffect(() => {
-    if (!token) return
+  // useEffect(() => {
+  //   if (!token) return
 
-    const loadPref = async () => {
-      const res = await fetch(`${API}/notifications/email-preference`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+  //   const loadPref = async () => {
+  //     const res = await fetch(`${API}/notifications/email-preference`, {
+  //       headers: { Authorization: `Bearer ${token}` },
+  //     })
 
-      if (res.ok) {
-        const data = await res.json()
-        setEmailNotifEnabled(data.emailNotificationsEnabled)
-      }
-    }
+  //     if (res.ok) {
+  //       const data = await res.json()
+  //       setEmailNotifEnabled(data.emailNotificationsEnabled)
+  //     }
+  //   }
 
-    loadPref()
-  }, [token])
+  //   loadPref()
+  // }, [token])
 
   const toggleEmail = async () => {
     if (!token || isLoadingEmailPref) return

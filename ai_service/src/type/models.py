@@ -18,39 +18,66 @@ class CVAnalysis(BaseModel):
     strengths: List[str] = Field(default_factory=list)
     weaknesses: List[str] = Field(default_factory=list)
     missing_skills: List[str] = Field(default_factory=list)
-    format_score: int = Field(ge=1, le=10)
+    format_score: int = Field(ge=1, le=10, default=5)
     suggestions: List[str] = Field(default_factory=list)
     suitable_industries: List[str] = Field(default_factory=list)
-    suitable_level: Literal["Fresher", "Junior", "Mid", "Senior", "Lead", "Manager"]
+    suitable_level: Literal["Intern", "Fresher", "Junior", "Mid", "Senior", "Lead", "Manager"] = (
+        "Junior"
+    )
     extracted_skills: List[str] = Field(default_factory=list)
-    experience_years: int = Field(ge=0)
+    experience_years: int = Field(ge=0, default=0)
     career_trajectory: Optional[str] = None
 
 
-class JobMatch(BaseModel):
-    title: str
+class JobPosting(BaseModel):
+    id: str
+    title: Optional[str] = None
     company: Optional[str] = None
-    location: str
-    salary_range: str
-    match_score: float = Field(ge=0, le=100)
-    required_skills: List[str] = Field(default_factory=list)
-    missing_skills: List[str] = Field(default_factory=list)
-    reasoning: str
+    location: Optional[str] = None
+    salary: Optional[str] = None
+    description: Optional[str] = None
+    requirements: Optional[str] = None
+    benefit: Optional[str] = None
+    job_type: Optional[str] = None
+    working_time: Optional[str] = None
+    experience_year: Optional[str] = None
+    posted_at: Optional[datetime] = None
+    deadline: Optional[datetime] = None
+    source: Optional[str] = None
+    url: Optional[str] = None
+    is_active: bool = True
+    short_location: Optional[str] = None
+    is_new: bool = False
+    industry: Optional[str] = None
+    skills: List[str] = Field(default_factory=list)
 
 
-class MarketTrend(BaseModel):
-    field: str
-    trend: str
-    demand_level: Literal["high", "medium", "low"]
-    avg_salary: str
-    growth_rate: str
+class CVRecord(BaseModel):
+    id: int
+    user_id: int
+    title: str
+    user_name: Optional[str] = None
+    job_title: Optional[str] = None
+    experience_year: Optional[str] = None
+    career_level: Optional[str] = None
+    expected_salary: Optional[str] = None
+    working_type: Optional[str] = None
+    skills: List[str] = Field(default_factory=list)
+    extracted_text: str = ""
+    analysis: Dict[str, Any] = Field(default_factory=dict)
+    file_hash: str = ""
 
 
-class ChatMessage(BaseModel):
-    role: Literal["user", "assistant", "system"]
-    content: str
-    metadata: Optional[Dict[str, Any]] = None
-    timestamp: datetime = Field(default_factory=datetime.now)
+class UserProfile(BaseModel):
+    id: int
+    full_name: Optional[str] = None
+    job_title: Optional[str] = None
+    experience_year: Optional[str] = None
+    career_level: Optional[str] = None
+    expected_salary: Optional[str] = None
+    working_type: Optional[str] = None
+    industry: Optional[str] = None
+    skills: List[str] = Field(default_factory=list)
 
 
 class RetrievedChunk(BaseModel):
@@ -64,6 +91,12 @@ class RAGContext(BaseModel):
     chunks: List[RetrievedChunk] = Field(default_factory=list)
     query: str
     intent: QueryIntent
+
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant", "system"]
+    content: str
+    metadata: Optional[Dict[str, Any]] = None
 
 
 class CacheEntry(BaseModel):
@@ -93,65 +126,57 @@ class CacheResult(BaseModel):
     source: Literal["exact", "semantic", "none"] = "none"
 
 
-# Database Models
-class JobPosting(BaseModel):
-    id: str
-    title: str
+# Thêm vào cuối file src/type/models.py
+
+class SessionContext(BaseModel):
+    """Lưu context cho multi-turn conversation"""
+    user_id: str
+    cv_analysis: Optional[CVAnalysis] = None
+    matched_jobs: List[Dict[str, Any]] = Field(default_factory=list)
+    current_focus_job: Optional[Dict[str, Any]] = None
+    conversation_history: List[ChatMessage] = Field(default_factory=list)
+    last_updated: float = Field(default_factory=lambda: __import__('time').time())
+    search_result_jobs: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class JobMatch(BaseModel):
+    """Kết quả matching job chi tiết"""
+    job_id: str
+    job_title: str
     company: str
     location: str
-    salary_min: Optional[int] = None
-    salary_max: Optional[int] = None
-    currency: Literal["VND", "USD"] = "VND"
-    period: Literal["month", "year"] = "month"
-    requirements: List[str] = Field(default_factory=list)
-    description: str
-    skills: List[str] = Field(default_factory=list)
-    level: Literal["Fresher", "Junior", "Mid", "Senior", "Lead", "Manager"]
-    industry: Optional[str] = None
-    posted_at: datetime
-    expires_at: Optional[datetime] = None
-    source: str
-    url: Optional[str] = None
-    is_active: bool = True
+    salary: str
+    match_score: int
+    match_reasons: List[str]
+    missing_for_this_job: List[str]
+    recommendation: str
+    skill_overlap: List[str]
+    skill_gap: List[str]
 
 
-class SalaryGuide(BaseModel):
-    id: str
-    position: str
-    level: str
-    location: str
-    min_salary: int
-    max_salary: int
-    avg_salary: int
-    currency: Literal["VND", "USD"] = "VND"
-    period: Literal["month", "year"] = "month"
-    year: int
-    source: Optional[str] = None
-    updated_at: datetime
+
+# Thêm vào cuối file src/type/models.py
+
+class TranslationRequest(BaseModel):
+    """Request cho API dịch thuật"""
+    text: str = Field(..., description="Văn bản cần dịch", min_length=1, max_length=5000)
+    source_lang: Literal["vi", "en", "auto"] = Field(
+        default="auto", 
+        description="Ngôn ngữ nguồn (vi, en, auto)"
+    )
+    target_lang: Literal["vi", "en"] = Field(
+        ..., 
+        description="Ngôn ngữ đích (vi hoặc en)"
+    )
+    use_cache: bool = Field(default=True, description="Có sử dụng cache không")
 
 
-class MarketTrendDB(BaseModel):
-    id: str
-    field: str
-    trend: str
-    demand_level: Literal["high", "medium", "low"]
-    growth_rate: float
-    avg_salary_change: float
-    top_skills: List[str] = Field(default_factory=list)
-    year: int
-    quarter: int
-    source: Optional[str] = None
-    updated_at: datetime
-
-
-class CVRecord(BaseModel):
-    id: str
-    user_id: str
-    file_name: str
-    file_hash: str
-    extracted_text: str
-    analysis: Dict[str, Any]
-    skills: List[str] = Field(default_factory=list)
-    experience_years: int
-    uploaded_at: datetime
-    updated_at: datetime
+class TranslationResponse(BaseModel):
+    """Response cho API dịch thuật"""
+    success: bool
+    original_text: str
+    translated_text: str
+    source_lang_detected: Optional[str] = None
+    target_lang: str
+    from_cache: bool = False
+    error: Optional[str] = None

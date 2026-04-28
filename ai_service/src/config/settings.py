@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     app_url: str
     frontend_url: str
     debug: bool = False
+    internal_api_key: str = "chatbot_RecruitmentWEB_secure_key"  # Default value for development
 
     # ===== DATABASE =====
     database_url: str
@@ -39,6 +40,9 @@ class Settings(BaseSettings):
 
     # ===== VERSION =====
     data_version: str = "v1.0"
+
+    huggingface_api_key: Optional[str] = None  # Optional, nếu muốn dùng HuggingFace
+    enable_translation_api: bool = True 
 
     # ===== CONFIG =====
     model_config = SettingsConfigDict(

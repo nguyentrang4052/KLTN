@@ -1,24 +1,36 @@
+/* ─────────────────────────────────────────
+   PROFILE SCREEN – Revised CSS
+   Fixes: spacing, responsive, btn-sage hover,
+          p-status position, profile-grid definition
+   ───────────────────────────────────────── */
+
+/* ── Layout wrapper ── */
 .profile-wrap {
   display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 14px;
+  grid-template-columns: 1fr 300px;
+  gap: 16px;
   padding: 20px;
+  align-items: start;           /* FIX: sidebar panel không bị kéo dài bằng main */
 }
 
 .profile-main {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
+  min-width: 0;                 /* FIX: ngăn overflow trong grid cell */
 }
 
+/* ── Profile header card ── */
 .p-header {
-  padding: 24px;
+  padding: 20px 24px;
   display: flex;
   gap: 18px;
   align-items: flex-start;
-  overflow: hidden;
+  overflow: visible;            /* FIX: bỏ hidden để không clip status dot */
+  flex-wrap: wrap;              /* RESPONSIVE: wrap khi hẹp */
 }
 
+/* ── Avatar ── */
 .p-avatar {
   width: 76px;
   height: 76px;
@@ -30,10 +42,9 @@
   justify-content: center;
   font-size: 28px;
   font-weight: 700;
-  color: #FFF;
+  color: #fff;
   flex-shrink: 0;
-  position: relative;
-  overflow: hidden;
+  position: relative;           /* giữ để p-status absolute hoạt động */
 }
 
 .p-avatar img {
@@ -44,19 +55,24 @@
   border-radius: 50%;
 }
 
+/* FIX: status dot lệch vì right:13px trong container 76px
+   → dùng right:2px cho đúng mép tròn */
 .p-status {
   position: absolute;
   bottom: 3px;
-  right: 13px;
+  right: 2px;
   width: 14px;
   height: 14px;
   background: var(--sage2);
   border-radius: 50%;
   border: 2px solid var(--surface);
+  pointer-events: none;
 }
 
+/* ── Info block ── */
 .p-info {
   flex: 1;
+  min-width: 160px;             /* RESPONSIVE: tránh quá nhỏ */
 }
 
 .p-name {
@@ -64,6 +80,7 @@
   font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.5px;
+  word-break: break-word;
 }
 
 .p-role {
@@ -74,29 +91,40 @@
 
 .p-tags {
   display: flex;
+  flex-wrap: wrap;              /* RESPONSIVE: xuống dòng khi hẹp */
   gap: 7px;
   margin-top: 10px;
 }
 
+/* ── Shared card base ── */
 .profile-card {
-  padding: 22px;
+  padding: 20px 22px;
 }
 
+/* ── Section title ── */
 .profile-section-title {
   font-family: 'Roboto', serif;
   font-size: 15px;
   font-weight: 600;
   margin-bottom: 16px;
+  color: var(--ink1);
 }
 
+/* ── Profile grid (form inputs) ──
+   FIX: profile-grid thiếu display:grid và columns */
 .profile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 20px;
   margin-bottom: 0;
 }
 
+/* ── Pref rows ── */
 .pref-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;                    /* FIX: thêm gap để key-value không dính nhau */
   padding: 10px 0;
   border-bottom: 1px solid var(--border);
 }
@@ -108,18 +136,23 @@
 .pref-k {
   font-size: 13px;
   color: var(--ink2);
+  flex-shrink: 0;
 }
 
 .pref-v {
   font-size: 13px;
   color: rgb(35, 42, 162);
   font-weight: 600;
+  text-align: right;
+  word-break: break-all;        /* FIX: email dài không tràn */
 }
 
+/* ── Toggle ── */
 .toggle-wrap {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .toggle {
@@ -129,53 +162,42 @@
   cursor: pointer;
   position: relative;
   transition: background 0.2s;
+  flex-shrink: 0;
 }
 
-.toggle.on {
-  background: var(--sage);
-}
-
-.toggle.off {
-  background: var(--border2);
-}
+.toggle.on  { background: var(--sage); }
+.toggle.off { background: var(--border2); }
 
 .toggle-dot {
   position: absolute;
   top: 3px;
   width: 14px;
   height: 14px;
-  background: #FFF;
+  background: #fff;
   border-radius: 50%;
   transition: left 0.2s;
 }
 
-.toggle.on .toggle-dot {
-  left: 19px;
-}
-
-.toggle.off .toggle-dot {
-  left: 3px;
-}
+.toggle.on  .toggle-dot { left: 19px; }
+.toggle.off .toggle-dot { left: 3px; }
 
 .toggle-label {
   font-size: 12px;
   font-weight: 600;
 }
 
-.toggle-label.on {
-  color: var(--sage);
-}
+.toggle-label.on  { color: var(--sage); }
+.toggle-label.off { color: var(--ink4); }
 
-.toggle-label.off {
-  color: var(--ink4);
-}
-
+/* ── Right sidebar column ── */
 .p-right {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
+  min-width: 0;
 }
 
+/* ── Activity items ── */
 .act-item {
   display: flex;
   gap: 11px;
@@ -191,23 +213,22 @@
 .act-icon {
   width: 32px;
   height: 32px;
+  min-width: 32px;              /* FIX: icon không bị squish */
   border-radius: 8px;
   background: var(--bg2);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
-  flex-shrink: 0;
 }
 
-.act-content {
-  flex: 1;
-}
+.act-content { flex: 1; min-width: 0; }
 
 .act-text {
   font-size: 12px;
   color: var(--ink3);
   line-height: 1.5;
+  word-break: break-word;
 }
 
 .act-time {
@@ -216,10 +237,11 @@
   margin-top: 2px;
 }
 
+/* ── Connected accounts ── */
 .account-list {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 10px;
 }
 
 .account-row {
@@ -231,6 +253,7 @@
 .account-icon {
   width: 30px;
   height: 30px;
+  min-width: 30px;
   border-radius: 7px;
   display: flex;
   align-items: center;
@@ -239,9 +262,7 @@
   font-weight: 800;
 }
 
-.account-info {
-  flex: 1;
-}
+.account-info { flex: 1; min-width: 0; }
 
 .account-name {
   font-size: 13px;
@@ -253,16 +274,90 @@
   color: var(--ink4);
 }
 
-.account-status.connected {
-  color: var(--sage);
-}
+.account-status.connected { color: var(--sage); }
 
+/* ── Button fix ──
+   FIX: btn-sage hover giữ nguyên màu (không thay đổi) →
+   thêm opacity hoặc shade nhẹ thay vì cùng màu */
 .btn-sage {
-  background-color: rgb(35, 42, 162); 
-  color: white;
+  background-color: rgb(35, 42, 162);
+  color: #fff;
   border: none;
+  transition: background-color 0.15s, opacity 0.15s;
 }
 
-.btn-sage:hover {
-  background-color: rgb(35, 42, 162);
+.btn-sage:hover:not(:disabled) {
+  background-color: rgb(28, 34, 140);  /* FIX: hover tối hơn một chút */
+  opacity: 1;
+}
+
+.btn-sage:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ─────────────────────────────────────────
+   RESPONSIVE – tablet (≤ 900px)
+   ───────────────────────────────────────── */
+@media (max-width: 900px) {
+  .profile-wrap {
+    grid-template-columns: 1fr;   /* stack columns */
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .p-right {
+    /* sidebar đi xuống dưới main */
+  }
+}
+
+/* ─────────────────────────────────────────
+   RESPONSIVE – mobile (≤ 600px)
+   ───────────────────────────────────────── */
+@media (max-width: 600px) {
+  .profile-wrap {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  /* Header: avatar + info xuống dòng khi quá hẹp */
+  .p-header {
+    padding: 16px;
+    gap: 14px;
+  }
+
+  .p-avatar {
+    width: 60px;
+    height: 60px;
+    min-width: 60px;
+    font-size: 22px;
+  }
+
+  .p-name { font-size: 18px; }
+
+  /* Form grid: 1 cột trên mobile */
+  .profile-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .profile-card {
+    padding: 14px 16px;
+  }
+
+  /* Pref row: cho value wrap thay vì overflow */
+  .pref-row {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .pref-v {
+    text-align: left;
+    word-break: break-word;
+  }
+
+  /* Stats row: wrap khi quá hẹp */
+  .stats-row {
+    flex-wrap: wrap;
+  }
 }

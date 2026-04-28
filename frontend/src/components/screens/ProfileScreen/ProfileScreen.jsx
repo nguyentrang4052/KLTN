@@ -29,7 +29,430 @@ const CONNECTED_ACCOUNTS = [
   { name: 'CareerViet', code: 'CV', color: 'var(--bg3)', connected: false },
 ]
 
-function ProfileScreen({ onNavigate }) {
+// ─── Import CV Modal ──────────────────────────────────────────────────────────
+// Nhận cvList trực tiếp từ App state qua props — không đọc localStorage
+function ImportCVModal({ onClose, onImport, authHeaders, cvList = [] }) {
+  const [analyzedCVs, setAnalyzedCVs] = useState([])
+  const [selectedCV, setSelectedCV] = useState(null)
+  const [importing, setImporting] = useState(false)
+  const [tab, setTab] = useState('local')
+  const [loadingAnalyzed, setLoadingAnalyzed] = useState(false)
+
+  useEffect(() => {
+    setLoadingAnalyzed(true)
+    fetch(`${API}/cv-analyzer/history`, { headers: authHeaders })
+      .then(r => r.ok ? r.json() : { data: [] })
+      .then(res => setAnalyzedCVs(res.data || []))
+      .catch(() => { })
+      .finally(() => setLoadingAnalyzed(false))
+  }, [])
+
+  const handleImport = async () => {
+    if (!selectedCV) return
+    setImporting(true)
+    try {
+      await onImport(selectedCV)
+      onClose()
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const currentList = tab === 'local' ? cvList : analyzedCVs
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 20,
+    }} onClick={onClose}>
+      <div style={{
+        background: 'var(--surface, #fff)', borderRadius: 14,
+        width: '100%', maxWidth: 860, maxHeight: '85vh',
+        display: 'flex', flexDirection: 'column',
+        boxShadow: '0 24px 64px rgba(0,0,0,0.2)',
+        overflow: 'hidden',
+      }} onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div style={{
+          padding: '18px 22px', borderBottom: '1px solid var(--border)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "'Roboto', serif" }}>
+              📋 Nhập thông tin từ CV
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 2 }}>
+              Chọn CV để tự động điền thông tin vào hồ sơ
+            </div>
+          </div>
+          <button onClick={onClose} style={{
+            width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)',
+            background: 'var(--bg2)', cursor: 'pointer', fontSize: 16, color: 'var(--ink3)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>✕</button>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--bg)', padding: '0 22px' }}>
+          {[
+            { id: 'local', label: '✏️ CV đã tạo', count: cvList.length },
+            { id: 'analyzed', label: '📤 CV đã tải lên', count: analyzedCVs.length },
+          ].map(t => (
+            <button key={t.id} onClick={() => { setTab(t.id); setSelectedCV(null) }}
+              style={{
+                padding: '10px 16px', border: 'none', background: 'transparent',
+                borderBottom: tab === t.id ? '2px solid rgb(35, 42, 162)' : '2px solid transparent',
+                fontWeight: tab === t.id ? 700 : 400, fontSize: 13,
+                color: tab === t.id ? 'rgb(35, 42, 162)' : 'var(--ink3)',
+                cursor: 'pointer', marginBottom: -1,
+              }}>
+              {t.label}
+              <span style={{
+                marginLeft: 6, fontSize: 11, background: 'var(--bg2)',
+                padding: '1px 6px', borderRadius: 10, color: 'var(--ink4)',
+              }}>{t.count}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Body */}
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+
+          {/* CV List */}
+          <div style={{
+            width: 280, borderRight: '1px solid var(--border)',
+            overflowY: 'auto', padding: 12, flexShrink: 0,
+          }}>
+            {tab === 'analyzed' && loadingAnalyzed ? (
+              <div style={{ textAlign: 'center', padding: 32, color: 'var(--ink4)', fontSize: 13 }}>
+                ⟳ Đang tải...
+              </div>
+            ) : currentList.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 32, color: 'var(--ink4)', fontSize: 13 }}>
+                {tab === 'local' ? 'Chưa có CV nào được tạo' : 'Chưa có CV nào được tải lên'}
+              </div>
+            ) : currentList.map(cv => {
+              const isSelected = selectedCV?.cv?.id === cv.id
+              const displayName = tab === 'analyzed'
+                ? (cv.fullName && cv.fullName !== '' ? cv.fullName : cv.filename || 'CV không tên')
+                : (cv.name || cv.cvName || 'Không tên')
+              const displaySub = tab === 'local' ? (cv.templateId || 'Custom') : (cv.filename || 'Đã phân tích')
+              const displayDate = cv.updatedAt || cv.createdAt
+              const iconBg = tab === 'analyzed' ? '#10b981' : (cv.accent || '#6366f1')
+              return (
+                <div key={cv.id}
+                  onClick={() => setSelectedCV({ type: tab === 'local' ? 'local' : 'analyzed', cv })}
+                  style={{
+                    padding: '10px 12px', borderRadius: 8, cursor: 'pointer', marginBottom: 6,
+                    border: '1px solid',
+                    borderColor: isSelected ? 'rgb(35, 42, 162)' : 'var(--border)',
+                    background: isSelected ? 'rgba(35,42,162,0.05)' : 'var(--bg)',
+                    transition: 'all 0.15s',
+                  }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                    background: iconBg,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 700, fontSize: 16, color: '#fff',
+                    }}>
+                      {displayName[0]?.toUpperCase() || 'C'}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {displayName}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--ink4)', marginTop: 2 }}>
+                        {displaySub}
+                        {displayDate && ` · ${new Date(displayDate).toLocaleDateString('vi-VN')}`}
+                      </div>
+                    </div>
+                    {isSelected && <span style={{ color: 'rgb(35,42,162)', fontSize: 16, flexShrink: 0 }}>✓</span>}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Preview Panel */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
+            {!selectedCV ? (
+              <div style={{
+                height: '100%', display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center',
+                color: 'var(--ink4)', fontSize: 14, gap: 10,
+              }}>
+                <div style={{ fontSize: 40 }}>👈</div>
+                <div>Chọn một CV để xem nội dung</div>
+              </div>
+            ) : selectedCV.type === 'local' ? (
+              <LocalCVPreview cv={selectedCV.cv} />
+            ) : (
+              <AnalyzedCVPreview cv={selectedCV.cv} authHeaders={authHeaders} />
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: '14px 22px', borderTop: '1px solid var(--border)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          background: 'var(--bg)',
+        }}>
+          <div style={{ fontSize: 12, color: 'var(--ink4)' }}>
+            {selectedCV ? `Đã chọn: ${selectedCV.cv.name || selectedCV.cv.cvName || selectedCV.cv.filename || 'Không tên'}` : 'Chưa chọn CV nào'}
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={onClose} style={{
+              padding: '8px 18px', border: '1px solid var(--border)',
+              borderRadius: 7, background: 'transparent',
+              cursor: 'pointer', fontSize: 13, color: 'var(--ink2)',
+            }}>Hủy</button>
+            <button onClick={handleImport} disabled={!selectedCV || importing} style={{
+              padding: '8px 20px', border: 'none', borderRadius: 7,
+              background: selectedCV ? 'rgb(35, 42, 162)' : 'var(--border)',
+              color: selectedCV ? '#fff' : 'var(--ink4)',
+              cursor: selectedCV && !importing ? 'pointer' : 'not-allowed',
+              fontSize: 13, fontWeight: 600, transition: 'background 0.15s',
+            }}>
+              {importing ? '⏳ Đang nhập...' : '✓ Nhập thông tin'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Preview CV đã phân tích (từ server) ─────────────────────────────────────
+function AnalyzedCVPreview({ cv, authHeaders }) {
+  const [detail, setDetail] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    // Dùng result từ list item nếu có (khi history trả về result đầy đủ)
+    // Fallback: fetch detail riêng
+    if (cv.result) {
+      setDetail(cv.result)
+      setLoading(false)
+      return
+    }
+    // Thử fetch detail endpoint
+    fetch(`${API}/cv-analyzer/detail/${cv.id}`, { headers: authHeaders })
+      .then(r => r.ok ? r.json() : null)
+      .then(res => {
+        if (res?.data?.result) {
+          setDetail(res.data.result)
+        } else {
+          // Nếu không có detail endpoint, tạo fallback từ field có sẵn
+          setDetail({
+            personalInfo: { fullName: cv.fullName || cv.filename || '' },
+          })
+        }
+        setLoading(false)
+      })
+      .catch(() => {
+        setDetail({ personalInfo: { fullName: cv.fullName || cv.filename || '' } })
+        setLoading(false)
+      })
+  }, [cv.id])
+
+  if (loading) {
+    return <div style={{ textAlign: 'center', padding: 40, color: 'var(--ink4)' }}>⟳ Đang tải...</div>
+  }
+
+  if (!detail) {
+    return (
+      <div style={{
+        padding: '16px 14px', background: 'rgba(239,68,68,0.07)',
+        borderRadius: 8, border: '1px solid rgba(239,68,68,0.2)',
+        fontSize: 13, color: 'var(--ink3)', lineHeight: 1.6,
+      }}>
+        <div style={{ fontWeight: 600, marginBottom: 6, color: '#dc2626' }}>⚠️ Không tìm thấy dữ liệu</div>
+        Không thể tải chi tiết CV này từ server.
+      </div>
+    )
+  }
+
+  const info = detail.personalInfo || {}
+  const experiences = detail.experiences || []
+  const education = detail.education || []
+  const skills = detail.skills || []
+  const summary = detail.summary || ''
+
+  return (
+    <div style={{ fontSize: 13, lineHeight: 1.6 }}>
+      <div style={{ marginBottom: 14, padding: '12px 14px', background: 'var(--bg2)', borderRadius: 8 }}>
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
+          {info.fullName || cv.filename || '—'}
+        </div>
+        {info.email && <div style={{ color: 'var(--ink3)', fontSize: 12 }}>✉ {info.email}</div>}
+        {info.phone && <div style={{ color: 'var(--ink3)', fontSize: 12 }}>📞 {info.phone}</div>}
+        {info.address && <div style={{ color: 'var(--ink3)', fontSize: 12 }}>📍 {info.address}</div>}
+      </div>
+      {summary && (
+        <PreviewSection label="Tóm tắt">
+          <p style={{ margin: 0, color: 'var(--ink2)', fontSize: 12 }}>{summary}</p>
+        </PreviewSection>
+      )}
+      {experiences.length > 0 && (
+        <PreviewSection label="Kinh nghiệm">
+          {experiences.map((e, i) => (
+            <div key={i} style={{ marginBottom: 8, paddingLeft: 8 }}>
+              <span style={{ fontWeight: 600 }}>{e.position}</span>
+              {e.company && <span style={{ color: 'var(--ink3)' }}> · {e.company}</span>}
+              {e.duration && <span style={{ color: 'var(--ink4)', fontSize: 11 }}> ({e.duration})</span>}
+              {e.description && <div style={{ color: 'var(--ink3)', fontSize: 11, marginTop: 2 }}>{e.description}</div>}
+            </div>
+          ))}
+        </PreviewSection>
+      )}
+      {education.length > 0 && (
+        <PreviewSection label="Học vấn">
+          {education.map((e, i) => (
+            <div key={i} style={{ marginBottom: 6, paddingLeft: 8 }}>
+              <span style={{ fontWeight: 600 }}>{e.degree || e.school}</span>
+              {e.institution && <span style={{ color: 'var(--ink3)' }}> · {e.institution}</span>}
+              {e.year && <span style={{ color: 'var(--ink4)', fontSize: 11 }}> ({e.year})</span>}
+            </div>
+          ))}
+        </PreviewSection>
+      )}
+      {skills.length > 0 && (
+        <PreviewSection label="Kỹ năng">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+            {skills.map((s, i) => {
+              const label = typeof s === 'string' ? s : (s.category || s.name || JSON.stringify(s))
+              return label ? (
+                <span key={i} style={{
+                  padding: '2px 8px', borderRadius: 6, fontSize: 11,
+                  background: 'var(--bg3)', color: 'var(--ink2)', fontWeight: 500,
+                }}>{label}</span>
+              ) : null
+            })}
+          </div>
+        </PreviewSection>
+      )}
+    </div>
+  )
+}
+
+// ─── Preview CV tự tạo ────────────────────────────────────────────────────────
+function LocalCVPreview({ cv }) {
+  // cv._data = { templateId, data: { personalInfo, experiences, ... }, cvName, ... }
+  // Nên lấy data qua cv._data.data
+  const cvData = cv._data?.data || {}
+
+  const info = cvData.personalInfo || {}
+  const experiences = cvData.experiences || []
+  const education = cvData.education || []
+  const skills = cvData.skills || []
+  const certifications = cvData.certifications || []
+  const summary = cvData.summary || ''
+  const hasData = info.fullName || experiences.length > 0 || skills.length > 0
+
+  if (!hasData) {
+    return (
+      <div style={{
+        padding: '16px 14px', background: 'rgba(245,158,11,0.07)',
+        borderRadius: 8, border: '1px solid rgba(245,158,11,0.2)',
+        fontSize: 13, color: 'var(--ink3)', lineHeight: 1.6,
+      }}>
+        <div style={{ fontWeight: 600, marginBottom: 6, color: '#b45309' }}>⚠️ CV chưa có dữ liệu chi tiết</div>
+        CV này chưa được điền nội dung trong Editor. Hệ thống sẽ chỉ dùng tên CV khi nhập.
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ fontSize: 13, lineHeight: 1.6 }}>
+      <div style={{ marginBottom: 14, padding: '12px 14px', background: 'var(--bg2)', borderRadius: 8 }}>
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
+          {info.fullName || cv.name || '—'}
+        </div>
+        {info.email && <div style={{ color: 'var(--ink3)', fontSize: 12 }}>✉ {info.email}</div>}
+        {info.phone && <div style={{ color: 'var(--ink3)', fontSize: 12 }}>📞 {info.phone}</div>}
+        {info.address && <div style={{ color: 'var(--ink3)', fontSize: 12 }}>📍 {info.address}</div>}
+        {info.linkedin && <div style={{ color: 'var(--ink3)', fontSize: 12 }}>🔗 {info.linkedin}</div>}
+      </div>
+      {summary && (
+        <PreviewSection label="Mục tiêu">
+          <p
+            style={{ margin: 0, color: 'var(--ink2)', fontSize: 12 }}
+            dangerouslySetInnerHTML={{ __html: summary }}
+          />
+        </PreviewSection>
+      )}
+      {experiences.length > 0 && (
+        <PreviewSection label="Kinh nghiệm">
+          {experiences.map((e, i) => (
+            <div key={i} style={{ marginBottom: 8, paddingLeft: 8 }}>
+              <span style={{ fontWeight: 600 }}>{e.position}</span>
+              {e.company && <span style={{ color: 'var(--ink3)' }}> · {e.company}</span>}
+              {e.duration && <span style={{ color: 'var(--ink4)', fontSize: 11 }}> ({e.duration})</span>}
+              {e.description && <div style={{ color: 'var(--ink3)', fontSize: 11, marginTop: 2 }}>{e.description}</div>}
+            </div>
+          ))}
+        </PreviewSection>
+      )}
+      {education.length > 0 && (
+        <PreviewSection label="Học vấn">
+          {education.map((e, i) => (
+            <div key={i} style={{ marginBottom: 6, paddingLeft: 8 }}>
+              <span style={{ fontWeight: 600 }}>{e.degree || e.school}</span>
+              {e.institution && <span style={{ color: 'var(--ink3)' }}> · {e.institution}</span>}
+              {e.year && <span style={{ color: 'var(--ink4)', fontSize: 11 }}> ({e.year})</span>}
+            </div>
+          ))}
+        </PreviewSection>
+      )}
+      {skills.length > 0 && (
+        <PreviewSection label="Kỹ năng">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+            {skills.map((s, i) => {
+              const label = typeof s === 'string' ? s : (s.category || s.name || '')
+              return label ? (
+                <span key={i} style={{
+                  padding: '2px 8px', borderRadius: 6, fontSize: 11,
+                  background: 'var(--bg3)', color: 'var(--ink2)', fontWeight: 500,
+                }}>{label}</span>
+              ) : null
+            })}
+          </div>
+        </PreviewSection>
+      )}
+      {certifications.length > 0 && (
+        <PreviewSection label="Chứng chỉ">
+          {certifications.map((c, i) => (
+            <div key={i} style={{ paddingLeft: 8, marginBottom: 4 }}>
+              <span style={{ fontWeight: 600 }}>{c.name}</span>
+              {c.issuer && <span style={{ color: 'var(--ink3)' }}> · {c.issuer}</span>}
+              {c.year && <span style={{ color: 'var(--ink4)', fontSize: 11 }}> ({c.year})</span>}
+            </div>
+          ))}
+        </PreviewSection>
+      )}
+    </div>
+  )
+}
+
+function PreviewSection({ label, children }) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{
+        fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5,
+        color: 'var(--ink4)', marginBottom: 6,
+        borderBottom: '1px solid var(--border)', paddingBottom: 4,
+      }}>{label}</div>
+      {children}
+    </div>
+  )
+}
+
+function ProfileScreen({ onNavigate, cvList = [] }) {
   const navigate = useNavigate()
   const token = getToken()
   const authRef = useRef({
@@ -46,6 +469,10 @@ function ProfileScreen({ onNavigate }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
+
+  // ── Import CV modal state ──
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [importMsg, setImportMsg] = useState('')
 
   const [personalForm, setPersonalForm] = useState({
     fullName: '', birthYear: '', phone: '', gender: 'Nam', address: '',
@@ -256,6 +683,95 @@ function ProfileScreen({ onNavigate }) {
     )
   }
 
+  // ── Handle import from CV ──────────────────────────────────────────────────
+  const handleImportFromCV = async ({ type, cv }) => {
+    if (!profile?.userID) return
+
+    try {
+      if (type === 'analyzed') {
+        const res = await fetch(`${API}/cv-analyzer/map-to-profile/${cv.id}`, {
+          method: 'POST',
+          headers: authRef.current,
+        })
+        if (!res.ok) throw new Error('Map failed')
+        const result = await res.json()
+        const d = result.data || {}
+        setPersonalForm(prev => ({
+          ...prev,
+          fullName: d.fullName || prev.fullName,
+          phone: d.phone || prev.phone,
+          address: d.address || prev.address,
+        }))
+        setCareerForm(prev => ({
+          ...prev,
+          jobTitle: d.jobTitle ?? prev.jobTitle,
+          experienceYear: d.experienceYear ?? prev.experienceYear,
+          careerLevel: d.careerLevel ?? prev.careerLevel,
+        }))
+        setImportMsg('✓ Đã nhập từ CV phân tích thành công')
+      } else {
+        // CV local: cv._data.data chứa personalInfo, experiences, ...
+        const cvData = cv._data?.data || {}
+        const personalInfo = cvData.personalInfo || {}
+        const experiences = Array.isArray(cvData.experiences) ? cvData.experiences : []
+
+        // Strip HTML khỏi summary trước khi gửi
+        const rawSummary = cvData.summary || ''
+        const plainSummary = rawSummary.replace(/<[^>]*>/g, '').trim()
+
+        // Chỉ gửi các field cần thiết, bỏ description dài + HTML để tránh 413
+        const lightExperiences = experiences.map(e => ({
+          position: e.position || '',
+          company: e.company || '',
+          duration: e.duration || '',
+        }))
+
+        const lightSkills = (cvData.skills || []).map(s =>
+          typeof s === 'string' ? { category: s, items: s } : { category: s.category || '', items: s.items || '' }
+        )
+
+        const res = await fetch(`${API}/cv-analyzer/map-from-local`, {
+          method: 'POST',
+          headers: authRef.current,
+          body: JSON.stringify({
+            personalInfo: {
+              fullName: personalInfo.fullName || '',
+              phone: personalInfo.phone || '',
+              address: personalInfo.address || '',
+              email: personalInfo.email || '',
+            },
+            experiences: lightExperiences,
+            education: (cvData.education || []).map(e => ({ degree: e.degree || '', school: e.school || '', institution: e.institution || '', year: e.year || '' })),
+            skills: lightSkills,
+            summary: plainSummary,
+          }),
+        })
+        if (!res.ok) throw new Error('Map failed')
+        const result = await res.json()
+
+        const d = result.data || {}
+        setPersonalForm(prev => ({
+          ...prev,
+          fullName: d.fullName || personalInfo.fullName || prev.fullName,
+          phone: d.phone || personalInfo.phone || prev.phone,
+          address: d.address || personalInfo.address || prev.address,
+        }))
+        setCareerForm(prev => ({
+          ...prev,
+          jobTitle: d.jobTitle ?? prev.jobTitle,
+          experienceYear: d.experienceYear ?? prev.experienceYear,
+          careerLevel: d.careerLevel ?? prev.careerLevel,
+        }))
+        setImportMsg('✓ Đã nhập thông tin từ CV thành công. Kiểm tra và lưu lại nhé!')
+      }
+    } catch (err) {
+      console.error('importFromCV:', err)
+      setImportMsg('✗ Nhập thất bại, thử lại sau')
+    }
+
+    setTimeout(() => setImportMsg(''), 5000)
+  }
+  
   return (
     <div id="s8">
       <div className="app-layout">
@@ -263,7 +779,7 @@ function ProfileScreen({ onNavigate }) {
         <div className="main-content">
           <Topbar title="👤 Hồ sơ & Cài đặt AI">
             {/* <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 15, paddingRight: 15, borderRight: '1px solid var(--border)' }}> */}
-              {/* <span style={{ fontSize: 13, fontWeight: 600 }}>{profile?.fullName}</span>
+            {/* <span style={{ fontSize: 13, fontWeight: 600 }}>{profile?.fullName}</span>
               <div style={{
                 width: 32, height: 32, borderRadius: '50%', overflow: 'hidden',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, background: 'rgb(189, 114, 71)'
@@ -284,6 +800,15 @@ function ProfileScreen({ onNavigate }) {
                   {saveMsg}
                 </span>
               )}
+              <button
+                className="btn btn-outline btn-sm"
+                onClick={() => setShowImportModal(true)}
+                disabled={loading}
+                style={{ display: 'flex', alignItems: 'center', gap: 5 }}
+              >
+                📋 Nhập từ CV
+              </button>
+
               <button className="btn btn-sage btn-sm" onClick={handleSave} disabled={saving || loading}>
                 {saving ? '⏳ Đang lưu...' : '💾 Lưu'}
               </button>
@@ -564,32 +1089,6 @@ function ProfileScreen({ onNavigate }) {
                     ))}
                   </div>
 
-                  {/* <div className="card profile-card">
-                      <div className="profile-section-title">🔗 Tài khoản kết nối</div>
-                      <div className="account-list">
-                        {CONNECTED_ACCOUNTS.map((acc, idx) => (
-                          <div key={idx} className="account-row">
-                            <div className="account-icon" style={{
-                              background: acc.color,
-                              color: acc.connected ? '#FFF' : 'var(--ink3)',
-                              border: acc.connected ? 'none' : '1px solid var(--border)',
-                            }}>
-                              {acc.code}
-                            </div>
-                            <div className="account-info">
-                              <div className="account-name">{acc.name}</div>
-                              <div className={`account-status ${acc.connected ? 'connected' : ''}`}>
-                                {acc.connected ? '✓ Đã kết nối' : 'Chưa kết nối'}
-                              </div>
-                            </div>
-                            <button className={`btn btn-${acc.connected ? 'outline' : 'rust'} btn-sm`}>
-                              {acc.connected ? 'Ngắt' : '+ Kết nối'}
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div> */}
-
                   {profile && (
                     <div className="card profile-card">
                       <div className="profile-section-title">ℹ️ Tài khoản</div>
@@ -614,6 +1113,15 @@ function ProfileScreen({ onNavigate }) {
           </div>
         </div>
       </div>
+      {/* Import CV Modal */}
+      {showImportModal && (
+        <ImportCVModal
+          onClose={() => setShowImportModal(false)}
+          onImport={handleImportFromCV}
+          authHeaders={authRef.current}
+          cvList={cvList}
+        />
+      )}
     </div>
   )
 }

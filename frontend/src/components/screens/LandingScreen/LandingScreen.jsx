@@ -48,11 +48,11 @@ function LandingScreen() {
     }
   ]
 
-  const jobs = [
-    { logo: 'F', color: 'l-fpt', title: 'Senior React Dev', company: 'FPT Software', salary: '25-35tr', match: 94, matchColor: '#4E8E62' },
-    { logo: 'V', color: 'l-vng', title: 'Full-stack Engineer', company: 'VNG Corp', salary: '30-45tr', match: 89, matchColor: '#4E8E62' },
-    { logo: 'S', color: 'l-shopee', title: 'Frontend Lead', company: 'Shopee VN', salary: '40-60tr', match: 81, matchColor: '#D4820A' }
-  ]
+  // const jobs = [
+  //   { logo: 'F', color: 'l-fpt', title: 'Senior React Dev', company: 'FPT Software', salary: '25-35tr', match: 94, matchColor: '#4E8E62' },
+  //   { logo: 'V', color: 'l-vng', title: 'Full-stack Engineer', company: 'VNG Corp', salary: '30-45tr', match: 89, matchColor: '#4E8E62' },
+  //   { logo: 'S', color: 'l-shopee', title: 'Frontend Lead', company: 'Shopee VN', salary: '40-60tr', match: 81, matchColor: '#D4820A' }
+  // ]
 
   const navigate = useNavigate()
   
@@ -125,14 +125,14 @@ function LandingScreen() {
                 Xem demo
               </Button> */}
             </div>
-            <div className="hero-stats">
+            {/* <div className="hero-stats">
               <div className="h-stat"><div className="h-stat-n">50K+</div><div className="h-stat-l">Việc làm mỗi ngày</div></div>
               <div className="h-stat"><div className="h-stat-n">15+</div><div className="h-stat-l">Nền tảng tích hợp</div></div>
               <div className="h-stat"><div className="h-stat-n">92%</div><div className="h-stat-l">Độ chính xác AI</div></div>
-            </div>
+            </div> */}
           </div>
 
-          <div className="hero-right">
+          {/* <div className="hero-right">
             <div className="hero-card">
               <div className="hero-card-title">🤖 AI đề xuất cho bạn hôm nay</div>
               <div className="hero-job-preview">
@@ -153,7 +153,7 @@ function LandingScreen() {
                 ))}
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 

@@ -28,7 +28,7 @@ export class ProfileService {
           include: { industry: true },
         },
         skills: { include: { skill: { include: { industry: true } } } },
-        cvs: { select: { id: true, title: true } },
+        // cvs: { select: { id: true, title: true } },
         subscriptions: {
           where: { status: 'active' },
           orderBy: { expiresAt: 'desc' },
@@ -67,7 +67,7 @@ export class ProfileService {
         name: s.skill.name,
         industry: s.skill.industry.name,
       })),
-      cvs: user.cvs,
+      // cvs: user.cvs,
       plan: activeSub
         ? {
             name: activeSub.plan.name,
@@ -182,19 +182,19 @@ export class ProfileService {
     viewCount: number;
     saveCount: number;
     applyCount: number;
-    recommendCount: number;
+    // recommendCount: number;
   }> {
-    const [viewCount, saveCount, applyCount, recommendCount] =
+    const [viewCount, saveCount, applyCount] =
       await Promise.all([
         this.prisma.userBehavior.count({ where: { userID, action: 'view' } }),
         this.prisma.savedJob.count({ where: { userID } }),
-        this.prisma.applyHistory.count({ where: { userID } }),
+        // this.prisma.applyHistory.count({ where: { userID } }),
         this.prisma.jobRecommendation.count({
           where: { userID, matchPercent: { gt: 49 } },
         }),
       ]);
 
-    return { viewCount, saveCount, applyCount, recommendCount };
+    return { viewCount, saveCount, applyCount};
   }
 
   async updateAvatar(userID: number, file: Express.Multer.File) {

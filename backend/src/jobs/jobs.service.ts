@@ -217,11 +217,11 @@ export class JobsService {
     });
     const skillIDs = userSkills.map((s) => s.skillID);
 
-    const applied = await this.prisma.applyHistory.findMany({
-      where: { userID: user.userID },
-      select: { jobID: true },
-    });
-    const appliedIDs = applied.map((a) => a.jobID);
+    // const applied = await this.prisma.applyHistory.findMany({
+    //   where: { userID: user.userID },
+    //   select: { jobID: true },
+    // });
+    // const appliedIDs = applied.map((a) => a.jobID);
 
     const behaviors = await this.prisma.userBehavior.findMany({
       where: { userID: user.userID },
@@ -255,7 +255,7 @@ export class JobsService {
     const jobs = await this.prisma.job.findMany({
       where: {
         isActive: true,
-        jobID: { notIn: appliedIDs },
+        // jobID: { notIn: appliedIDs },
         OR: orConditions,
       },
       include: {
@@ -363,10 +363,10 @@ export class JobsService {
     const [
       jobMatchCount,
       jobMatchYesterday,
-      appliedThisMonth,
-      totalApplied,
-      responded,
-      upcomingInterviews,
+      // appliedThisMonth,
+      // totalApplied,
+      // responded,
+      // upcomingInterviews,
     ] = await Promise.all([
       this.prisma.jobRecommendation.count({
         where: {
@@ -383,32 +383,32 @@ export class JobsService {
           },
         },
       }),
-      this.prisma.applyHistory.count({
-        where: { userID: user.userID, appliedAt: { gte: firstOfMonth } },
-      }),
-      this.prisma.applyHistory.count({
-        where: { userID: user.userID },
-      }),
-      this.prisma.applyHistory.count({
-        where: { userID: user.userID, status: { not: 'pending' } },
-      }),
-      this.prisma.applyHistory.findMany({
-        where: { userID: user.userID, status: 'interview' },
-        include: {
-          job: {
-            select: {
-              title: true,
-              company: { select: { companyName: true } },
-            },
-          },
-        },
-        take: 3,
-        orderBy: { appliedAt: 'desc' },
-      }),
+      // this.prisma.applyHistory.count({
+      //   where: { userID: user.userID, appliedAt: { gte: firstOfMonth } },
+      // }),
+      // this.prisma.applyHistory.count({
+      //   where: { userID: user.userID },
+      // }),
+      // this.prisma.applyHistory.count({
+      //   where: { userID: user.userID, status: { not: 'pending' } },
+      // }),
+      // this.prisma.applyHistory.findMany({
+      //   where: { userID: user.userID, status: 'interview' },
+      //   include: {
+      //     job: {
+      //       select: {
+      //         title: true,
+      //         company: { select: { companyName: true } },
+      //       },
+      //     },
+      //   },
+      //   take: 3,
+      //   orderBy: { appliedAt: 'desc' },
+      // }),
     ]);
 
-    const replyRate =
-      totalApplied > 0 ? Math.round((responded / totalApplied) * 100) : 0;
+    // const replyRate =
+    //   totalApplied > 0 ? Math.round((responded / totalApplied) * 100) : 0;
     const delta = jobMatchCount - jobMatchYesterday;
 
     return {
@@ -418,21 +418,21 @@ export class JobsService {
         label: 'so với hôm qua',
       },
       applied: {
-        count: appliedThisMonth,
-        pending: appliedThisMonth - responded,
+        // count: appliedThisMonth,
+        // pending: appliedThisMonth - responded,
         label: 'Đã nộp tháng này',
       },
       replyRate: {
-        percent: replyRate,
+        // percent: replyRate,
         label: 'Tỷ lệ phản hồi',
       },
-      interviews: {
-        count: upcomingInterviews.length,
-        next: upcomingInterviews[0]
-          ? `${upcomingInterviews[0].job.company.companyName}: sắp tới`
-          : null,
-        label: 'Phỏng vấn sắp tới',
-      },
+      // interviews: {
+      //   count: upcomingInterviews.length,
+      //   next: upcomingInterviews[0]
+      //     ? `${upcomingInterviews[0].job.company.companyName}: sắp tới`
+      //     : null,
+      //   label: 'Phỏng vấn sắp tới',
+      // },
     };
   }
 

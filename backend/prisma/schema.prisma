@@ -27,8 +27,6 @@ model User {
   address            String?
   accountID          Int                 @unique
   avatar             String?
-  applications       ApplyHistory[]
-  cvs                CV[]
   jobRecommendations JobRecommendation[]
   savedJobs          SavedJob[]
   account            Account             @relation(fields: [accountID], references: [accountID])
@@ -41,6 +39,9 @@ model User {
   refundRequests RefundRequest[]
   emailNotificationsEnabled Boolean      @default(false)
   notifications Notification[]
+  cvAnalyses   CVAnalysis[] 
+  cvAnalysisCaches CVAnalysisCache[]
+  chatSession ChatSession[]
 }
 
 model UserProfile {
@@ -53,7 +54,7 @@ model UserProfile {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  userID     Int
+  userID     Int   @unique
   user       User      @relation(fields: [userID], references: [userID])
   industryID Int?
   industry   Industry? @relation(fields: [industryID], references: [id])
@@ -67,13 +68,6 @@ model UserSkill {
   user    User  @relation(fields: [userID], references: [userID])
 }
 
-model CV {
-  id           Int            @id @default(autoincrement())
-  userID       Int
-  title        String
-  applications ApplyHistory[]
-  user         User           @relation(fields: [userID], references: [userID])
-}
 
 model Company {
   companyID      Int     @id @default(autoincrement())
@@ -108,7 +102,6 @@ model Job {
   shortLocation   String?
   isNewJob        Boolean             @default(false)
   discoveredAt    DateTime?
-  applyHistories  ApplyHistory[]
   company         Company             @relation(fields: [companyID], references: [companyID])
   industry        Industry?           @relation(fields: [industryID], references: [id])
   recommendations JobRecommendation[]
@@ -180,17 +173,6 @@ model UserBehavior {
   user      User     @relation(fields: [userID], references: [userID])
 }
 
-model ApplyHistory {
-  id        Int      @id @default(autoincrement())
-  userID    Int
-  jobID     Int
-  cvID      Int
-  status    String
-  appliedAt DateTime @default(now())
-  cv        CV       @relation(fields: [cvID], references: [id])
-  job       Job      @relation(fields: [jobID], references: [jobID])
-  user      User     @relation(fields: [userID], references: [userID])
-}
 
 model JobSourceTracking {
   id            Int      @id @default(autoincrement())
@@ -304,3 +286,62 @@ model Notification {
   @@index([userID])
   @@index([jobID])
 }
+
+
+model CVAnalysis {
+  id         Int      @id @default(autoincrement())
+  userID     Int
+  fileHash   String   @unique // SHA256 hash để kiểm tra trùng file
+  filename   String
+  result     Json     // Lưu toàn bộ kết quả phân tích JSON
+  
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  user       User     @relation(fields: [userID], references: [userID], onDelete: Cascade)
+  
+  @@index([userID])
+  @@index([fileHash])
+  @@index([createdAt])
+}
+
+
+model CVAnalysisCache {
+  id         Int      @id @default(autoincrement())
+  userID     Int
+  fileHash   String   @unique
+  filename   String
+  result     Json     
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+  
+  user       User     @relation(fields: [userID], references: [userID], onDelete: Cascade)
+  
+  @@index([userID])
+  @@index([fileHash])
+}
+
+model ChatSession {
+  id        Int @id @default(autoincrement())
+  userID    Int
+  title     String @default("New Chat")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userID], references: [userID], onDelete: Cascade)
+  messages  ChatMessage[]
+}
+
+model ChatMessage {
+  id        Int @id @default(autoincrement())
+  sessionID Int
+  role      String
+  content   String?
+  type      String @default("text")
+  metadata  Json?
+  createdAt DateTime @default(now())
+  session   ChatSession @relation(fields: [sessionID], references: [id], onDelete: Cascade)
+
+  @@index([sessionID])
+  @@index([createdAt])
+  @@index([sessionID, createdAt])
+} 

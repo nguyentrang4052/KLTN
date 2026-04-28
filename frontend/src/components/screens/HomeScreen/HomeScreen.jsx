@@ -289,51 +289,56 @@ export default function HomeScreen() {
     })
   }
 
-  const handleSearch = async () => {
+  // const handleSearch = async () => {
+  //   setPage(1)
+  //   updateURLParams({
+  //     keyword: keyword || null,
+  //     location: locationFilter || null,
+  //     page: null
+  //   })
+
+  //   setLoadingJobs(true)
+
+  //   try {
+  //     const sessionId = `search_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+  //     const res = await fetch('http://localhost:8000/search-smart', {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify({
+  //         query: keyword,
+  //         session_id: sessionId
+  //       })
+  //     })
+
+  //     const data = await res.json()
+
+  //     if (data.existing_jobs?.length > 0) {
+  //       const normalizedJobs = data.existing_jobs.map(job => ({
+  //         ...job,
+  //         jobID: job.jobID || job.id || job.job_id,
+  //       }))
+  //       setJobs(normalizedJobs)
+  //       setMeta({ total: data.count, totalPages: 1 })
+  //     }
+
+  //     if (data.crawling) {
+  //       connectToEventStream()
+  //       setCrawlStatus({ type: 'searching', message: '🔍 Đang tìm việc mới nhất...' })
+  //     }
+
+  //   } catch (e) {
+  //     console.error('Search error:', e)
+  //   } finally {
+  //     setLoadingJobs(false)
+  //   }
+
+  //   setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+  // }
+
+  const handleSearch = () => {
     setPage(1)
-    updateURLParams({
-      keyword: keyword || null,
-      location: locationFilter || null,
-      page: null
-    })
-
-    setLoadingJobs(true)
-
-    try {
-      const sessionId = `search_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-
-      const res = await fetch('http://localhost:8000/search-smart', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: keyword,
-          session_id: sessionId
-        })
-      })
-
-      const data = await res.json()
-
-      if (data.existing_jobs?.length > 0) {
-        const normalizedJobs = data.existing_jobs.map(job => ({
-          ...job,
-          jobID: job.jobID || job.id || job.job_id,
-        }))
-        setJobs(normalizedJobs)
-        setMeta({ total: data.count, totalPages: 1 })
-      }
-
-      if (data.crawling) {
-        connectToEventStream()
-        setCrawlStatus({ type: 'searching', message: '🔍 Đang tìm việc mới nhất...' })
-      }
-
-    } catch (e) {
-      console.error('Search error:', e)
-    } finally {
-      setLoadingJobs(false)
-    }
-
-    setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+    setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
 
   const handleIndustryClick = (indId) => {
@@ -343,81 +348,81 @@ export default function HomeScreen() {
     setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
 
-  const connectToEventStream = () => {
-    const es = new EventSource('http://localhost:8000/stream?channel=crawl:jobs')
-    eventSourceRef.current = es
-    setIsRealtime(true)
+  // const connectToEventStream = () => {
+  //   const es = new EventSource('http://localhost:8000/stream?channel=crawl:jobs')
+  //   eventSourceRef.current = es
+  //   setIsRealtime(true)
 
-    let fastCount = 0
+  //   let fastCount = 0
 
-    es.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
+  //   es.onmessage = (event) => {
+  //     try {
+  //       const data = JSON.parse(event.data)
 
-        if (data.__done__ || data.__fast_done__) {
-          setCrawlStatus({
-            type: 'done',
-            message: `✅ Hoàn thành! ${data.total || fastCount} việc làm`
-          })
-          setIsRealtime(false)
-          es.close()
-          setTimeout(() => {
-            // Không gọi fetchJobs() ở đây nữa để tránh loop
-            setCrawlStatus(null)
-          }, 3000)
-          return
-        }
+  //       if (data.__done__ || data.__fast_done__) {
+  //         setCrawlStatus({
+  //           type: 'done',
+  //           message: `✅ Hoàn thành! ${data.total || fastCount} việc làm`
+  //         })
+  //         setIsRealtime(false)
+  //         es.close()
+  //         setTimeout(() => {
+  //           // Không gọi fetchJobs() ở đây nữa để tránh loop
+  //           setCrawlStatus(null)
+  //         }, 3000)
+  //         return
+  //       }
 
-        const jobID = data.jobID
-        if (!jobID) return
+  //       const jobID = data.jobID
+  //       if (!jobID) return
 
-        fastCount++
+  //       fastCount++
 
-        setJobs(prev => {
-          if (prev.find(j => j.jobID === jobID)) return prev
+  //       setJobs(prev => {
+  //         if (prev.find(j => j.jobID === jobID)) return prev
 
-          const newJob = {
-            jobID: jobID,
-            title: data.job?.title,
-            companyName: data.company?.companyName,
-            companyLogo: data.company?.companyLogo,
-            location: data.job?.location,
-            shortLocation: data.job?.shortLocation,
-            salary: data.job?.salary,
-            jobType: data.job?.jobType,
-            experienceYear: data.job?.experienceYear,
-            sourcePlatform: data.job?.sourcePlatform,
-            isNewJob: data.isNewJob ?? true,
-          }
+  //         const newJob = {
+  //           jobID: jobID,
+  //           title: data.job?.title,
+  //           companyName: data.company?.companyName,
+  //           companyLogo: data.company?.companyLogo,
+  //           location: data.job?.location,
+  //           shortLocation: data.job?.shortLocation,
+  //           salary: data.job?.salary,
+  //           jobType: data.job?.jobType,
+  //           experienceYear: data.job?.experienceYear,
+  //           sourcePlatform: data.job?.sourcePlatform,
+  //           isNewJob: data.isNewJob ?? true,
+  //         }
 
-          return [newJob, ...prev]
-        })
+  //         return [newJob, ...prev]
+  //       })
 
-        setMeta(prev => ({ ...prev, total: prev.total + 1 }))
+  //       setMeta(prev => ({ ...prev, total: prev.total + 1 }))
 
-        if (fastCount <= 10) {
-          setCrawlStatus({
-            type: 'streaming',
-            message: `📥 Đang nhận dữ liệu (${fastCount} việc làm mới)...`
-          })
-        } else {
-          setCrawlStatus({
-            type: 'deep',
-            message: '🔍 Đang tìm kiếm sâu thêm...'
-          })
-        }
+  //       if (fastCount <= 10) {
+  //         setCrawlStatus({
+  //           type: 'streaming',
+  //           message: `📥 Đang nhận dữ liệu (${fastCount} việc làm mới)...`
+  //         })
+  //       } else {
+  //         setCrawlStatus({
+  //           type: 'deep',
+  //           message: '🔍 Đang tìm kiếm sâu thêm...'
+  //         })
+  //       }
 
-      } catch (err) {
-        console.error('SSE parse error:', err)
-      }
-    }
+  //     } catch (err) {
+  //       console.error('SSE parse error:', err)
+  //     }
+  //   }
 
-    es.onerror = (err) => {
-      console.error('SSE error:', err)
-      es.close()
-      setIsRealtime(false)
-    }
-  }
+  //   es.onerror = (err) => {
+  //     console.error('SSE error:', err)
+  //     es.close()
+  //     setIsRealtime(false)
+  //   }
+  // }
 
   const renderPages = (curPage, totalPages, onPageChange) => {
     const pages = []

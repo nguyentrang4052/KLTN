@@ -4,7 +4,6 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { CommonModule } from './common/common.module';
 import { AuthModule } from './auth/auth.module';
-import { CrawlModule } from './crawl/crawl.module';
 import { JobsModule } from './jobs/jobs.module';
 import { IndustriesModule } from './industries/industries.module';
 import { CompaniesModule } from './companies/companies.module';
@@ -17,7 +16,9 @@ import { SubscriptionModule } from './subscription/subscription.module';
 import { AdminModule } from './admin/admin.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-yet';
-import {NotificationModule} from './notification/notification.module';
+import { ChatbotModule } from './chatbot/chatbot.module';
+import { RedisModule } from './redis/redis.module';
+import { ChatHistoryModule } from './chatbot/chat-history.module';
 
 
 @Module({
@@ -26,7 +27,6 @@ import {NotificationModule} from './notification/notification.module';
       isGlobal: true,
     }),
     ScheduleModule.forRoot(),
-    CrawlModule,
     CommonModule,
     AuthModule,
     JobsModule,
@@ -49,7 +49,9 @@ import {NotificationModule} from './notification/notification.module';
         }),
       }),
     }),
-    NotificationModule,
+    ChatbotModule,
+    RedisModule,
+    ChatHistoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

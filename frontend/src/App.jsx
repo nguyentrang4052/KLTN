@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom'
 
 import Header from './components/layout/Header/Header'
@@ -7,8 +7,6 @@ import LandingScreen from './components/screens/LandingScreen/LandingScreen'
 import DashboardScreen from './components/screens/DashboardScreen/DashboardScreen'
 import HomeScreen from './components/screens/HomeScreen/HomeScreen'
 import JobDetailScreen from './components/screens/JobDetailScreen/JobDetailScreen'
-import CVBuilderScreen from './components/screens/CVBuilderScreen/CVBuilderScreen'
-// import ApplicationsScreen from './components/screens/ApplicationsScreen/ApplicationsScreen'
 import ProfileScreen from './components/screens/ProfileScreen/ProfileScreen'
 import NotificationsScreen from './components/screens/NotificationsScreen/NotificationsScreen'
 import JobSearchScreen from './components/screens/JobSearchScreen/JobSearchScreen'
@@ -151,6 +149,47 @@ function CVScreenWrapper({ initialScreen }) {
   return <CreatedCVScreen initialScreen={initialScreen} />
 }
 
+function AIRouteJobDetail({ backPath, jobBasePath }) {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const token = getToken()
+  return (
+    <JobDetailScreen
+      jobId={Number(id)}
+      onBack={() => navigate(backPath)}
+      token={token}
+      onClick={(jobID) => navigate(`${jobBasePath}/jobs/${jobID}`)}
+    />
+  )
+}
+
+function getCVListFromStorage() {
+  try {
+    const raw = localStorage.getItem('cv_builder_state')
+    if (!raw) return []
+
+    const state = JSON.parse(raw)
+    const cvMap = state || {}
+
+    const cvKeys = Object.keys(cvMap).filter(k => !k.startsWith('_'))
+    return cvKeys.map(key => {
+      const cv = cvMap[key]
+      return {
+        id: key,
+        name: cv.cvName || 'Không tên',
+        templateId: cv.templateId || null,
+        accent: cv.styleConfig?.accentColor || '#6366f1',
+        updatedAt: cv.updatedAt || null,
+        createdAt: cv.createdAt || null,
+        // Giữ nguyên toàn bộ data để ProfileScreen dùng khi import
+        _data: cv,
+      }
+    })
+  } catch {
+    return []
+  }
+}
+
 
 function App() {
   const location = useLocation()
@@ -179,6 +218,19 @@ function App() {
 
   const [screen, setScreen] = useState('myCV')
   const navigate = useNavigate()
+
+  const [cvList, setCvList] = useState([])
+  useEffect(() => {
+    const loadCVs = () => setCvList(getCVListFromStorage())
+    loadCVs()
+    window.addEventListener('focus', loadCVs)
+    window.addEventListener('storage', loadCVs)
+    return () => {
+      window.removeEventListener('focus', loadCVs)
+      window.removeEventListener('storage', loadCVs)
+    }
+  }, [])
+
 
   return (
     <div className="app">
@@ -253,8 +305,9 @@ function App() {
             <ProtectedRoute><DashboardScreen /></ProtectedRoute>
           } />
           <Route path="/profile" element={
-            <ProtectedRoute><ProfileScreen /></ProtectedRoute>
+            <ProtectedRoute><ProfileScreen cvList={cvList} /></ProtectedRoute>
           } />
+
           <Route path="/settings" element={
             <ProtectedRoute><AccountSettingScreen /></ProtectedRoute>
           } />
@@ -264,11 +317,21 @@ function App() {
             <ProtectedRoute><AIScreen /></ProtectedRoute>
           } />
 
+          <Route
+            path="/ai/jobs/:id"
+            element={
+              <ProtectedRoute>
+                <AIRouteJobDetail
+                  backPath="/ai-assistant"
+                  jobBasePath="/ai-assistant"
+                />
+              </ProtectedRoute>
+            }
+          />
+
           <Route path="/services" element={
             <ProtectedRoute><PricingScreen /></ProtectedRoute>
           } />
-
-
 
           <Route path="/services/checkout" element={
             <ProtectedRoute><CheckoutScreen /></ProtectedRoute>
@@ -282,18 +345,6 @@ function App() {
             <ProtectedRoute><NotificationsScreen /></ProtectedRoute>
           } />
 
-          {/* <Route path="/my-cv" element={
-            <ProtectedRoute><CVScreenWrapper initialScreen="myCV" /></ProtectedRoute>
-          } />
-
-          <Route path="/cv-templates" element={
-            <ProtectedRoute><CVScreenWrapper initialScreen="picker" /></ProtectedRoute>
-          } />
-
-          <Route path="/cv-builder" element={
-            <ProtectedRoute><CVScreenWrapper initialScreen="myCV" /></ProtectedRoute>
-          } />
- */}
 
           <Route path="/my-cv" element={
             <ProtectedRoute>
@@ -302,9 +353,7 @@ function App() {
           } />
 
           <Route path="/cv-templates" element={
-            <ProtectedRoute>
-              <CVScreenWrapper key="cv-templates" initialScreen="picker" />
-            </ProtectedRoute>
+            <CVScreenWrapper key="cv-templates" initialScreen="picker" />
           } />
 
           <Route path="/cv-builder" element={
@@ -312,7 +361,6 @@ function App() {
               <CVScreenWrapper key="cv-builder" initialScreen="myCV" />
             </ProtectedRoute>
           } />
-
 
 
           <Route path="/admin" element={
