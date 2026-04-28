@@ -27,7 +27,7 @@ const JOB_TYPE_MAP: Record<string, string> = {
 
 @Injectable()
 export class JobsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async getJobs(dto: QueryJobsDto, accountID?: number) {
     const {
@@ -168,7 +168,12 @@ export class JobsService {
     if (salaryMax != null) {
       jobList = jobList.filter((j) => j._salaryNum <= salaryMax);
     }
-
+    if (sort === 'newest' && !keyword) {
+      for (let i = jobList.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [jobList[i], jobList[j]] = [jobList[j], jobList[i]];
+      }
+    }
     if (sort === 'salary')
       jobList = jobList.sort((a, b) => b._salaryNum - a._salaryNum);
     if (sort === 'match')
@@ -300,17 +305,23 @@ export class JobsService {
     });
     if (!user) return [];
 
+    // Lấy quota
+    const month = new Date().toISOString().slice(0, 7);
+    const quota = await this.prisma.userQuota.findUnique({
+      where: { userID_month: { userID: user.userID, month } },
+    });
+
+    // Mặc định free = 3
+    const limit = quota?.jobSuggestPerDay ?? 3;
+
     const recs = await this.prisma.jobRecommendation.findMany({
-      where: {
-        userID: user.userID,
-        matchPercent: { gt: 49 },
-      },
+      where: { userID: user.userID, matchPercent: { gt: 49 } },
       orderBy: { matchPercent: 'desc' },
-      // take: limit,
+      take: limit === 999 ? undefined : limit, // 999 = unlimited
       include: {
         job: {
           include: {
-            company: { select: { companyName: true, companyLogo: true } },
+            company: { select: { companyID: true, companyName: true, companyLogo: true } },
             skills: { include: { skill: { select: { name: true } } }, take: 5 },
           },
         },
@@ -320,6 +331,7 @@ export class JobsService {
     return recs.map((r) => ({
       jobID: r.job.jobID,
       title: r.job.title,
+      companyID: r.job.company.companyID,
       companyName: r.job.company.companyName,
       companyLogo: r.job.company.companyLogo,
       location: r.job.location,
@@ -330,6 +342,7 @@ export class JobsService {
       matchPercent: r.matchPercent,
       matchReason: r.reason,
       sourcePlatform: r.job.sourcePlatform,
+      quota: { limit, isUnlimited: limit >= 999 },
     }));
   }
 

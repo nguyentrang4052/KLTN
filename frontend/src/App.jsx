@@ -65,7 +65,7 @@ function ProtectedRoute({ children }) {
   if (!token || isTokenExpired(token)) {
     localStorage.removeItem('token')
     sessionStorage.removeItem('token')
-    return <Navigate to="/login" state={{ from: location }} replace />
+    return <Navigate to="/" state={{ from: location }} replace />
   }
 
   return children
@@ -112,12 +112,14 @@ function CompanyDetailScreenRouteForCompanies() {
   const { id } = useParams()
   const navigate = useNavigate()
   const token = getToken()
+  const notifContext = useNotifications()
   return (
     <CompanyDetailScreen
       company={{ id: Number(id) }}
       onBack={() => navigate(-1)}
       token={token}
       jobBasePath={`/companies/${id}/jobs`}
+      notifCount={notifContext.unreadCount}
     />
   )
 }
@@ -126,12 +128,14 @@ function CompanyDetailScreenRouteForHome() {
   const { id } = useParams()
   const navigate = useNavigate()
   const token = getToken()
+  const notifContext = useNotifications()
   return (
     <CompanyDetailScreen
       company={{ id: Number(id) }}
       onBack={() => navigate(-1)}
       token={token}
       jobBasePath={`/home/companies/${id}/jobs`}
+      notifCount={notifContext.unreadCount}
     />
   )
 }
@@ -189,12 +193,12 @@ function App() {
 
   const hideHeader =
     HIDE_HEADER_ROUTES.includes(location.pathname) ||
-    location.pathname.startsWith('/admin') ||
-    location.pathname.startsWith('/jobs/companies/') ||
-    location.pathname.startsWith('/home/companies/') ||
-    location.pathname.startsWith('/companies/') ||
-    location.pathname.startsWith('/home/job/') ||
-    location.pathname.startsWith('/jobs/job/')
+    location.pathname.startsWith('/admin')
+  // location.pathname.startsWith('/jobs/companies/') ||
+  // location.pathname.startsWith('/home/companies/')
+  // location.pathname.startsWith('/companies/')
+  // location.pathname.startsWith('/home/job/') ||
+  // location.pathname.startsWith('/jobs/job/')
 
   const [screen, setScreen] = useState('myCV')
   const navigate = useNavigate()

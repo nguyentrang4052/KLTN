@@ -1,8 +1,9 @@
 import './NotificationsScreen.css'
 import Sidebar from '../../layout/Sidebar/Sidebar'
 import Topbar from '../../layout/Topbar/Topbar'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+
 
 const TYPE_META = {
   job_alert: { icon: '💼', cls: 'n-ico-job_alert' },
@@ -51,6 +52,9 @@ const groupByDate = (notifications) => {
 }
 
 function NotificationsScreen({ notifContext }) {
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+  const API = 'http://localhost:3000/api'
+
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteOne } = notifContext
   const navigate = useNavigate()
 
@@ -79,6 +83,50 @@ function NotificationsScreen({ notifContext }) {
     return map
   }, [notifications])
 
+  const [emailNotification, setEmailNotification] = useState(null)
+  const [savingPref, setSavingPref] = useState(false)
+
+  useEffect(() => {
+    if (!token) return
+    fetch(`${API}/notifications/email-pref`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => {
+        console.log('[email-pref] status:', r.status, 'url:', r.url)
+        return r.text()
+      })
+      .then(text => {
+        console.log('[email-pref] raw:', text)
+        const data = JSON.parse(text)
+        setEmailNotification(data.emailNotification ?? false)
+      })
+      .catch(err => {
+        console.error('[email-pref] error:', err)
+        setEmailNotification(false)
+      })
+  }, [])
+
+  const toggleEmailNotif = async () => {
+    if (savingPref) return
+    setSavingPref(true)
+    const next = !emailNotification
+    try {
+      await fetch(`${API}/notifications/email-pref`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ emailNotification: next })
+      })
+      setEmailNotification(next)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setSavingPref(false)
+    }
+  }
+
   return (
     <div id="s9">
       <div className="app-layout">
@@ -90,6 +138,16 @@ function NotificationsScreen({ notifContext }) {
 
         <div className="main-content">
           <Topbar title="🔔 Thông báo">
+            <div
+              className={`notif-email-toggle${savingPref || emailNotification === null ? ' saving' : ''}`}
+              onClick={emailNotification !== null ? toggleEmailNotif : undefined}
+            >
+              <span className="net-label">Nhận thông báo qua Email</span>
+              <div className={`net-switch${emailNotification === true ? ' on' : ''}`}>
+                <div className="net-thumb" />
+              </div>
+            </div>
+
             {unreadCount > 0 && (
               <button className="notif-readall-btn" onClick={markAllAsRead}>
                 Đọc tất cả ({unreadCount})

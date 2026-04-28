@@ -14,8 +14,7 @@ import { Logger } from '@nestjs/common';
   namespace: '/notifications',
 })
 export class NotificationGateway
-  implements OnGatewayConnection, OnGatewayDisconnect
-{
+  implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
@@ -23,7 +22,7 @@ export class NotificationGateway
 
   private userSockets = new Map<number, Set<string>>();
 
-  constructor(private jwtService: JwtService) {}
+  constructor(private jwtService: JwtService) { }
 
   async handleConnection(socket: Socket) {
     try {
@@ -37,16 +36,17 @@ export class NotificationGateway
       }
 
       const payload = this.jwtService.verify(token);
-      const userID: number = payload.userID;
 
-      socket.data.userID = userID;
+      const accountID: number = payload.sub
 
-      if (!this.userSockets.has(userID)) {
-        this.userSockets.set(userID, new Set());
+      socket.data.userID = accountID;
+
+      if (!this.userSockets.has(accountID)) {
+        this.userSockets.set(accountID, new Set());
       }
-      this.userSockets.get(userID)!.add(socket.id);
+      this.userSockets.get(accountID)!.add(socket.id);
 
-      this.logger.log(`User ${userID} connected (socket: ${socket.id})`);
+      this.logger.log(`User ${accountID} connected (socket: ${socket.id})`);
     } catch {
       socket.disconnect();
     }

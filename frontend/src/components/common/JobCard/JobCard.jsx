@@ -49,6 +49,7 @@ function JobCard({ job, showMatch = true, showActions = true, token, onSave, onC
 
   const handleCompanyClick = (e) => {
     e.stopPropagation();
+    e.preventDefault()
     if (onCompanyClick && job.companyID) {
       onCompanyClick(job.companyID);
     }

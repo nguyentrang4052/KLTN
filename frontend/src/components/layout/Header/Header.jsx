@@ -89,7 +89,7 @@ export default function Header({ notifCount = 0 }) {
       .then(r => r.json())
       .then(data => setSavedCount(Array.isArray(data) ? data.length : 0))
       .catch(() => { })
-  }, [])
+  }, [location.pathname])
 
   useEffect(() => {
     const handleProfileUpdate = (event) => {
@@ -140,97 +140,101 @@ export default function Header({ notifCount = 0 }) {
         </nav>
 
         <div className="app-header__right">
-          <button className="app-header__quick-search" onClick={() => navigate('/jobs')}>
-            🔍 <span>Tìm kiếm nhanh...</span>
-          </button>
+          {user && (  // hoặc check token
+            <>
+              <button className="app-header__quick-search" onClick={() => navigate('/jobs')}>
+                🔍 <span>Tìm kiếm nhanh...</span>
+              </button>
 
-          <button
-            className={`app-header__icon-btn${location.pathname === '/notifications' ? ' active' : ''}`}
-            title="Thông báo"
-            onClick={() => navigate('/notifications')}
-          >
-            🔔
-            {notifCount > 0 && (
-              <span className="app-header__notif-bubble">
-                {notifCount > 99 ? '99+' : notifCount}
-              </span>
-            )}
-          </button>
+              <button
+                className={`app-header__icon-btn${location.pathname === '/notifications' ? ' active' : ''}`}
+                title="Thông báo"
+                onClick={() => navigate('/notifications')}
+              >
+                🔔
+                {notifCount > 0 && (
+                  <span className="app-header__notif-bubble">
+                    {notifCount > 99 ? '99+' : notifCount}
+                  </span>
+                )}
+              </button>
 
-          <div className="app-header__divider" />
+              <div className="app-header__divider" />
 
-          <div className="app-header__avatar-wrap">
-            <button
-              className={`app-header__avatar-btn${ddOpen ? ' open' : ''}`}
-              onClick={() => setDdOpen(o => !o)}
-            >
-              <Avatar
-                avatar={user?.avatar}
-                initials={initials}
-                className="app-header__av-circle"
-              />
-              <div className="app-header__av-meta">
-                <span className="app-header__av-name">
-                  {user?.fullName ?? 'Người dùng'}
-                </span>
-                <span className="app-header__av-plan">
-                  <span
-                    className="app-header__av-plan-dot"
-                    style={{ background: PLAN_DOT_COLOR[planName] ?? '#9A8D80' }}
+              <div className="app-header__avatar-wrap">
+                <button
+                  className={`app-header__avatar-btn${ddOpen ? ' open' : ''}`}
+                  onClick={() => setDdOpen(o => !o)}
+                >
+                  <Avatar
+                    avatar={user?.avatar}
+                    initials={initials}
+                    className="app-header__av-circle"
                   />
-                  {planDisplay}
-                </span>
-              </div>
-              <span className="app-header__av-caret">▾</span>
-            </button>
+                  <div className="app-header__av-meta">
+                    <span className="app-header__av-name">
+                      {user?.fullName ?? 'Người dùng'}
+                    </span>
+                    <span className="app-header__av-plan">
+                      <span
+                        className="app-header__av-plan-dot"
+                        style={{ background: PLAN_DOT_COLOR[planName] ?? '#9A8D80' }}
+                      />
+                      {planDisplay}
+                    </span>
+                  </div>
+                  <span className="app-header__av-caret">▾</span>
+                </button>
 
-            {ddOpen && (
-              <>
-                <div className="app-header__dd-overlay" onClick={() => setDdOpen(false)} />
-                <div className="app-header__dropdown">
+                {ddOpen && (
+                  <>
+                    <div className="app-header__dd-overlay" onClick={() => setDdOpen(false)} />
+                    <div className="app-header__dropdown">
 
-                  <div className="app-header__dd-hero">
-                    <Avatar
-                      avatar={user?.avatar}
-                      initials={initials}
-                      className="app-header__dd-av"
-                    />
-                    <div>
-                      <div className="app-header__dd-name">
-                        {user?.fullName ?? 'Người dùng'}
-                      </div>
-                      {/* <div className="app-header__dd-email">
+                      <div className="app-header__dd-hero">
+                        <Avatar
+                          avatar={user?.avatar}
+                          initials={initials}
+                          className="app-header__dd-av"
+                        />
+                        <div>
+                          <div className="app-header__dd-name">
+                            {user?.fullName ?? 'Người dùng'}
+                          </div>
+                          {/* <div className="app-header__dd-email">
                         {user?.email ?? ''}
                       </div> */}
-                      <div className="app-header__dd-badge">⚡ {planDisplay}</div>
-                    </div>
-                  </div>
+                          <div className="app-header__dd-badge">⚡ {planDisplay}</div>
+                        </div>
+                      </div>
 
-                  {getDD_MENU(savedCount, notifCount).map((section, si) => (
-                    <div className="app-header__dd-sec" key={si}>
-                      {section.label && (
-                        <div className="app-header__dd-sec-label">{section.label}</div>
-                      )}
-                      {section.items.map(item => (
-                        <button
-                          key={item.label}
-                          className={`app-header__dd-item${item.danger ? ' danger' : ''}`}
-                          onClick={() => handleDdItem(item)}
-                        >
-                          <span className="app-header__dd-item-ico">{item.ico}</span>
-                          <span>{item.label}</span>
-                          {item.tag && (
-                            <span className="app-header__dd-item-tag">{item.tag}</span>
+                      {getDD_MENU(savedCount, notifCount).map((section, si) => (
+                        <div className="app-header__dd-sec" key={si}>
+                          {section.label && (
+                            <div className="app-header__dd-sec-label">{section.label}</div>
                           )}
-                        </button>
+                          {section.items.map(item => (
+                            <button
+                              key={item.label}
+                              className={`app-header__dd-item${item.danger ? ' danger' : ''}`}
+                              onClick={() => handleDdItem(item)}
+                            >
+                              <span className="app-header__dd-item-ico">{item.ico}</span>
+                              <span>{item.label}</span>
+                              {item.tag && (
+                                <span className="app-header__dd-item-tag">{item.tag}</span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
                       ))}
-                    </div>
-                  ))}
 
-                </div>
-              </>
-            )}
-          </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </header>

@@ -71,11 +71,19 @@ export function useNotifications() {
 
     const deleteOne = async (id) => {
         const token = getToken()
-        setNotifications((prev) => prev.filter((n) => n.id !== id))
-        await fetch(`${API}/notifications/${id}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${token}` },
-        })
+        try {
+            const res = await fetch(`${API}/notifications/${id}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+            })
+            if (res.ok) {
+                setNotifications((prev) => prev.filter((n) => n.id !== id))
+            } else {
+                console.error('[Notif] delete failed:', res.status)
+            }
+        } catch (err) {
+            console.error('[Notif] delete error:', err)
+        }
     }
 
     return { notifications, unreadCount, markAsRead, markAllAsRead, deleteOne, refetch: fetchNotifications }

@@ -17,6 +17,7 @@ model Account {
   user      User?
   role      String   @default("user")
   jobAlerts JobAlert[]
+  emailNotification Boolean @default(false)
 }
 
 model User {
@@ -310,4 +311,5 @@ model Notification {
   metadata  Json?     // jobID, planName, ... tuỳ type
 
   user User @relation(fields: [userID], references: [userID])
+  dedupeKey String?   @unique
 }

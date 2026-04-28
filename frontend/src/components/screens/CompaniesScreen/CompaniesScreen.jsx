@@ -209,7 +209,7 @@ export default function CompaniesScreen() {
 
   return (
     <div className="cs-screen">
-
+      
       {provinceDropdownOpen && filteredProvinces.length > 0 && (
         <div style={{
           position: 'fixed',

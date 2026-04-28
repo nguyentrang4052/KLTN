@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import './HomeScreen.css'
 import JobCard from '../../common/JobCard/JobCard'
@@ -51,7 +52,14 @@ export default function HomeScreen() {
   const [token, setToken] = useState(() => getToken())
 
   const [keyword, setKeyword] = useState(() => searchParams.get('keyword') || '')
-  const [locationFilter, setLocationFilter] = useState(() => searchParams.get('location') || '')  // ✅ Đổi tên thành locationFilter
+  const [locationFilter, setLocationFilter] = useState(() => {
+    const loc = searchParams.get('location')
+    return loc ? loc.split(',').filter(Boolean) : []
+  })
+  const [locOpen, setLocOpen] = useState(false)
+  const locRef = useRef(null)
+  const [locPos, setLocPos] = useState({ top: 0, left: 0, width: 0 })
+
   const [sort, setSort] = useState(() => searchParams.get('sort') || 'newest')
   const [page, setPage] = useState(() => parseInt(searchParams.get('page') || '1'))
   const [industryFilter, setIndustryFilter] = useState(() => {
@@ -66,7 +74,6 @@ export default function HomeScreen() {
   const [recommendations, setRecommendations] = useState([])
   const [industries, setIndustries] = useState([])
   const [catPage, setCatPage] = useState(0)
-  // const [activePlatform, setActivePlatform] = useState('Tất cả')
   const [loadingIndustries, setLoadingIndustries] = useState(false)
 
   const [stats, setStats] = useState(null)
@@ -82,6 +89,37 @@ export default function HomeScreen() {
   const eventSourceRef = useRef(null)
   const [locations, setLocations] = useState([])
 
+  const pageRef = useRef(page)
+  const sortRef = useRef(sort)
+  const keywordRef = useRef(keyword)
+  const industryFilterRef = useRef(industryFilter)
+  const activePlatformRef = useRef(activePlatform)
+  const locationFilterRef = useRef(locationFilter)
+  const tokenRef = useRef(token)
+
+  useEffect(() => { pageRef.current = page }, [page])
+  useEffect(() => { sortRef.current = sort }, [sort])
+  useEffect(() => { keywordRef.current = keyword }, [keyword])
+  useEffect(() => { industryFilterRef.current = industryFilter }, [industryFilter])
+  useEffect(() => { activePlatformRef.current = activePlatform }, [activePlatform])
+  useEffect(() => { locationFilterRef.current = locationFilter }, [locationFilter])
+  useEffect(() => { tokenRef.current = token }, [token])
+
+  const searchParamsRef = useRef(searchParams)
+  useEffect(() => { searchParamsRef.current = searchParams }, [searchParams])
+
+  const handleLocOpen = () => {
+    if (locRef.current) {
+      const rect = locRef.current.getBoundingClientRect()
+      setLocPos({
+        top: rect.bottom + window.scrollY + 6,
+        left: rect.left + window.scrollX,
+        width: Math.max(rect.width, 220),
+      })
+    }
+    setLocOpen(o => !o)
+  }
+
   useEffect(() => {
     fetch(`${API}/common/locations`)
       .then(r => r.json())
@@ -90,8 +128,7 @@ export default function HomeScreen() {
   }, [])
 
   const updateURLParams = useCallback((updates) => {
-    const newParams = new URLSearchParams(searchParams)
-
+    const newParams = new URLSearchParams(searchParamsRef.current)
     Object.entries(updates).forEach(([key, value]) => {
       if (value === null || value === undefined || value === '' || value === 'Tất cả') {
         newParams.delete(key)
@@ -99,38 +136,24 @@ export default function HomeScreen() {
         newParams.set(key, String(value))
       }
     })
-
     setSearchParams(newParams, { replace: true })
-  }, [searchParams, setSearchParams])
+  }, [setSearchParams])
 
   useEffect(() => {
-    updateURLParams({ page: page > 1 ? page : null })
-  }, [page, updateURLParams])
-
-  useEffect(() => {
-    updateURLParams({ sort: sort !== 'newest' ? sort : null })
-  }, [sort, updateURLParams])
-
-  useEffect(() => {
-    const newIndustry = industryFilter || null
-    updateURLParams({ industry: newIndustry })
-  }, [industryFilter, updateURLParams])
-
-  useEffect(() => {
-    updateURLParams({ platform: activePlatform !== 'Tất cả' ? activePlatform : null })
-    setCatPage(0)
-    setIndustryFilter(null)
-    setPage(1)
-  }, [activePlatform, updateURLParams])
+    updateURLParams({
+      page: page > 1 ? page : null,
+      sort: sort !== 'newest' ? sort : null,
+      industry: industryFilter || null,
+      platform: activePlatform !== 'Tất cả' ? activePlatform : null,
+      location: locationFilter.length > 0 ? locationFilter.join(',') : null,
+    })
+  }, [page, sort, industryFilter, activePlatform, locationFilter, updateURLParams])
 
   useEffect(() => {
     if (location.state?.scrollY) {
       const timer = setTimeout(() => {
         window.scrollTo(0, location.state.scrollY)
-        navigate(location.pathname + location.search, {
-          replace: true,
-          state: {}
-        })
+        navigate(location.pathname + location.search, { replace: true, state: {} })
       }, 100)
       return () => clearTimeout(timer)
     }
@@ -171,15 +194,22 @@ export default function HomeScreen() {
   const fetchJobs = useCallback(async () => {
     setLoadingJobs(true)
     try {
-      const params = new URLSearchParams({ page: String(page), limit: '9', sort })
-      if (keyword) params.set('keyword', keyword)
-      if (locationFilter) params.append('locations', locationFilter)  // Dùng locationFilter
-      if (industryFilter) params.set('industryId', String(industryFilter))
-      if (activePlatform && activePlatform !== 'Tất cả') params.set('source', activePlatform)
+      const params = new URLSearchParams({
+        page: String(pageRef.current),
+        limit: '9',
+        sort: sortRef.current,
+      })
+      if (keywordRef.current) params.set('keyword', keywordRef.current)
+      const locs = locationFilterRef.current
+      if (locs.length > 0) locs.forEach(loc => params.append('locations', loc))
+      if (industryFilterRef.current) params.set('industryId', String(industryFilterRef.current))
+      if (activePlatformRef.current && activePlatformRef.current !== 'Tất cả')
+        params.set('source', activePlatformRef.current)
 
-      const headers = token ? { Authorization: `Bearer ${token}` } : {}
+      const headers = tokenRef.current ? { Authorization: `Bearer ${tokenRef.current}` } : {}
       const res = await fetch(`${API}/jobs?${params}`, { headers })
       const data = await res.json()
+      // console.log('job sample:', data.data?.[0])
       setJobs(data.data ?? [])
       setMeta(data.meta ?? { total: 0, totalPages: 1 })
     } catch (err) {
@@ -187,13 +217,24 @@ export default function HomeScreen() {
     } finally {
       setLoadingJobs(false)
     }
-  }, [page, sort, keyword, locationFilter, industryFilter, token, activePlatform])
+  }, [])
 
-  useEffect(() => { fetchJobs() }, [fetchJobs])
+  useEffect(() => {
+    fetchJobs()
+  }, [page, sort, keyword, industryFilter, activePlatform, token, fetchJobs])
+
+  const prevLocationFilterRef = useRef(locationFilter)
+  useEffect(() => {
+    const prev = prevLocationFilterRef.current
+    const curr = locationFilter
+    if (JSON.stringify(prev) !== JSON.stringify(curr)) {
+      prevLocationFilterRef.current = curr
+      fetchJobs()
+    }
+  }, [locationFilter, fetchJobs])
 
   useEffect(() => {
     if (!token) { setRecommendations([]); return }
-
     const fetchRecs = () => {
       setLoadingRecs(true)
       fetch(`${API}/jobs/recommendations`, { headers: { Authorization: `Bearer ${token}` } })
@@ -205,9 +246,8 @@ export default function HomeScreen() {
         .catch(console.error)
         .finally(() => setLoadingRecs(false))
     }
-
     fetchRecs()
-    const interval = setInterval(fetchRecs, 60 * 60 * 1000) // fetch lại mỗi 1 giờ
+    const interval = setInterval(fetchRecs, 60 * 60 * 1000)
     return () => clearInterval(interval)
   }, [token])
 
@@ -236,7 +276,6 @@ export default function HomeScreen() {
     return () => {
       if (eventSourceRef.current) {
         eventSourceRef.current.close()
-        console.log('SSE disconnected')
       }
     }
   }, [])
@@ -252,19 +291,14 @@ export default function HomeScreen() {
 
   const handleJobClick = (job) => {
     const currentScrollY = window.scrollY
-
     if (!job.jobID || typeof job.jobID !== 'number') {
       console.error('Lỗi: jobID không hợp lệ!', job)
       alert('Lỗi: Không tìm thấy ID công việc.')
       return
     }
-
     trackBehavior(job.jobID, 'click')
     navigate(`/home/job/${job.jobID}`, {
-      state: {
-        scrollY: currentScrollY,
-        fromPath: location.pathname + location.search
-      }
+      state: { scrollY: currentScrollY, fromPath: location.pathname + location.search }
     })
   }
 
@@ -272,26 +306,18 @@ export default function HomeScreen() {
     setPage(1)
     updateURLParams({
       keyword: keyword || null,
-      location: locationFilter || null,
-      page: null
+      location: locationFilter.length > 0 ? locationFilter.join(',') : null,
+      page: null,
     })
-
     setLoadingJobs(true)
-
     try {
       const sessionId = `search_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-
       const res = await fetch('http://localhost:8000/search-smart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: keyword,
-          session_id: sessionId
-        })
+        body: JSON.stringify({ query: keyword, session_id: sessionId }),
       })
-
       const data = await res.json()
-
       if (data.existing_jobs?.length > 0) {
         const normalizedJobs = data.existing_jobs.map(job => ({
           ...job,
@@ -300,18 +326,15 @@ export default function HomeScreen() {
         setJobs(normalizedJobs)
         setMeta({ total: data.count, totalPages: 1 })
       }
-
       if (data.crawling) {
         connectToEventStream()
         setCrawlStatus({ type: 'searching', message: '🔍 Đang tìm việc mới nhất...' })
       }
-
     } catch (e) {
       console.error('Search error:', e)
     } finally {
       setLoadingJobs(false)
     }
-
     setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
   }
 
@@ -322,41 +345,33 @@ export default function HomeScreen() {
     setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
 
+  const handlePageChange = useCallback((newPage) => {
+    pageRef.current = newPage
+    setPage(newPage)
+  }, [])
+
   const connectToEventStream = () => {
     const es = new EventSource('http://localhost:8000/stream?channel=crawl:jobs')
     eventSourceRef.current = es
     setIsRealtime(true)
-
     let fastCount = 0
-
     es.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data)
-
         if (data.__done__ || data.__fast_done__) {
-          setCrawlStatus({
-            type: 'done',
-            message: `✅ Hoàn thành! ${data.total || fastCount} việc làm`
-          })
+          setCrawlStatus({ type: 'done', message: `✅ Hoàn thành! ${data.total || fastCount} việc làm` })
           setIsRealtime(false)
           es.close()
-          setTimeout(() => {
-            fetchJobs()
-            setCrawlStatus(null)
-          }, 3000)
+          setTimeout(() => { fetchJobs(); setCrawlStatus(null) }, 3000)
           return
         }
-
         const jobID = data.jobID
         if (!jobID) return
-
         fastCount++
-
         setJobs(prev => {
           if (prev.find(j => j.jobID === jobID)) return prev
-
           const newJob = {
-            jobID: jobID,
+            jobID,
             title: data.job?.title,
             companyName: data.company?.companyName,
             companyLogo: data.company?.companyLogo,
@@ -368,29 +383,18 @@ export default function HomeScreen() {
             sourcePlatform: data.job?.sourcePlatform,
             isNewJob: data.isNewJob ?? true,
           }
-
           return [newJob, ...prev]
         })
-
         setMeta(prev => ({ ...prev, total: prev.total + 1 }))
-
         if (fastCount <= 10) {
-          setCrawlStatus({
-            type: 'streaming',
-            message: `📥 Đang nhận dữ liệu (${fastCount} việc làm mới)...`
-          })
+          setCrawlStatus({ type: 'streaming', message: `📥 Đang nhận dữ liệu (${fastCount} việc làm mới)...` })
         } else {
-          setCrawlStatus({
-            type: 'deep',
-            message: '🔍 Đang tìm kiếm sâu thêm...'
-          })
+          setCrawlStatus({ type: 'deep', message: '🔍 Đang tìm kiếm sâu thêm...' })
         }
-
       } catch (err) {
         console.error('SSE parse error:', err)
       }
     }
-
     es.onerror = (err) => {
       console.error('SSE error:', err)
       es.close()
@@ -406,7 +410,6 @@ export default function HomeScreen() {
         onClick={() => onPageChange(n)}>{n}</button>
     )
     const addDots = (k) => pages.push(<span key={k} className="hs-pg-dots">…</span>)
-
     if (totalPages <= 7) {
       for (let i = 1; i <= totalPages; i++) addBtn(i)
     } else {
@@ -444,22 +447,17 @@ export default function HomeScreen() {
 
   const renderJobCard = (job) => (
     <div key={job.jobID} style={{ cursor: 'pointer', position: 'relative' }}
-      onClick={() => handleJobClick(job)}>
+      onClick={(e) => {
+        if (e.defaultPrevented) return
+        handleJobClick(job)
+      }}>
       {job.isNewJob && (
         <span style={{
-          position: 'absolute',
-          top: '-8px',
-          right: '-8px',
-          background: '#FF4757',
-          color: 'white',
-          padding: '4px 8px',
-          borderRadius: '12px',
-          fontSize: '11px',
-          fontWeight: 'bold',
-          zIndex: 10
-        }}>
-          MỚI
-        </span>
+          position: 'absolute', top: '-8px', right: '-8px',
+          background: '#FF4757', color: 'white',
+          padding: '4px 8px', borderRadius: '12px',
+          fontSize: '11px', fontWeight: 'bold', zIndex: 10,
+        }}>MỚI</span>
       )}
       <JobCard
         token={token}
@@ -516,24 +514,75 @@ export default function HomeScreen() {
                   onKeyDown={e => e.key === 'Enter' && handleSearch()}
                 />
               </div>
-              <div className="hs-sf hs-sf-loc">
+
+              <div className="hs-sf hs-sf-loc" ref={locRef}>
                 <span className="hs-sf-ico">📍</span>
-                <input
-                  className="hs-sf-inp"
-                  placeholder="Địa điểm..."
-                  value={locationFilter}
-                  onChange={e => setLocationFilter(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                  list="location-list"
-                />
-                <datalist id="location-list">
-                  {locations.map(loc => (
-                    <option key={loc.value} value={loc.value} />
-                  ))}
-                </datalist>
+                <div
+                  className="hs-loc-display"
+                  style={{ color: locationFilter.length > 0 ? '#1C1510' : '#9A8D80' }}
+                  onClick={handleLocOpen}
+                >
+                  {locationFilter.length === 0 ? 'Địa điểm...'
+                    : locationFilter.length === 1 ? locationFilter[0]
+                      : `${locationFilter.length} địa điểm`}
+                </div>
+                {locationFilter.length > 0 && (
+                  <button className="hs-loc-clear" onClick={() => setLocationFilter([])}>×</button>
+                )}
               </div>
+
+              {locOpen && createPortal(
+                <>
+                  <div
+                    style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
+                    onClick={() => setLocOpen(false)}
+                  />
+                  <div style={{
+                    position: 'absolute',
+                    top: locPos.top, left: locPos.left, width: locPos.width,
+                    zIndex: 9999, background: '#FEFCF7',
+                    border: '1.5px solid #DDD6C6', borderRadius: 10,
+                    boxShadow: '0 8px 32px rgba(0,0,0,.15)',
+                    maxHeight: 280, overflowY: 'auto',
+                  }}>
+                    {locations.map(loc => {
+                      const selected = locationFilter.includes(loc.value)
+                      return (
+                        <div
+                          key={loc.value}
+                          className={`hs-loc-item${selected ? ' selected' : ''}`}
+                          onClick={() => setLocationFilter(prev =>
+                            selected ? prev.filter(l => l !== loc.value) : [...prev, loc.value]
+                          )}
+                        >
+                          <span className="hs-loc-checkbox">{selected ? '✓' : ''}</span>
+                          {loc.label}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>,
+                document.body
+              )}
+
               <button className="hs-search-btn" onClick={handleSearch}>Tìm kiếm</button>
             </div>
+            {locationFilter.length > 0 && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                {locationFilter.map(loc => (
+                  <span key={loc} style={{
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+                    background: 'rgba(255,255,255,.15)', color: '#F5EED8',
+                    border: '1px solid rgba(255,255,255,.25)',
+                  }}>
+                    📍 {loc}
+                    <span style={{ cursor: 'pointer', opacity: .7 }}
+                      onClick={() => setLocationFilter(prev => prev.filter(l => l !== loc))}>×</span>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="hs-hero-right">
@@ -541,10 +590,11 @@ export default function HomeScreen() {
               <div className="hs-stat-ico">🎯</div>
               <div className="hs-stat-n">{loadingStats ? '…' : (stats?.jobMatch?.count ?? '—')}</div>
               <div className="hs-stat-l">Việc phù hợp hôm nay</div>
-              {/* <div className="hs-stat-s">
-                {stats ? `${stats.jobMatch?.delta} so với hôm qua` : token ? 'Đang tải...' : 'Đăng nhập để xem'}
-
-              </div> */}
+              {stats?.jobMatch?.delta && (
+                <div style={{ fontSize: 12, color: stats.jobMatch.delta.startsWith('+') ? '#4CAF50' : '#F44336' }}>
+                  {stats.jobMatch.delta} so với hôm qua
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -568,7 +618,7 @@ export default function HomeScreen() {
           <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
             {PLATFORMS.map(p => (
               <button key={p.value}
-                onClick={() => setActivePlatform(p.value)}
+                onClick={() => { setActivePlatform(p.value); setPage(1) }}
                 style={{
                   padding: '7px 18px', borderRadius: 9,
                   border: `2px solid ${activePlatform === p.value ? p.color : '#DDD6C6'}`,
@@ -600,11 +650,8 @@ export default function HomeScreen() {
                     onClick={() => handleIndustryClick(cat.id)}>
                     <div className="hs-cat-icon-wrap">
                       <span style={{
-                        fontSize: 20, fontWeight: 800,
-                        color: cat.color,
-                        fontFamily: 'Roboto, sans-serif',
-                        lineHeight: 1,
-                        userSelect: 'none',
+                        fontSize: 20, fontWeight: 800, color: cat.color,
+                        fontFamily: 'Roboto, sans-serif', lineHeight: 1, userSelect: 'none',
                       }}>
                         {cat.letter}
                       </span>
@@ -664,7 +711,7 @@ export default function HomeScreen() {
               <div className="hs-grid">{jobs.map(job => renderJobCard(job))}</div>
             )}
             {meta.totalPages > 1 && (
-              <Pagination curPage={page} totalPages={meta.totalPages} onPageChange={setPage} />
+              <Pagination curPage={page} totalPages={meta.totalPages} onPageChange={handlePageChange} />
             )}
           </div>
         )}
@@ -703,18 +750,14 @@ export default function HomeScreen() {
 
             {crawlStatus && (
               <div style={{
-                padding: '16px 24px',
-                margin: '20px 0',
-                background: crawlStatus.type === 'fast' ? '#FFF3CD' :
-                  crawlStatus.type === 'deep' ? '#D1ECF1' :
-                    crawlStatus.type === 'error' ? '#F8D7DA' : '#D4EDDA',
-                border: `1px solid ${crawlStatus.type === 'fast' ? '#FFEAA7' :
-                  crawlStatus.type === 'deep' ? '#74B9FF' :
-                    crawlStatus.type === 'error' ? '#F5C6CB' : '#C3E6CB'}`,
-                borderRadius: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px'
+                padding: '16px 24px', margin: '20px 0',
+                background: crawlStatus.type === 'fast' ? '#FFF3CD'
+                  : crawlStatus.type === 'deep' ? '#D1ECF1'
+                    : crawlStatus.type === 'error' ? '#F8D7DA' : '#D4EDDA',
+                border: `1px solid ${crawlStatus.type === 'fast' ? '#FFEAA7'
+                  : crawlStatus.type === 'deep' ? '#74B9FF'
+                    : crawlStatus.type === 'error' ? '#F5C6CB' : '#C3E6CB'}`,
+                borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px',
               }}>
                 <span style={{ fontSize: '20px' }}>
                   {crawlStatus.type === 'searching' && '🔍'}
@@ -723,29 +766,20 @@ export default function HomeScreen() {
                   {crawlStatus.type === 'done' && '✅'}
                   {crawlStatus.type === 'error' && '❌'}
                 </span>
-                <span style={{
-                  flex: 1,
-                  fontWeight: 600,
-                  color: crawlStatus.type === 'error' ? '#721C24' : '#333'
-                }}>
+                <span style={{ flex: 1, fontWeight: 600, color: crawlStatus.type === 'error' ? '#721C24' : '#333' }}>
                   {crawlStatus.message}
                 </span>
-                {(crawlStatus.type === 'searching' || crawlStatus.type === 'streaming' || crawlStatus.type === 'deep') && (
+                {['searching', 'streaming', 'deep'].includes(crawlStatus.type) && (
                   <span style={{
-                    width: '20px',
-                    height: '20px',
-                    border: '2px solid #ccc',
-                    borderTopColor: '#333',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite'
+                    width: '20px', height: '20px',
+                    border: '2px solid #ccc', borderTopColor: '#333',
+                    borderRadius: '50%', animation: 'spin 1s linear infinite',
                   }} />
                 )}
               </div>
             )}
 
-            <style>{`
-              @keyframes spin { to { transform: rotate(360deg); } }
-            `}</style>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
             <div className="hs-sec-hd">
               <span className="hs-sec-title">💼 Tất cả việc làm</span>
@@ -760,7 +794,7 @@ export default function HomeScreen() {
               <div className="hs-grid">{jobs.map(job => renderJobCard(job))}</div>
             )}
             {meta.totalPages > 1 && (
-              <Pagination curPage={page} totalPages={meta.totalPages} onPageChange={setPage} />
+              <Pagination curPage={page} totalPages={meta.totalPages} onPageChange={handlePageChange} />
             )}
           </div>
         )}

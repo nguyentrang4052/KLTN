@@ -10,7 +10,7 @@ export class JobAlertService {
     private prisma: PrismaService,
     private mail: MailService,
     private notificationService: NotificationService,
-  ) {}
+  ) { }
 
   async createAlert(accountID: number, keyword: string) {
     const existing = await this.prisma.jobAlert.findUnique({
@@ -86,6 +86,7 @@ export class JobAlertService {
         account: {
           select: {
             email: true,
+            emailNotification: true,
             user: { select: { userID: true } },
           },
         },
@@ -134,18 +135,24 @@ export class JobAlertService {
         const userID = alert.account.user?.userID;
 
         if (userID) {
-          const alreadySent = await this.notificationService.createIfNotExists({
-            userID,
-            type: 'job_alert',
-            title: `Việc làm mới cho "${alert.keyword}"`,
-            body: `Có ${jobs.length} việc làm mới phù hợp với từ khóa "${alert.keyword}" hôm nay.`,
-            metadata: { keyword: alert.keyword, jobIDs: jobs.map((j) => j.jobID) },
-            dedupeKey: `job_alert_${userID}_${alert.keyword}_${today}`,
-          });
-
-          if (!alreadySent) continue;
+          const sent = await this.notificationService.createIfNotExists({
+              userID,
+              type: 'job_alert',
+              title: `Việc làm mới cho "${alert.keyword}"`,
+              body: `Có ${jobs.length} việc làm mới phù hợp với từ khóa "${alert.keyword}" hôm nay.`,
+              metadata: {
+                keyword: alert.keyword,
+                jobIDs: jobs.map((j) => j.jobID),
+              },
+              dedupeKey: `job_alert_${userID}_${alert.keyword}_${today}`,
+          })
+            .catch((err) => {
+              console.error('[Notif] createIfNotExists error:', err);
+              return null;
+            });
+          if (sent === null) continue;
         }
-
+        if (!alert.account.emailNotification) continue;
         await this.mail.sendJobAlert(alert.account.email, alert.keyword, jobs);
       } catch (err) {
         console.error(`Lỗi gửi alert cho accountID=${alert.accountID}:`, err);

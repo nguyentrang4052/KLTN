@@ -45,7 +45,8 @@ export class NotificationScheduler {
         dedupeKey: `sub_expiry_${sub.userID}_${sub.id}_${daysLeft}d`,
       });
 
-      if (!alreadySent) continue;
+      if (alreadySent == null) continue;
+      if (!sub.user.account.emailNotification) continue;
 
       await this.mailService.sendSubscriptionExpiringSoon(email, {
         fullName: sub.user.fullName ?? undefined,
@@ -61,7 +62,7 @@ export class NotificationScheduler {
     }
   }
 
-  @Cron('0 8 * * *')
+  @Cron('* * * * *')
   async sendSavedJobDeadlineReminders() {
     this.logger.log('Running saved job deadline reminder job...');
     const now = new Date();
@@ -109,18 +110,21 @@ export class NotificationScheduler {
           ? `"${jobs[0].title}" tại ${jobs[0].companyName} còn ${jobs[0].hoursLeft} giờ để ứng tuyển.`
           : `Bạn có ${jobs.length} việc làm đã lưu sắp hết hạn trong 3 ngày tới. Urgent nhất: "${jobs[0].title}" (còn ${jobs[0].hoursLeft} giờ).`;
 
-      const today = new Date().toISOString().slice(0, 10);
-
       const alreadySent = await this.notificationService.createIfNotExists({
         userID: user.userID,
         type: 'job_deadline',
         title: `${jobs.length} việc làm đã lưu sắp hết hạn`,
         body: notifBody,
         metadata: { jobIDs: jobs.map((j) => j.jobID), count: jobs.length },
-        dedupeKey: `job_deadline_${user.userID}_${today}`,
+        dedupeKey: `job_deadline_${user.userID}_${jobs
+          .map((j) => j.jobID)
+          .sort()
+          .join('_')}`,
       });
 
-      if (!alreadySent) continue;
+      if (alreadySent == null) continue;
+
+      if (!user.account.emailNotification) continue;
 
       await this.mailService.sendSavedJobDeadlineAlert(email, {
         fullName: user.fullName ?? undefined,

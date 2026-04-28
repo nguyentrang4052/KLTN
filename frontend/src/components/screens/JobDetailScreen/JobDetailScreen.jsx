@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import './JobDetailScreen.css'
 import Badge from '../../common/Badge/Badge'
 import { getToken } from '../../../utils/auth'
+import Header from '../../layout/Header/Header'
 
 const API = 'http://localhost:3000/api'
 
@@ -25,10 +26,13 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
   const [matchInfo, setMatchInfo] = useState(null)
 
   const handleBack = () => {
-    // Navigate về URL cũ, state sẽ được đọc bởi HomeScreen
-    navigate(returnUrl, {
-      state: { scrollY }  // Truyền lại scrollY để HomeScreen restore
-    })
+    if (location.state?.fromPath) {
+      navigate(location.state.fromPath, {
+        state: { scrollY: location.state?.scrollY || 0 }
+      })
+    } else {
+      navigate(-1)
+    }
   }
 
   useEffect(() => {
@@ -113,12 +117,6 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
     }
   }
 
-  const matchData = [
-    { label: 'Kỹ năng kỹ thuật', value: 95, color: 'f-sage' },
-    { label: 'Kinh nghiệm', value: 80, color: 'f-rust' },
-    { label: 'Mức lương', value: 90, color: 'f-amber' },
-    { label: 'Địa điểm', value: 70, color: 'f-teal' },
-  ]
 
   if (loading) {
     return (
@@ -141,7 +139,6 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
   const logoLetter = job.company?.companyName?.[0]?.toUpperCase() ?? '?'
 
   return (
-
     <div id="s4">
       {onBack && (
         <div style={{

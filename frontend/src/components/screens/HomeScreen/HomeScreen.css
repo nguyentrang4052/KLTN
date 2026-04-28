@@ -105,7 +105,7 @@
   background: #FEFCF7;
   border: 1.5px solid rgba(221, 214, 198, .5);
   border-radius: 10px;
-  overflow: hidden;
+  /* overflow: hidden; */
   transition: border-color .2s;
 }
 
@@ -137,6 +137,7 @@
 
 .hs-sf-loc {
   flex: 0 0 190px;
+  overflow: hidden;
 }
 
 .hs-search-btn {
@@ -847,4 +848,137 @@
   border-color: var(--cat-color) !important;
   box-shadow: 0 6px 24px rgba(28,21,16,0.12);
   transform: translateY(-2px);
+}
+
+.hs-sf-loc {
+  flex: 0 0 190px;
+  overflow: visible !important;
+  position: relative;
+}
+
+.hs-loc-display {
+  flex: 1;
+  padding: 12px 12px 12px 0;
+  cursor: pointer;
+  font-size: 14px;
+  user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hs-loc-clear {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 10px;
+  font-size: 18px;
+  color: #9A8D80;
+  flex-shrink: 0;
+  line-height: 1;
+  transition: color .15s;
+}
+
+.hs-loc-clear:hover {
+  color: #C0412A;
+}
+
+.hs-loc-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 220px;
+  width: 100%;
+  z-index: 100;
+  background: #FEFCF7;
+  border: 1.5px solid #DDD6C6;
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.12);
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.hs-loc-dropdown::-webkit-scrollbar {
+  width: 4px;
+}
+.hs-loc-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+.hs-loc-dropdown::-webkit-scrollbar-thumb {
+  background: #DDD6C6;
+  border-radius: 4px;
+}
+
+.hs-loc-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #1C1510;
+  transition: background .12s;
+}
+
+.hs-loc-item:hover {
+  background: #F5F0E8;
+}
+
+.hs-loc-item.selected {
+  background: rgba(35,42,162,.07);
+  color: rgb(35,42,162);
+  font-weight: 700;
+}
+
+.hs-loc-checkbox {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 2px solid #CCC;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #fff;
+  flex-shrink: 0;
+  transition: all .12s;
+}
+
+.hs-loc-item.selected .hs-loc-checkbox {
+  background: rgb(35,42,162);
+  border-color: rgb(35,42,162);
+}
+
+.hs-loc-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.hs-loc-tag {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(255,255,255,.15);
+  color: #F5EED8;
+  border: 1px solid rgba(255,255,255,.25);
+  backdrop-filter: blur(4px);
+}
+
+.hs-loc-tag-x {
+  cursor: pointer;
+  opacity: .7;
+  font-size: 13px;
+  line-height: 1;
+  transition: opacity .12s;
+}
+
+.hs-loc-tag-x:hover {
+  opacity: 1;
 }

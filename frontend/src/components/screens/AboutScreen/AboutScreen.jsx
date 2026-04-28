@@ -3,14 +3,13 @@ import { useState } from 'react'
 import { useNavigate } from "react-router-dom"
 import './AboutScreen.css'
 
-/* ── Data ─────────────────────────────────────────────────── */
 const STATS = [
-  { n: '3.2M+',  l: 'Người dùng',          s: 'trên toàn quốc' },
-  { n: '50K+',   l: 'Việc làm mỗi ngày',   s: 'cập nhật real-time' },
-  { n: '15+',    l: 'Nền tảng tổng hợp',   s: 'TopCV, VietnamWorks...' },
-  { n: '94%',    l: 'Độ chính xác AI',      s: 'match score' },
-  { n: '2 phút', l: 'Tần suất cập nhật',   s: 'tự động 24/7' },
-  { n: '1-click',l: 'Auto Apply',           s: 'nộp nhiều nơi cùng lúc' },
+  { n: '3.2M+', l: 'Người dùng', s: 'trên toàn quốc' },
+  { n: '50K+', l: 'Việc làm mỗi ngày', s: 'cập nhật real-time' },
+  { n: '15+', l: 'Nền tảng tổng hợp', s: 'TopCV, VietnamWorks...' },
+  { n: '94%', l: 'Độ chính xác AI', s: 'match score' },
+  { n: '2 phút', l: 'Tần suất cập nhật', s: 'tự động 24/7' },
+  { n: '1-click', l: 'Auto Apply', s: 'nộp nhiều nơi cùng lúc' },
 ]
 
 const VALUES = [
@@ -20,7 +19,7 @@ const VALUES = [
   },
   {
     icon: '⚡', title: 'Tiết kiệm thời gian',
-    desc:  'Nền tảng tổng hợp tin tuyển dụng từ nhiều nguồn, giúp bạn tìm kiếm công việc phù hợp nhanh chóng và theo dõi cơ hội nghề nghiệp mới chỉ trong một nơi.',
+    desc: 'Nền tảng tổng hợp tin tuyển dụng từ nhiều nguồn, giúp bạn tìm kiếm công việc phù hợp nhanh chóng và theo dõi cơ hội nghề nghiệp mới chỉ trong một nơi.',
   },
   {
     icon: '🔍', title: 'Minh bạch & tin cậy',
@@ -33,9 +32,9 @@ const VALUES = [
 ]
 
 const PARTNERS = [
-  { name: 'TopCV',       short: 'TC',  color: '#007A35' },
-  { name: 'CareerLink',  short: 'CL',  color: '#A02018' },
-  { name: 'CareerViet',  short: 'CV',  color: '#0D47A1' },
+  { name: 'TopCV', short: 'TC', color: '#007A35' },
+  { name: 'CareerLink', short: 'CL', color: '#A02018' },
+  { name: 'CareerViet', short: 'CV', color: '#0D47A1' },
 ]
 
 /* ── Component ─────────────────────────────────────────────── */
@@ -59,8 +58,8 @@ export default function AboutScreen({ onNavigate }) {
           </h1>
 
           <p className="ab-hero-desc">
-            GZCONNECT ra đời để giải quyết bài toán mà hàng triệu người Việt đang đối mặt: 
-            quá nhiều nền tảng tuyển dụng, quá ít thời gian, và quá khó để tìm ra cơ hội 
+            GZCONNECT ra đời để giải quyết bài toán mà hàng triệu người Việt đang đối mặt:
+            quá nhiều nền tảng tuyển dụng, quá ít thời gian, và quá khó để tìm ra cơ hội
             thực sự phù hợp với mình.
           </p>
 
@@ -82,11 +81,11 @@ export default function AboutScreen({ onNavigate }) {
                 Kết nối đúng người<br />với đúng cơ hội
               </h2>
               <p className="ab-mission-desc">
-                Thị trường lao động Việt Nam có hàng chục nền tảng tuyển dụng rời rạc, 
+                Thị trường lao động Việt Nam có hàng chục nền tảng tuyển dụng rời rạc,
                 tin tuyển dụng lặp lại, và không có công cụ nào thực sự hiểu người tìm việc.
               </p>
               <p className="ab-mission-desc">
-                Chúng tôi dùng AI để tổng hợp, lọc, và cá nhân hóa — giúp bạn tìm thấy 
+                Chúng tôi dùng AI để tổng hợp, lọc, và cá nhân hóa — giúp bạn tìm thấy
                 công việc tốt hơn trong ít thời gian hơn.
               </p>
             </div>
@@ -167,7 +166,7 @@ export default function AboutScreen({ onNavigate }) {
             Tham gia cùng người đang dùng GZCONNECT. Miễn phí hoàn toàn, không cần thẻ tín dụng.
           </p>
           <div className="ab-cta-btns">
-            <button className="ab-btn-primary lg" onClick={() => onNavigate && onNavigate('s3')}>
+            <button className="ab-btn-primary lg" onClick={() => navigate('/jobs')}>
               Bắt đầu tìm việc ngay →
             </button>
           </div>

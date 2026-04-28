@@ -9,17 +9,17 @@ export class NotificationService {
     private prisma: PrismaService,
     @Inject(forwardRef(() => NotificationGateway))
     private gateway: NotificationGateway,
-  ) {}
+  ) { }
 
   async create(dto: CreateNotificationDto) {
     const notification = await this.prisma.notification.create({
       data: {
-      userID: dto.userID,
-      type: dto.type,
-      title: dto.title,
-      body: dto.body,
-      metadata: dto.metadata ?? {},
-    },
+        userID: dto.userID,
+        type: dto.type,
+        title: dto.title,
+        body: dto.body,
+        metadata: dto.metadata ?? {},
+      },
     });
 
     this.gateway.sendToUser(dto.userID, 'notification', {
@@ -71,19 +71,50 @@ export class NotificationService {
 
   async createIfNotExists(dto: CreateNotificationDto & { dedupeKey: string }) {
     const { dedupeKey, ...rest } = dto;
-    const existing = await this.prisma.notification.findFirst({
-      where: {
-        userID: rest.userID,
-        type: rest.type,
-        metadata: { path: ['dedupeKey'], equals: dedupeKey },
-      },
-      });
+
+    const existing = await this.prisma.notification.findUnique({
+      where: { dedupeKey },
+    });
 
     if (existing) return null;
 
-    return this.create({
-      ...rest,
-      metadata: { ...rest.metadata, dedupeKey },
+    const notification = await this.prisma.notification.create({
+      data: {
+        userID: rest.userID,
+        type: rest.type,
+        title: rest.title,
+        body: rest.body,
+        metadata: rest.metadata ?? {},
+        dedupeKey,
+      },
+    });
+
+    this.gateway.sendToUser(rest.userID, 'notification', {
+      id: notification.id,
+      type: notification.type,
+      title: notification.title,
+      body: notification.body,
+      isRead: false,
+      createdAt: notification.createdAt,
+      metadata: notification.metadata,
+    });
+
+    return notification;
+  }
+
+  async getEmailPref(accountID: number) {
+    const acc = await this.prisma.account.findUnique({
+      where: { accountID },
+      select: { emailNotification: true },
+    });
+    return { emailNotification: acc?.emailNotification ?? true };
+  }
+
+  async updateEmailPref(accountID: number, emailNotification: boolean) {
+    return this.prisma.account.update({
+      where: { accountID },
+      data: { emailNotification },
+      select: { emailNotification: true },
     });
   }
 }

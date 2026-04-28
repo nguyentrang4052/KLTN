@@ -1,6 +1,15 @@
 import {
-  Controller, Get, Patch, Delete,
-  Param, Query, UseGuards, ParseIntPipe, HttpCode, HttpStatus,
+  Controller,
+  Get,
+  Patch,
+  Delete,
+  Param,
+  Query,
+  UseGuards,
+  ParseIntPipe,
+  HttpCode,
+  HttpStatus,
+  Body,
 } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
@@ -22,11 +31,24 @@ export class NotificationController {
     return user.userID;
   }
 
-  @Get()
-  async getAll(
+  @Get('email-pref')
+  async getEmailPref(@GetUser() auth: JwtUser) {
+    return this.notificationService.getEmailPref(auth.sub);
+  }
+
+  @Patch('email-pref')
+  async updateEmailPref(
     @GetUser() auth: JwtUser,
-    @Query('unread') unread?: string,
+    @Body() body: { emailNotification: boolean },
   ) {
+    return this.notificationService.updateEmailPref(
+      auth.sub,
+      body.emailNotification,
+    );
+  }
+
+  @Get()
+  async getAll(@GetUser() auth: JwtUser, @Query('unread') unread?: string) {
     const userID = await this.resolveUserID(auth.sub);
     return this.notificationService.getByUser(userID, unread === 'true');
   }
