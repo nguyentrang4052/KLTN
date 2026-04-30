@@ -28,7 +28,7 @@ export class JobsController {
   constructor(
     private readonly jobsService: JobsService,
     private readonly aiRecommendation: AIRecommendationService,
-  ) {}
+  ) { }
 
   @Get()
   @UseGuards(OptionalJwtGuard)
@@ -45,8 +45,9 @@ export class JobsController {
   @Get('recommendations')
   @UseGuards(JwtAuthGuard)
   async getRecommendations(@GetUser() user: JwtUser) {
-    await this.aiRecommendation.computeAndSaveRecommendations(user.sub);
-    return this.jobsService.getRecommendations(user.sub);
+    const wasRecomputed =
+      await this.aiRecommendation.computeAndSaveRecommendations(user.sub);
+    return this.jobsService.getRecommendations(user.sub, wasRecomputed);
   }
 
   @Get('saved')

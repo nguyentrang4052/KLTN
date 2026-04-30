@@ -298,52 +298,103 @@ export class JobsService {
     });
   }
 
-  async getRecommendations(accountID: number) {
+  async getRecommendations(accountID: number, wasRecomputed = false) {
     const user = await this.prisma.user.findFirst({
       where: { accountID },
       select: { userID: true },
     });
-    if (!user) return [];
+    if (!user) return { data: [], quota: null };
 
-    // Lấy quota
     const month = new Date().toISOString().slice(0, 7);
-    const quota = await this.prisma.userQuota.findUnique({
+    const today = new Date().toISOString().slice(0, 10);
+    const UNLIMITED = 999;
+    const PREVIEW_LIMIT = 3;
+
+    let quota = await this.prisma.userQuota.findUnique({
       where: { userID_month: { userID: user.userID, month } },
     });
 
-    // Mặc định free = 3
-    const limit = quota?.jobSuggestPerDay ?? 3;
+    if (quota && quota.jobSuggestResetDate !== today) {
+      quota = await this.prisma.userQuota.update({
+        where: { userID_month: { userID: user.userID, month } },
+        data: { jobSuggestUsedToday: 0, jobSuggestResetDate: today },
+      });
+    }
+
+    const jobSuggestLimit = quota?.jobSuggestPerDay ?? 3;
+    const usedToday = quota?.jobSuggestUsedToday ?? 0;
+    const isUnlimited = jobSuggestLimit >= UNLIMITED;
+    const quotaExceeded = !isUnlimited && usedToday >= jobSuggestLimit;
 
     const recs = await this.prisma.jobRecommendation.findMany({
       where: { userID: user.userID, matchPercent: { gt: 49 } },
       orderBy: { matchPercent: 'desc' },
-      take: limit === 999 ? undefined : limit, // 999 = unlimited
+      take: quotaExceeded ? PREVIEW_LIMIT : undefined,
       include: {
         job: {
           include: {
-            company: { select: { companyID: true, companyName: true, companyLogo: true } },
-            skills: { include: { skill: { select: { name: true } } }, take: 5 },
+            company: {
+              select: { companyID: true, companyName: true, companyLogo: true },
+            },
+            skills: {
+              include: { skill: { select: { name: true } } },
+              take: 5,
+            },
           },
         },
       },
     });
 
-    return recs.map((r) => ({
-      jobID: r.job.jobID,
-      title: r.job.title,
-      companyID: r.job.company.companyID,
-      companyName: r.job.company.companyName,
-      companyLogo: r.job.company.companyLogo,
-      location: r.job.location,
-      shortLocation: r.job.shortLocation,
-      experienceYear: r.job.experienceYear,
-      salary: r.job.salary,
-      skills: r.job.skills.map((s) => s.skill.name),
-      matchPercent: r.matchPercent,
-      matchReason: r.reason,
-      sourcePlatform: r.job.sourcePlatform,
-      quota: { limit, isUnlimited: limit >= 999 },
-    }));
+    // Chỉ trừ lượt khi AI vừa recompute thành công VÀ có job trả về
+    let newUsedToday = usedToday;
+    if (!isUnlimited && !quotaExceeded && wasRecomputed && recs.length > 0) {
+      if (quota) {
+        await this.prisma.userQuota.update({
+          where: { userID_month: { userID: user.userID, month } },
+          data: {
+            jobSuggestUsedToday: { increment: 1 },
+            jobSuggestResetDate: today,
+          },
+        });
+      } else {
+        await this.prisma.userQuota.create({
+          data: {
+            userID: user.userID, month,
+            jobSuggestPerDay: 3, jobSuggestUsedToday: 1,
+            jobSuggestResetDate: today,
+            cvAnalysisTotal: 0, cvMatchCheckTotal: 0,
+            cvAnalysisUsed: 0, cvMatchCheckUsed: 0,
+          },
+        });
+      }
+      newUsedToday = usedToday + 1;
+    }
+
+    return {
+      data: recs.map((r) => ({
+        jobID: r.job.jobID,
+        title: r.job.title,
+        companyID: r.job.company.companyID,
+        companyName: r.job.company.companyName,
+        companyLogo: r.job.company.companyLogo,
+        location: r.job.location,
+        shortLocation: r.job.shortLocation,
+        experienceYear: r.job.experienceYear,
+        salary: r.job.salary,
+        skills: r.job.skills.map((s) => s.skill.name),
+        matchPercent: r.matchPercent,
+        matchReason: r.reason,
+        sourcePlatform: r.job.sourcePlatform,
+      })),
+      quota: {
+        limit: isUnlimited ? null : jobSuggestLimit,
+        usedToday: isUnlimited ? null : newUsedToday,
+        remaining: isUnlimited ? null : Math.max(0, jobSuggestLimit - newUsedToday),
+        isUnlimited,
+        quotaExceeded,
+        resetAt: 'Ngày mai',
+      },
+    };
   }
 
   async logUserBehavior(accountID: number, jobID: number, action: string) {

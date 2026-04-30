@@ -264,6 +264,8 @@ model UserQuota {
   
   cvAnalysisUsed      Int      @default(0)
   cvMatchCheckUsed    Int      @default(0)
+  jobSuggestUsedToday Int     @default(0)
+  jobSuggestResetDate String? // "YYYY-MM-DD"
 
   updatedAt           DateTime @updatedAt
   user                User     @relation(fields: [userID], references: [userID])
@@ -312,4 +314,5 @@ model Notification {
 
   user User @relation(fields: [userID], references: [userID])
   dedupeKey String?   @unique
+  deletedAt DateTime?
 }

@@ -88,6 +88,8 @@ export class SubscriptionService {
         where: { userID_month: { userID, month } },
         data: {
           jobSuggestPerDay,
+          jobSuggestUsedToday: 0,
+          jobSuggestResetDate: new Date().toISOString().slice(0, 10),
           cvAnalysisTotal: resolveTotal(
             existing.cvAnalysisTotal,
             cvAnalysisGrant,
@@ -104,6 +106,8 @@ export class SubscriptionService {
           userID,
           month,
           jobSuggestPerDay,
+          jobSuggestUsedToday: 0,
+          jobSuggestResetDate: new Date().toISOString().slice(0, 10),
           cvAnalysisTotal: cvAnalysisGrant,
           cvMatchCheckTotal: cvMatchGrant,
           cvAnalysisUsed: 0,
@@ -167,6 +171,7 @@ export class SubscriptionService {
     return {
       month: quota.month,
       jobSuggestPerDay: quota.jobSuggestPerDay,
+      jobSuggestUsedToday: quota.jobSuggestUsedToday,
       cvAnalysisTotal: quota.cvAnalysisTotal,
       cvAnalysisUsed: quota.cvAnalysisUsed,
       cvAnalysisRemaining: remaining(
@@ -573,6 +578,11 @@ export class SubscriptionService {
         plan: freePlan,
       };
     }
+    const lastPayment = await this.prisma.payment.findFirst({
+      where: { userID: user.userID, status: 'success' },
+      orderBy: { paidAt: 'desc' },
+      select: { paidAt: true },
+    });
 
     return {
       subscriptionID: sub.id,
@@ -584,6 +594,7 @@ export class SubscriptionService {
       expiresAt: sub.expiresAt,
       autoRenew: false,
       plan: sub.plan,
+      paidAt: lastPayment?.paidAt ?? null,
     };
   }
 

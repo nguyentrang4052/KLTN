@@ -37,7 +37,11 @@ export class NotificationService {
 
   async getByUser(userID: number, onlyUnread = false) {
     return this.prisma.notification.findMany({
-      where: { userID, ...(onlyUnread ? { isRead: false } : {}) },
+      where: {
+        userID,
+        deletedAt: null,
+        ...(onlyUnread ? { isRead: false } : {}),
+      },
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
@@ -45,7 +49,7 @@ export class NotificationService {
 
   async countUnread(userID: number) {
     return this.prisma.notification.count({
-      where: { userID, isRead: false },
+      where: { userID, isRead: false, deletedAt: null },
     });
   }
 
@@ -58,14 +62,15 @@ export class NotificationService {
 
   async markAllAsRead(userID: number) {
     return this.prisma.notification.updateMany({
-      where: { userID, isRead: false },
+      where: { userID, isRead: false, deletedAt: null },
       data: { isRead: true, readAt: new Date() },
     });
   }
 
   async deleteOne(userID: number, id: number) {
-    return this.prisma.notification.deleteMany({
+    return this.prisma.notification.updateMany({
       where: { id, userID },
+      data: { deletedAt: new Date() },
     });
   }
 
@@ -76,7 +81,11 @@ export class NotificationService {
       where: { dedupeKey },
     });
 
-    if (existing) return null;
+    if (existing && existing.deletedAt === null) return null;
+
+    if (existing && existing.deletedAt !== null) {
+      await this.prisma.notification.delete({ where: { id: existing.id } });
+    }
 
     const notification = await this.prisma.notification.create({
       data: {

@@ -96,6 +96,7 @@ export default function HomeScreen() {
   const activePlatformRef = useRef(activePlatform)
   const locationFilterRef = useRef(locationFilter)
   const tokenRef = useRef(token)
+  const [recQuota, setRecQuota] = useState(null)
 
   useEffect(() => { pageRef.current = page }, [page])
   useEffect(() => { sortRef.current = sort }, [sort])
@@ -237,10 +238,15 @@ export default function HomeScreen() {
     if (!token) { setRecommendations([]); return }
     const fetchRecs = () => {
       setLoadingRecs(true)
-      fetch(`${API}/jobs/recommendations`, { headers: { Authorization: `Bearer ${token}` } })
+      fetch(`${API}/jobs/recommendations`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
         .then(r => r.json())
-        .then(data => {
-          setRecommendations(Array.isArray(data) ? data : [])
+        .then(res => {
+          const list = Array.isArray(res) ? res : (res.data ?? [])
+          const quotaInfo = Array.isArray(res) ? null : (res.quota ?? null)
+          setRecommendations(list)
+          setRecQuota(quotaInfo)
           setRecPage(1)
         })
         .catch(console.error)
@@ -723,13 +729,71 @@ export default function HomeScreen() {
               <div className="hs-sec-line" />
               <span className="hs-sec-ct">{recommendations.length} kết quả</span>
             </div>
+            {recQuota && !recQuota.isUnlimited && (
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '10px 18px', marginBottom: 14, borderRadius: 10,
+                background: recQuota.quotaExceeded ? '#FDE8E4' : '#F0F7FF',
+                border: `1px solid ${recQuota.quotaExceeded ? '#F5C0B0' : '#C8DFF8'}`,
+                fontSize: 13,
+              }}>
+                <span style={{
+                  fontWeight: 600,
+                  color: recQuota.quotaExceeded ? '#C0412A' : '#1565C0',
+                }}>
+                  💡 Lượt đề xuất hôm nay: {recQuota.usedToday}/{recQuota.limit}
+                  {recQuota.quotaExceeded
+                    ? ' · Đã hết lượt — đang hiển thị preview'
+                    : ` · Còn ${recQuota.remaining} lượt`}
+                </span>
+                {recQuota.quotaExceeded && (
+                  <button
+                    onClick={() => navigate('/services')}
+                    style={{
+                      padding: '5px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700,
+                      background: 'linear-gradient(135deg,#C0412A,#E05A40)',
+                      color: '#fff', border: 'none', cursor: 'pointer',
+                    }}
+                  >
+                    ⚡ Nâng cấp →
+                  </button>
+                )}
+              </div>
+            )}
             {loadingRecs ? (
               <div className="hs-loading">⟳ Đang tải việc làm...</div>
             ) : recommendations.length === 0 ? (
               <div className="hs-empty">Chưa có gợi ý — hãy cập nhật kỹ năng trong hồ sơ</div>
             ) : (
               <>
-                <div className="hs-grid">{pagedRecs.map(job => renderJobCard(job))}</div>
+                <div className="hs-grid">
+                  {pagedRecs.map(job => renderJobCard(job))}
+                  {/* Upsell card cuối grid khi hết quota — chỉ hiện ở trang cuối */}
+                  {recQuota?.quotaExceeded && recPage === recTotalPages && (
+                    <div onClick={() => navigate('/services')} style={{
+                      cursor: 'pointer', borderRadius: 14, border: '2px dashed #F5C0B0',
+                      background: 'linear-gradient(135deg,#FFF5F3,#FDE8E4)',
+                      display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', justifyContent: 'center',
+                      padding: '28px 20px', gap: 10, textAlign: 'center',
+                      minHeight: 160,
+                    }}>
+                      <div style={{ fontSize: 28 }}>🔒</div>
+                      <div style={{ fontWeight: 700, color: '#C0412A', fontSize: 14 }}>
+                        Còn nhiều việc phù hợp với bạn
+                      </div>
+                      <div style={{ color: '#9A8D80', fontSize: 12 }}>
+                        Nâng cấp Pro để xem thêm · Reset quota vào ngày mai
+                      </div>
+                      <div style={{
+                        padding: '6px 16px', borderRadius: 8, fontWeight: 700, fontSize: 12,
+                        background: 'linear-gradient(135deg,#C0412A,#E05A40)', color: '#fff',
+                      }}>
+                        Nâng cấp ngay →
+                      </div>
+                    </div>
+                  )}
+                </div>
                 {recTotalPages > 1 && (
                   <Pagination curPage={recPage} totalPages={recTotalPages} onPageChange={setRecPage} />
                 )}
@@ -797,6 +861,7 @@ export default function HomeScreen() {
               <Pagination curPage={page} totalPages={meta.totalPages} onPageChange={handlePageChange} />
             )}
           </div>
+
         )}
       </div>
     </div>

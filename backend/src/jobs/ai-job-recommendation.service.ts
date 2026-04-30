@@ -50,18 +50,18 @@ export class AIRecommendationService {
     private gemini: GeminiService,
   ) {}
 
-  async computeAndSaveRecommendations(accountID: number): Promise<void> {
+  async computeAndSaveRecommendations(accountID: number): Promise<boolean> {
     const user = await this.prisma.user.findFirst({
       where: { accountID },
       select: { userID: true },
     });
-    if (!user) return;
+    if (!user) return false;
 
     const userID = user.userID;
 
     if (this.computingLocks.has(userID)) {
       this.logger.log(`Skipping — already computing for userID=${userID}`);
-      return;
+      return false;
     }
 
     // Check cache SAU KHI có userID
@@ -75,7 +75,7 @@ export class AIRecommendationService {
     // const ONE_HOUR = 1 * 60 * 1000;
     if (latest && Date.now() - latest.createdAt.getTime() < ONE_HOUR) {
       this.logger.log(`Skipping recompute — data is fresh (userID=${userID})`);
-      return;
+      return false;
     }
 
     this.computingLocks.add(userID);
@@ -89,17 +89,18 @@ export class AIRecommendationService {
 
       if (!hasContext) {
         await this.prisma.jobRecommendation.deleteMany({ where: { userID } });
-        return; // finally vẫn chạy, delete lock — ok
+        return false; // finally vẫn chạy, delete lock — ok
       }
 
       const candidates = await this.fetchCandidateJobs(userID, userContext);
       if (candidates.length === 0) {
         await this.prisma.jobRecommendation.deleteMany({ where: { userID } });
-        return; // finally vẫn chạy — ok
+        return false; // finally vẫn chạy — ok
       }
 
       const scores = await this.scoreJobsWithAI(userContext, candidates);
       await this.saveRecommendations(userID, scores);
+      return scores.length > 0;
     } finally {
       this.computingLocks.delete(userID); // luôn chạy dù return hay throw
     }
@@ -148,7 +149,6 @@ export class AIRecommendationService {
         orderBy: { appliedAt: 'desc' },
         take: 10,
       }),
-      // Fetch CV titles (text is stored externally, just use title as hint)
       this.prisma.cV.findMany({
         where: { userID },
         select: { title: true },
@@ -193,15 +193,12 @@ export class AIRecommendationService {
           .map((a) => a.job.title)
           .filter((t): t is string => !!t),
       },
-      // CV titles as a lightweight proxy (no PDF parsing needed here)
       cvSummary:
         cvRows.length > 0
           ? `User has CVs titled: ${cvRows.map((c) => c.title).join(', ')}`
           : null,
     };
   }
-
-  // ─── Step 2: Pre-filter jobs from DB ──────────────────────────────────────
 
   private async fetchCandidateJobs(
     userID: number,
@@ -214,7 +211,6 @@ export class AIRecommendationService {
       })
     ).map((a) => a.jobID);
 
-    // Collect potential industry IDs from behavior
     const industryNames = [
       ...new Set([
         ...ctx.behaviors.recentViewedIndustries,
@@ -227,7 +223,6 @@ export class AIRecommendationService {
     });
     const industryIDs = matchedIndustries.map((i) => i.id);
 
-    // Collect skill IDs
     const skillNames = ctx.skills;
     const matchedSkills = await this.prisma.skill.findMany({
       where: { name: { in: skillNames } },
@@ -245,7 +240,6 @@ export class AIRecommendationService {
         title: { contains: ctx.profile.jobTitle, mode: 'insensitive' },
       });
 
-    // Fallback: if truly no signal, grab recent active jobs
     const where: any =
       orConditions.length > 0
         ? {
@@ -274,7 +268,6 @@ export class AIRecommendationService {
     return jobs.map((j) => ({
       jobID: j.jobID,
       title: j.title,
-      // Truncate long text to keep prompt size manageable
       description: j.description ? j.description.slice(0, 300) : null,
       requirement: j.requirement ? j.requirement.slice(0, 300) : null,
       salary: j.salary,
@@ -285,8 +278,6 @@ export class AIRecommendationService {
       skills: j.skills.map((s) => s.skill.name),
     }));
   }
-
-  // ─── Step 3: Score with Gemini ────────────────────────────────────────────
 
   private async scoreJobsWithAI(
     ctx: UserContext,
@@ -368,8 +359,6 @@ ${jobsBlock}
       .filter((r) => r.matchPercent >= 50);
   }
 
-  // ─── Step 4: Persist ──────────────────────────────────────────────────────
-
   private async saveRecommendations(
     userID: number,
     scores: AIScoreResult[],
@@ -394,8 +383,6 @@ ${jobsBlock}
         },
       });
     }
-
-    // Remove stale recommendations not in this batch
     await this.prisma.jobRecommendation.deleteMany({
       where: { userID, jobID: { notIn: validJobIDs } },
     });
@@ -404,8 +391,6 @@ ${jobsBlock}
       `Saved ${scores.length} AI recommendations for userID=${userID}`,
     );
   }
-
-  // ─── Helpers ──────────────────────────────────────────────────────────────
 
   private buildUserBlock(ctx: UserContext): string {
     const lines: string[] = [];
@@ -453,7 +438,6 @@ ${jobsBlock}
 
   private parseScores(raw: string): AIScoreResult[] {
     try {
-      // Strip markdown fences if present
       const clean = raw
         .replace(/```json/gi, '')
         .replace(/```/g, '')

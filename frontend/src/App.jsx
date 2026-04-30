@@ -213,11 +213,18 @@ function App() {
           <Route path="/" element={
             (() => {
               const token = localStorage.getItem('token') || sessionStorage.getItem('token')
-              if (!token) return <LandingScreen />
+
+              if (!token || isTokenExpired(token)) {
+                localStorage.removeItem('token')
+                sessionStorage.removeItem('token')
+                return <LandingScreen />
+              }
+
               try {
                 const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}')
                 if (user.role === 'admin') return <Navigate to="/admin" replace />
               } catch { }
+
               return <Navigate to="/home" replace />
             })()
           } />

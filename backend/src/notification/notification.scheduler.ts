@@ -62,14 +62,14 @@ export class NotificationScheduler {
     }
   }
 
-  @Cron('* * * * *')
+  @Cron('0 8 * * *')
   async sendSavedJobDeadlineReminders() {
     this.logger.log('Running saved job deadline reminder job...');
     const now = new Date();
     const in3Days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
 
     const savedJobs = await this.prisma.savedJob.findMany({
-      where: { job: { isActive: true, deadline: { lte: in3Days } } },
+      where: { job: { isActive: true, deadline: { gt: now, lte: in3Days } } },
       include: {
         job: { include: { company: { select: { companyName: true } } } },
         user: { include: { account: true } },

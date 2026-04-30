@@ -229,33 +229,33 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 @Injectable()
 export class GeminiService {
-    private readonly logger = new Logger(GeminiService.name);
-    private readonly genAI: GoogleGenerativeAI;
+  private readonly logger = new Logger(GeminiService.name);
+  private readonly genAI: GoogleGenerativeAI;
 
-    // Danh sách model theo thứ tự ưu tiên
-    private readonly model = 'gemini-3-flash-preview';
+  // Danh sách model theo thứ tự ưu tiên
+  private readonly model = 'gemini-3-flash-preview';
 
-    constructor(private readonly configService: ConfigService) {
-        const apiKey = this.configService.get<string>('GEMINI_API_KEY');
-        if (!apiKey) {
-            throw new Error('GEMINI_API_KEY not found in environment variables');
-        }
-        this.genAI = new GoogleGenerativeAI(apiKey);
+  constructor(private readonly configService: ConfigService) {
+    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY not found in environment variables');
     }
+    this.genAI = new GoogleGenerativeAI(apiKey);
+  }
 
-    async analyzeCV(cvText: string, retryCount = 0): Promise<any> {
+  async analyzeCV(cvText: string, retryCount = 0): Promise<any> {
     try {
-        this.logger.log(`Analyzing with model: ${this.model} (attempt ${retryCount + 1})`);
+      this.logger.log(`Analyzing with model: ${this.model} (attempt ${retryCount + 1})`);
 
-        const generativeModel = this.genAI.getGenerativeModel({
-            model: this.model,
-            generationConfig: {
-                temperature: 0.1,
-                maxOutputTokens: 4000,
-            }
-        });
+      const generativeModel = this.genAI.getGenerativeModel({
+        model: this.model,
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 4000,
+        }
+      });
 
-          const systemPrompt = `You are a professional CV analyzer. Extract information from the CV and return ONLY a valid JSON object with this exact structure:
+      const systemPrompt = `You are a professional CV analyzer. Extract information from the CV and return ONLY a valid JSON object with this exact structure:
 {
   "personalInfo": {
     "fullName": "string",
@@ -342,62 +342,62 @@ Activities:
 Awards:
 - Include honors, achievements, scholarships, competitions`;
 
-            const chat = generativeModel.startChat({
-                history: [
-                    {
-                        role: 'user',
-                        parts: [{ text: systemPrompt }],
-                    },
-                    {
-                        role: 'model',
-                        parts: [{ text: 'I understand. I will extract CV information and return only valid JSON without any markdown formatting or explanation.' }],
-                    },
-                ],
-            });
-// ... prompt và chat logic giữ nguyên ...
+      const chat = generativeModel.startChat({
+        history: [
+          {
+            role: 'user',
+            parts: [{ text: systemPrompt }],
+          },
+          {
+            role: 'model',
+            parts: [{ text: 'I understand. I will extract CV information and return only valid JSON without any markdown formatting or explanation.' }],
+          },
+        ],
+      });
+      // ... prompt và chat logic giữ nguyên ...
 
-        const result = await chat.sendMessage(
-            `Extract information from this CV into JSON format:\n\n${cvText}`
-        );
+      const result = await chat.sendMessage(
+        `Extract information from this CV into JSON format:\n\n${cvText}`
+      );
 
-        const response = await result.response;
-        const text = response.text();
-        this.logger.log(`Analysis successful (attempt ${retryCount + 1})`);
+      const response = await result.response;
+      const text = response.text();
+      this.logger.log(`Analysis successful (attempt ${retryCount + 1})`);
 
-        return this.extractJsonFromResponse(text);
+      return this.extractJsonFromResponse(text);
 
     } catch (error: any) {
-        // ✅ FIX: Kiểm tra status code đúng cách
-        const statusCode = error?.status || error?.response?.status || 
-                          (error?.message?.includes('503') ? 503 : null) ||
-                          (error?.message?.includes('429') ? 429 : null);
+      // ✅ FIX: Kiểm tra status code đúng cách
+      const statusCode = error?.status || error?.response?.status ||
+        (error?.message?.includes('503') ? 503 : null) ||
+        (error?.message?.includes('429') ? 429 : null);
 
-        this.logger.error(`Attempt ${retryCount + 1} failed:`, {
-            statusCode,
-            message: error?.message,
-            errorType: error?.constructor?.name
-        });
+      this.logger.error(`Attempt ${retryCount + 1} failed:`, {
+        statusCode,
+        message: error?.message,
+        errorType: error?.constructor?.name
+      });
 
-        // ✅ FIX: Retry với điều kiện đúng
-        const isRetryableError = statusCode === 503 || statusCode === 429;
-        const shouldRetry = isRetryableError && retryCount < 2;
+      // ✅ FIX: Retry với điều kiện đúng
+      const isRetryableError = statusCode === 503 || statusCode === 429;
+      const shouldRetry = isRetryableError && retryCount < 2;
 
-        if (shouldRetry) {
-            const delayMs = 3000 * (retryCount + 1); // 3s, 6s
-            this.logger.warn(`Retry ${retryCount + 1}/2 after ${delayMs}ms...`);
-            await this.delay(delayMs);
-            return this.analyzeCV(cvText, retryCount + 1);
-        }
+      if (shouldRetry) {
+        const delayMs = 3000 * (retryCount + 1); // 3s, 6s
+        this.logger.warn(`Retry ${retryCount + 1}/2 after ${delayMs}ms...`);
+        await this.delay(delayMs);
+        return this.analyzeCV(cvText, retryCount + 1);
+      }
 
-        // ✅ FIX: Throw với status code chính xác
-        const finalStatus = statusCode === 503 ? HttpStatus.SERVICE_UNAVAILABLE : HttpStatus.BAD_REQUEST;
-        
-        throw new HttpException(
-            `Gemini API Error: ${error?.message || 'Unknown error'}`,
-            finalStatus,
-        );
+      // ✅ FIX: Throw với status code chính xác
+      const finalStatus = statusCode === 503 ? HttpStatus.SERVICE_UNAVAILABLE : HttpStatus.BAD_REQUEST;
+
+      throw new HttpException(
+        `Gemini API Error: ${error?.message || 'Unknown error'}`,
+        finalStatus,
+      );
     }
-}
+  }
 
   async scoreJobs(prompt: string): Promise<any> {
     try {
@@ -421,12 +421,12 @@ Awards:
         error?.response?.status ||
         (error?.message?.includes('503') ? 503 : null) ||
         (error?.message?.includes('429') ? 429 : null);
- 
+
       this.logger.error('Gemini scoreJobs error:', {
         statusCode,
         message: error?.message,
       });
- 
+
       throw new HttpException(
         `Gemini API Error: ${error?.message || 'Unknown error'}`,
         statusCode === 503
@@ -436,163 +436,163 @@ Awards:
     }
   }
 
-//     async analyzeCV(cvText: string, retryCount = 0): Promise<any> {
+  //     async analyzeCV(cvText: string, retryCount = 0): Promise<any> {
 
 
-//         try {
-//             this.logger.log(`Analyzing with model: ${this.model} (attempt ${retryCount + 1})`);
+  //         try {
+  //             this.logger.log(`Analyzing with model: ${this.model} (attempt ${retryCount + 1})`);
 
-//             const generativeModel = this.genAI.getGenerativeModel({
-//                 model: this.model,
-//                 generationConfig: {
-//                     temperature: 0.1,
-//                     maxOutputTokens: 4000,
-//                 }
-//             });
+  //             const generativeModel = this.genAI.getGenerativeModel({
+  //                 model: this.model,
+  //                 generationConfig: {
+  //                     temperature: 0.1,
+  //                     maxOutputTokens: 4000,
+  //                 }
+  //             });
 
-//             const systemPrompt = `You are a professional CV analyzer. Extract information from the CV and return ONLY a valid JSON object with this exact structure:
-// {
-//   "personalInfo": {
-//     "fullName": "string",
-//     "email": "string", 
-//     "phone": "string",
-//     "address": "string",
-//     "linkedin": "string",
-//     "portfolio": "string"
-//   },
-//   "experiences": [
-//     {
-//       "company": "string",
-//       "position": "string",
-//       "duration": "string",
-//       "description": "string"
-//     }
-//   ],
-//   "education": [
-//     {
-//       "institution": "string",
-//       "degree": "string",
-//       "year": "string",
-//       "gpa": "string",
-//     }
-//   ],
-//   "skills": [
-//     {
-//       "category": "string",
-//       "items": "string"
-//     }
-//   ],
-//   "activities": [
-//     {
-//       "organization": "string",
-//       "role": "string",
-//       "duration": "string",
-//       "description": "string"
-//     }
-//   ],
-//   "awards": [
-//     {
-//       "title": "string",
-//       "issuer": "string",
-//       "year": "string",
-//       "description": "string"
-//     }
-//   ],
-//   "certifications": [
-//     {
-//       "name": "string",
-//       "issuer": "string",
-//       "year": "string",
-//       "score": "string"
-//     }
-//   ],
-//   "summary": "string - brief summary of the candidate"
-// }
+  //             const systemPrompt = `You are a professional CV analyzer. Extract information from the CV and return ONLY a valid JSON object with this exact structure:
+  // {
+  //   "personalInfo": {
+  //     "fullName": "string",
+  //     "email": "string", 
+  //     "phone": "string",
+  //     "address": "string",
+  //     "linkedin": "string",
+  //     "portfolio": "string"
+  //   },
+  //   "experiences": [
+  //     {
+  //       "company": "string",
+  //       "position": "string",
+  //       "duration": "string",
+  //       "description": "string"
+  //     }
+  //   ],
+  //   "education": [
+  //     {
+  //       "institution": "string",
+  //       "degree": "string",
+  //       "year": "string",
+  //       "gpa": "string",
+  //     }
+  //   ],
+  //   "skills": [
+  //     {
+  //       "category": "string",
+  //       "items": "string"
+  //     }
+  //   ],
+  //   "activities": [
+  //     {
+  //       "organization": "string",
+  //       "role": "string",
+  //       "duration": "string",
+  //       "description": "string"
+  //     }
+  //   ],
+  //   "awards": [
+  //     {
+  //       "title": "string",
+  //       "issuer": "string",
+  //       "year": "string",
+  //       "description": "string"
+  //     }
+  //   ],
+  //   "certifications": [
+  //     {
+  //       "name": "string",
+  //       "issuer": "string",
+  //       "year": "string",
+  //       "score": "string"
+  //     }
+  //   ],
+  //   "summary": "string - brief summary of the candidate"
+  // }
 
-// Rules:
-// - Return ONLY the JSON, no markdown formatting (no \`\`\`json), no explanation text
-// - Use null or empty string for missing fields
-// - Ensure valid JSON syntax
-// - Be precise with dates and contact information
+  // Rules:
+  // - Return ONLY the JSON, no markdown formatting (no \`\`\`json), no explanation text
+  // - Use null or empty string for missing fields
+  // - Ensure valid JSON syntax
+  // - Be precise with dates and contact information
 
-// Education:
-// - Extract GPA if explicitly mentioned
-// - GPA examples: "3.6/4.0", "8.5/10", "Distinction", "First Class"
-// - Do NOT infer or calculate GPA
+  // Education:
+  // - Extract GPA if explicitly mentioned
+  // - GPA examples: "3.6/4.0", "8.5/10", "Distinction", "First Class"
+  // - Do NOT infer or calculate GPA
 
-// Certifications:
-// - Extract score/grade if explicitly mentioned
-// - Examples:
-//   - "TOEIC 850" → score = "850"
-//   - "IELTS 7.5" → score = "7.5"
-//   - "AWS Certified - 820/1000" → score = "820/1000"
-//   - "Passed" → score = "Passed"
-// - Extract credentialId only if explicitly present
-// - Extract credentialUrl only if explicitly present
-// - Do NOT hallucinate IDs or scores
+  // Certifications:
+  // - Extract score/grade if explicitly mentioned
+  // - Examples:
+  //   - "TOEIC 850" → score = "850"
+  //   - "IELTS 7.5" → score = "7.5"
+  //   - "AWS Certified - 820/1000" → score = "820/1000"
+  //   - "Passed" → score = "Passed"
+  // - Extract credentialId only if explicitly present
+  // - Extract credentialUrl only if explicitly present
+  // - Do NOT hallucinate IDs or scores
 
-// Activities:
-// - Include extracurricular, volunteering, clubs, organizations
+  // Activities:
+  // - Include extracurricular, volunteering, clubs, organizations
 
-// Awards:
-// - Include honors, achievements, scholarships, competitions`;
+  // Awards:
+  // - Include honors, achievements, scholarships, competitions`;
 
-//             const chat = generativeModel.startChat({
-//                 history: [
-//                     {
-//                         role: 'user',
-//                         parts: [{ text: systemPrompt }],
-//                     },
-//                     {
-//                         role: 'model',
-//                         parts: [{ text: 'I understand. I will extract CV information and return only valid JSON without any markdown formatting or explanation.' }],
-//                     },
-//                 ],
-//             });
+  //             const chat = generativeModel.startChat({
+  //                 history: [
+  //                     {
+  //                         role: 'user',
+  //                         parts: [{ text: systemPrompt }],
+  //                     },
+  //                     {
+  //                         role: 'model',
+  //                         parts: [{ text: 'I understand. I will extract CV information and return only valid JSON without any markdown formatting or explanation.' }],
+  //                     },
+  //                 ],
+  //             });
 
-//             const result = await chat.sendMessage(
-//                 `Extract information from this CV into JSON format:\n\n${cvText}`
-//             );
+  //             const result = await chat.sendMessage(
+  //                 `Extract information from this CV into JSON format:\n\n${cvText}`
+  //             );
 
-//             const response = await result.response;
-//             const text = response.text();
+  //             const response = await result.response;
+  //             const text = response.text();
 
-//             this.logger.log(`Analysis successful with ${this.model}`);
+  //             this.logger.log(`Analysis successful with ${this.model}`);
 
-//             return this.extractJsonFromResponse(text);
+  //             return this.extractJsonFromResponse(text);
 
-//         } catch (error: any) {
-            
-//             if ((error.status === 503 || error.status === 429) && retryCount < 2) {
-//                 this.logger.warn(`${this.model} overloaded, waiting 3s and retrying...`);
-//                 await this.delay(5000);
-//                 return this.analyzeCV(cvText, retryCount + 1);
-//             } throw new HttpException(
-//                 `Gemini API Error: ${error.message}`,
-//                 HttpStatus.BAD_REQUEST,
-//             );
+  //         } catch (error: any) {
 
-//         }
-//     }
+  //             if ((error.status === 503 || error.status === 429) && retryCount < 2) {
+  //                 this.logger.warn(`${this.model} overloaded, waiting 3s and retrying...`);
+  //                 await this.delay(5000);
+  //                 return this.analyzeCV(cvText, retryCount + 1);
+  //             } throw new HttpException(
+  //                 `Gemini API Error: ${error.message}`,
+  //                 HttpStatus.BAD_REQUEST,
+  //             );
 
-    /**
-     * Multi-turn analysis với verification (tương tự reasoning của OpenRouter)
-     */
-    async analyzeCVWithVerification(cvText: string): Promise<any> {
-       
-        try {
-            this.logger.log(`Verification with model: ${this.model}`);
+  //         }
+  //     }
 
-            const generativeModel = this.genAI.getGenerativeModel({
-                model: this.model,
-                generationConfig: {
-                    temperature: 0.1,
-                    maxOutputTokens: 4000,
-                }
-            });
+  /**
+   * Multi-turn analysis với verification (tương tự reasoning của OpenRouter)
+   */
+  async analyzeCVWithVerification(cvText: string): Promise<any> {
 
-            // Turn 1: Initial extraction
-            const prompt1 = `You are a professional CV analyzer. Extract information from this CV and return ONLY valid JSON with this structure:
+    try {
+      this.logger.log(`Verification with model: ${this.model}`);
+
+      const generativeModel = this.genAI.getGenerativeModel({
+        model: this.model,
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 4000,
+        }
+      });
+
+      // Turn 1: Initial extraction
+      const prompt1 = `You are a professional CV analyzer. Extract information from this CV and return ONLY valid JSON with this structure:
 {
   "personalInfo": {"fullName": "", "email": "", "phone": "", "address": "", "linkedin": "", "portfolio": ""},
   "experiences": [{"company": "", "position": "", "duration": "", "description": ""}],
@@ -609,85 +609,128 @@ ${cvText}
 
 Return ONLY JSON, no markdown, no explanation.`;
 
-            const result1 = await generativeModel.generateContent(prompt1);
-            const response1 = result1.response.text();
+      const result1 = await generativeModel.generateContent(prompt1);
+      const response1 = result1.response.text();
 
-            // Turn 2: Verification và correction
-            const prompt2 = `Review this JSON extraction from a CV. Fix any errors in dates, emails, phone numbers. Return ONLY the corrected JSON without any explanation.
+      // Turn 2: Verification và correction
+      const prompt2 = `Review this JSON extraction from a CV. Fix any errors in dates, emails, phone numbers. Return ONLY the corrected JSON without any explanation.
 
 Previous extraction:
 ${response1}
 
 Return corrected JSON only:`;
 
-            const result2 = await generativeModel.generateContent(prompt2);
-            const response2 = result2.response.text();
+      const result2 = await generativeModel.generateContent(prompt2);
+      const response2 = result2.response.text();
 
-            return this.extractJsonFromResponse(response2);
+      return this.extractJsonFromResponse(response2);
 
-        } catch (error: any) {
-            this.logger.error('Gemini API Error:', error);
-            throw new HttpException(
-                `Gemini API Error: ${error.message}`,
-                HttpStatus.BAD_REQUEST,
-            );
+    } catch (error: any) {
+      this.logger.error('Gemini API Error:', error);
+      throw new HttpException(
+        `Gemini API Error: ${error.message}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  async extractTextFromImage(base64Image: string, retryCount = 0): Promise<string> {
+
+
+    try {
+      this.logger.log(`OCR with model: ${this.model} (attempt ${retryCount + 1})`);
+
+      const model = this.genAI.getGenerativeModel({
+        model: this.model,
+        generationConfig: { temperature: 0 }
+      });
+
+      const result = await model.generateContent([
+        'Extract all text from this CV image. Return only the extracted text without any explanation or formatting.',
+        {
+          inlineData: {
+            mimeType: 'image/png',
+            data: base64Image
+          }
         }
+      ]);
+
+      return result.response.text();
+
+    } catch (error: any) {
+      // Retry nếu lỗi 503/429
+      if ((error.status === 503 || error.status === 429) && retryCount < 2) {
+        this.logger.warn(`${this.model} OCR overloaded, waiting 2s and retrying...`);
+        await this.delay(2000);
+        return this.extractTextFromImage(base64Image, retryCount + 1);
+      }
+
+      throw error;
+    }
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  // private extractJsonFromResponse(text: string): any {
+  //     try {
+  //         return JSON.parse(text);
+  //     } catch {
+  //         const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  //         if (jsonMatch) {
+  //             return JSON.parse(jsonMatch[1]);
+  //         }
+  //         const objectMatch = text.match(/\{[\s\S]*\}/);
+  //         if (objectMatch) {
+  //             return JSON.parse(objectMatch[0]);
+  //         }
+  //         throw new Error('Cannot extract JSON from response');
+  //     }
+  // }
+
+  private extractJsonFromResponse(text: string): any {
+    try {
+      return JSON.parse(text);
+    } catch { }
+
+    let cleaned = text
+      .replace(/```json/gi, '')
+      .replace(/```/g, '')
+      .trim();
+
+    const arrayMatch = cleaned.match(/\[[\s\S]*?\]/);
+    if (arrayMatch) {
+      try {
+        return JSON.parse(arrayMatch[0]);
+      } catch { }
     }
 
-    async extractTextFromImage(base64Image: string, retryCount = 0): Promise<string> {
-
-
-        try {
-            this.logger.log(`OCR with model: ${this.model} (attempt ${retryCount + 1})`);
-
-            const model = this.genAI.getGenerativeModel({
-                model: this.model,
-                generationConfig: { temperature: 0 }
-            });
-
-            const result = await model.generateContent([
-                'Extract all text from this CV image. Return only the extracted text without any explanation or formatting.',
-                {
-                    inlineData: {
-                        mimeType: 'image/png',
-                        data: base64Image
-                    }
-                }
-            ]);
-
-            return result.response.text();
-
-        } catch (error: any) {
-            // Retry nếu lỗi 503/429
-            if ((error.status === 503 || error.status === 429) && retryCount < 2) {
-                this.logger.warn(`${this.model} OCR overloaded, waiting 2s and retrying...`);
-                await this.delay(2000);
-                return this.extractTextFromImage(base64Image, retryCount + 1);
-            }
-
-            throw error;
-        }
+    const objectMatch = cleaned.match(/\{[\s\S]*?\}/);
+    if (objectMatch) {
+      try {
+        return JSON.parse(objectMatch[0]);
+      } catch { }
     }
 
-    private delay(ms: number): Promise<void> {
-        return new Promise(resolve => setTimeout(resolve, ms));
+    const firstBrace = cleaned.indexOf('{');
+    const firstBracket = cleaned.indexOf('[');
+
+    const start =
+      firstBrace === -1
+        ? firstBracket
+        : firstBracket === -1
+          ? firstBrace
+          : Math.min(firstBrace, firstBracket);
+
+    if (start !== -1) {
+      const sliced = cleaned.slice(start);
+      try {
+        return JSON.parse(sliced);
+      } catch { }
     }
 
-    private extractJsonFromResponse(text: string): any {
-        try {
-            return JSON.parse(text);
-        } catch {
-            const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-            if (jsonMatch) {
-                return JSON.parse(jsonMatch[1]);
-            }
-            const objectMatch = text.match(/\{[\s\S]*\}/);
-            if (objectMatch) {
-                return JSON.parse(objectMatch[0]);
-            }
-            throw new Error('Cannot extract JSON from response');
-        }
-    }
-
-
+    this.logger.error('RAW GEMINI RESPONSE:', text);
+    throw new Error('Cannot extract JSON from response');
+  }
 }
