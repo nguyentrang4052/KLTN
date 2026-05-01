@@ -26,12 +26,37 @@ class SessionManager:
         
         return self._sessions[user_id]
     
-    def set_cv_analysis(self, user_id: str, analysis: CVAnalysis):
-        """Save CV analysis to session"""
+    def get_cv_analysis(self, user_id: str) -> Optional[CVAnalysis]:
+        """Lấy CV analysis từ session"""
+        session = self.get_or_create(user_id)
+        return session.cv_analysis
+    
+    def set_cv_analysis(self, user_id: str, analysis: CVAnalysis, cv_filename: str = None):
+        """Lưu CV analysis vào session và cập nhật title"""
         session = self.get_or_create(user_id)
         session.cv_analysis = analysis
         session.last_updated = time.time()
-        logger.info("session_cv_saved", user_id=user_id)
+        
+        # Cập nhật session title dựa trên thông tin CV
+        if cv_filename:
+            # Lấy tên file không có extension
+            import os
+            base_name = os.path.splitext(cv_filename)[0]
+            if len(base_name) > 30:
+                base_name = base_name[:27] + "..."
+            session_title = f"📄 {base_name}"
+        elif analysis.extracted_skills:
+            top_skills = ', '.join(analysis.extracted_skills[:3])
+            session_title = f"📄 CV: {analysis.suitable_level} - {top_skills}"
+        else:
+            session_title = f"📄 CV Analysis - {analysis.suitable_level}"
+        
+        # Giới hạn độ dài title
+        if len(session_title) > 50:
+            session_title = session_title[:47] + "..."
+        
+        session.title = session_title
+        logger.info(f"cv_analysis_saved: user={user_id}, title={session_title}")
     
     def set_matched_jobs(self, user_id: str, jobs: List[Dict[str, Any]]):
         """Save matched jobs to session - LƯU CHI TIẾT CẢ SKILL"""

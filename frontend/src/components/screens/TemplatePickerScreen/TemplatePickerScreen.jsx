@@ -210,20 +210,21 @@ export default function TemplatePickerScreen({ onSelect, existingCVs, onBack }) 
     setShowDialog(false);
   };
 
-  const handleFresh = () => {
-    const existing = existingCVs.find((cv) => cv.templateId === selectedTemplate.id);
+  // Trong TemplatePickerScreen.jsx, sửa hàm handleFresh:
+  const handleFresh = (options) => {
+    // options = { forceReset: true, timestamp: Date.now() }
     if (typeof onSelect === "function") {
       onSelect({
         templateId: selectedTemplate.id,
         _action: 'fresh',
-        _existingId: existing?.id,
-        forceReset: true,          // tell EditorScreen to wipe storage + state
-        freshCvId: `${selectedTemplate.id}_${Date.now()}`, // new ID = guaranteed empty
+        forceReset: true,
+        freshCvId: `${selectedTemplate.id}_${Date.now()}`,
+        resetTimestamp: options?.timestamp || Date.now(),
       });
     }
     setShowDialog(false);
   };
-
+  
   const handleCreateNew = () => {
     if (typeof onSelect === "function") {
       onSelect({

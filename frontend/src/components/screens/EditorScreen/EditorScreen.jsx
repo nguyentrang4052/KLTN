@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { loadState, saveState } from "./../../../utils/storage";
 import { exportToPDF } from "./../../../utils/pdfExport";
 import CVRenderer from "../../cv-templates/CVRenderer";
 import UnifiedToolbar from "../../common/UnifiedToolbar/UnifiedToolbar";
+import { getToken } from '../../../utils/auth'
 
 const DEFAULT_STYLE_CONFIG = {
     fontFamily: "'DM Sans', sans-serif",
@@ -61,7 +62,7 @@ function getTemplateAccent(id) {
 }
 
 function SidebarControlPanel({ styleConfig, onStyleChange, sectionOrder, setSectionOrder, sectionTitles, setSectionTitles, data, onDataChange }) {
-    const [activeTab, setActiveTab] = useState("font"); // font | design | sections
+    const [activeTab, setActiveTab] = useState("font");
 
     const updateStyle = (key, val) => onStyleChange({ ...styleConfig, [key]: val });
 
@@ -109,7 +110,6 @@ function SidebarControlPanel({ styleConfig, onStyleChange, sectionOrder, setSect
             flexShrink: 0,
             overflow: "hidden",
         }}>
-            {}
             <div style={{
                 display: "flex",
                 borderBottom: "1px solid #e5e7eb",
@@ -146,14 +146,9 @@ function SidebarControlPanel({ styleConfig, onStyleChange, sectionOrder, setSect
                 ))}
             </div>
 
-            {}
             <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
-
-                {}
                 {activeTab === "font" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
-                        {}
                         <div>
                             <label style={{ fontSize: 11, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 6 }}>
                                 Font chữ
@@ -177,7 +172,6 @@ function SidebarControlPanel({ styleConfig, onStyleChange, sectionOrder, setSect
                             </select>
                         </div>
 
-                        {}
                         <div>
                             <label style={{ fontSize: 11, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 6 }}>
                                 Cỡ chữ: {styleConfig.baseFontSize}px
@@ -212,7 +206,6 @@ function SidebarControlPanel({ styleConfig, onStyleChange, sectionOrder, setSect
                             </div>
                         </div>
 
-                        {}
                         <div>
                             <label style={{ fontSize: 11, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 6 }}>
                                 Kiểu chữ
@@ -236,7 +229,6 @@ function SidebarControlPanel({ styleConfig, onStyleChange, sectionOrder, setSect
                             </div>
                         </div>
 
-                        {}
                         <div>
                             <label style={{ fontSize: 11, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 6 }}>
                                 Khoảng cách dòng: {styleConfig.lineHeight}
@@ -259,11 +251,8 @@ function SidebarControlPanel({ styleConfig, onStyleChange, sectionOrder, setSect
                     </div>
                 )}
 
-                {}
                 {activeTab === "design" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
-                        {}
                         <div>
                             <label style={{ fontSize: 11, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 8 }}>
                                 Màu chủ đề
@@ -297,41 +286,6 @@ function SidebarControlPanel({ styleConfig, onStyleChange, sectionOrder, setSect
                             </div>
                         </div>
 
-                        {/* {}
-                        <div>
-                            <label style={{ fontSize: 11, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 8 }}>
-                                Màu chữ
-                            </label>
-                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                                {TEXT_COLORS.map(c => (
-                                    <button
-                                        key={c}
-                                        onClick={() => updateStyle("textColor", c)}
-                                        title={c}
-                                        style={{
-                                            width: 28,
-                                            height: 28,
-                                            borderRadius: "50%",
-                                            background: c,
-                                            border: styleConfig.textColor === c ? "3px solid white" : "2px solid transparent",
-                                            boxShadow: styleConfig.textColor === c ? `0 0 0 2px ${c}` : "0 1px 3px rgba(0,0,0,0.2)",
-                                            cursor: "pointer",
-                                        }}
-                                    />
-                                ))}
-                                <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: 4 }}>
-                                    <input
-                                        type="color"
-                                        value={styleConfig.textColor}
-                                        onChange={e => updateStyle("textColor", e.target.value)}
-                                        style={{ width: 28, height: 28, border: "none", padding: 0, cursor: "pointer", borderRadius: "50%" }}
-                                    />
-                                    <span style={{ fontSize: 11, color: "#6b7280", fontFamily: "monospace" }}>{styleConfig.textColor}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {} */}
                         <button
                             onClick={() => onStyleChange({
                                 ...DEFAULT_STYLE_CONFIG,
@@ -358,7 +312,6 @@ function SidebarControlPanel({ styleConfig, onStyleChange, sectionOrder, setSect
                     </div>
                 )}
 
-                {}
                 {activeTab === "sections" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                         <label style={{ fontSize: 11, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>
@@ -417,7 +370,6 @@ function SidebarControlPanel({ styleConfig, onStyleChange, sectionOrder, setSect
                             </div>
                         ))}
 
-                        {}
                         {Object.keys(sectionTitles)
                             .filter(key => !sectionOrder.includes(key) && key !== "summary")
                             .map(key => (
@@ -453,8 +405,60 @@ function SidebarControlPanel({ styleConfig, onStyleChange, sectionOrder, setSect
     );
 }
 
-export default function EditorScreen({ templateId, initialData, cvId, onBack, forceReset = false }) {
-    const [data, setData] = useState(() => forceReset ? {} : (initialData || {}));
+const EMPTY_CV_DATA = {
+    personalInfo: {
+        fullName: "", portfolio: "", email: "", phone: "", address: "", linkedin: "", avatar: ""
+    },
+    summary: "",
+    experiences: [],
+    education: [],
+    skills: [],
+    awards: [],
+    certifications: [],
+    activities: []
+};
+
+const API_BASE = 'http://localhost:3000/api';
+
+// Helper gọi API trực tiếp
+async function callApi(endpoint, method, body) {
+
+    const cleanBody = { ...body };
+    if (cleanBody.cvData?.personalInfo?.avatar) {
+        cleanBody.cvData = {
+            ...cleanBody.cvData,
+            personalInfo: {
+                ...cleanBody.cvData.personalInfo,
+                avatar: undefined  // loại bỏ avatar
+            }
+        };
+    }
+
+    const token = getToken();
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+        method,
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || `API error: ${res.status}`);
+    }
+    return res.json();
+}
+
+export default function EditorScreen({ templateId, initialData, cvId, onBack, forceReset = false, resetTimestamp }) {
+    const [editorResetKey, setEditorResetKey] = useState(0);
+    const isResettingRef = useRef(false);
+    const appliedResetTimestampRef = useRef(null);
+
+    const [data, setData] = useState(() => {
+        if (forceReset) return EMPTY_CV_DATA;
+        return initialData || {};
+    });
     const [zoom, setZoom] = useState(100);
     const [isPreviewMode, setIsPreviewMode] = useState(false);
     const [cvName, setCvName] = useState("CV của tôi");
@@ -481,23 +485,50 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
         return { ...DEFAULT_STYLE_CONFIG, accentColor: defaultAccent };
     });
 
+    // ---- Tính năng dịch thuật ----
+    const [isTranslating, setIsTranslating] = useState(false);
+    const [translatedData, setTranslatedData] = useState(null);
+    const [showTranslated, setShowTranslated] = useState(false);
+    const [targetLang, setTargetLang] = useState('en');
+
+    // ---- Tính năng AI Assist ----
+    const [assistModalOpen, setAssistModalOpen] = useState(false);
+    const [assistPrompt, setAssistPrompt] = useState('');
+    const [assistSuggestions, setAssistSuggestions] = useState(null);
+    const [isAssisting, setIsAssisting] = useState(false);
+    const [activeSection, setActiveSection] = useState(null); // null = tổng thể
+
+    // ---------- Effect xử lý reset (giữ nguyên) ----------
     useEffect(() => {
-        if (forceReset) {
-            try {
-                const state = loadState() || {};
-                if (state[cvId]) {
-                    delete state[cvId];
-                    saveState(state);
-                }
-            } catch (e) {}
-            setData({});
-            setSectionOrder(DEFAULT_SECTION_ORDER);
-            setSectionTitles(DEFAULT_SECTION_TITLES);
-            setStyleConfig({ ...DEFAULT_STYLE_CONFIG, accentColor: getTemplateAccent(templateId) });
-            setCvName("CV của tôi");
-            setLastSaved(null);
-            return;
-        }
+        if (!resetTimestamp) return;
+        if (appliedResetTimestampRef.current === resetTimestamp) return;
+
+        appliedResetTimestampRef.current = resetTimestamp;
+        isResettingRef.current = true;
+
+        try {
+            const state = loadState() || {};
+            if (state[cvId]) {
+                delete state[cvId];
+                saveState(state);
+            }
+        } catch (e) { }
+
+        setData(EMPTY_CV_DATA);
+        setSectionOrder(DEFAULT_SECTION_ORDER);
+        setSectionTitles(DEFAULT_SECTION_TITLES);
+        setStyleConfig({ ...DEFAULT_STYLE_CONFIG, accentColor: getTemplateAccent(templateId) });
+        setCvName("CV của tôi");
+        setLastSaved(null);
+        setEditorResetKey(prev => prev + 1);
+
+        setTimeout(() => { isResettingRef.current = false; }, 0);
+    }, [resetTimestamp, cvId, templateId]);
+
+    // ---------- Effect load storage (giữ nguyên) ----------
+    useEffect(() => {
+        if (isResettingRef.current) return;
+
         try {
             const state = loadState() || {};
             const savedCv = state[cvId];
@@ -518,8 +549,9 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
         } catch (err) {
             console.error("Error loading saved state:", err);
         }
-    }, [cvId, templateId, forceReset]);
+    }, [cvId, templateId]);
 
+    // ---------- Auto-save effect (giữ nguyên) ----------
     useEffect(() => {
         if (!isAutoSaveEnabled) {
             setAutoSaveStatus('');
@@ -586,7 +618,7 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
     const toggleAutoSave = () => {
         const newValue = !isAutoSaveEnabled;
         setIsAutoSaveEnabled(newValue);
-        try { localStorage.setItem('cv_autosave_enabled', JSON.stringify(newValue)); } catch (e) {}
+        try { localStorage.setItem('cv_autosave_enabled', JSON.stringify(newValue)); } catch (e) { }
         if (!newValue && autoSaveTimerRef.current) { clearTimeout(autoSaveTimerRef.current); setAutoSaveStatus(''); }
     };
 
@@ -594,8 +626,19 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
 
     const handleExportPDF = async () => {
         setIsExporting(true);
-        await new Promise(r => setTimeout(r, 350));
-        await exportToPDF("cv-paper", `${cvName || "CV"}.pdf`);
+        await new Promise(r => setTimeout(r, 500));
+        const paperEl = document.getElementById("cv-paper");
+        if (paperEl) {
+            const parent = paperEl.parentElement;
+            const prevTransform = parent?.style.transform;
+            if (parent) parent.style.transform = "scale(1)";
+            await exportToPDF("cv-paper", `${cvName || "CV"}.pdf`);
+            if (parent && prevTransform !== undefined) {
+                parent.style.transform = prevTransform;
+            }
+        } else {
+            await exportToPDF("cv-paper", `${cvName || "CV"}.pdf`);
+        }
         setIsExporting(false);
     };
 
@@ -607,6 +650,114 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
         return "Chưa lưu";
     };
 
+    // ---------- API handlers ----------
+    const handleTranslate = async () => {
+        if (!data) return;
+        setIsTranslating(true);
+        try {
+            const result = await callApi('/cv-assistant/translate', 'POST', { cvData: data, targetLang });
+            setTranslatedData(result.data);
+            setShowTranslated(true);
+        } catch (error) {
+            console.error('Translation failed:', error);
+            alert('Dịch CV thất bại: ' + error.message);
+        } finally {
+            setIsTranslating(false);
+        }
+    };
+
+    const applyTranslation = () => {
+        if (translatedData) {
+            setData(translatedData);
+            setShowTranslated(false);
+            setTranslatedData(null);
+        }
+    };
+
+    const openAssistModal = (section = null) => {
+        setActiveSection(section);
+        setAssistPrompt('');
+        setAssistSuggestions(null);
+        setAssistModalOpen(true);
+    };
+
+    const generateSuggestions = async () => {
+        if (!assistPrompt.trim()) return;
+        setIsAssisting(true);
+        try {
+            const result = await callApi('/cv-assistant/suggest', 'POST', {
+                cvData: data,
+                prompt: assistPrompt,
+                section: activeSection,
+            });
+            // Kiểm tra cấu trúc response
+            console.log('API response:', result);
+            if (result.data) {
+                setAssistSuggestions(result.data);
+            } else {
+                setAssistSuggestions(result);
+            }
+        } catch (error) {
+            console.error('Suggestion failed:', error);
+            alert('Lỗi: ' + (error.message || 'Không thể tạo gợi ý'));
+        } finally {
+            setIsAssisting(false);
+        }
+    };
+
+    const applySuggestions = () => {
+        if (!assistSuggestions) {
+            console.warn('No suggestions to apply');
+            return;
+        }
+
+        console.log('Applying suggestions:', assistSuggestions);
+
+        // Clone sâu để tránh mutation
+        const newData = JSON.parse(JSON.stringify(data));
+        let hasChanges = false;
+
+        // Cập nhật từng trường nếu có
+        if (assistSuggestions.summary) {
+            newData.summary = assistSuggestions.summary;
+            hasChanges = true;
+        }
+        if (assistSuggestions.skills && Array.isArray(assistSuggestions.skills)) {
+            newData.skills = assistSuggestions.skills;
+            hasChanges = true;
+        }
+        if (assistSuggestions.experiences && Array.isArray(assistSuggestions.experiences)) {
+            newData.experiences = assistSuggestions.experiences;
+            hasChanges = true;
+        }
+        if (assistSuggestions.education && Array.isArray(assistSuggestions.education)) {
+            newData.education = assistSuggestions.education;
+            hasChanges = true;
+        }
+        if (assistSuggestions.certifications && Array.isArray(assistSuggestions.certifications)) {
+            newData.certifications = assistSuggestions.certifications;
+            hasChanges = true;
+        }
+        if (assistSuggestions.awards && Array.isArray(assistSuggestions.awards)) {
+            newData.awards = assistSuggestions.awards;
+            hasChanges = true;
+        }
+        if (assistSuggestions.activities && Array.isArray(assistSuggestions.activities)) {
+            newData.activities = assistSuggestions.activities;
+            hasChanges = true;
+        }
+
+        if (hasChanges) {
+            setData(newData);
+            console.log('CV updated successfully');
+        } else {
+            console.warn('No valid fields to update from suggestions');
+        }
+
+        setAssistModalOpen(false);
+    };
+
+    
     const safeStyleConfig = styleConfig || DEFAULT_STYLE_CONFIG;
 
     return (
@@ -673,7 +824,6 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
                     </div>
                 </div>
 
-                {}
                 <div style={{
                     display: "flex",
                     background: "#f3f4f6",
@@ -706,6 +856,65 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    {/* Nhóm nút Dịch thuật */}
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", background: "#f3f4f6", borderRadius: 8, padding: "2px 6px" }}>
+                        <select
+                            value={targetLang}
+                            onChange={(e) => setTargetLang(e.target.value)}
+                            style={{ padding: "4px 8px", fontSize: 12, border: "1px solid #d1d5db", borderRadius: 4, background: "white" }}
+                        >
+                            <option value="en">English</option>
+                            <option value="vi">Tiếng Việt</option>
+                        </select>
+                        <button
+                            onClick={handleTranslate}
+                            disabled={isTranslating}
+                            style={{
+                                padding: "4px 12px",
+                                background: "#2563eb",
+                                color: "white",
+                                border: "none",
+                                borderRadius: 6,
+                                fontSize: 12,
+                                fontWeight: 500,
+                                cursor: isTranslating ? "not-allowed" : "pointer",
+                                opacity: isTranslating ? 0.6 : 1,
+                            }}
+                        >
+                            {isTranslating ? "Đang dịch..." : (showTranslated ? "Đang xem bản dịch" : "Dịch")}
+                        </button>
+                        {showTranslated && (
+                            <>
+                                <button onClick={applyTranslation} style={{ padding: "4px 12px", background: "#16a34a", color: "white", border: "none", borderRadius: 6, fontSize: 12, cursor: "pointer" }}>
+                                    Áp dụng
+                                </button>
+                                <button onClick={() => setShowTranslated(false)} style={{ padding: "4px 12px", background: "#6b7280", color: "white", border: "none", borderRadius: 6, fontSize: 12, cursor: "pointer" }}>
+                                    Hủy
+                                </button>
+                            </>
+                        )}
+                    </div>
+
+                    {/* Nút AI Assist tổng thể */}
+                    <button
+                        onClick={() => openAssistModal(null)}
+                        style={{
+                            padding: "4px 12px",
+                            background: "#8b5cf6",
+                            color: "white",
+                            border: "none",
+                            borderRadius: 6,
+                            fontSize: 12,
+                            fontWeight: 500,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                        }}
+                    >
+                        ✨ AI Assist
+                    </button>
+
                     <div style={{
                         display: "flex",
                         alignItems: "center",
@@ -788,10 +997,7 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
                 </div>
             </div>
 
-            {}
             <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-
-                {}
                 {!isPreviewMode && (
                     <SidebarControlPanel
                         styleConfig={safeStyleConfig}
@@ -805,7 +1011,6 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
                     />
                 )}
 
-                {}
                 <div style={{
                     flex: 1,
                     overflow: "auto",
@@ -817,7 +1022,7 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
                     <div style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top center" }}>
                         <CVRenderer
                             templateId={templateId}
-                            data={data}
+                            data={showTranslated && translatedData ? translatedData : data}
                             onChange={handleChange}
                             isEdit={!isPreviewMode && !isExporting}
                             accent={safeStyleConfig.accentColor}
@@ -827,12 +1032,101 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
                             setSectionOrder={setSectionOrder}
                             sectionTitles={sectionTitles}
                             setSectionTitles={setSectionTitles}
-                        
-                            forceReset={forceReset}
+                            editorResetKey={editorResetKey}
+                            onAIAssist={openAssistModal}
                         />
                     </div>
                 </div>
             </div>
+
+            {/* Modal AI Assist */}
+            {assistModalOpen && (
+                <div style={{
+                    position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+                    background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000
+                }}>
+                    <div style={{
+                        background: "white", padding: 24, borderRadius: 12, maxWidth: 600, width: "90%", maxHeight: "80vh", overflow: "auto"
+                    }}>
+                        <h3 style={{ marginBottom: 12 }}>✨ AI chỉnh sửa CV</h3>
+                        {activeSection && (
+                            <p style={{ marginBottom: 12, color: "#6b21a5" }}>
+                                Đang cải thiện phần: <strong>{sectionTitles[activeSection] || activeSection}</strong>
+                            </p>
+                        )}
+                        <textarea
+                            rows={4}
+                            placeholder='Ví dụ: "Tôi là frontend dev, 2 năm kinh nghiệm, dùng React, muốn apply product company"'
+                            value={assistPrompt}
+                            onChange={(e) => setAssistPrompt(e.target.value)}
+                            style={{ width: "100%", padding: 8, marginBottom: 12, border: "1px solid #d1d5db", borderRadius: 6, fontSize: 13 }}
+                        />
+                        <button
+                            onClick={generateSuggestions}
+                            disabled={isAssisting || !assistPrompt.trim()}
+                            style={{
+                                padding: "8px 16px",
+                                background: "#8b5cf6",
+                                color: "white",
+                                border: "none",
+                                borderRadius: 6,
+                                cursor: (isAssisting || !assistPrompt.trim()) ? "not-allowed" : "pointer",
+                                opacity: (isAssisting || !assistPrompt.trim()) ? 0.6 : 1,
+                                marginBottom: 16,
+                            }}
+                        >
+                            {isAssisting ? "Đang suy nghĩ..." : "Gợi ý"}
+                        </button>
+
+                        {assistSuggestions && (
+                            <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 16 }}>
+                                <h4 style={{ marginBottom: 12 }}>✨ Đề xuất</h4>
+                                {assistSuggestions.summary && (
+                                    <div style={{ marginBottom: 12 }}>
+                                        <strong>Summary:</strong>
+                                        <p style={{ marginTop: 4, background: "#f9fafb", padding: 8, borderRadius: 6 }}>{assistSuggestions.summary}</p>
+                                    </div>
+                                )}
+                                {assistSuggestions.skills && (
+                                    <div style={{ marginBottom: 12 }}>
+                                        <strong>Skills:</strong>
+                                        <pre style={{ background: "#f9fafb", padding: 8, borderRadius: 6, fontSize: 12, overflow: "auto" }}>
+                                            {JSON.stringify(assistSuggestions.skills, null, 2)}
+                                        </pre>
+                                    </div>
+                                )}
+                                {assistSuggestions.experiences && (
+                                    <div style={{ marginBottom: 12 }}>
+                                        <strong>Experiences (cải tiến):</strong>
+                                        <pre style={{ background: "#f9fafb", padding: 8, borderRadius: 6, fontSize: 12, overflow: "auto" }}>
+                                            {JSON.stringify(assistSuggestions.experiences, null, 2)}
+                                        </pre>
+                                    </div>
+                                )}
+                                {assistSuggestions.suggestions && (
+                                    <div style={{ marginBottom: 12 }}>
+                                        <strong>💡 Lời khuyên thêm:</strong>
+                                        <p style={{ marginTop: 4, background: "#fef3c7", padding: 8, borderRadius: 6 }}>{assistSuggestions.suggestions}</p>
+                                    </div>
+                                )}
+                                <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
+                                    <button onClick={applySuggestions} style={{ padding: "8px 16px", background: "#16a34a", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }}>
+                                        ✅ Thêm vào CV
+                                    </button>
+                                    <button onClick={() => setAssistModalOpen(false)} style={{ padding: "8px 16px", background: "#6b7280", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }}>
+                                        ❌ Bỏ qua
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                        {!assistSuggestions && (
+                            <button onClick={() => setAssistModalOpen(false)} style={{ marginTop: 16, padding: "6px 12px", background: "#e5e7eb", border: "none", borderRadius: 6, cursor: "pointer" }}>
+                                Đóng
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

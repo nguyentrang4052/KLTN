@@ -167,24 +167,9 @@ function getCVListFromStorage() {
   try {
     const raw = localStorage.getItem('cv_builder_state')
     if (!raw) return []
-
     const state = JSON.parse(raw)
-    const cvMap = state || {}
-
-    const cvKeys = Object.keys(cvMap).filter(k => !k.startsWith('_'))
-    return cvKeys.map(key => {
-      const cv = cvMap[key]
-      return {
-        id: key,
-        name: cv.cvName || 'Không tên',
-        templateId: cv.templateId || null,
-        accent: cv.styleConfig?.accentColor || '#6366f1',
-        updatedAt: cv.updatedAt || null,
-        createdAt: cv.createdAt || null,
-        // Giữ nguyên toàn bộ data để ProfileScreen dùng khi import
-        _data: cv,
-      }
-    })
+    // state._cvList là array metadata do CreatedCVScreen/persistCVList lưu
+    return Array.isArray(state._cvList) ? state._cvList : []
   } catch {
     return []
   }

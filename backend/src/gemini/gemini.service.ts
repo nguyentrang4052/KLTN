@@ -1,328 +1,3 @@
-// import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
-// import { ConfigService } from '@nestjs/config';
-// import { GoogleGenerativeAI } from '@google/generative-ai';
-// import { jsonrepair } from 'jsonrepair';
-
-// @Injectable()
-// export class GeminiService {
-//     private readonly logger = new Logger(GeminiService.name);
-//     private readonly genAI: GoogleGenerativeAI;
-//     private readonly model = 'gemini-3-flash-preview';
-
-//     constructor(private readonly configService: ConfigService) {
-//         const apiKey = this.configService.get<string>('GEMINI_API_KEY');
-//         if (!apiKey) throw new Error('GEMINI_API_KEY not found');
-//         this.genAI = new GoogleGenerativeAI(apiKey);
-//     }
-
-//     async analyzeCV(cvText: string, retryCount = 0): Promise<any> {
-//         try {
-//             this.logger.log(`Analyzing CV (${cvText.length} chars), attempt ${retryCount + 1}`);
-
-//             const generativeModel = this.genAI.getGenerativeModel({
-//                 model: this.model,
-//                 generationConfig: {
-//                     temperature: 0.1,
-//                     maxOutputTokens: 4000,
-//                 }
-//             });
-
-//             const systemPrompt = `You are a professional CV analyzer. Extract ALL information and return ONLY valid JSON.
-
-// CRITICAL JSON RULES:
-// - Return ONLY raw JSON, no markdown, no explanation
-// - Every property must have a value: "key": "value" or "key": null
-// - Arrays must use [] even if empty
-// - No trailing commas before } or ]
-// - All strings must use double quotes "
-// - Escape quotes inside strings with \\"
-
-// STRUCTURE:
-// {
-//   "personalInfo": {
-//     "fullName": "string or null",
-//     "email": "string or null",
-//     "phone": "string or null",
-//     "address": "string or null",
-//     "linkedin": "string or null",
-//     "portfolio": "string or null"
-//   },
-//   "experiences": [
-//     {
-//       "company": "string or null",
-//       "position": "string or null",
-//       "duration": "string or null",
-//       "description": "string or null"
-//     }
-//   ],
-//   "education": [
-//     {
-//       "institution": "string or null",
-//       "degree": "string or null",
-//       "year": "string or null",
-//       "gpa": "string or null"
-//     }
-//   ],
-//   "skills": [
-//     {
-//       "category": "string or null",
-//       "items": "string or null"
-//     }
-//   ],
-//   "activities": [],
-//   "awards": [],
-//   "certifications": [
-//     {
-//       "name": "string or null",
-//       "issuer": "string or null",
-//       "year": "string or null",
-//       "score": "string or null"
-//     }
-//   ],
-//   "summary": "string or empty"
-// }
-
-// Rules:
-// - Extract ALL experiences, education, skills - do not leave arrays empty if data exists
-// - Use null for missing fields, never omit the field
-// - Ensure valid JSON syntax - check all commas and brackets
-// - Be precise with dates and contact information
-// - Vietnamese and English CVs are both supported`;
-
-//             const chat = generativeModel.startChat({
-//                 history: [
-//                     {
-//                         role: 'user',
-//                         parts: [{ text: systemPrompt }],
-//                     },
-//                     {
-//                         role: 'model',
-//                         parts: [{ text: 'I understand. I will extract CV information and return only valid JSON without any markdown formatting or explanation. I will ensure proper JSON syntax with correct commas and brackets.' }],
-//                     },
-//                 ],
-//             });
-
-//             const result = await chat.sendMessage(
-//                 `Extract information from this CV into JSON format:\n\n${cvText}`
-//             );
-
-//             const response = await result.response;
-//             const text = response.text();
-//             this.logger.log(`Raw response length: ${text.length}`);
-
-//             return this.extractJsonFromResponse(text);
-
-//         } catch (error: any) {
-//             // Nếu là lỗi JSON parse, thử lại với prompt khác
-//             if (error?.message?.includes('JSON') || error?.message?.includes('Unexpected token')) {
-//                 this.logger.warn(`JSON parse error, retrying with simpler prompt...`);
-//                 if (retryCount < 2) {
-//                     return this.analyzeCVSimple(cvText, retryCount + 1);
-//                 }
-//             }
-
-//             const statusCode = error?.status || error?.response?.status ||
-//                 (error?.message?.includes('503') ? 503 : null) ||
-//                 (error?.message?.includes('429') ? 429 : null);
-
-//             if ((statusCode === 503 || statusCode === 429) && retryCount < 2) {
-//                 const delayMs = 3000 * (retryCount + 1);
-//                 await this.delay(delayMs);
-//                 return this.analyzeCV(cvText, retryCount + 1);
-//             }
-
-//             throw new HttpException(
-//                 `Gemini API Error: ${error?.message || 'Unknown error'}`,
-//                 statusCode === 503 ? HttpStatus.SERVICE_UNAVAILABLE : HttpStatus.BAD_REQUEST,
-//             );
-//         }
-//     }
-
-//     /**
-//      * Fallback: Dùng prompt đơn giản hơn khi JSON bị lỗi
-//      */
-//     private async analyzeCVSimple(cvText: string, retryCount: number): Promise<any> {
-//         this.logger.log(`Simple extraction attempt ${retryCount}`);
-
-//         const generativeModel = this.genAI.getGenerativeModel({
-//             model: this.model,
-//             generationConfig: {
-//                 temperature: 0.0, // Giảm temperature để output ổn định
-//                 maxOutputTokens: 4000,
-//             }
-//         });
-
-//         const prompt = `Extract CV information and return valid JSON. Be extremely careful with syntax.
-
-// CV:
-// ${cvText}
-
-// Return ONLY this exact format (fill in values, keep null if missing):
-// {"personalInfo":{"fullName":null,"email":null,"phone":null,"address":null,"linkedin":null,"portfolio":null},"experiences":[{"company":null,"position":null,"duration":null,"description":null}],"education":[{"institution":null,"degree":null,"year":null,"gpa":null}],"skills":[{"category":null,"items":null}],"activities":[],"awards":[],"certifications":[{"name":null,"issuer":null,"year":null,"score":null}],"summary":""}`;
-
-//         const result = await generativeModel.generateContent(prompt);
-//         const text = result.response.text();
-
-//         return this.extractJsonFromResponse(text);
-//     }
-
-//     async analyzeCVWithVerification(cvText: string): Promise<any> {
-//         try {
-//             this.logger.log(`Verification with model: ${this.model}`);
-
-//             const generativeModel = this.genAI.getGenerativeModel({
-//                 model: this.model,
-//                 generationConfig: {
-//                     temperature: 0.1,
-//                     maxOutputTokens: 4000,
-//                 }
-//             });
-
-//             const prompt1 = `You are a professional CV analyzer. Extract information from this CV and return ONLY valid JSON with this structure:
-// {"personalInfo":{"fullName":"","email":"","phone":"","address":"","linkedin":"","portfolio":""},"experiences":[{"company":"","position":"","duration":"","description":""}],"education":[{"institution":"","degree":"","year":"","gpa":""}],"skills":[{"category":"","items":""}],"activities":[{"organization":"","role":"","duration":"","description":""}],"awards":[{"title":"","issuer":"","year":"","description":""}],"certifications":[{"name":"","issuer":"","year":"","score":""}],"summary":""}
-
-// CRITICAL: Ensure valid JSON syntax. No trailing commas. All quotes closed.
-
-// CV Content:
-// ${cvText}
-
-// Return ONLY JSON, no markdown, no explanation.`;
-
-//             const result1 = await generativeModel.generateContent(prompt1);
-//             const response1 = result1.response.text();
-
-//             // Turn 2: Verify
-//             const prompt2 = `Review this JSON extraction. Fix syntax errors (trailing commas, missing brackets, unclosed quotes). Return ONLY corrected JSON.
-
-// Previous extraction:
-// ${response1}
-
-// Return corrected JSON only:`;
-
-//             const result2 = await generativeModel.generateContent(prompt2);
-//             const response2 = result2.response.text();
-
-//             return this.extractJsonFromResponse(response2);
-
-//         } catch (error: any) {
-//             this.logger.error('Gemini API Error:', error);
-//             throw new HttpException(
-//                 `Gemini API Error: ${error.message}`,
-//                 HttpStatus.BAD_REQUEST,
-//             );
-//         }
-//     }
-
-//     async extractTextFromImage(imageInput: string | Buffer, retryCount = 0): Promise<string> {
-//         try {
-//             this.logger.log(`OCR attempt ${retryCount + 1}`);
-
-//             let imageData: { mimeType: string; data: string };
-
-//             if (Buffer.isBuffer(imageInput)) {
-//                 imageData = { mimeType: 'image/png', data: imageInput.toString('base64') };
-//             } else {
-//                 imageData = { mimeType: 'image/png', data: imageInput };
-//             }
-
-//             const model = this.genAI.getGenerativeModel({
-//                 model: this.model,
-//                 generationConfig: { temperature: 0 }
-//             });
-
-//             const result = await model.generateContent([
-//                 'Extract all text from this CV image. Preserve Vietnamese diacritics. Return only the extracted text.',
-//                 { inlineData: imageData }
-//             ]);
-
-//             const text = result.response.text();
-//             this.logger.log(`OCR result: ${text.length} chars`);
-//             return text;
-
-//         } catch (error: any) {
-//             if ((error.status === 503 || error.status === 429) && retryCount < 2) {
-//                 await this.delay(2000 * (retryCount + 1));
-//                 return this.extractTextFromImage(imageInput, retryCount + 1);
-//             }
-//             throw error;
-//         }
-//     }
-
-//     private delay(ms: number): Promise<void> {
-//         return new Promise(resolve => setTimeout(resolve, ms));
-//     }
-
-//     private extractJsonFromResponse(text: string): any {
-//         // Bước 1: Làm sạch
-//         let cleaned = text
-//             .replace(/```json\s*/gi, '')
-//             .replace(/```\s*/gi, '')
-//             .trim();
-
-//         // Bước 2: Tìm JSON object
-//         const match = cleaned.match(/(\{[\s\S]*\})/);
-//         if (match) cleaned = match[1];
-
-//         // Bước 3: Thử parse
-//         try {
-//             return JSON.parse(cleaned);
-//         } catch (parseError: any) {
-//             this.logger.warn(`JSON parse failed: ${parseError.message}`);
-
-//             // Bước 4: Thử jsonrepair
-//             try {
-//                 const repaired = jsonrepair(cleaned);
-//                 this.logger.log('JSON repaired with jsonrepair');
-//                 return JSON.parse(repaired);
-//             } catch {
-//                 // Bước 5: Thử sửa lỗi thủ công
-//                 const manualFixed = this.manualJsonFix(cleaned);
-//                 try {
-//                     return JSON.parse(manualFixed);
-//                 } catch {
-//                     this.logger.error(`All JSON repair failed. Raw (first 500 chars):\n${text.substring(0, 500)}`);
-//                     throw new Error(`Cannot extract valid JSON: ${parseError.message}`);
-//                 }
-//             }
-//         }
-//     }
-
-//     /**
-//      * Sửa lỗi JSON thủ công phổ biến
-//      */
-//     private manualJsonFix(text: string): string {
-//         let fixed = text;
-
-//         // 1. Xóa trailing commas
-//         fixed = fixed.replace(/,\s*([\]\}])/g, '$1');
-
-//         // 2. Thêm dấu phẩy giữa các elements nếu thiếu
-//         fixed = fixed.replace(/("\s*)\}(\s*\{)/g, '$1},$2');
-//         fixed = fixed.replace(/("\s*)\](\s*\[)/g, '$1],$2');
-
-//         // 3. Sửa các trường hợp thiếu value
-//         fixed = fixed.replace(/"(\w+)":\s*([}\]],)/g, '"$1": null,$2');
-//         fixed = fixed.replace(/"(\w+)":\s*}$/g, '"$1": null}');
-
-//         // 4. Đảm bảo đóng đủ brackets
-//         const openBraces = (fixed.match(/\{/g) || []).length;
-//         const closeBraces = (fixed.match(/\}/g) || []).length;
-//         const openBrackets = (fixed.match(/\[/g) || []).length;
-//         const closeBrackets = (fixed.match(/\]/g) || []).length;
-
-//         if (openBraces > closeBraces) {
-//             fixed += '}'.repeat(openBraces - closeBraces);
-//         }
-//         if (openBrackets > closeBrackets) {
-//             fixed += ']'.repeat(openBrackets - closeBrackets);
-//         }
-
-//         return fixed;
-//     }
-// }
-
-
-
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -607,7 +282,7 @@ ${cvText}`;
                 HttpStatus.BAD_REQUEST,
             );
         }
-    }   
+    }
 
     async extractTextFromImage(imageInput: string | Buffer, retryCount = 0): Promise<string> {
         try {
@@ -723,5 +398,89 @@ ${cvText}`;
         }
 
         return fixed;
+    }
+
+
+    // ... existing code ...
+
+    /**
+     * Dịch toàn bộ CV object sang ngôn ngữ đích
+     */
+    async translateCV(cvData: any, targetLang: 'en' | 'vi'): Promise<any> {
+        const prompt = `
+Bạn là chuyên gia dịch thuật CV. Hãy dịch toàn bộ nội dung CV sau từ ngôn ngữ gốc sang ${targetLang === 'en' ? 'TIẾNG ANH' : 'TIẾNG VIỆT'}.
+
+QUY TẮC:
+- Giữ nguyên cấu trúc JSON.
+- Dịch tất cả các trường văn bản (fullName, summary, company, position, description, institution, degree, skills items, v.v.).
+- Không dịch tên riêng, tên công ty, địa chỉ email, số điện thoại, link.
+- Bảo toàn định dạng danh sách kỹ năng (dấu phẩy, xuống dòng).
+- Trả về JSON hợp lệ, không markdown.
+
+CV gốc:
+${JSON.stringify(cvData, null, 2)}
+
+JSON đã dịch:
+`;
+
+        const response = await this.generateContent(prompt);
+        return this.extractJsonFromResponse(response);
+    }
+
+    /**
+     * Gợi ý cải thiện CV dựa trên prompt của user
+     */
+    async suggestCVImprovements(cvData: any, userPrompt: string, section?: string): Promise<any> {
+        let sectionInstruction = '';
+        if (section) {
+            sectionInstruction = `Chỉ tập trung cải thiện phần "${section}" của CV. Giữ nguyên các phần khác.`;
+        } else {
+            sectionInstruction = `Đề xuất cải thiện tổng thể cho CV, bao gồm Summary, Skills, Experiences (bullet points), Education (nếu cần).`;
+        }
+
+        const prompt = `
+Bạn là chuyên gia tư vấn viết CV. Dựa trên yêu cầu của người dùng và nội dung CV hiện tại, hãy đưa ra các đề xuất chỉnh sửa.
+
+Yêu cầu của người dùng:
+${userPrompt}
+
+${sectionInstruction}
+
+CV hiện tại:
+${JSON.stringify(cvData, null, 2)}
+
+Hãy trả về JSON theo cấu trúc sau (chỉ chứa các trường cần thay đổi, không cần thiết trả về toàn bộ CV):
+{
+  "summary": "string (mục tiêu nghề nghiệp mới, nếu có đề xuất)",
+  "skills": [
+    { "category": "Technical Skills", "items": "React, Node.js, ..." }
+  ],
+  "experiences": [
+    {
+      "company": "Tên công ty",
+      "position": "Chức vụ",
+      "duration": "Thời gian",
+      "description": "Mô tả cải tiến (viết lại thành bullet points có số liệu)"
+    }
+  ],
+  "education": [ ... ],
+  "suggestions": "Lời khuyên bổ sung (string)"
+}
+
+Chỉ trả về JSON, không markdown, không giải thích thêm.
+`;
+
+        const response = await this.generateContent(prompt);
+        return this.extractJsonFromResponse(response);
+    }
+
+    // Helper nhỏ gọi Gemini
+    private async generateContent(prompt: string): Promise<string> {
+        const model = this.genAI.getGenerativeModel({
+            model: this.model,
+            generationConfig: { temperature: 0.3, maxOutputTokens: 8192 }
+        });
+        const result = await model.generateContent(prompt);
+        return result.response.text();
     }
 }

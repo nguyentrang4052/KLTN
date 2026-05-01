@@ -61,15 +61,85 @@ const FONTS = [
     { label: "Source Code Pro", value: "'Source Code Pro', monospace" },
 ];
 const COLORS = [
-    "#000000","#333333","#555555","#888888",
-    "#dc2626","#ea580c","#d97706","#16a34a",
-    "#0369a1","#4f46e5","#7c3aed","#be185d",
+    "#000000", "#333333", "#555555", "#888888",
+    "#dc2626", "#ea580c", "#d97706", "#16a34a",
+    "#0369a1", "#4f46e5", "#7c3aed", "#be185d",
 ];
 const SIZES = [
     { label: "10px", cmd: "1" }, { label: "13px", cmd: "2" },
     { label: "16px", cmd: "3" }, { label: "20px", cmd: "4" },
     { label: "24px", cmd: "5" },
 ];
+
+function clearSelectionFormat() {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+
+    // Step 1: removeFormat (xóa CSS styles)
+    document.execCommand("removeFormat", false, null);
+
+    // Step 2: Unwrap inline HTML tags trong selection
+    // Lấy lại selection sau removeFormat (có thể đã thay đổi)
+    const sel2 = window.getSelection();
+    if (!sel2 || sel2.rangeCount === 0) return;
+
+    const range = sel2.getRangeAt(0);
+    if (range.collapsed) return; // không có text được chọn
+
+    // Lấy container chứa selection
+    const container = range.commonAncestorContainer;
+    const root = container.nodeType === Node.TEXT_NODE
+        ? container.parentElement
+        : container;
+
+    if (!root) return;
+
+    // Các tag cần unwrap
+    const INLINE_TAGS = ["B", "STRONG", "I", "EM", "U", "S", "STRIKE", "MARK", "SPAN"];
+
+    // Unwrap tất cả inline tags trong vùng selection
+    // Dùng TreeWalker để traverse tất cả nodes trong root
+    function unwrapInlineTagsInRange(el) {
+        // Lấy tất cả inline elements con
+        const toUnwrap = [];
+        const walker = document.createTreeWalker(
+            el,
+            NodeFilter.SHOW_ELEMENT,
+            {
+                acceptNode: (node) => {
+                    if (INLINE_TAGS.includes(node.tagName)) return NodeFilter.FILTER_ACCEPT;
+                    return NodeFilter.FILTER_SKIP;
+                }
+            }
+        );
+        let node;
+        while ((node = walker.nextNode())) {
+            // Chỉ unwrap nếu node nằm trong hoặc cắt qua selection
+            if (range.intersectsNode(node)) {
+                toUnwrap.push(node);
+            }
+        }
+
+        // Unwrap từ trong ra ngoài (reverse để không ảnh hưởng parent)
+        for (let i = toUnwrap.length - 1; i >= 0; i--) {
+            const tag = toUnwrap[i];
+            if (!tag.parentNode) continue;
+            const parent = tag.parentNode;
+            // Di chuyển tất cả children ra ngoài tag
+            while (tag.firstChild) {
+                parent.insertBefore(tag.firstChild, tag);
+            }
+            parent.removeChild(tag);
+        }
+    }
+
+    // Unwrap trong ancestor gần nhất
+    try {
+        unwrapInlineTagsInRange(root.closest?.("[data-rich-editor]") || root);
+    } catch (e) {
+        // fallback: just leave it with removeFormat applied
+    }
+}
 
 // ─── MAIN TOOLBAR ───────────────────────────────────────────────────────────
 const UnifiedToolbar = memo(() => {
@@ -200,14 +270,26 @@ const UnifiedToolbar = memo(() => {
 
     const execRich = useCallback((cmd, val = null) => {
         restoreGlobalSelection();
+
         if (cmd === "removeFormat") {
-            document.execCommand("removeFormat", false);
-            document.execCommand("fontName", false, "DM Sans");
+            // Step 1: Xóa tất cả inline styles và tags
+            document.execCommand("removeFormat", false, null);
+
+            // Step 2: Reset về font mặc định (DM Sans)
+            document.execCommand("fontName", false, "'DM Sans', sans-serif");
+
+            // Step 3: Reset về cỡ chữ mặc định (16px = cmd "3")
             document.execCommand("fontSize", false, "3");
+
+            // Step 4: Reset màu về đen
             document.execCommand("foreColor", false, "#000000");
+
+            // Step 5: Xóa các thẻ inline còn sót (nếu có)
+            clearSelectionFormat();
         } else {
             document.execCommand(cmd, false, val);
         }
+
         if (activeEditorRef.current) {
             activeEditorRef.current.focus();
             activeEditorRef.current.dispatchEvent(new Event("input", { bubbles: true }));
@@ -253,12 +335,50 @@ const UnifiedToolbar = memo(() => {
                 justifyRight: () => applyStyle({ textAlign: "right" }),
                 justifyFull: () => applyStyle({ textAlign: "justify" }),
                 removeFormat: () => applyStyle({ fontWeight: "normal", fontStyle: "normal", textDecoration: "none" }),
-                insertOrderedList: () => {},
-                insertUnorderedList: () => {},
+                insertOrderedList: () => { },
+                insertUnorderedList: () => { },
             };
             map[cmd]?.();
         }
     }, [mode, execRich, applyStyle, sc]);
+
+    /** Xóa định dạng */
+    const handleClearFormat = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const focusedEl = document.activeElement;
+
+        if (mode === "rich") {
+            execRich("removeFormat");
+        } else {
+            // Plain text mode: reset tất cả về mặc định
+            if (activeStyleChangeFn) {
+                activeStyleChangeFn({
+                    fontFamily: "'DM Sans', sans-serif",
+                    baseFontSize: 16,
+                    fontWeight: "normal",
+                    fontStyle: "normal",
+                    textDecoration: "none",
+                    color: "#000000",
+                    textAlign: "left"
+                });
+                setSc({
+                    fontFamily: "'DM Sans', sans-serif",
+                    baseFontSize: 16,
+                    fontWeight: "normal",
+                    fontStyle: "normal",
+                    textDecoration: "none",
+                    color: "#000000",
+                    textAlign: "left"
+                });
+            }
+        }
+
+        // Giữ focus
+        if (focusedEl && focusedEl.isContentEditable) {
+            focusedEl.focus();
+        }
+    }, [mode, execRich]);
 
     if (!visible) return null;
 
@@ -352,41 +472,41 @@ const UnifiedToolbar = memo(() => {
                 <Sep />
                 <Btn title="Danh sách số" onMouseDown={(e) => { prevent(e); execRich("insertOrderedList"); }}>
                     <svg width="13" height="13" fill="currentColor" viewBox="0 0 13 13">
-                        <text x="0" y="4.5" fontSize="4.5">1.</text><rect x="5" y="1.5" width="7" height="1.5" rx=".5"/>
-                        <text x="0" y="8.5" fontSize="4.5">2.</text><rect x="5" y="5.5" width="7" height="1.5" rx=".5"/>
-                        <text x="0" y="12.5" fontSize="4.5">3.</text><rect x="5" y="9.5" width="7" height="1.5" rx=".5"/>
+                        <text x="0" y="4.5" fontSize="4.5">1.</text><rect x="5" y="1.5" width="7" height="1.5" rx=".5" />
+                        <text x="0" y="8.5" fontSize="4.5">2.</text><rect x="5" y="5.5" width="7" height="1.5" rx=".5" />
+                        <text x="0" y="12.5" fontSize="4.5">3.</text><rect x="5" y="9.5" width="7" height="1.5" rx=".5" />
                     </svg>
                 </Btn>
                 <Btn title="Dấu chấm" onMouseDown={(e) => { prevent(e); execRich("insertUnorderedList"); }}>
                     <svg width="13" height="13" fill="currentColor" viewBox="0 0 13 13">
-                        <circle cx="2" cy="3" r="1.2"/><rect x="5" y="1.5" width="7" height="1.5" rx=".5"/>
-                        <circle cx="2" cy="7" r="1.2"/><rect x="5" y="5.5" width="7" height="1.5" rx=".5"/>
-                        <circle cx="2" cy="11" r="1.2"/><rect x="5" y="9.5" width="7" height="1.5" rx=".5"/>
+                        <circle cx="2" cy="3" r="1.2" /><rect x="5" y="1.5" width="7" height="1.5" rx=".5" />
+                        <circle cx="2" cy="7" r="1.2" /><rect x="5" y="5.5" width="7" height="1.5" rx=".5" />
+                        <circle cx="2" cy="11" r="1.2" /><rect x="5" y="9.5" width="7" height="1.5" rx=".5" />
                     </svg>
                 </Btn>
                 <Sep />
                 <Btn title="Canh trái" onMouseDown={(e) => { prevent(e); execRich("justifyLeft"); }}>
                     <svg width="13" height="13" fill="currentColor" viewBox="0 0 13 13">
-                        <rect x="0" y="0" width="13" height="2" rx="1"/><rect x="0" y="4" width="9" height="2" rx="1"/>
-                        <rect x="0" y="8" width="13" height="2" rx="1"/><rect x="0" y="12" width="7" height="1" rx=".5"/>
+                        <rect x="0" y="0" width="13" height="2" rx="1" /><rect x="0" y="4" width="9" height="2" rx="1" />
+                        <rect x="0" y="8" width="13" height="2" rx="1" /><rect x="0" y="12" width="7" height="1" rx=".5" />
                     </svg>
                 </Btn>
                 <Btn title="Căn giữa" onMouseDown={(e) => { prevent(e); execRich("justifyCenter"); }}>
                     <svg width="13" height="13" fill="currentColor" viewBox="0 0 13 13">
-                        <rect x="0" y="0" width="13" height="2" rx="1"/><rect x="2" y="4" width="9" height="2" rx="1"/>
-                        <rect x="0" y="8" width="13" height="2" rx="1"/><rect x="3" y="12" width="7" height="1" rx=".5"/>
+                        <rect x="0" y="0" width="13" height="2" rx="1" /><rect x="2" y="4" width="9" height="2" rx="1" />
+                        <rect x="0" y="8" width="13" height="2" rx="1" /><rect x="3" y="12" width="7" height="1" rx=".5" />
                     </svg>
                 </Btn>
                 <Btn title="Canh phải" onMouseDown={(e) => { prevent(e); execRich("justifyRight"); }}>
                     <svg width="13" height="13" fill="currentColor" viewBox="0 0 13 13">
-                        <rect x="0" y="0" width="13" height="2" rx="1"/><rect x="4" y="4" width="9" height="2" rx="1"/>
-                        <rect x="0" y="8" width="13" height="2" rx="1"/><rect x="6" y="12" width="7" height="1" rx=".5"/>
+                        <rect x="0" y="0" width="13" height="2" rx="1" /><rect x="4" y="4" width="9" height="2" rx="1" />
+                        <rect x="0" y="8" width="13" height="2" rx="1" /><rect x="6" y="12" width="7" height="1" rx=".5" />
                     </svg>
                 </Btn>
                 <Btn title="Đều 2 lề" onMouseDown={(e) => { prevent(e); execRich("justifyFull"); }}>
                     <svg width="13" height="13" fill="currentColor" viewBox="0 0 13 13">
-                        <rect x="0" y="0" width="13" height="2" rx="1"/><rect x="0" y="4" width="13" height="2" rx="1"/>
-                        <rect x="0" y="8" width="13" height="2" rx="1"/><rect x="0" y="12" width="13" height="1" rx=".5"/>
+                        <rect x="0" y="0" width="13" height="2" rx="1" /><rect x="0" y="4" width="13" height="2" rx="1" />
+                        <rect x="0" y="8" width="13" height="2" rx="1" /><rect x="0" y="12" width="13" height="1" rx=".5" />
                     </svg>
                 </Btn>
             </>}
@@ -427,9 +547,9 @@ const UnifiedToolbar = memo(() => {
             </div>
 
             {mode === "rich" && (
-                <Btn title="Xóa định dạng" onMouseDown={(e) => { prevent(e); execRich("removeFormat"); }}>
+                <Btn title="Xóa định dạng" onMouseDown={handleClearFormat}>
                     <svg width="13" height="13" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 14 14" fill="none">
-                        <path d="M3 2l8 10M11 2L3 12"/>
+                        <path d="M3 2l8 10M11 2L3 12" />
                     </svg>
                 </Btn>
             )}

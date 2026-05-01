@@ -1,3 +1,4 @@
+import datetime
 from typing import List, Optional, Dict, Any
 from src.database.db_service import db
 from src.type.models import JobPosting
@@ -51,24 +52,89 @@ class JobDataAccess:
         row = await db.fetchrow(query, job_id)
         return JobPosting(**self._format_row(row)) if row else None
 
-    async def search_by_skills(
-        self,
-        skills: List[str],
-        location: Optional[str] = None,
-        job_type: Optional[str] = None,
-        experience: Optional[str] = None,
-        limit: int = 10,
-        offset: int = 0,
-    ) -> List[JobPosting]:
-        """Search jobs by user skills with filters - CASE INSENSITIVE"""
-        if not skills:
-            return await self.get_all_active_jobs(limit=limit)
+    # async def search_by_skills(
+    #     self,
+    #     skills: List[str],
+    #     location: Optional[str] = None,
+    #     job_type: Optional[str] = None,
+    #     experience: Optional[str] = None,
+    #     limit: int = 10,
+    #     offset: int = 0,
+    # ) -> List[JobPosting]:
+    #     """Search jobs by user skills - CHỈ LẤY JOB CHƯA HẾT HẠN"""
+    #     if not skills:
+    #         return await self.get_all_active_jobs(limit=limit)
         
-        # Chuyển skills về lowercase để so sánh
-        skills_lower = [s.lower() for s in skills]
+    #     skills_lower = [s.lower() for s in skills]
         
-        # FIX: Dùng LOWER() để case-insensitive match
-        query = """
+    #     query = """
+    #         SELECT 
+    #             j."jobID" as id,
+    #             j.title,
+    #             c."companyName" as company,
+    #             j.location,
+    #             j.salary,
+    #             j.description,
+    #             j.requirement as requirements,
+    #             j."jobType" as job_type,
+    #             j."workingTime" as working_time,
+    #             j."experienceYear" as experience_year,
+    #             j."postedAt" as posted_at,
+    #             j.deadline,
+    #             j."isActive" as is_active,
+    #             i.name as industry,
+    #             array_agg(DISTINCT s.name) as skills,
+    #             COUNT(DISTINCT s."skillID") as match_count
+    #         FROM "Job" j
+    #         JOIN "Company" c ON j."companyID" = c."companyID"
+    #         LEFT JOIN "Industry" i ON j."industryID" = i.id
+    #         LEFT JOIN "JobSkill" js ON j."jobID" = js."jobID"
+    #         LEFT JOIN "Skill" s ON js."skillID" = s."skillID"
+    #         WHERE j."isActive" = true 
+    #         AND (j.deadline IS NULL OR j.deadline > NOW())
+    #         AND LOWER(s.name) = ANY($1::text[])
+    #         AND ($2::text IS NULL OR j.location ILIKE $2 OR j."shortLocation" ILIKE $2)
+    #         AND ($3::text IS NULL OR j."jobType" = $3)
+    #         AND ($4::text IS NULL OR j."experienceYear" = $4)
+    #         GROUP BY j."jobID", c."companyName", i.name
+    #         HAVING COUNT(DISTINCT s."skillID") >= 1
+    #         ORDER BY match_count DESC, j."postedAt" DESC NULLS LAST
+    #         LIMIT $5 OFFSET $6
+    #     """
+        
+    #     rows = await db.fetch(
+    #         query,
+    #         skills_lower,
+    #         f"%{location}%" if location else None,
+    #         job_type,
+    #         experience,
+    #         limit,
+    #         offset,
+    #     )
+    #     jobs = [JobPosting(**self._format_row(dict(r))) for r in rows]
+        
+    #     if not jobs:
+    #         jobs = await self.get_all_active_jobs(limit=limit)
+        
+    #     return jobs
+    
+    async def search_jobs_by_title(self, title_keywords: List[str], limit: int = 10) -> List[Dict[str, Any]]:
+        """Tìm kiếm job theo title keywords - CHỈ JOB CHƯA HẾT HẠN"""
+        if not title_keywords:
+            return []
+        
+        conditions = []
+        params = []
+        param_idx = 1
+        
+        for kw in title_keywords:
+            conditions.append(f"j.title ILIKE ${param_idx}")
+            params.append(f"%{kw}%")
+            param_idx += 1
+        
+        where_clause = " OR ".join(conditions)
+        
+        query = f"""
             SELECT 
                 j."jobID" as id,
                 j.title,
@@ -77,50 +143,36 @@ class JobDataAccess:
                 j.salary,
                 j.description,
                 j.requirement as requirements,
-                j."jobType" as job_type,
-                j."workingTime" as working_time,
                 j."experienceYear" as experience_year,
-                j."postedAt" as posted_at,
                 j.deadline,
-                j."isActive" as is_active,
-                i.name as industry,
-                array_agg(s.name) as skills,
-                COUNT(DISTINCT s."skillID") as match_count
+                array_agg(DISTINCT s.name) as skills
             FROM "Job" j
             JOIN "Company" c ON j."companyID" = c."companyID"
-            LEFT JOIN "Industry" i ON j."industryID" = i.id
             LEFT JOIN "JobSkill" js ON j."jobID" = js."jobID"
             LEFT JOIN "Skill" s ON js."skillID" = s."skillID"
-            WHERE j."isActive" = true
-              AND LOWER(s.name) = ANY($1::text[])
-              AND ($2::text IS NULL OR j.location ILIKE $2 OR j."shortLocation" ILIKE $2)
-              AND ($3::text IS NULL OR j."jobType" = $3)
-              AND ($4::text IS NULL OR j."experienceYear" = $4)
-            GROUP BY j."jobID", c."companyName", i.name
-            HAVING COUNT(DISTINCT s."skillID") >= 1
-            ORDER BY match_count DESC, j."postedAt" DESC NULLS LAST
-            LIMIT $5 OFFSET $6
+            WHERE j."isActive" = true 
+            AND (j.deadline IS NULL OR j.deadline > NOW())
+            AND ({where_clause})
+            GROUP BY j."jobID", c."companyName"
+            ORDER BY j."postedAt" DESC NULLS LAST
+            LIMIT ${param_idx}
         """
-
-        rows = await db.fetch(
-            query,
-            skills_lower,
-            f"%{location}%" if location else None,
-            job_type,
-            experience,
-            limit,
-            offset,
-        )
-        jobs = [JobPosting(**self._format_row(r)) for r in rows]
+        params.append(limit)
         
-        # FIX: Nếu không tìm thấy jobs theo skills, fallback lấy tất cả jobs active
-        if not jobs:
-            jobs = await self.get_all_active_jobs(limit=limit)
-        
-        return jobs
+        rows = await db.fetch(query, *params)
+        return [self._format_row(dict(row)) for row in rows]
 
+# Thêm method helper để kiểm tra deadline
+    def _is_job_active(self, deadline) -> bool:
+        """Kiểm tra job còn hạn không"""
+        if deadline is None:
+            return True
+        # So sánh với thời gian hiện tại
+        return deadline > datetime.now()
+
+# Sửa lại method get_all_active_jobs
     async def get_all_active_jobs(self, limit: int = 10) -> List[JobPosting]:
-        """Lấy tất cả jobs active khi không match skills"""
+        """Lấy tất cả jobs active và chưa hết hạn"""
         query = """
             SELECT 
                 j."jobID" as id,
@@ -138,19 +190,87 @@ class JobDataAccess:
                 j.deadline,
                 j."isActive" as is_active,
                 i.name as industry,
-                array_agg(s.name) as skills
+                array_agg(DISTINCT s.name) as skills
             FROM "Job" j
             JOIN "Company" c ON j."companyID" = c."companyID"
             LEFT JOIN "Industry" i ON j."industryID" = i.id
             LEFT JOIN "JobSkill" js ON j."jobID" = js."jobID"
             LEFT JOIN "Skill" s ON js."skillID" = s."skillID"
-            WHERE j."isActive" = true
+            WHERE j."isActive" = true 
+            AND (j.deadline IS NULL OR j.deadline > NOW())
             GROUP BY j."jobID", c."companyName", i.name
             ORDER BY j."postedAt" DESC NULLS LAST
             LIMIT $1
         """
         rows = await db.fetch(query, limit)
-        return [JobPosting(**self._format_row(r)) for r in rows]
+        return [JobPosting(**self._format_row(dict(r))) for r in rows]
+
+    # Sửa search_by_skills
+    async def search_by_skills(
+        self,
+        skills: List[str],
+        location: Optional[str] = None,
+        job_type: Optional[str] = None,
+        experience: Optional[str] = None,
+        limit: int = 10,
+        offset: int = 0,
+    ) -> List[JobPosting]:
+        """Search jobs by user skills - CHỈ LẤY JOB CHƯA HẾT HẠN"""
+        if not skills:
+            return await self.get_all_active_jobs(limit=limit)
+        
+        skills_lower = [s.lower() for s in skills]
+        
+        query = """
+            SELECT 
+                j."jobID" as id,
+                j.title,
+                c."companyName" as company,
+                j.location,
+                j.salary,
+                j.description,
+                j.requirement as requirements,
+                j."jobType" as job_type,
+                j."workingTime" as working_time,
+                j."experienceYear" as experience_year,
+                j."postedAt" as posted_at,
+                j.deadline,
+                j."isActive" as is_active,
+                i.name as industry,
+                array_agg(DISTINCT s.name) as skills,
+                COUNT(DISTINCT s."skillID") as match_count
+            FROM "Job" j
+            JOIN "Company" c ON j."companyID" = c."companyID"
+            LEFT JOIN "Industry" i ON j."industryID" = i.id
+            LEFT JOIN "JobSkill" js ON j."jobID" = js."jobID"
+            LEFT JOIN "Skill" s ON js."skillID" = s."skillID"
+            WHERE j."isActive" = true 
+            AND (j.deadline IS NULL OR j.deadline > NOW())
+            AND LOWER(s.name) = ANY($1::text[])
+            AND ($2::text IS NULL OR j.location ILIKE $2 OR j."shortLocation" ILIKE $2)
+            AND ($3::text IS NULL OR j."jobType" = $3)
+            AND ($4::text IS NULL OR j."experienceYear" = $4)
+            GROUP BY j."jobID", c."companyName", i.name
+            HAVING COUNT(DISTINCT s."skillID") >= 1
+            ORDER BY match_count DESC, j."postedAt" DESC NULLS LAST
+            LIMIT $5 OFFSET $6
+        """
+        
+        rows = await db.fetch(
+            query,
+            skills_lower,
+            f"%{location}%" if location else None,
+            job_type,
+            experience,
+            limit,
+            offset,
+        )
+        jobs = [JobPosting(**self._format_row(dict(r))) for r in rows]
+        
+        if not jobs:
+            jobs = await self.get_all_active_jobs(limit=limit)
+        
+        return jobs
 
     async def get_recommended_jobs(
         self, user_id: int, min_match: float = 70.0, limit: int = 10
@@ -507,3 +627,37 @@ class JobDataAccess:
         
         rows = await db.fetch(query, *params)
         return [self._format_row(dict(row)) for row in rows]
+    
+    async def get_job_details(self, job_id: int) -> Optional[Dict[str, Any]]:
+        """Lấy chi tiết job từ database bao gồm requirement, benefit, description"""
+        query = """
+            SELECT 
+                j."jobID" as id,
+                j.title,
+                c."companyName" as company,
+                j.location,
+                j.salary,
+                j.description,
+                j.requirement as requirements,
+                j.benefit,
+                j."jobType" as job_type,
+                j."workingTime" as working_time,
+                j."experienceYear" as experience_year,
+                j."postedAt" as posted_at,
+                j.deadline,
+                j."isActive" as is_active,
+                i.name as industry,
+                array_agg(DISTINCT s.name) as skills
+            FROM "Job" j
+            JOIN "Company" c ON j."companyID" = c."companyID"
+            LEFT JOIN "Industry" i ON j."industryID" = i.id
+            LEFT JOIN "JobSkill" js ON j."jobID" = js."jobID"
+            LEFT JOIN "Skill" s ON js."skillID" = s."skillID"
+            WHERE j."jobID" = $1 AND j."isActive" = true
+            AND (j.deadline IS NULL OR j.deadline > NOW())
+            GROUP BY j."jobID", c."companyName", i.name
+        """
+        row = await db.fetchrow(query, job_id)
+        if row:
+            return self._format_row(dict(row))
+        return None

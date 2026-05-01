@@ -51,22 +51,27 @@ const hasContent = (v) => {
 // ─── InlineEdit: contenteditable với UnifiedToolbar support ──────────────────
 const InlineEdit = memo(({ value = "", onChange, placeholder, style, styleConfig = {}, onStyleChange, multiline = false }) => {
   const ref = useRef(null);
-  const [html, setHtml] = useState(value);
+  const isComposing = useRef(false);
 
   useEffect(() => {
-    if (document.activeElement !== ref.current && value !== html) setHtml(value);
+    if (ref.current) ref.current.innerHTML = value || "";
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    if (document.activeElement === ref.current) return;
+    const incoming = value || "";
+    if (ref.current.innerHTML !== incoming) ref.current.innerHTML = incoming;
   }, [value]);
 
   const handleInput = useCallback(() => {
-    const newHtml = ref.current.innerHTML;
-    setHtml(newHtml);
-    onChange(newHtml);
+    if (isComposing.current || !ref.current) return;
+    onChange(ref.current.innerHTML);
   }, [onChange]);
 
-  const saveSelection = useCallback(() => {
-    const sel = window.getSelection();
-    if (sel.rangeCount > 0) sel.getRangeAt(0).cloneRange();
-  }, []);
+  const handleCompositionStart = useCallback(() => { isComposing.current = true; }, []);
+  const handleCompositionEnd = useCallback(() => { isComposing.current = false; handleInput(); }, [handleInput]);
 
   const handleFocus = useCallback(() => {
     if (onStyleChange) registerActiveField(onStyleChange, styleConfig);
@@ -75,20 +80,21 @@ const InlineEdit = memo(({ value = "", onChange, placeholder, style, styleConfig
   const handleBlur = useCallback(() => {
     setTimeout(() => {
       const active = document.activeElement;
-      const inToolbar = active?.closest(".selection-toolbar");
-      const inEditor = active === ref.current || ref.current?.contains(active);
-      if (!inToolbar && !inEditor) clearActiveField();
+      if (active?.closest(".selection-toolbar")) return;
+      if (active === ref.current || ref.current?.contains(active)) return;
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0 && !sel.isCollapsed) return;
+      clearActiveField();
     }, 200);
   }, []);
 
   const handleMouseUp = useCallback(() => {
-    saveSelection();
     if (onStyleChange) registerActiveField(onStyleChange, styleConfig);
-  }, [onStyleChange, styleConfig, saveSelection]);
+  }, [onStyleChange, styleConfig]);
 
   const handleKeyDown = useCallback((e) => {
-    if (e.key === 'Enter') document.execCommand('defaultParagraphSeparator', false, 'div');
-  }, []);
+    if (e.key === "Enter" && !multiline) e.preventDefault();
+  }, [multiline]);
 
   const sc = styleConfig || {};
   return (
@@ -98,16 +104,18 @@ const InlineEdit = memo(({ value = "", onChange, placeholder, style, styleConfig
       contentEditable
       suppressContentEditableWarning
       onInput={handleInput}
+      onCompositionStart={handleCompositionStart}
+      onCompositionEnd={handleCompositionEnd}
       onFocus={handleFocus}
       onBlur={handleBlur}
       onMouseUp={handleMouseUp}
-      onKeyUp={saveSelection}
       onKeyDown={handleKeyDown}
-      placeholder={placeholder}
-      dangerouslySetInnerHTML={{ __html: html }}
+      data-placeholder={placeholder}
       style={{
         outline: "none",
         minHeight: multiline ? 60 : 20,
+        whiteSpace: multiline ? "pre-wrap" : "normal",
+        wordBreak: "break-word",
         fontFamily: sc.fontFamily || "inherit",
         fontSize: sc.baseFontSize || "inherit",
         lineHeight: sc.lineHeight || "inherit",
@@ -115,7 +123,6 @@ const InlineEdit = memo(({ value = "", onChange, placeholder, style, styleConfig
         fontStyle: sc.fontStyle || "normal",
         textDecoration: sc.textDecoration || "none",
         color: sc.textColor || "inherit",
-        whiteSpace: multiline ? "pre-wrap" : "normal",
         ...style,
       }}
     />
@@ -148,7 +155,8 @@ const DI = memo(({ value = "", onChange, placeholder, style, multiline, styleCon
   const handleBlur = useCallback((e) => {
     commit(e.target.value);
     setTimeout(() => {
-      if (!document.activeElement?.closest(".selection-toolbar")) clearActiveField();
+      const _sel = window.getSelection();
+      if (!document.activeElement?.closest(".selection-toolbar") && !(_sel && _sel.rangeCount > 0 && !_sel.isCollapsed)) clearActiveField();
     }, 200);
   }, [commit]);
 
@@ -208,16 +216,22 @@ const EF = memo(({ value = "", onChange, placeholder, style, multiline, isEdit, 
 // ─── TitleEdit: contenteditable cho titles ────────────────────────────────────
 const TitleEdit = memo(({ value, onChange, style, styleConfig = {}, onStyleChange }) => {
   const ref = useRef(null);
-  const [html, setHtml] = useState(value);
 
   useEffect(() => {
-    if (document.activeElement !== ref.current && value !== html) setHtml(value);
+    if (ref.current) ref.current.innerHTML = value || "";
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    if (document.activeElement === ref.current) return;
+    const incoming = value || "";
+    if (ref.current.innerHTML !== incoming) ref.current.innerHTML = incoming;
   }, [value]);
 
   const handleInput = useCallback(() => {
-    const newHtml = ref.current.innerHTML;
-    setHtml(newHtml);
-    onChange(newHtml);
+    if (!ref.current) return;
+    onChange(ref.current.innerHTML);
   }, [onChange]);
 
   const handleFocus = useCallback(() => {
@@ -227,7 +241,11 @@ const TitleEdit = memo(({ value, onChange, style, styleConfig = {}, onStyleChang
   const handleBlur = useCallback(() => {
     setTimeout(() => {
       const active = document.activeElement;
-      if (!active?.closest(".selection-toolbar") && active !== ref.current) clearActiveField();
+      if (active?.closest(".selection-toolbar")) return;
+      if (active === ref.current || ref.current?.contains(active)) return;
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0 && !sel.isCollapsed) return;
+      clearActiveField();
     }, 200);
   }, []);
 
@@ -245,14 +263,13 @@ const TitleEdit = memo(({ value, onChange, style, styleConfig = {}, onStyleChang
       onFocus={handleFocus}
       onBlur={handleBlur}
       onMouseUp={handleMouseUp}
-      dangerouslySetInnerHTML={{ __html: html }}
       style={{ outline: "none", fontFamily: styleConfig?.fontFamily || "inherit", flex: 1, width: "100%", ...style }}
     />
   );
 });
 
 // ─── SideHead: sidebar section header ────────────────────────────────────────
-const SideHead = memo(({ sectionKey, isEdit, getTitle, updateTitle, onAdd, styleConfig, onStyleChange }) => {
+const SideHead = memo(({ sectionKey, isEdit, getTitle, updateTitle, onAdd, styleConfig, onStyleChange, onAIAssist }) => {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, borderBottom: "1px solid rgba(255,255,255,0.2)", paddingBottom: 4 }}>
       {isEdit ? (
@@ -270,15 +287,41 @@ const SideHead = memo(({ sectionKey, isEdit, getTitle, updateTitle, onAdd, style
             : getTitle(sectionKey)}
         </div>
       )}
-      {isEdit && onAdd && (
+      {/* {isEdit && onAdd && (
         <button onClick={onAdd} style={{ padding: "2px 6px", fontSize: 10, background: "rgba(255,255,255,0.15)", border: "1px dashed rgba(255,255,255,0.3)", borderRadius: 3, color: "white", marginLeft: 6, cursor: "pointer" }}>+</button>
+      )} */}
+      {isEdit && (
+        <div style={{ display: "flex", gap: 4 }}>
+          {onAIAssist && (
+            <button
+              onClick={() => onAIAssist(sectionKey)}
+              style={{ padding: "2px 6px", fontSize: 10, background: "rgba(255,255,255,0.15)", border: "1px dashed rgba(255,255,255,0.3)", borderRadius: 20, color: "white", cursor: "pointer", marginRight: 4 }}
+            >
+              ✨
+            </button>
+          )}
+          {onAdd && <button onClick={onAdd} style={{ padding: "2px 6px", fontSize: 10, background: "rgba(255,255,255,0.15)", border: "1px dashed rgba(255,255,255,0.3)", borderRadius: 3, color: "white", cursor: "pointer" }}>+</button>}
+        </div>
       )}
     </div>
   );
 });
 
 // ─── MainHead: main area section header ──────────────────────────────────────
-const MainHead = memo(({ sectionKey, idx, isEdit, accent, getTitle, updateTitle, moveSection, deleteSection, totalSections, onAdd, styleConfig, onStyleChange }) => {
+const MainHead = memo(({
+  sectionKey,
+  idx,
+  isEdit,
+  accent,
+  getTitle,
+  updateTitle,
+  moveSection,
+  deleteSection,
+  totalSections,
+  onAdd,
+  styleConfig,
+  onStyleChange,
+  onAIAssist }) => {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
@@ -301,6 +344,15 @@ const MainHead = memo(({ sectionKey, idx, isEdit, accent, getTitle, updateTitle,
       </div>
       {isEdit && (
         <div style={{ display: "flex", gap: 4 }}>
+           {/* AI button */}
+          {onAIAssist && (
+            <button
+              onClick={() => onAIAssist(sectionKey)}
+              style={{ fontSize: 11, color: accent, background: "white", border: `1px solid ${accent}44`, borderRadius: 20, padding: "3px 10px", cursor: "pointer", marginRight: 4 }}
+            >
+              ✨ AI
+            </button>
+          )}
           {onAdd && <button onClick={onAdd} style={{ fontSize: 11, color: accent, background: "white", border: `1px solid ${accent}44`, borderRadius: 4, padding: "3px 10px", cursor: "pointer" }}>+ Thêm</button>}
           {[["↑", -1], ["↓", 1], ["×", 0]].map(([lbl, dir]) => {
             if (lbl === "×") {
@@ -382,6 +434,8 @@ export default function ModernCV({
   setSectionTitles,
   useSampleData = false,
   forceReset,
+  editorResetKey = 0,
+  onAIAssist,
 }) {
   const textColor = styleConfig.textColor || "#222";
 
@@ -396,6 +450,9 @@ export default function ModernCV({
   const [localOrder, setLocalOrder] = useState(() => shouldUseSample ? SAMPLE_SECTION_ORDER : sectionOrder);
   const [localTitles, setLocalTitles] = useState(() => shouldUseSample ? SAMPLE_SECTION_TITLES : sectionTitles);
   const isUserEditing = useRef(false);
+
+  // editorResetKey từ EditorScreen — tăng khi user nhấn "Tạo lại từ đầu"
+  const resetKey = editorResetKey;
 
   useEffect(() => {
     if (isUserEditing.current) return;
@@ -454,7 +511,7 @@ export default function ModernCV({
   const moveSection = useCallback((idx, dir) => {
     const ni = idx + dir;
     if (ni < 0 || ni >= localOrder.length) return;
-    const arr = [...localOrder]; [arr[idx], arr[ni]] = [arr[ni], arr[idx]];
+    const arr = [...localOrder];[arr[idx], arr[ni]] = [arr[ni], arr[idx]];
     setLocalOrder(arr); if (setSectionOrder) setSectionOrder(arr);
   }, [localOrder, setSectionOrder]);
 
@@ -482,7 +539,7 @@ export default function ModernCV({
   const hasContact = ['email', 'phone', 'address', 'linkedin'].some(k => hasContent(pi[k]));
 
   return (
-    <div id="cv-paper" className="cv-paper" style={{ width: "100%", maxWidth: "794px", minHeight: "1123px", background: "white", display: "flex", fontFamily: styleConfig.fontFamily || "'DM Sans', sans-serif", fontSize: styleConfig.baseFontSize || 13, lineHeight: styleConfig.lineHeight || 1.6, boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }}>
+    <div key={resetKey} id="cv-paper" className="cv-paper" style={{ width: "100%", maxWidth: "794px", minHeight: "1123px", background: "white", display: "flex", fontFamily: styleConfig.fontFamily || "'DM Sans', sans-serif", fontSize: styleConfig.baseFontSize || 13, lineHeight: styleConfig.lineHeight || 1.6, boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }}>
       {/* Sidebar */}
       <div style={{ width: "40%", background: accent, padding: "32px 20px", color: "white", flexShrink: 0 }}>
         {/* Avatar */}
@@ -501,7 +558,7 @@ export default function ModernCV({
         {/* Contact */}
         {(isEdit || hasContact) && (
           <div style={{ marginBottom: 20 }}>
-            <SideHead sectionKey="contact" isEdit={isEdit} getTitle={getTitle} updateTitle={updateTitle} styleConfig={styleConfig} onStyleChange={onStyleChange} />
+            <SideHead sectionKey="contact" isEdit={isEdit} getTitle={getTitle} updateTitle={updateTitle} styleConfig={styleConfig} onStyleChange={onStyleChange} onAIAssist={onAIAssist} />
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {[["✉", "email"], ["📱", "phone"], ["📍", "address"], ["🔗", "linkedin"]].map(([icon, key]) => {
                 if (!isEdit && !hasContent(pi[key])) return null;
@@ -521,7 +578,7 @@ export default function ModernCV({
         {/* Skills */}
         {(isEdit || filteredSkills.length > 0) && (
           <div style={{ marginBottom: 20 }}>
-            <SideHead sectionKey="skills" isEdit={isEdit} getTitle={getTitle} updateTitle={updateTitle} onAdd={() => addItem("skills", { category: "", items: "" })} styleConfig={styleConfig} onStyleChange={onStyleChange} />
+            <SideHead sectionKey="skills" isEdit={isEdit} getTitle={getTitle} updateTitle={updateTitle} onAdd={() => addItem("skills", { category: "", items: "" })} styleConfig={styleConfig} onStyleChange={onStyleChange} onAIAssist={onAIAssist} />
             {filteredSkills.map((sk, idx) => (
               <SidebarItem key={idx} section="skills" idx={idx} total={filteredSkills.length} isEdit={isEdit} moveItem={moveItem} delItem={delItem}>
                 <DI value={sk.category || ""} onChange={v => updArr("skills", idx, "category", v)} placeholder="Nhóm kỹ năng"
@@ -538,7 +595,7 @@ export default function ModernCV({
         {/* Certifications */}
         {(isEdit || filteredCerts.length > 0) && (
           <div style={{ marginBottom: 20 }}>
-            <SideHead sectionKey="certifications" isEdit={isEdit} getTitle={getTitle} updateTitle={updateTitle} onAdd={() => addItem("certifications", { name: "", issuer: "", year: "", score: "" })} styleConfig={styleConfig} onStyleChange={onStyleChange} />
+            <SideHead sectionKey="certifications" isEdit={isEdit} getTitle={getTitle} updateTitle={updateTitle} onAdd={() => addItem("certifications", { name: "", issuer: "", year: "", score: "" })} styleConfig={styleConfig} onStyleChange={onStyleChange} onAIAssist={onAIAssist} />
             {filteredCerts.map((cert, idx) => (
               <SidebarItem key={idx} section="certifications" idx={idx} total={filteredCerts.length} isEdit={isEdit} moveItem={moveItem} delItem={delItem}>
                 <DI value={cert.name || ""} onChange={v => updArr("certifications", idx, "name", v)} placeholder="Tên chứng chỉ"
@@ -565,7 +622,7 @@ export default function ModernCV({
           if (key === "summary" && (isEdit || hasContent(localData.summary))) {
             return (
               <div key={key} style={{ marginBottom: 24 }}>
-                <MainHead sectionKey="summary" idx={idx} isEdit={isEdit} accent={accent} getTitle={getTitle} updateTitle={updateTitle} moveSection={moveSection} deleteSection={deleteSection} totalSections={localOrder.length} styleConfig={styleConfig} onStyleChange={onStyleChange} />
+                <MainHead sectionKey="summary" idx={idx} isEdit={isEdit} accent={accent} getTitle={getTitle} updateTitle={updateTitle} moveSection={moveSection} deleteSection={deleteSection} totalSections={localOrder.length} styleConfig={styleConfig} onStyleChange={onStyleChange} onAIAssist={onAIAssist}/>
                 <EF value={localData.summary || ""} onChange={v => upd("summary", v)} placeholder="Tóm tắt bản thân..." multiline richText isEdit={isEdit} textColor={textColor} style={{ color: "#444", lineHeight: 1.7 }} styleConfig={styleConfig} onStyleChange={onStyleChange} />
               </div>
             );
@@ -575,7 +632,7 @@ export default function ModernCV({
           if (key === "experiences" && (isEdit || filteredExp.length > 0)) {
             return (
               <div key={key} style={{ marginBottom: 24 }}>
-                <MainHead sectionKey="experiences" idx={idx} isEdit={isEdit} accent={accent} getTitle={getTitle} updateTitle={updateTitle} moveSection={moveSection} deleteSection={deleteSection} totalSections={localOrder.length} onAdd={() => addItem("experiences", { company: "", position: "", duration: "", description: "" })} styleConfig={styleConfig} onStyleChange={onStyleChange} />
+                <MainHead sectionKey="experiences" idx={idx} isEdit={isEdit} accent={accent} getTitle={getTitle} updateTitle={updateTitle} moveSection={moveSection} deleteSection={deleteSection} totalSections={localOrder.length} onAdd={() => addItem("experiences", { company: "", position: "", duration: "", description: "" })} styleConfig={styleConfig} onStyleChange={onStyleChange} onAIAssist={onAIAssist} />
                 {filteredExp.map((exp, i) => (
                   <div key={i} className="item-wrapper" style={{ position: "relative", borderLeft: `3px solid ${accent}33`, paddingLeft: 12, marginBottom: 16, paddingTop: isEdit ? 4 : 0, paddingRight: isEdit ? 90 : 0 }}>
                     {isEdit && <div style={{ position: "absolute", top: 0, right: 0 }}><ItemControls onUp={() => moveItem("experiences", i, -1)} onDown={() => moveItem("experiences", i, 1)} onDelete={() => delItem("experiences", i)} isFirst={i === 0} isLast={i === filteredExp.length - 1} accent={accent} /></div>}
@@ -595,7 +652,7 @@ export default function ModernCV({
           if (key === "education" && (isEdit || filteredEdu.length > 0)) {
             return (
               <div key={key} style={{ marginBottom: 24 }}>
-                <MainHead sectionKey="education" idx={idx} isEdit={isEdit} accent={accent} getTitle={getTitle} updateTitle={updateTitle} moveSection={moveSection} deleteSection={deleteSection} totalSections={localOrder.length} onAdd={() => addItem("education", { institution: "", degree: "", year: "", gpa: "" })} styleConfig={styleConfig} onStyleChange={onStyleChange} />
+                <MainHead sectionKey="education" idx={idx} isEdit={isEdit} accent={accent} getTitle={getTitle} updateTitle={updateTitle} moveSection={moveSection} deleteSection={deleteSection} totalSections={localOrder.length} onAdd={() => addItem("education", { institution: "", degree: "", year: "", gpa: "" })} styleConfig={styleConfig} onStyleChange={onStyleChange} onAIAssist={onAIAssist} />
                 {filteredEdu.map((edu, i) => (
                   <div key={i} className="item-wrapper" style={{ position: "relative", borderLeft: `3px solid ${accent}33`, paddingLeft: 12, marginBottom: 16, paddingTop: isEdit ? 4 : 0, paddingRight: isEdit ? 90 : 0 }}>
                     {isEdit && <div style={{ position: "absolute", top: 0, right: 0 }}><ItemControls onUp={() => moveItem("education", i, -1)} onDown={() => moveItem("education", i, 1)} onDelete={() => delItem("education", i)} isFirst={i === 0} isLast={i === filteredEdu.length - 1} accent={accent} /></div>}
@@ -615,7 +672,7 @@ export default function ModernCV({
           if (key === "awards" && (isEdit || filteredAwards.length > 0)) {
             return (
               <div key={key} style={{ marginBottom: 24 }}>
-                <MainHead sectionKey="awards" idx={idx} isEdit={isEdit} accent={accent} getTitle={getTitle} updateTitle={updateTitle} moveSection={moveSection} deleteSection={deleteSection} totalSections={localOrder.length} onAdd={() => addItem("awards", { title: "", issuer: "", year: "", description: "" })} styleConfig={styleConfig} onStyleChange={onStyleChange} />
+                <MainHead sectionKey="awards" idx={idx} isEdit={isEdit} accent={accent} getTitle={getTitle} updateTitle={updateTitle} moveSection={moveSection} deleteSection={deleteSection} totalSections={localOrder.length} onAdd={() => addItem("awards", { title: "", issuer: "", year: "", description: "" })} styleConfig={styleConfig} onStyleChange={onStyleChange} onAIAssist={onAIAssist} />
                 {filteredAwards.map((aw, i) => (
                   <div key={i} className="item-wrapper" style={{ position: "relative", borderLeft: `3px solid ${accent}33`, paddingLeft: 12, marginBottom: 16, paddingTop: isEdit ? 4 : 0, paddingRight: isEdit ? 90 : 0 }}>
                     {isEdit && <div style={{ position: "absolute", top: 0, right: 0 }}><ItemControls onUp={() => moveItem("awards", i, -1)} onDown={() => moveItem("awards", i, 1)} onDelete={() => delItem("awards", i)} isFirst={i === 0} isLast={i === filteredAwards.length - 1} accent={accent} /></div>}
@@ -635,7 +692,7 @@ export default function ModernCV({
           if (key === "activities" && (isEdit || filteredActs.length > 0)) {
             return (
               <div key={key} style={{ marginBottom: 24 }}>
-                <MainHead sectionKey="activities" idx={idx} isEdit={isEdit} accent={accent} getTitle={getTitle} updateTitle={updateTitle} moveSection={moveSection} deleteSection={deleteSection} totalSections={localOrder.length} onAdd={() => addItem("activities", { organization: "", role: "", duration: "", description: "" })} styleConfig={styleConfig} onStyleChange={onStyleChange} />
+                <MainHead sectionKey="activities" idx={idx} isEdit={isEdit} accent={accent} getTitle={getTitle} updateTitle={updateTitle} moveSection={moveSection} deleteSection={deleteSection} totalSections={localOrder.length} onAdd={() => addItem("activities", { organization: "", role: "", duration: "", description: "" })} styleConfig={styleConfig} onStyleChange={onStyleChange} onAIAssist={onAIAssist} />
                 {filteredActs.map((act, i) => (
                   <div key={i} className="item-wrapper" style={{ position: "relative", borderLeft: `3px solid ${accent}33`, paddingLeft: 12, marginBottom: 16, paddingTop: isEdit ? 4 : 0, paddingRight: isEdit ? 90 : 0 }}>
                     {isEdit && <div style={{ position: "absolute", top: 0, right: 0 }}><ItemControls onUp={() => moveItem("activities", i, -1)} onDown={() => moveItem("activities", i, 1)} onDelete={() => delItem("activities", i)} isFirst={i === 0} isLast={i === filteredActs.length - 1} accent={accent} /></div>}
@@ -654,7 +711,16 @@ export default function ModernCV({
           return null;
         })}
       </div>
-      <style>{`.item-wrapper:hover .item-controls { opacity: 1 !important; }`}</style>
+      <style>{`
+          [data-rich-editor][data-placeholder]:empty:before {
+            content: attr(data-placeholder);
+            color: #bbb;
+            pointer-events: none;
+            font-style: italic;
+          }
+          [data-rich-editor][data-placeholder]:focus:empty:before { color: #ccc; }
+          .item-wrapper:hover .item-controls { opacity: 1 !important; }
+        `}</style>
     </div>
   );
 }

@@ -8,6 +8,16 @@ import { getToken } from '../../../utils/auth'
 
 const API = 'http://localhost:3000/api'
 
+// Đọc data chi tiết CV từ cv_builder_state[cvId].data
+function getCVData(cvId) {
+  try {
+    const raw = localStorage.getItem('cv_builder_state')
+    if (!raw) return {}
+    const state = JSON.parse(raw)
+    return state[cvId]?.data || {}
+  } catch { return {} }
+}
+
 const AI_INSIGHTS = [
   { icon: '👁', text: 'Bạn thường xem kỹ JD có "React", "TypeScript" và lương >25tr', source: 'Từ 47 lần xem' },
   { icon: '🔖', text: '80% tin bạn lưu là Hybrid hoặc Remote', source: 'Từ 23 lần lưu' },
@@ -69,7 +79,7 @@ function ImportCVModal({ onClose, onImport, authHeaders, cvList = [] }) {
     }} onClick={onClose}>
       <div style={{
         background: 'var(--surface, #fff)', borderRadius: 14,
-        width: '100%', maxWidth: 860, maxHeight: '85vh',
+        width: '100%', maxWidth: 1000, maxHeight: '85vh',
         display: 'flex', flexDirection: 'column',
         boxShadow: '0 24px 64px rgba(0,0,0,0.2)',
         overflow: 'hidden',
@@ -123,7 +133,7 @@ function ImportCVModal({ onClose, onImport, authHeaders, cvList = [] }) {
 
           {/* CV List */}
           <div style={{
-            width: 280, borderRight: '1px solid var(--border)',
+            width: 'fit-content', borderRight: '1px solid var(--border)',
             overflowY: 'auto', padding: 12, flexShrink: 0,
           }}>
             {tab === 'analyzed' && loadingAnalyzed ? (
@@ -295,7 +305,7 @@ function AnalyzedCVPreview({ cv, authHeaders }) {
       </div>
       {summary && (
         <PreviewSection label="Tóm tắt">
-          <p style={{ margin: 0, color: 'var(--ink2)', fontSize: 12 }}>{summary}</p>
+          <p style={{ margin: 0, color: 'var(--ink2)', fontSize: 12 }} dangerouslySetInnerHTML={{ __html: summary }} />
         </PreviewSection>
       )}
       {experiences.length > 0 && (
@@ -305,7 +315,7 @@ function AnalyzedCVPreview({ cv, authHeaders }) {
               <span style={{ fontWeight: 600 }}>{e.position}</span>
               {e.company && <span style={{ color: 'var(--ink3)' }}> · {e.company}</span>}
               {e.duration && <span style={{ color: 'var(--ink4)', fontSize: 11 }}> ({e.duration})</span>}
-              {e.description && <div style={{ color: 'var(--ink3)', fontSize: 11, marginTop: 2 }}>{e.description}</div>}
+              {e.description && <div style={{ color: 'var(--ink3)', fontSize: 11, marginTop: 2 }} dangerouslySetInnerHTML={{ __html: e.description }} />}
             </div>
           ))}
         </PreviewSection>
@@ -342,9 +352,9 @@ function AnalyzedCVPreview({ cv, authHeaders }) {
 
 // ─── Preview CV tự tạo ────────────────────────────────────────────────────────
 function LocalCVPreview({ cv }) {
-  // cv._data = { templateId, data: { personalInfo, experiences, ... }, cvName, ... }
-  // Nên lấy data qua cv._data.data
-  const cvData = cv._data?.data || {}
+  // Data chi tiết lưu trong cv_builder_state[cv.id].data, không nằm trong _cvList
+  const [cvData, setCvData] = useState({})
+  useEffect(() => { setCvData(getCVData(cv.id)) }, [cv.id])
 
   const info = cvData.personalInfo || {}
   const experiences = cvData.experiences || []
@@ -393,7 +403,7 @@ function LocalCVPreview({ cv }) {
               <span style={{ fontWeight: 600 }}>{e.position}</span>
               {e.company && <span style={{ color: 'var(--ink3)' }}> · {e.company}</span>}
               {e.duration && <span style={{ color: 'var(--ink4)', fontSize: 11 }}> ({e.duration})</span>}
-              {e.description && <div style={{ color: 'var(--ink3)', fontSize: 11, marginTop: 2 }}>{e.description}</div>}
+              {e.description && <div style={{ color: 'var(--ink3)', fontSize: 11, marginTop: 2 }} dangerouslySetInnerHTML={{ __html: e.description }} />}
             </div>
           ))}
         </PreviewSection>
@@ -452,7 +462,27 @@ function PreviewSection({ label, children }) {
   )
 }
 
-function ProfileScreen({ onNavigate, cvList = [] }) {
+function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
+  const [cvList, setCvList] = useState(() => {
+    try {
+      const raw = localStorage.getItem('cv_builder_state')
+      const state = raw ? JSON.parse(raw) : {}
+      const list = state._cvList
+      return Array.isArray(list) && list.length > 0 ? list : cvListProp
+    } catch { return cvListProp }
+  })
+  useEffect(() => {
+    const sync = () => {
+      try {
+        const raw = localStorage.getItem('cv_builder_state')
+        const state = raw ? JSON.parse(raw) : {}
+        if (Array.isArray(state._cvList)) setCvList(state._cvList)
+      } catch {}
+    }
+    window.addEventListener('storage', sync)
+    window.addEventListener('focus', sync)
+    return () => { window.removeEventListener('storage', sync); window.removeEventListener('focus', sync) }
+  }, [])
   const navigate = useNavigate()
   const token = getToken()
   const authRef = useRef({
@@ -708,10 +738,12 @@ function ProfileScreen({ onNavigate, cvList = [] }) {
           experienceYear: d.experienceYear ?? prev.experienceYear,
           careerLevel: d.careerLevel ?? prev.careerLevel,
         }))
-        setImportMsg('✓ Đã nhập từ CV phân tích thành công')
+        setImportMsg('✓ Đã nhập từ CV phân tích thành công. Đang tải lại...')
+        setTimeout(() => window.location.reload(), 1200)
+        return
       } else {
-        // CV local: cv._data.data chứa personalInfo, experiences, ...
-        const cvData = cv._data?.data || {}
+        // CV local: data nằm trong cv_builder_state[cv.id].data
+        const cvData = getCVData(cv.id)
         const personalInfo = cvData.personalInfo || {}
         const experiences = Array.isArray(cvData.experiences) ? cvData.experiences : []
 
@@ -762,7 +794,9 @@ function ProfileScreen({ onNavigate, cvList = [] }) {
           experienceYear: d.experienceYear ?? prev.experienceYear,
           careerLevel: d.careerLevel ?? prev.careerLevel,
         }))
-        setImportMsg('✓ Đã nhập thông tin từ CV thành công. Kiểm tra và lưu lại nhé!')
+        setImportMsg('✓ Đã nhập thông tin từ CV thành công. Đang tải lại...')
+        setTimeout(() => window.location.reload(), 1200)
+        return
       }
     } catch (err) {
       console.error('importFromCV:', err)
@@ -778,18 +812,6 @@ function ProfileScreen({ onNavigate, cvList = [] }) {
         <Sidebar activeItem="profile" onNavigate={onNavigate} />
         <div className="main-content">
           <Topbar title="👤 Hồ sơ & Cài đặt AI">
-            {/* <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 15, paddingRight: 15, borderRight: '1px solid var(--border)' }}> */}
-            {/* <span style={{ fontSize: 13, fontWeight: 600 }}>{profile?.fullName}</span>
-              <div style={{
-                width: 32, height: 32, borderRadius: '50%', overflow: 'hidden',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, background: 'rgb(189, 114, 71)'
-              }}>
-                {profile?.avatar
-                  ? <img src={`${API}${profile.avatar}`} alt="avt" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : avatarLetters
-                }
-              </div> */}
-            {/* </div> */}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {saveMsg && (

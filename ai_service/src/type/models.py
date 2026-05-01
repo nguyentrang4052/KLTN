@@ -27,6 +27,10 @@ class CVAnalysis(BaseModel):
     extracted_skills: List[str] = Field(default_factory=list)
     experience_years: int = Field(ge=0, default=0)
     career_trajectory: Optional[str] = None
+    certifications: List[str] = Field(default_factory=list)  # Thêm certifications
+    desired_job_title: Optional[str] = None  # Thêm job title mong muốn
+    summary: Optional[str] = None
+    suitable_job_titles: List[str] = Field(default_factory=list)
 
 
 class JobPosting(BaseModel):
@@ -131,6 +135,7 @@ class CacheResult(BaseModel):
 class SessionContext(BaseModel):
     """Lưu context cho multi-turn conversation"""
     user_id: str
+    title: str = "New Chat"
     cv_analysis: Optional[CVAnalysis] = None
     matched_jobs: List[Dict[str, Any]] = Field(default_factory=list)
     current_focus_job: Optional[Dict[str, Any]] = None

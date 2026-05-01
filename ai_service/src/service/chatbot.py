@@ -14,6 +14,8 @@ from src.prompt.templates import Prompts
 from src.service.job_advisor import JobAdvisor
 import structlog
 from src.database.data_access.job import JobDataAccess
+import re
+
 
 logger = structlog.get_logger()
 
@@ -48,8 +50,7 @@ class Chatbot:
         return await self._handle_chat(user_id, message, stream)
 
     async def _handle_cv_upload(
-        self, user_id: str, cv_bytes: bytes, mime_type: str
-    ) -> Dict[str, Any]:
+        self, user_id: str, cv_bytes: bytes, mime_type: str, filename: str = None) -> Dict[str, Any]:
         try:
             cv_hash = self.cv_cache.compute_file_hash(cv_bytes)
             logger.info(f"cv_upload_started: user={user_id}, size={len(cv_bytes)}, hash={cv_hash[:16]}")
@@ -63,7 +64,7 @@ class Chatbot:
                 self.cv_hashes[user_id] = cv_hash
                 
                 # ✅ QUAN TRỌNG: Lưu vào session
-                self.session_manager.set_cv_analysis(user_id, analysis)
+                self.session_manager.set_cv_analysis(user_id, analysis, filename)
                 self.session_manager.set_matched_jobs(user_id, job_matches)
                 
                 # ✅ Lưu thêm extracted_skills và experience_years để dễ truy cập
@@ -230,7 +231,7 @@ class Chatbot:
 
     async def _handle_chat(self, user_id: str, message: str, stream: bool):
         try:
-            logger.info(f"_handle_chat_start: user={user_id}, msg={message[:50]}")
+            logger.info(f"_handle_chat_start: user={user_id}, msg={message[:100]}")
             
             # Phát hiện và dịch câu hỏi sang tiếng Việt để xử lý
             original_message = message
@@ -243,7 +244,7 @@ class Chatbot:
             # Sử dụng translated_message để xử lý intent và logic
             msg_lower = translated_message.lower().strip()
             
-            # ========== KIỂM TRA TÌM KIẾM JOB TRƯỚC TIÊN ==========
+            # ========== 1. TÌM KIẾM JOB THEO YÊU CẦU ==========
             search_indicators = [
                 "tìm việc", "list job", "danh sách job", "gợi ý job", "job liên quan",
                 "việc làm", "công việc", "jobs at", "việc tại", "tuyển dụng",
@@ -251,7 +252,6 @@ class Chatbot:
             ]
             
             if any(kw in msg_lower for kw in search_indicators):
-                # Thêm user_id vào criteria
                 search_criteria = await self._extract_search_criteria(translated_message)
                 search_criteria["user_id"] = user_id
                 
@@ -259,15 +259,11 @@ class Chatbot:
                 
                 if jobs:
                     response = self._format_job_list_response(jobs, search_criteria)
-                    # Lưu jobs tìm được vào session để hỏi sâu
                     self.session_manager.set_search_result_jobs(user_id, jobs)
                 else:
                     response = f"Tôi chưa tìm thấy job phù hợp với '{message[:100]}'. Bạn có thể thử với từ khóa khác hoặc upload CV để tôi gợi ý job phù hợp hơn!"
                 
-                # Dịch câu trả lời nếu cần
                 final_response = await self._translate_response_if_needed(response, original_message)
-                
-                # Lưu vào lịch sử
                 self.session_manager.add_message(user_id, ChatMessage(role="user", content=original_message))
                 self.session_manager.add_message(user_id, ChatMessage(role="assistant", content=final_response))
                 
@@ -277,7 +273,7 @@ class Chatbot:
                     "cached": False,
                 }
             
-            # ========== KIỂM TRA JOB INQUIRY (ứng tuyển vào job cụ thể) ==========
+            # ========== 2. KIỂM TRA JOB INQUIRY (ứng tuyển vào job cụ thể) ==========
             job_inquiry_keywords = [
                 "ứng tuyển", "có thể ứng tuyển", "apply được không", "có nên apply",
                 "phù hợp không", "có phù hợp"
@@ -298,15 +294,54 @@ class Chatbot:
                         "cached": False,
                     }
             
-            # Lấy current focus job từ session
+            # ========== 3. XỬ LÝ "TÌM HIỂU" / "CHO TÔI BIẾT THÊM VỀ JOB" ==========
+            find_out_keywords = [
+                "tìm hiểu", "xem chi tiết", "chi tiết job", "thông tin job", "mô tả job",
+                "cho tôi biết thêm", "biết thêm về", "thông tin về"
+            ]
+            
+            if any(kw in msg_lower for kw in find_out_keywords):
+                # Thử lấy job từ current focus
+                current_focus_job = self.session_manager.get_current_focus_job(user_id)
+                
+                # Nếu không có, thử tìm job theo tên từ câu hỏi
+                if not current_focus_job:
+                    job_name = await self._extract_job_name_from_question(translated_message)
+                    if job_name:
+                        session = self.session_manager.get_or_create(user_id)
+                        for job in session.matched_jobs:
+                            if job_name.lower() in job.get('job_title', '').lower():
+                                current_focus_job = job
+                                self.session_manager.set_current_focus_job(user_id, job)
+                                break
+                
+                if current_focus_job:
+                    response = await self._handle_job_detail_inquiry(user_id, translated_message, current_focus_job)
+                else:
+                    job_name = await self._extract_job_name_from_question(translated_message)
+                    if job_name:
+                        response = await self._search_and_show_job_details(user_id, job_name)
+                    else:
+                        response = "Vui lòng chọn một công việc để tìm hiểu. Bạn có thể nói 'xem chi tiết job số 1' hoặc 'tìm hiểu về [tên công việc]'"
+                
+                final_response = await self._translate_response_if_needed(response, original_message)
+                self.session_manager.add_message(user_id, ChatMessage(role="user", content=original_message))
+                self.session_manager.add_message(user_id, ChatMessage(role="assistant", content=final_response))
+                
+                return {
+                    "type": "text",
+                    "content": final_response,
+                    "cached": False,
+                }
+            
+            # ========== 4. LẤY CURRENT FOCUS JOB TỪ SESSION ==========
             current_focus_job = self.session_manager.get_current_focus_job(user_id)
             
-            # Deep dive keywords (hỗ trợ cả tiếng Anh và Việt)
+            # ========== 5. DEEP DIVE VÀO JOB ĐÃ CHỌN ==========
             deep_dive_keywords = [
                 "job này", "vị trí này", "công việc này", "này khó", "học gì", 
                 "có nên apply", "ứng tuyển", "phỏng vấn", "lương job", "công ty này",
                 "thiếu kỹ năng", "cần học", "bao lâu", "cơ hội", "phù hợp không",
-                # English keywords
                 "this job", "this position", "this role", "difficult", "learn",
                 "should i apply", "interview", "salary", "company", "missing skill"
             ]
@@ -316,14 +351,16 @@ class Chatbot:
             if is_deep_dive:
                 response = await self._get_job_deep_dive_response(user_id, current_focus_job, translated_message)
             else:
+                # ========== 6. CHỌN JOB TỪ DANH SÁCH ==========
                 job_selected = await self._try_select_job(user_id, translated_message)
                 if job_selected:
                     response = self._format_job_selected_response(job_selected)
                 else:
-                    # Xử lý nhanh với translated_message
+                    # ========== 7. XỬ LÝ NHANH CÁC INTENT ==========
                     response = await self._handle_quick_intent(user_id, translated_message)
                     
                     if not response:
+                        # ========== 8. CAREER COACH (LLM TỔNG QUÁT) ==========
                         cv_summary = self.session_manager.get_session_summary(user_id)
                         history = self._format_conversation_history(user_id, limit=4)
                         prompt = Prompts.career_coach_advice(cv_summary, history, translated_message)
@@ -336,11 +373,14 @@ class Chatbot:
                             response = self._clean_response(response)
                         except asyncio.TimeoutError:
                             response = "Xin lỗi, tôi đang bận. Bạn thử hỏi lại nhé!"
+                        except Exception as e:
+                            logger.error(f"LLM complete error: {str(e)}")
+                            response = "Xin lỗi, có lỗi xảy ra. Vui lòng thử lại sau."
             
-            # Dịch câu trả lời nếu câu hỏi gốc bằng tiếng Anh
+            # ========== 9. DỊCH CÂU TRẢ LỜI NẾU CẦN ==========
             final_response = await self._translate_response_if_needed(response, original_message)
             
-            # Lưu vào lịch sử (lưu câu hỏi gốc)
+            # ========== 10. LƯU VÀO LỊCH SỬ ==========
             self.session_manager.add_message(user_id, ChatMessage(role="user", content=original_message))
             self.session_manager.add_message(user_id, ChatMessage(role="assistant", content=final_response))
             
@@ -351,10 +391,10 @@ class Chatbot:
             }
             
         except Exception as e:
-            logger.error(f"chat_unexpected_error: {str(e)}")
+            logger.error(f"chat_unexpected_error: {str(e)}", exc_info=True)
             return {
                 "type": "text",
-                "content": f"Có lỗi: {str(e)[:100]}",
+                "content": f"Xin lỗi, có lỗi xảy ra: {str(e)[:100]}",
                 "error": True,
             }
 
@@ -921,7 +961,6 @@ class Chatbot:
         message_lower = message.lower()
         
         # Pattern 1: "job số 1", "việc thứ 2", "job 3", "công việc thứ 4"
-        import re
         number_match = re.search(r'(?:job|việc|công việc|số|thứ)\s*(\d+)', message_lower)
         if number_match:
             idx = int(number_match.group(1)) - 1
@@ -1026,14 +1065,14 @@ class Chatbot:
             lines.append(f"{role}: {content}")
         return "\n".join(lines)
 
-        # Thêm method xử lý câu hỏi về job cụ thể
+
     async def _handle_job_inquiry(self, user_id: str, message: str) -> Optional[Dict]:
-        """Xử lý câu hỏi về một công việc cụ thể (ứng tuyển được không)"""
+        """Xử lý câu hỏi về một công việc cụ thể"""
         
-        # Trích xuất thông tin job từ câu hỏi
         job_info = await self._extract_job_info(message)
         
         if not job_info:
+            logger.info(f"No job info extracted from: {message[:50]}")
             return None
         
         session = self.session_manager.get_or_create(user_id)
@@ -1043,6 +1082,9 @@ class Chatbot:
             return {
                 "response": "Bạn chưa upload CV. Hãy upload CV để tôi phân tích và tư vấn cho bạn nhé!"
             }
+        
+        logger.info(f"Analyzing job fit for: {job_info['title']}")
+        logger.info(f"CV skills: {cv_analysis.extracted_skills}")
         
         # Phân tích mức độ phù hợp
         result = await self.job_advisor.analyze_job_fit(
@@ -1058,63 +1100,67 @@ class Chatbot:
         job = result['job']
         comp = result['comparison']
         
-        # Format response chi tiết
-        response = self._format_job_fit_response(job, comp)
+        # Log chi tiết
+        logger.info(f"Job fit result: score={comp['total_score']}%")
+        logger.info(f"  Skill overlap: {comp.get('skill_overlap', [])}")
+        logger.info(f"  Skill gap: {comp.get('skill_gap', [])}")
         
-        # Lưu job này vào session để hỏi sâu hơn
-        self.session_manager.set_current_focus_job(user_id, {
+        # Tạo job object với đầy đủ thông tin
+        job_for_session = {
             'job_id': str(job['id']),
             'job_title': job['title'],
             'company': job['company'],
+            'location': job.get('location', 'N/A'),
+            'salary': job.get('salary', 'Thương lượng'),
             'match_score': comp['total_score'],
-            'skill_overlap': comp['skill_overlap'],
-            'skill_gap': comp['skill_gap'],
-            'match_reasons': [f"Kỹ năng phù hợp: {len(comp['skill_overlap'])}/{len(job.get('skills', []))}"]
-        })
+            'skill_overlap': comp.get('skill_overlap', []),  # Đảm bảo có field này
+            'skill_gap': comp.get('skill_gap', []),          # Đảm bảo có field này
+            'match_reasons': comp.get('match_reasons', []),
+            'description': job.get('description', ''),
+            'requirements': job.get('requirements', '')
+        }
         
-        return {"response": response, "job_found": True}
+        # Lưu vào session
+        self.session_manager.set_current_focus_job(user_id, job_for_session)
+        
+        # Format response
+        response = self._format_job_fit_response(job, comp)
+        
+        return {"response": response, "job_found": True, "job": job_for_session}
 
 
     async def _extract_job_info(self, message: str) -> Optional[Dict]:
         """Trích xuất thông tin công việc từ câu hỏi của user"""
         msg_lower = message.lower()
         
-        # Pattern 1: "ứng tuyển vào công việc [tên job] tại [công ty]"
         import re
-        patterns = [
-            # "công việc X tại Y"
-            r'(?:ứng tuyển|apply|vào)?\s*(?:công việc|việc|job|vị trí)\s+["\']?([^"\' tại]+)["\']?\s*(?:tại|ở|từ)\s+([^.\n]+)',
-            # "job X của công ty Y"
-            r'job\s+["\']?([^"\' của]+)["\']?\s*(?:của|của công ty)\s+([^.\n]+)',
-            # "vị trí X"
-            r'(?:vị trí|công việc|job)\s+["\']?([^"\'.\n]+)["\']?'
-        ]
         
-        for pattern in patterns:
-            match = re.search(pattern, msg_lower, re.IGNORECASE)
-            if match:
-                job_title = match.group(1).strip()
-                company = match.group(2).strip() if len(match.groups()) > 1 else None
-                return {"title": job_title, "company": company}
+        # Loại bỏ các từ không cần thiết
+        clean_msg = re.sub(r'(tôi|có thể|ứng tuyển|hay không|không|được|vào|vị trí)', '', msg_lower)
         
-        # Pattern 2: Nếu message có yêu cầu cụ thể (tuổi, kinh nghiệm...)
-        # Đây là case từ ảnh của bạn: "Nhân Viên Kinh Doanh Điện Năng Lượng Mặt Trời..."
-        # Trích xuất title từ message
+        # Pattern 1: "Business Analyst" - các job title phổ biến
         common_titles = [
-            "nhân viên kinh doanh", "kế toán", "developer", "react", "java", "python",
-            "frontend", "backend", "fullstack", "devops", "data analyst", "tester",
-            "quản lý", "trưởng phòng", "giám đốc", "thực tập sinh"
+            "business analyst", "ba", "data analyst", "data scientist", "software engineer",
+            "developer", "tester", "qa", "project manager", "product manager", "scrum master",
+            "devops", "system admin", "network engineer", "database admin", "dba",
+            "kế toán", "accountant", "nhân viên kinh doanh", "sales", "marketing",
+            "nhân sự", "hr", "tuyển dụng", "recruiter", "kỹ sư cầu nối", "bridge engineer"
         ]
         
         for title in common_titles:
-            if title in msg_lower:
-                # Tìm title đầy đủ hơn
-                words = msg_lower.split()
-                for i, word in enumerate(words):
-                    if title in word.lower():
-                        # Lấy cụm từ từ vị trí tìm thấy
-                        job_title = ' '.join(words[i:i+5])  # Lấy 5 từ
-                        return {"title": job_title, "company": None}
+            if title in clean_msg:
+                return {"title": title, "company": None}
+        
+        # Pattern 2: Trích xuất cụm từ giữa "ứng tuyển" và "hay"
+        match = re.search(r'ứng tuyển\s+(.+?)\s+(?:hay|có|tại|ở)', msg_lower)
+        if match:
+            job_title = match.group(1).strip()
+            return {"title": job_title, "company": None}
+        
+        # Pattern 3: Lấy toàn bộ nếu không match
+        words = clean_msg.split()
+        if len(words) >= 2:
+            return {"title": ' '.join(words[:3]), "company": None}
         
         return None
 
@@ -1176,7 +1222,7 @@ class Chatbot:
         response += """
     ---
     💬 **Bạn muốn hỏi thêm:**
-    • "Cần học những kỹ năng này ở đâu?"
+    • "Tôi cần bổ sung thêm kỹ năng gì để phù hợp hơn?"
     • "Lộ trình học trong bao lâu?"
     • "Có nên apply ngay không?"
     • "Phỏng vấn vị trí này thường hỏi gì?"
@@ -1184,3 +1230,311 @@ class Chatbot:
     Hãy cho tôi biết bạn cần tư vấn thêm nhé! 🎯"""
         
         return response
+    
+    async def _handle_job_detail_inquiry(self, user_id: str, message: str, job: Dict) -> str:
+        """Xử lý khi user muốn tìm hiểu chi tiết về một job"""
+        
+        # Kiểm tra job có tồn tại không
+        if not job:
+            return "Vui lòng chọn một công việc để tìm hiểu. Bạn có thể nói 'xem chi tiết job số 1'."
+        
+        job_id = job.get('job_id')
+        if not job_id:
+            return "Không tìm thấy thông tin chi tiết về công việc này."
+        
+        # Lấy chi tiết job từ database
+        job_da = JobDataAccess()
+        full_job = await job_da.get_job_details(int(job_id))
+        
+        if not full_job:
+            return f"Rất tiếc, công việc '{job.get('job_title', 'này')}' có thể đã hết hạn hoặc không còn tuyển dụng."
+        
+        # Lấy CV analysis từ session
+        cv_analysis = self.session_manager.get_cv_analysis(user_id)
+        
+        # Phân tích mức độ phù hợp
+        if cv_analysis:
+            comparison = await self._compare_cv_with_job_requirements(cv_analysis, full_job)
+        else:
+            comparison = None
+        
+        # Format response chi tiết
+        response = self._format_job_detail_response(full_job, comparison)
+        
+        # Lưu job vào current focus với đầy đủ thông tin
+        self.session_manager.set_current_focus_job(user_id, {
+            'job_id': str(full_job['id']),
+            'job_title': full_job['title'],
+            'company': full_job['company'],
+            'match_score': comparison.get('total_score', 0) if comparison else 0,
+            'skill_overlap': comparison.get('skill_overlap', []) if comparison else [],
+            'skill_gap': comparison.get('skill_gap', []) if comparison else [],
+            'match_reasons': comparison.get('match_reasons', []) if comparison else []
+        })
+        
+        return response
+
+
+    async def _compare_cv_with_job_requirements(self, cv_analysis: CVAnalysis, job: Dict) -> Dict[str, Any]:
+        """So sánh CV với requirements của job"""
+        
+        cv_skills = set([s.lower() for s in (cv_analysis.extracted_skills or [])])
+        job_skills = set([s.lower() for s in (job.get('skills', []))])
+        
+        # Phân tích requirements text
+        requirements = job.get('requirements', '').lower()
+        
+        # Tìm các yêu cầu đặc biệt từ requirement text
+        special_requirements = []
+        requirement_keywords = {
+            "tiếng anh": ["tiếng anh", "english", "toeic", "ielts"],
+            "kinh nghiệm": ["kinh nghiệm", "experience"],
+            "bằng cấp": ["bằng cấp", "degree", "bachelor", "cử nhân"],
+            "giao tiếp": ["giao tiếp", "communication"],
+            "teamwork": ["teamwork", "team work", "làm việc nhóm"],
+            "chịu áp lực": ["áp lực", "pressure", "deadline"]
+        }
+        
+        found_requirements = []
+        for req_name, keywords in requirement_keywords.items():
+            if any(kw in requirements for kw in keywords):
+                found_requirements.append(req_name)
+        
+        # Tính match score
+        if job_skills:
+            overlap = cv_skills & job_skills
+            skill_ratio = len(overlap) / len(job_skills)
+            skills_score = int(skill_ratio * 100)
+        else:
+            skills_score = 50
+            overlap = set()
+        
+        # Tính điểm kinh nghiệm
+        cv_exp = cv_analysis.experience_years or 0
+        job_exp_str = job.get('experience_year', '')
+        import re
+        numbers = re.findall(r'\d+', job_exp_str)
+        job_exp = int(numbers[0]) if numbers else 0
+        
+        if job_exp > 0:
+            if cv_exp >= job_exp:
+                exp_score = 100
+                exp_message = f"✅ Bạn có {cv_exp} năm kinh nghiệm, đáp ứng yêu cầu {job_exp} năm"
+            elif cv_exp >= job_exp * 0.7:
+                exp_score = 70
+                exp_message = f"⚠️ Bạn có {cv_exp} năm kinh nghiệm (gần đạt yêu cầu {job_exp} năm)"
+            else:
+                exp_score = max(30, int((cv_exp / job_exp) * 100))
+                exp_message = f"❌ Bạn có {cv_exp} năm kinh nghiệm (thiếu {job_exp - cv_exp} năm so với yêu cầu)"
+        else:
+            exp_score = 80
+            exp_message = "✅ Không yêu cầu kinh nghiệm cụ thể"
+        
+        # Tính điểm tổng
+        total_score = int(skills_score * 0.7 + exp_score * 0.3)
+        
+        # Tạo match reasons
+        match_reasons = []
+        if overlap:
+            match_reasons.append(f"✅ Kỹ năng phù hợp: {', '.join(list(overlap)[:3])}")
+        if exp_score >= 70:
+            match_reasons.append(exp_message)
+        
+        if not match_reasons:
+            match_reasons.append("📌 Bạn cần bổ sung thêm kỹ năng để phù hợp hơn")
+        
+        # Xác định xem có thể apply không
+        if total_score >= 75:
+            can_apply = True
+            recommendation = "CÓ THỂ APPLY"
+            advice = "Bạn nên apply ngay vì hồ sơ khá phù hợp!"
+        elif total_score >= 55:
+            can_apply = True
+            recommendation = "CÓ THỂ THỬ"
+            advice = "Bạn có thể apply, nhưng nên bổ sung thêm một số kỹ năng để tăng cơ hội."
+        else:
+            can_apply = False
+            recommendation = "NÊN CHỜ"
+            advice = "Bạn nên phát triển thêm kỹ năng trước khi apply."
+        
+        return {
+            "total_score": total_score,
+            "skills_score": skills_score,
+            "exp_score": exp_score,
+            "exp_message": exp_message,
+            "skill_overlap": list(overlap),
+            "skill_gap": list(job_skills - cv_skills),
+            "special_requirements": found_requirements,
+            "match_reasons": match_reasons,
+            "can_apply": can_apply,
+            "recommendation": recommendation,
+            "advice": advice
+    }
+
+
+    def _format_job_detail_response(self, job: Dict, comparison: Optional[Dict]) -> str:
+        """Format response chi tiết về job"""
+        
+        # Kiểm tra job tồn tại
+        if not job:
+            return "Không có thông tin về công việc này."
+        
+        response = f"""## 📋 **{job.get('title', 'N/A')}**
+
+    🏢 **Công ty:** {job.get('company', 'N/A')}
+    📍 **Địa điểm:** {job.get('location', 'N/A')}
+    💰 **Mức lương:** {job.get('salary', 'Thương lượng')}
+    📅 **Hạn nộp:** {job.get('deadline', 'Không có') if job.get('deadline') else 'Không có'}
+
+    ---
+    ### 📝 **Mô tả công việc:**
+    {job.get('description', 'N/A')[:800] if job.get('description') else 'Chưa có mô tả'}
+
+    ---
+    ### ✅ **Yêu cầu công việc:**
+    {job.get('requirements', 'N/A')[:600] if job.get('requirements') else 'Chưa có yêu cầu'}
+
+    """
+        
+        if job.get('benefit'):
+            response += f"""
+    ---
+    ### 🎁 **Phúc lợi:**
+    {job.get('benefit')[:300]}
+
+    """
+        
+        if comparison and isinstance(comparison, dict):
+            score = comparison.get('total_score', 0)
+            bar_length = int(score / 10) if score else 0
+            bar = "█" * bar_length + "░" * (10 - bar_length)
+            
+            response += f"""
+    ---
+    ## 📊 **ĐÁNH GIÁ MỨC ĐỘ PHÙ HỢP CỦA BẠN**
+
+    ### 🎯 Điểm phù hợp: `{bar}` **{score}%**
+
+    {comparison.get('advice', '')}
+
+    ---
+    ### ✅ **Kỹ năng bạn đã có ({len(comparison.get('skill_overlap', []))} kỹ năng):**
+    """
+            if comparison.get('skill_overlap'):
+                for skill in comparison.get('skill_overlap', [])[:10]:
+                    response += f"  • {skill}\n"
+            else:
+                response += "  • (Chưa có kỹ năng nào trùng khớp)\n"
+            
+            response += f"""
+    ### 📚 **Kỹ năng cần bổ sung ({len(comparison.get('skill_gap', []))} kỹ năng):**
+    """
+            if comparison.get('skill_gap'):
+                for skill in comparison.get('skill_gap', [])[:10]:
+                    response += f"  • {skill}\n"
+                response += """
+    💡 **Gợi ý học tập:**
+    • Dành 2-4 tuần để học các kỹ năng trên qua các khóa online
+    • Thực hành qua project thực tế
+    • Tham gia các cộng đồng để trao đổi kinh nghiệm
+    """
+            else:
+                response += "  • 🎉 Tuyệt vời! Bạn đã có đầy đủ kỹ năng cần thiết\n"
+            
+            response += f"""
+    ---
+    ### 📈 **Kinh nghiệm:**
+    {comparison.get('exp_message', 'Chưa có thông tin')}
+
+    """
+        
+        response += """
+    ---
+    💬 **Bạn có thể hỏi thêm:**
+    • "Cần học những kỹ năng này ở đâu?"
+    • "Lộ trình học chi tiết trong bao lâu?"
+    • "Phỏng vấn vị trí này thường hỏi gì?"
+
+    🔹 *Hãy cho tôi biết bạn cần tư vấn thêm nhé!*"""
+        
+        return response
+    
+
+    async def _extract_job_name_from_question(self, message: str) -> Optional[str]:
+        """Trích xuất tên công việc từ câu hỏi của user"""
+        msg_lower = message.lower()
+        
+        import re
+        
+        # Pattern 1: "job 'Tên Job'", "công việc 'Tên Job'"
+        patterns = [
+            r'(?:job|công việc|vị trí)\s+["\']([^"\']+)["\']',
+            r'(?:về|biết thêm về)\s+job\s+["\']?([^"\'\s]+)',
+            r'tìm hiểu\s+(?:về)?\s*["\']?([^"\']+?)["\']?(?:\s|$)'
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, msg_lower, re.IGNORECASE)
+            if match:
+                job_name = match.group(1).strip()
+                # Làm sạch job name
+                job_name = re.sub(r'[\'"]', '', job_name)
+                if len(job_name) > 3:
+                    return job_name
+        
+        # Pattern 2: Nếu có dấu ngoặc kép
+        if '"' in message or "'" in message:
+            quote_match = re.search(r'["\']([^"\']+)["\']', message)
+            if quote_match:
+                return quote_match.group(1).strip()
+        
+        # Pattern 3: Lấy từ sau "về" hoặc "biết thêm"
+        for prefix in ["về job", "về công việc", "biết thêm về", "thông tin về"]:
+            if prefix in msg_lower:
+                parts = msg_lower.split(prefix)
+                if len(parts) > 1:
+                    job_name = parts[1].strip()[:50]
+                    if job_name:
+                        return job_name
+        
+        return None
+
+    async def _search_and_show_job_details(self, user_id: str, job_name: str) -> str:
+        """Tìm kiếm job trong database và hiển thị chi tiết"""
+        
+        job_da = JobDataAccess()
+        
+        # Tìm kiếm job theo tên
+        jobs = await job_da.search_jobs_by_keywords(
+            keywords=[job_name],
+            limit=3
+        )
+        
+        if not jobs:
+            return f"Không tìm thấy thông tin chi tiết về công việc '{job_name}' trong hệ thống. Bạn có thể thử tìm với tên khác hoặc chọn job từ danh sách gợi ý."
+        
+        # Lấy job đầu tiên
+        job = jobs[0]
+        
+        # Lấy CV analysis từ session
+        cv_analysis = self.session_manager.get_cv_analysis(user_id)
+        
+        # So sánh CV với requirements
+        if cv_analysis:
+            comparison = await self._compare_cv_with_job_requirements(cv_analysis, job)
+        else:
+            comparison = None
+        
+        # Lưu job vào current focus
+        self.session_manager.set_current_focus_job(user_id, {
+            'job_id': str(job['id']),
+            'job_title': job['title'],
+            'company': job['company'],
+            'match_score': comparison.get('total_score', 0) if comparison else 0,
+            'skill_overlap': comparison.get('skill_overlap', []) if comparison else [],
+            'skill_gap': comparison.get('skill_gap', []) if comparison else [],
+            'match_reasons': comparison.get('match_reasons', []) if comparison else []
+        })
+        
+        # Format response
+        return self._format_job_detail_response(job, comparison)

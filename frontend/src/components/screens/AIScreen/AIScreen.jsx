@@ -743,7 +743,7 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                     <div className="ai-header-brand">
                         <div className="ai-header-av">🤖</div>
                         <div>
-                            <div className="ai-header-name">GZC AI Assistant</div>
+                            <div className="ai-header-name">GZConnect AI Assistant</div>
                             <div className="ai-header-status">
                                 <span className="ai-status-dot" />
                                 {typing ? 'Đang trả lờii...' : 'Sẵn sàng'}
@@ -751,14 +751,6 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                         </div>
                     </div>
                     <div className="ai-header-actions">
-                        {/* <button
-                            className="ai-hbtn"
-                            title="Upload CV"
-                            onClick={triggerFileUpload}
-                            disabled={isUploading}
-                        >
-                            {isUploading ? '⏳ Đang upload...' : '📎 Upload CV'}
-                        </button> */}
                         <input
                             ref={fileInputRef}
                             type="file"
@@ -766,9 +758,6 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                             style={{ display: 'none' }}
                             onChange={handleFileChange}
                         />
-                        {/* <button className="ai-hbtn" onClick={() => setSidePanel((v) => !v)}>
-                            {sidePanel ? '◁ Ẩn bảng' : '▷ Bảng gợi ý'}
-                        </button> */}
                         <button
                             className="ai-hbtn danger"
                             onClick={() => setMessages(INITIAL_MESSAGES)}
@@ -849,7 +838,7 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                                                     : 'Xin chào!'}
                                             </div>
                                             <div className="ai-welcome-sub">
-                                                Tôi là <strong>GZC AI</strong> — trợ lý tìm việc
+                                                Tôi là <strong>GZCONNECT AI</strong> — trợ lý tìm việc
                                                 thông minh.
                                                 {cvAnalysis && (
                                                     <div style={{ marginTop: 8 }}>
@@ -927,21 +916,6 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                                                     </div>
                                                 </div>
                                             )}
-                                            {/* {msg.jobMatches?.length > 0 && (
-                                                <div className="ai-jobs-section">
-                                                    <div className="ai-jobs-title">
-                                                        🎯 {msg.jobMatches.length} việc làm phù hợp
-                                                    </div>
-                                                    <div className="ai-jobs-list">
-                                                        {msg.jobMatches.map((job) => (
-                                                            <JobMatchCard
-                                                                key={job.job_id}
-                                                                job={job}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )} */}
 
                                             {msg.jobMatches?.length > 0 && (
                                                 <div className="ai-jobs-section">

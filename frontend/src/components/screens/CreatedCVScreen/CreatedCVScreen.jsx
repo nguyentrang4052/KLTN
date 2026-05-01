@@ -70,14 +70,24 @@ export default function CreatedCVScreen({ initialScreen = "myCV" }) {
       setScreen("editor");
     } 
     else if (_action === 'fresh') {
+      // ✅ Fix: Xóa data cũ khỏi localStorage trước khi reset
+      const freshState = loadState();
+      if (existingCV && freshState[existingCV.id]) {
+        delete freshState[existingCV.id];
+        saveState(freshState);
+      }
+
       if (existingCV) {
-        // Reset data nhưng giữ nguyên CV
+        // Dùng id mới để EditorScreen không load lại data cũ từ storage
+        const freshId = existingCV.templateId + '_' + Date.now();
         const updatedCV = {
           ...existingCV,
+          id: freshId,
           data: JSON.parse(JSON.stringify(EMPTY_CV)),
           updatedAt: "Vừa tạo lại"
         };
-        const newList = cvList.map(cv => 
+        // Thay thế CV cũ bằng CV mới trong list
+        const newList = cvList.map(cv =>
           cv.id === existingCV.id ? updatedCV : cv
         );
         persistCVList(newList);
@@ -227,6 +237,7 @@ export default function CreatedCVScreen({ initialScreen = "myCV" }) {
 
       {screen === "editor" && editingCV && (
         <EditorScreen
+          key={editingCV.id}
           templateId={editingCV.templateId}
           initialData={editingCV.data}
           cvId={editingCV.id}

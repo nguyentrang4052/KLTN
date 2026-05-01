@@ -1,6 +1,23 @@
 import "./MyCVScreen.css";
+import { useState } from "react";
 
 export default function MyCVScreen({ cvList = [], onNew, onEdit, onDelete }) {
+  const [cvToDelete, setCvToDelete] = useState(null);
+
+  const handleDeleteClick = (cv) => {
+    setCvToDelete(cv);
+  };
+
+  const confirmDelete = () => {
+    if (cvToDelete) {
+      onDelete(cvToDelete.id);
+      setCvToDelete(null);
+    }
+  };
+
+  const cancelDelete = () => {
+    setCvToDelete(null);
+  };
   return (
     <div className="cv-container">
       <div className="cv-header">
@@ -53,8 +70,8 @@ export default function MyCVScreen({ cvList = [], onNew, onEdit, onDelete }) {
                     >
                       Chỉnh sửa
                     </button>
-                    <button 
-                      onClick={() => onDelete(cv.id)}
+                    <button
+                      onClick={() => handleDeleteClick(cv)}
                       className="btn-delete"
                     >
                       ✕
@@ -66,6 +83,28 @@ export default function MyCVScreen({ cvList = [], onNew, onEdit, onDelete }) {
           </div>
         )}
       </div>
+      {cvToDelete && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <div className="modal-icon">⚠️</div>
+
+            <div className="modal-title">Xác nhận xoá</div>
+
+            <div className="modal-content">
+              Bạn có chắc muốn xoá CV <b>{cvToDelete.name}</b> không?
+            </div>
+
+            <div className="modal-actions">
+              <button onClick={cancelDelete} className="btn-cancel">
+                Huỷ
+              </button>
+              <button onClick={confirmDelete} className="btn-confirm">
+                Xoá
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
