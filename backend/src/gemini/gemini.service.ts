@@ -336,6 +336,10 @@ ${cvText}`;
 
         if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
             cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+        } else {
+            // Nếu không tìm thấy cặp ngoặc, thử bắt bất kỳ JSON-like structure
+            const match = cleaned.match(/\{[\s\S]*\}/);
+            if (match) cleaned = match[0];
         }
 
         // Bước 3: Thử parse
@@ -354,14 +358,15 @@ ${cvText}`;
                 const manualFixed = this.manualJsonFix(cleaned);
                 try {
                     return JSON.parse(manualFixed);
-                } catch {
+                } catch (finalError) {
                     this.logger.error(`All JSON repair failed. Raw (first 800 chars):\n${text.substring(0, 800)}`);
-                    throw new Error(`Cannot extract valid JSON: ${parseError.message}`);
+                    // ✅ QUAN TRỌNG: Trả về object rỗng thay vì throw error
+                    // Cho phép fallback merge với dữ liệu gốc ở phía sau
+                    return {};
                 }
             }
         }
     }
-
     /**
      * Sửa lỗi JSON thủ công phổ biến
      */
@@ -401,30 +406,152 @@ ${cvText}`;
     }
 
 
-    // ... existing code ...
+    async translateCV(cvData: any, targetLang: 'en' | 'vi', sectionTitles?: Record<string, string>): Promise<{ cvData: any; sectionTitles?: Record<string, string> }> {
+        // Loại bỏ avatar
+        const cleanedData = this.removeAvatarField(cvData);
 
-    /**
-     * Dịch toàn bộ CV object sang ngôn ngữ đích
-     */
-    async translateCV(cvData: any, targetLang: 'en' | 'vi'): Promise<any> {
-        const prompt = `
-Bạn là chuyên gia dịch thuật CV. Hãy dịch toàn bộ nội dung CV sau từ ngôn ngữ gốc sang ${targetLang === 'en' ? 'TIẾNG ANH' : 'TIẾNG VIỆT'}.
+        // Chuẩn bị object để dịch: gộp cvData và sectionTitles thành một object duy nhất
+        const fullData: any = { ...cleanedData };
+        if (sectionTitles) {
+            fullData._sectionTitles = sectionTitles;
+        }
 
-QUY TẮC:
-- Giữ nguyên cấu trúc JSON.
-- Dịch tất cả các trường văn bản (fullName, summary, company, position, description, institution, degree, skills items, v.v.).
-- Không dịch tên riêng, tên công ty, địa chỉ email, số điện thoại, link.
-- Bảo toàn định dạng danh sách kỹ năng (dấu phẩy, xuống dòng).
-- Trả về JSON hợp lệ, không markdown.
-
-CV gốc:
-${JSON.stringify(cvData, null, 2)}
-
-JSON đã dịch:
-`;
+        const prompt = `Dịch CV từ tiếng Việt sang ${targetLang === 'en' ? 'tiếng Anh' : 'tiếng Việt'}. 
+    Yêu cầu: 
+    - Giữ nguyên cấu trúc JSON.
+    - Dịch tất cả các trường văn bản (summary, position, company, description, degree, institution, category, items, portfolio, ...).
+    - Đặc biệt dịch object "_sectionTitles" (chứa tiêu đề các phần như "Mục tiêu nghề nghiệp" -> "Career Objective", "Kinh nghiệm làm việc" -> "Work Experience", ...).
+    - Không dịch email, số điện thoại, link, tên riêng, avatar.
+    - Trả về JSON hợp lệ, không giải thích thêm.
+    - Sử dụng dấu ngoặc kép, escape ký tự đặc biệt.
+    
+    Dữ liệu cần dịch:
+    ${JSON.stringify(fullData, null, 2)}
+    
+    Kết quả (chỉ JSON):`;
 
         const response = await this.generateContent(prompt);
-        return this.extractJsonFromResponse(response);
+        let translated = this.extractJsonFromResponse(response);
+        if (!translated || Object.keys(translated).length === 0) {
+            return { cvData: cvData, sectionTitles: sectionTitles };
+        }
+
+        // Tách riêng phần sectionTitles đã dịch
+        let translatedSectionTitles: Record<string, string> | undefined = undefined;
+        if (translated._sectionTitles && typeof translated._sectionTitles === 'object') {
+            translatedSectionTitles = translated._sectionTitles;
+            delete translated._sectionTitles;
+        }
+
+        // Khôi phục avatar
+        const restoredCvData = this.restoreAvatarField(cvData, translated);
+        const mergedCvData = this.mergeMissingFields(cvData, restoredCvData);
+
+        // Merge sectionTitles (an toàn)
+        let mergedSectionTitles = sectionTitles ? { ...sectionTitles } : {};
+        if (translatedSectionTitles && typeof translatedSectionTitles === 'object') {
+            mergedSectionTitles = { ...mergedSectionTitles, ...translatedSectionTitles };
+        }
+        return { cvData: mergedCvData, sectionTitles: mergedSectionTitles };
+    }
+    // Loại bỏ trường avatar khỏi data
+    private removeAvatarField(data: any): any {
+        const cleaned = JSON.parse(JSON.stringify(data));
+        if (cleaned.personalInfo && cleaned.personalInfo.avatar) {
+            delete cleaned.personalInfo.avatar;
+            this.logger.debug('Removed avatar field before translation');
+        }
+        return cleaned;
+    }
+
+    // Khôi phục avatar từ original vào translated
+    private restoreAvatarField(original: any, translated: any): any {
+        const restored = JSON.parse(JSON.stringify(translated));
+        if (original.personalInfo && original.personalInfo.avatar) {
+            if (!restored.personalInfo) restored.personalInfo = {};
+            restored.personalInfo.avatar = original.personalInfo.avatar;
+            this.logger.debug('Restored avatar field after translation');
+        }
+        return restored;
+    }
+
+    /**
+ * Hợp nhất dữ liệu gốc (original) và dữ liệu đã dịch (translated),
+ * đảm bảo KHÔNG mất bất kỳ field nào.
+ * 
+ * @param original - CV gốc (đầy đủ)
+ * @param translated - CV đã dịch (có thể thiếu field)
+ * @returns - CV đã hợp nhất, ưu tiên dữ liệu dịch nếu có, nếu không thì lấy từ gốc
+ */
+    private mergeMissingFields(original: any, translated: any): any {
+        // Nếu translated không phải object hoặc rỗng, trả về original
+        if (!translated || typeof translated !== 'object' || Array.isArray(translated)) {
+            this.logger.warn('Translated data is invalid, using original data');
+            return original;
+        }
+
+        if (Object.keys(translated).length === 0) {
+            this.logger.warn('Translated data is empty, using original data');
+            return original;
+        }
+
+        // Deep clone dữ liệu gốc để làm base
+        const merged = JSON.parse(JSON.stringify(original));
+
+        /**
+         * Đệ quy hợp nhất `translated` vào `target`.
+         * target là bản sao của original, sẽ được ghi đè bởi translated nếu có dữ liệu.
+         */
+        const deepMerge = (target: any, source: any, path: string = '') => {
+            if (!source || typeof source !== 'object') return;
+
+            for (const key of Object.keys(source)) {
+                const currentPath = path ? `${path}.${key}` : key;
+                const sourceValue = source[key];
+                const targetValue = target[key];
+
+                // Nếu source value là object thuần (không phải mảng) -> đệ quy
+                if (sourceValue && typeof sourceValue === 'object' && !Array.isArray(sourceValue)) {
+                    if (!targetValue || typeof targetValue !== 'object') {
+                        target[key] = {};
+                    }
+                    deepMerge(target[key], sourceValue, currentPath);
+                }
+                // Nếu source value là mảng -> thay thế toàn bộ mảng (giữ nguyên mảng dịch)
+                else if (Array.isArray(sourceValue)) {
+                    // Không merge từng phần tử của mảng (vì thứ tự có thể thay đổi)
+                    target[key] = sourceValue;
+                }
+                // Các kiểu dữ liệu cơ bản (string, number, boolean, null)
+                else {
+                    // Ghi đè nếu source có giá trị (kể cả chuỗi rỗng cũng ghi đè)
+                    // Nhưng nếu sourceValue là null/undefined và target có giá trị thì giữ target
+                    if (sourceValue !== undefined && sourceValue !== null) {
+                        target[key] = sourceValue;
+                    }
+                    // Nếu source missing (không có key trong translated) thì target giữ nguyên (đã có)
+                }
+
+                // Log các field bị thiếu nếu cần debug
+                if (targetValue !== undefined && sourceValue === undefined) {
+                    this.logger.debug(`Field "${currentPath}" missing in translated, kept from original`);
+                }
+            }
+        };
+
+        // Thực hiện merge translated vào merged (bản sao của original)
+        deepMerge(merged, translated);
+
+        // Kiểm tra thêm: nếu translated có key mà original không có? (thường không xảy ra)
+        // Nếu có, giữ nguyên key đó (vì có thể Gemini thêm field mới)
+        for (const key of Object.keys(translated)) {
+            if (!merged.hasOwnProperty(key)) {
+                merged[key] = translated[key];
+                this.logger.warn(`Extra field "${key}" added by translation, kept as is.`);
+            }
+        }
+
+        return merged;
     }
 
     /**

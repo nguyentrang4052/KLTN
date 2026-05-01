@@ -11,7 +11,7 @@ export class CvAssistantController {
 
   @Post('translate')
   async translateCV(@Body() dto: TranslateCVDto) {
-    const translated = await this.geminiService.translateCV(dto.cvData, dto.targetLang);
+    const translated = await this.geminiService.translateCV(dto.cvData, dto.targetLang, dto.sectionTitles);
     return { success: true, data: translated };
   }
 

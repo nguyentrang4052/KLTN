@@ -651,12 +651,24 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
     };
 
     // ---------- API handlers ----------
+    const [translatedSectionTitles, setTranslatedSectionTitles] = useState(null);
     const handleTranslate = async () => {
         if (!data) return;
         setIsTranslating(true);
         try {
-            const result = await callApi('/cv-assistant/translate', 'POST', { cvData: data, targetLang });
-            setTranslatedData(result.data);
+            // Gửi kèm cả sectionTitles và sectionOrder (nếu cần)
+            const payload = {
+                cvData: data,
+                targetLang,
+                sectionTitles,   // thêm dòng này
+                // sectionOrder    // có thể cần để giữ thứ tự
+            };
+            const result = await callApi('/cv-assistant/translate', 'POST', payload);
+            setTranslatedData(result.data.cvData);
+            // Cập nhật cả sectionTitles đã dịch nếu có
+            if (result.data.sectionTitles) {
+                setTranslatedSectionTitles(result.data.sectionTitles);
+            }
             setShowTranslated(true);
         } catch (error) {
             console.error('Translation failed:', error);
@@ -667,11 +679,29 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
     };
 
     const applyTranslation = () => {
-        if (translatedData) {
-            setData(translatedData);
-            setShowTranslated(false);
-            setTranslatedData(null);
+        if (!translatedData) return;
+
+        // Merge dữ liệu: giữ lại field nào của translated, nếu thiếu thì dùng data gốc
+        const mergedData = { ...data };
+        const deepMerge = (target, source) => {
+            for (const key in source) {
+                if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+                    if (!target[key]) target[key] = {};
+                    deepMerge(target[key], source[key]);
+                } else if (source[key] !== undefined && source[key] !== null) {
+                    target[key] = source[key];
+                }
+            }
+        };
+        deepMerge(mergedData, translatedData);
+
+        setData(mergedData);
+        if (translatedSectionTitles) {
+            setSectionTitles(translatedSectionTitles);
         }
+        setShowTranslated(false);
+        setTranslatedData(null);
+        setTranslatedSectionTitles(null);   
     };
 
     const openAssistModal = (section = null) => {
@@ -757,7 +787,7 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
         setAssistModalOpen(false);
     };
 
-    
+
     const safeStyleConfig = styleConfig || DEFAULT_STYLE_CONFIG;
 
     return (
@@ -1034,6 +1064,8 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
                             setSectionTitles={setSectionTitles}
                             editorResetKey={editorResetKey}
                             onAIAssist={openAssistModal}
+                            data={showTranslated && translatedData ? translatedData : data}
+                            sectionTitles={showTranslated && translatedSectionTitles ? translatedSectionTitles : sectionTitles}
                         />
                     </div>
                 </div>

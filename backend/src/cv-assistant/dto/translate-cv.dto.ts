@@ -1,4 +1,4 @@
-import { IsEnum, IsObject } from 'class-validator';
+import { IsEnum, IsObject, IsOptional } from 'class-validator';
 
 export class TranslateCVDto {
   @IsEnum(['en', 'vi'])
@@ -6,4 +6,8 @@ export class TranslateCVDto {
 
   @IsObject()
   cvData: any; // cấu trúc giống CVAnalysisResultDto
+
+   @IsOptional()
+  @IsObject()
+  sectionTitles?: Record<string, string>;
 }
