@@ -72,7 +72,7 @@ class JobAdvisor:
     async def _compare_cv_with_job_advanced(
         self, cv: CVAnalysis, job: Dict, additional_requirements: Optional[str] = None
     ) -> Dict[str, Any]:
-        """So sánh chi tiết với công thức nâng cao - KHÔNG CỐ ĐỊNH 75%"""
+        """So sánh chi tiết với công thức nâng cao"""
         
         cv_skills = set([s.lower() for s in (cv.extracted_skills or [])])
         job_skills = set([s.lower() for s in (job.get('skills', []))])
@@ -82,12 +82,11 @@ class JobAdvisor:
         logger.info(f"CV skills: {cv_skills}")
         logger.info(f"Job skills: {job_skills}")
         
-        # 1. SKILLS SCORE (60%) - Tính chi tiết
+        # 1. SKILLS SCORE (60%)
         if job_skills:
             overlap = cv_skills & job_skills
-            skill_ratio = len(overlap) / len(job_skills)
+            skill_ratio = len(overlap) / len(job_skills) if job_skills else 0
             
-            # Bonus cho kỹ năng quan trọng
             important_skills = ["python", "java", "sql", "react", "javascript", "golang", "aws", "docker", "git", "postgresql", "mongodb"]
             important_bonus = sum(0.02 for s in overlap if s in important_skills)
             important_bonus = min(important_bonus, 0.1)
@@ -100,6 +99,7 @@ class JobAdvisor:
         # 2. EXPERIENCE SCORE (25%)
         cv_exp = cv.experience_years or 0
         job_exp_str = job.get('experience_year', '')
+        import re
         numbers = re.findall(r'\d+', job_exp_str)
         job_exp = int(numbers[0]) if numbers else 0
         
@@ -120,34 +120,27 @@ class JobAdvisor:
         # 3. LEVEL SCORE (15%)
         level_score = self._calculate_level_score(cv.suitable_level, job.get('title', ''))
         
-        # TÍNH TỔNG - KHÔNG LÀM TRÒN CỐ ĐỊNH
+        # Tính tổng
         total_score = (skills_score * 0.6) + (exp_score * 0.25) + (level_score * 0.15)
         total_percent = int(total_score * 100)
         
         # Log chi tiết
-        logger.info(f"  Skills score: {int(skills_score*100)}% (overlap: {len(overlap)}/{len(job_skills) if job_skills else 0})")
-        logger.info(f"  Experience score: {int(exp_score*100)}%")
-        logger.info(f"  Level score: {int(level_score*100)}%")
-        logger.info(f"  TOTAL SCORE: {total_percent}%")
+        logger.info(f"  Skills: {int(skills_score*100)}% (overlap: {len(overlap)}/{len(job_skills) if job_skills else 0})")
+        logger.info(f"  Experience: {int(exp_score*100)}%")
+        logger.info(f"  Level: {int(level_score*100)}%")
+        logger.info(f"  TOTAL: {total_percent}%")
         
-        # Tạo match reasons
+        # Match reasons
         match_reasons = []
         if overlap:
             match_reasons.append(f"✅ Kỹ năng phù hợp: {', '.join(list(overlap)[:3])}")
         if exp_score >= 0.8:
-            match_reasons.append(f"✅ {exp_message}")
-        elif exp_score >= 0.6:
-            match_reasons.append(f"⚠️ {exp_message}")
-        if level_score >= 0.8:
-            match_reasons.append(f"✅ Cấp bậc {cv.suitable_level} phù hợp")
+            match_reasons.append(exp_message)
         
-        if not match_reasons:
-            if overlap:
-                match_reasons.append(f"📌 Có {len(overlap)} kỹ năng phù hợp, cần bổ sung thêm {len(job_skills - cv_skills)} kỹ năng")
-            else:
-                match_reasons.append(f"📌 Cần bổ sung các kỹ năng: {', '.join(list(job_skills)[:5]) if job_skills else 'chưa xác định'}")
+        if not match_reasons and overlap:
+            match_reasons.append(f"📌 Có {len(overlap)} kỹ năng phù hợp")
         
-        # Recommendation dựa trên score thực tế
+        # Recommendation
         if total_percent >= 85:
             recommendation = "🎉 RẤT PHÙ HỢP! Bạn nên apply ngay!"
         elif total_percent >= 75:
@@ -155,10 +148,11 @@ class JobAdvisor:
         elif total_percent >= 65:
             recommendation = f"⚠️ KHÁ PHÙ HỢP - Cần bổ sung {len(job_skills - cv_skills)} kỹ năng"
         elif total_percent >= 55:
-            recommendation = f"📚 CÓ THỂ THỬ - Cần học thêm {len(job_skills - cv_skills)} kỹ năng chính"
+            recommendation = f"📚 CÓ THỂ THỬ - Cần học thêm {len(job_skills - cv_skills)} kỹ năng"
         else:
             recommendation = f"❌ CHƯA PHÙ HỢP - Cần phát triển thêm {len(job_skills - cv_skills)} kỹ năng"
         
+        # Trả về đầy đủ các key, bao gồm cả llm_assessment
         return {
             "total_score": total_percent,
             "skill_score": int(skills_score * 100),
@@ -170,8 +164,47 @@ class JobAdvisor:
             "recommendation": recommendation,
             "match_reasons": match_reasons,
             "can_apply": total_percent >= 60,
-            "advice": f"Điểm phù hợp {total_percent}%. {recommendation}"
+            "advice": f"Điểm phù hợp {total_percent}%. {recommendation}",
+            "llm_assessment": ""  # THÊM DÒNG NÀY - key mặc định
         }
+    
+    # Thêm method này vào class JobAdvisor trong job_advisor.py
+
+    def _calculate_level_score(self, cv_level: str, job_title: str) -> float:
+        """Tính điểm level phù hợp"""
+        cv_level_lower = cv_level.lower() if cv_level else "junior"
+        job_title_lower = job_title.lower() if job_title else ""
+        
+        # Perfect matches
+        if cv_level_lower == "senior" and ("senior" in job_title_lower or "lead" in job_title_lower):
+            return 1.0
+        if cv_level_lower == "junior" and ("junior" in job_title_lower or "fresher" in job_title_lower):
+            return 1.0
+        if cv_level_lower == "fresher" and ("fresher" in job_title_lower or "junior" in job_title_lower or "intern" in job_title_lower):
+            return 0.95
+        if cv_level_lower == "mid" and "mid" in job_title_lower:
+            return 1.0
+        if cv_level_lower == "intern" and "intern" in job_title_lower:
+            return 1.0
+        if cv_level_lower == "lead" and ("lead" in job_title_lower or "senior" in job_title_lower):
+            return 0.9
+        if cv_level_lower == "manager" and ("manager" in job_title_lower or "lead" in job_title_lower):
+            return 0.85
+        
+        # Acceptable matches (cấp bậc gần)
+        if cv_level_lower == "senior" and "mid" in job_title_lower:
+            return 0.8
+        if cv_level_lower == "mid" and "senior" in job_title_lower:
+            return 0.75
+        if cv_level_lower == "mid" and "junior" in job_title_lower:
+            return 0.8
+        if cv_level_lower == "junior" and "mid" in job_title_lower:
+            return 0.7
+        if cv_level_lower == "fresher" and "intern" in job_title_lower:
+            return 0.85
+        
+        # Default
+        return 0.5
 
     async def _compare_cv_with_job(
         self, cv: CVAnalysis, job: Dict, additional_requirements: Optional[str] = None
