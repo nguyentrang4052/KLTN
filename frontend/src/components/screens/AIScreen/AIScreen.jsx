@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import './AIScreen.css';
 import { useNavigate } from 'react-router-dom';
+import { getToken } from '../../../utils/auth';
 
 const API_BASE_URL = 'http://localhost:3000/api';
 
@@ -104,23 +105,6 @@ function CVAttachment({ fileName, fileUrl, fileSize, setPreviewFile }) {
                 </div>
             </div>
             <div className="ai-cv-actions">
-                {/* {isValidBlob && (
-                    <a
-                        href={fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ai-cv-btn view"
-                    >
-                        👁 Xem
-                    </a>
-                )} */}
-                {/* {isBlob && (
-                    <a href={fileUrl} download={fileName} className="ai-cv-btn download">
-                        ⬇ Tải về
-                    </a>
-                )} */}
-                {/* {!isBlob && <span className="ai-cv-note">Đã lưu</span>} */}
-
                 <button
                     className="ai-cv-btn view"
                     onClick={() =>
@@ -136,52 +120,6 @@ function CVAttachment({ fileName, fileUrl, fileSize, setPreviewFile }) {
         </div>
     );
 }
-
-/* ── Job Match Card (from API job_matches) ── */
-// function JobMatchCard({ job }) {
-//     return (
-//         <div className="ai-job-card">
-//             <div className="ai-job-header">
-//                 <div className="ai-job-title">{job.job_title}</div>
-//                 <div
-//                     className={`ai-job-match${job.match_score >= 85 ? ' hi' : job.match_score >= 70 ? ' med' : ''
-//                         }`}
-//                 >
-//                     {job.match_score}%
-//                 </div>
-//             </div>
-//             <div className="ai-job-co">🏢 {job.company}</div>
-//             <div className="ai-job-location">📍 {job.location || 'N/A'}</div>
-//             <div className="ai-job-salary">💰 {job.salary}</div>
-
-//             {job.match_reasons?.length > 0 && (
-//                 <div className="ai-job-reasons">
-//                     {job.match_reasons.map((reason, idx) => (
-//                         <span key={idx} className="ai-job-reason">✓ {reason}</span>
-//                     ))}
-//                 </div>
-//             )}
-
-//             {job.missing_for_this_job?.length > 0 && (
-//                 <div className="ai-job-missing">
-//                     <span className="ai-missing-label">Cần bổ sung:</span>{' '}
-//                     {job.missing_for_this_job.join(', ')}
-//                 </div>
-//             )}
-
-//             <div className="ai-job-footer">
-//                 <span
-//                     className={`ai-job-rec ${job.recommendation === 'Phù hợp' ? 'good' : 'warn'
-//                         }`}
-//                 >
-//                     {job.recommendation}
-//                 </span>
-//                 <button className="ai-job-apply">⚡ Ứng tuyển</button>
-//             </div>
-//         </div>
-//     );
-// }
-
 
 function JobMatchCard({ job, onSelect }) {
     const navigate = useNavigate();
@@ -276,6 +214,11 @@ export default function AIAssistantScreen({ onNavigate }) {
     const [cvAnalysis, setCvAnalysis] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadedCV, setUploadedCV] = useState(null); // { name, size, type, url }
+
+        // State cho rename và pin
+    const [editingSessionId, setEditingSessionId] = useState(null);
+    const [editTitle, setEditTitle] = useState('');
+    const [renaming, setRenaming] = useState(false);
 
     const bottomRef = useRef();
     const inputRef = useRef();
@@ -742,6 +685,169 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
     }, []);
 
 
+        /* ── Rename Session ── */
+    const renameSession = useCallback(async (sessionId, newTitle) => {
+        if (!newTitle || !newTitle.trim()) return;
+        
+        setRenaming(true);
+        try {
+            const response = await fetchWithTimeout(`${API_BASE_URL}/chat-history/rename-session/${sessionId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${getToken()}`
+                },
+                credentials: 'include',
+                body: JSON.stringify({ title: newTitle.trim() }),
+            });
+            
+            if (!response.ok) throw new Error('Rename failed');
+            
+            // Cập nhật local state
+            setSessions(prev => prev.map(session => 
+                session.id === sessionId 
+                    ? { ...session, title: newTitle.trim() }
+                    : session
+            ));
+            
+        } catch (err) {
+            console.error('Rename session error:', err);
+        } finally {
+            setRenaming(false);
+            setEditingSessionId(null);
+            setEditTitle('');
+        }
+    }, []);
+
+    /* ── Pin Session ── */
+    const pinSession = useCallback(async (sessionId, isPinned) => {
+        try {
+            const response = await fetchWithTimeout(`${API_BASE_URL}/chat-history/pin-session/${sessionId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${getToken()}`
+                },
+                credentials: 'include',
+                body: JSON.stringify({ isPinned: !isPinned }),
+            });
+            
+            if (!response.ok) throw new Error('Pin failed');
+            
+            // Cập nhật local state
+            setSessions(prev => {
+                const updated = prev.map(session => 
+                    session.id === sessionId 
+                        ? { ...session, isPinned: !isPinned }
+                        : session
+                );
+                // Sắp xếp: pinned lên đầu, sau đó theo updatedAt
+                return updated.sort((a, b) => {
+                    if (a.isPinned && !b.isPinned) return -1;
+                    if (!a.isPinned && b.isPinned) return 1;
+                    return new Date(b.updatedAt) - new Date(a.updatedAt);
+                });
+            });
+            
+        } catch (err) {
+            console.error('Pin session error:', err);
+        }
+    }, []);
+
+    /* ── Start Rename ── */
+    const startRename = (session, e) => {
+        e.stopPropagation();
+        setEditingSessionId(session.id);
+        setEditTitle(session.title || 'New Chat');
+    };
+
+    /* ── Handle Rename Key Press ── */
+    const handleRenameKeyPress = (e, sessionId) => {
+        if (e.key === 'Enter') {
+            renameSession(sessionId, editTitle);
+        } else if (e.key === 'Escape') {
+            setEditingSessionId(null);
+            setEditTitle('');
+        }
+    };
+
+    /* ── Render History Item ── */
+    const renderHistoryItem = (session) => {
+        const isEditing = editingSessionId === session.id;
+        
+        return (
+            <div
+                key={session.id}
+                className={`ai-history-item${session.id === currentSessionId ? ' active' : ''}${session.isPinned ? ' pinned' : ''}`}
+                onClick={() => !isEditing && loadSession(session.id)}
+            >
+                <span className="ai-history-icon">
+                    {session.isPinned ? '📌' : '💬'}
+                </span>
+                
+                {isEditing ? (
+                    <input
+                        type="text"
+                        className="ai-history-edit-input"
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        onKeyDown={(e) => handleRenameKeyPress(e, session.id)}
+                        onBlur={() => renameSession(session.id, editTitle)}
+                        autoFocus
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                ) : (
+                    <span className="ai-history-title">
+                        {session.title || 'New Chat'}
+                    </span>
+                )}
+                
+                <span className="ai-history-date">
+                    {formatDate(session.updatedAt)}
+                </span>
+                
+                <div className="ai-history-actions">
+                    <button
+                        className="ai-history-pin"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            pinSession(session.id, session.isPinned);
+                        }}
+                        title={session.isPinned ? 'Bỏ ghim' : 'Ghim'}
+                    >
+                        {session.isPinned ? '📌' : '📍'}
+                    </button>
+                    
+                    <button
+                        className="ai-history-rename"
+                        onClick={(e) => startRename(session, e)}
+                        title="Đổi tên"
+                    >
+                        ✏️
+                    </button>
+                    
+                    <button
+                        className="ai-history-delete"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            deleteSession(session.id);
+                        }}
+                        title="Xóa"
+                    >
+                        🗑
+                    </button>
+                </div>
+            </div>
+        );
+    };
+
+    // Sắp xếp sessions: pinned lên đầu
+    const sortedSessions = [...sessions].sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return new Date(b.updatedAt) - new Date(a.updatedAt);
+    });
+
     /* ── Render ── */
     return (
         <div className="ai-page">
@@ -789,32 +895,7 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                             {loadingHistory && sessions.length === 0 && (
                                 <div className="ai-history-empty">Đang tải...</div>
                             )}
-                            {sessions.map((session) => (
-                                <div
-                                    key={session.id}
-                                    className={`ai-history-item${session.id === currentSessionId ? ' active' : ''
-                                        }`}
-                                    onClick={() => loadSession(session.id)}
-                                >
-                                    <span className="ai-history-icon">💬</span>
-                                    <span className="ai-history-title">
-                                        {session.title || 'New Chat'}
-                                    </span>
-                                    <span className="ai-history-date">
-                                        {formatDate(session.updatedAt)}
-                                    </span>
-                                    <button
-                                        className="ai-history-delete"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            deleteSession(session.id);
-                                        }}
-                                        title="Xóa"
-                                    >
-                                        🗑
-                                    </button>
-                                </div>
-                            ))}
+                            {sortedSessions.map((session) => renderHistoryItem(session))}
                             {sessions.length === 0 && !loadingHistory && (
                                 <div className="ai-history-empty">Chưa có cuộc trò chuyện</div>
                             )}

@@ -236,25 +236,75 @@
     color: var(--text-faint);
 }
 
-.ai-history-delete {
+/* ── History item pinned state ── */
+.ai-history-item.pinned {
+    background: rgba(212, 130, 10, .06);
+    border-left: 2px solid var(--accent-amber);
+}
+
+.ai-history-item.pinned.active {
+    background: rgba(212, 130, 10, .12);
+}
+
+/* ── Action buttons group ── */
+.ai-history-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
     opacity: 0;
+    transition: opacity var(--transition);
+    flex-shrink: 0;
+}
+
+.ai-history-item:hover .ai-history-actions {
+    opacity: 1;
+}
+
+.ai-history-delete,
+.ai-history-rename,
+.ai-history-pin {
     background: none;
     border: none;
     cursor: pointer;
-    padding: 2px 6px;
+    padding: 3px 5px;
     font-size: 12px;
     color: var(--text-muted);
     border-radius: 4px;
     transition: all var(--transition);
-}
-
-.ai-history-item:hover .ai-history-delete {
-    opacity: 1;
+    line-height: 1;
 }
 
 .ai-history-delete:hover {
     background: rgba(192, 65, 42, .1);
     color: var(--accent);
+}
+
+.ai-history-rename:hover {
+    background: rgba(60, 100, 200, .1);
+    color: #3C64C8;
+}
+
+.ai-history-pin:hover {
+    background: rgba(212, 130, 10, .12);
+    color: var(--accent-amber);
+}
+
+/* ── Inline rename input ── */
+.ai-history-edit-input {
+    flex: 1;
+    background: var(--bg-base);
+    border: 1.5px solid var(--accent);
+    border-radius: 5px;
+    padding: 3px 7px;
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    color: var(--text-primary);
+    outline: none;
+    min-width: 0;
+}
+
+.ai-history-edit-input:focus {
+    box-shadow: 0 0 0 2px rgba(192, 65, 42, .18);
 }
 
 /* ── Chat area ── */

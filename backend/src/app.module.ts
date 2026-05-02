@@ -18,7 +18,7 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-yet';
 import { ChatbotModule } from './chatbot/chatbot.module';
 import { RedisModule } from './redis/redis.module';
-import { ChatHistoryModule } from './chatbot/chat-history.module';
+import { ChatHistoryModule } from './chatbot/chat-history/chat-history.module';
 import { CvAssistantModule } from './cv-assistant/cv-assistant.module';
 import { CvBuilderModule } from './cv-builder/cv-builder.module';
 

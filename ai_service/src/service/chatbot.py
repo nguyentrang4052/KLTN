@@ -114,7 +114,7 @@ class Chatbot:
                 logger.error(f"job_matching_error: {str(e)}")
             
             # ✅ QUAN TRỌNG: Lưu vào session
-            self.session_manager.set_cv_analysis(user_id, analysis)
+            self.session_manager.set_cv_analysis(user_id, analysis, None)
             self.session_manager.set_matched_jobs(user_id, job_matches)
             self.session_manager.set_cv_skills(user_id, analysis.extracted_skills or [])
             self.session_manager.set_cv_experience(user_id, analysis.experience_years or 0)
@@ -243,6 +243,27 @@ class Chatbot:
             
             # Sử dụng translated_message để xử lý intent và logic
             msg_lower = translated_message.lower().strip()
+
+                        # Lấy session
+            session = self.session_manager.get_or_create(user_id)
+            
+            # Kiểm tra xem đây có phải là câu hỏi đầu tiên sau khi upload CV không
+            # Nếu session có CV nhưng title vẫn là "New Chat" hoặc chưa được đặt
+            has_cv = session.cv_analysis is not None
+            is_default_title = session.title in ["New Chat", "", None]
+            
+            # Đếm số tin nhắn để biết đây là câu hỏi thứ mấy
+            msg_count = len(session.conversation_history)
+            
+            # Nếu có CV và title chưa được đặt và đây là tin nhắn thứ 2 (sau upload)
+            # Hoặc tin nhắn đầu tiên sau khi upload
+            if has_cv and is_default_title and msg_count >= 1:
+                # Lấy nội dung câu hỏi để làm title
+                new_title = message.strip()
+                if len(new_title) > 50:
+                    new_title = new_title[:47] + "..."
+                self.session_manager.update_session_title(user_id, new_title)
+                logger.info(f"Session title updated from question: {new_title}")
             
             # ========== 1. TÌM KIẾM JOB THEO YÊU CẦU ==========
             search_indicators = [

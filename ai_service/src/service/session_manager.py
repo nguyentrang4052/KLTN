@@ -3,6 +3,7 @@ import time
 from typing import Dict, Optional, List, Any
 from src.type.models import SessionContext, CVAnalysis, ChatMessage
 import structlog
+import os
 
 logger = structlog.get_logger()
 
@@ -39,8 +40,6 @@ class SessionManager:
         
         # Cập nhật session title dựa trên thông tin CV
         if cv_filename:
-            # Lấy tên file không có extension
-            import os
             base_name = os.path.splitext(cv_filename)[0]
             if len(base_name) > 30:
                 base_name = base_name[:27] + "..."
