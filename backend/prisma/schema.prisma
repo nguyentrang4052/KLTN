@@ -234,6 +234,7 @@ model UserSubscription {
   user       User     @relation(fields: [userID], references: [userID])
   plan       SubscriptionPlan @relation(fields: [planID], references: [id])
   payments   Payment[]
+  quota UserQuota?
 }
 
 model Payment {
@@ -256,19 +257,21 @@ model Payment {
 model UserQuota {
   id                  Int      @id @default(autoincrement())
   userID              Int
-  month               String  
-  
-  jobSuggestPerDay    Int      @default(3)   
-  cvAnalysisTotal     Int      @default(0)   
-  cvMatchCheckTotal   Int      @default(0)  
-  
+  subscriptionID      Int?     @unique  
+  month               String         
+
+  jobSuggestPerDay    Int      @default(3)
+  jobSuggestUsedToday Int      @default(0)
+  jobSuggestResetDate String?
+
+  cvAnalysisTotal     Int      @default(0)
+  cvMatchCheckTotal   Int      @default(0)
   cvAnalysisUsed      Int      @default(0)
   cvMatchCheckUsed    Int      @default(0)
-  jobSuggestUsedToday Int     @default(0)
-  jobSuggestResetDate String? // "YYYY-MM-DD"
 
   updatedAt           DateTime @updatedAt
   user                User     @relation(fields: [userID], references: [userID])
+  subscription        UserSubscription? @relation(fields: [subscriptionID], references: [id])
 
   @@unique([userID, month])
 }

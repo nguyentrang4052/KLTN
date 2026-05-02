@@ -305,26 +305,38 @@ export class JobsService {
     });
     if (!user) return { data: [], quota: null };
 
-    const month = new Date().toISOString().slice(0, 7);
     const today = new Date().toISOString().slice(0, 10);
+    const month = new Date().toISOString().slice(0, 7);
     const UNLIMITED = 999;
     const PREVIEW_LIMIT = 3;
 
-    let quota = await this.prisma.userQuota.findUnique({
-      where: { userID_month: { userID: user.userID, month } },
+    const activeSub = await this.prisma.userSubscription.findFirst({
+      where: {
+        userID: user.userID,
+        status: 'active',
+        expiresAt: { gt: new Date() },
+      },
+      include: {
+        plan: { include: { limits: true } },
+        quota: true,
+      },
+      orderBy: { startedAt: 'desc' },
     });
+
+    let quota = activeSub?.quota ?? null;
 
     if (quota && quota.jobSuggestResetDate !== today) {
       quota = await this.prisma.userQuota.update({
-        where: { userID_month: { userID: user.userID, month } },
+        where: { id: quota.id },
         data: { jobSuggestUsedToday: 0, jobSuggestResetDate: today },
       });
     }
 
-    const jobSuggestLimit = quota?.jobSuggestPerDay ?? 3;
+    const planLimits = activeSub?.plan?.limits;
+    const jobSuggestPerDay = quota?.jobSuggestPerDay ?? planLimits?.jobSuggestPerDay ?? 3;
+    const isUnlimited = jobSuggestPerDay >= UNLIMITED;
     const usedToday = quota?.jobSuggestUsedToday ?? 0;
-    const isUnlimited = jobSuggestLimit >= UNLIMITED;
-    const quotaExceeded = !isUnlimited && usedToday >= jobSuggestLimit;
+    const quotaExceeded = !isUnlimited && usedToday >= jobSuggestPerDay;
 
     const recs = await this.prisma.jobRecommendation.findMany({
       where: { userID: user.userID, matchPercent: { gt: 49 } },
@@ -345,25 +357,40 @@ export class JobsService {
       },
     });
 
-    // Chỉ trừ lượt khi AI vừa recompute thành công VÀ có job trả về
     let newUsedToday = usedToday;
     if (!isUnlimited && !quotaExceeded && wasRecomputed && recs.length > 0) {
       if (quota) {
         await this.prisma.userQuota.update({
-          where: { userID_month: { userID: user.userID, month } },
+          where: { id: quota.id },
+          data: { jobSuggestUsedToday: { increment: 1 }, jobSuggestResetDate: today },
+        });
+      } else if (activeSub) {
+        await this.prisma.userQuota.create({
           data: {
-            jobSuggestUsedToday: { increment: 1 },
+            userID: user.userID,
+            month,
+            subscriptionID: activeSub.id,
+            jobSuggestPerDay,
+            jobSuggestUsedToday: 1,
             jobSuggestResetDate: today,
+            cvAnalysisTotal: planLimits?.cvAnalysisPerMonth ?? 0,
+            cvMatchCheckTotal: planLimits?.cvMatchCheckCount ?? 0,
+            cvAnalysisUsed: 0,
+            cvMatchCheckUsed: 0,
           },
         });
       } else {
         await this.prisma.userQuota.create({
           data: {
-            userID: user.userID, month,
-            jobSuggestPerDay: 3, jobSuggestUsedToday: 1,
+            userID: user.userID,
+            month,
+            jobSuggestPerDay: 3,
+            jobSuggestUsedToday: 1,
             jobSuggestResetDate: today,
-            cvAnalysisTotal: 0, cvMatchCheckTotal: 0,
-            cvAnalysisUsed: 0, cvMatchCheckUsed: 0,
+            cvAnalysisTotal: 0,
+            cvMatchCheckTotal: 0,
+            cvAnalysisUsed: 0,
+            cvMatchCheckUsed: 0,
           },
         });
       }
@@ -387,9 +414,9 @@ export class JobsService {
         sourcePlatform: r.job.sourcePlatform,
       })),
       quota: {
-        limit: isUnlimited ? null : jobSuggestLimit,
+        limit: isUnlimited ? null : jobSuggestPerDay,
         usedToday: isUnlimited ? null : newUsedToday,
-        remaining: isUnlimited ? null : Math.max(0, jobSuggestLimit - newUsedToday),
+        remaining: isUnlimited ? null : Math.max(0, jobSuggestPerDay - newUsedToday),
         isUnlimited,
         quotaExceeded,
         resetAt: 'Ngày mai',
