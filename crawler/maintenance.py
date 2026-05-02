@@ -83,6 +83,41 @@ class MaintenanceService:
         except Exception as e:
             print(f"[MAINTENANCE] ❌ Lỗi cleanup tracking: {e}")
             return 0
+        
+    async def update_expired_jobs(self) -> int:
+        """
+        Đánh dấu isActive = false cho các job có deadline đã qua (deadline < NOW())
+        và chưa bị đánh dấu (isActive = true).
+        Trả về số lượng job vừa được cập nhật.
+        """
+        try:
+            with self._get_conn() as conn:
+                with conn.cursor() as cur:
+                    # Đếm số job sẽ bị vô hiệu hóa
+                    cur.execute("""
+                        SELECT COUNT(*) FROM "Job"
+                        WHERE "deadline" < NOW()
+                          AND "isActive" = true
+                    """)
+                    count_to_expire = cur.fetchone()[0]
+
+                    if count_to_expire == 0:
+                        return 0
+
+                    # Thực hiện cập nhật
+                    cur.execute("""
+                        UPDATE "Job"
+                        SET "isActive" = false
+                        WHERE "deadline" < NOW()
+                          AND "isActive" = true
+                    """)
+
+                    print(f"[MAINTENANCE] Đã đánh dấu {count_to_expire} job hết hạn (deadline đã qua)")
+                    return count_to_expire
+
+        except Exception as e:
+            print(f"[MAINTENANCE] ❌ Lỗi khi cập nhật job hết hạn: {e}")
+            return 0
 
     async def run_maintenance_cycle(self):
         """Chạy một chu kỳ bảo trì đầy đủ"""
@@ -90,13 +125,15 @@ class MaintenanceService:
         
         # 1. Reset isNewJob cũ
         reset_count = await self.reset_old_new_jobs()
+
+         # 2. Đánh dấu job hết hạn (dựa trên deadline)
+        expired_count = await self.update_expired_jobs()
         
-        # 2. Cleanup tracking cũ (tùy chọn, mỗi 7 ngày một lần)
+        # 3. Cleanup tracking cũ (tùy chọn, mỗi 7 ngày một lần)
         if datetime.now().hour == 3:  # Chỉ chạy lúc 3h sáng
             await self.cleanup_expired_tracking(days=30)
         
-        print(f"[MAINTENANCE] Hoàn tất - Reset {reset_count} jobs\\n")
-        return reset_count
+        return {"reset_count": reset_count, "expired_count": expired_count}
 
 
 maintenance_service = MaintenanceService()

@@ -1067,7 +1067,7 @@ class Chatbot:
 
 
     async def _handle_job_inquiry(self, user_id: str, message: str) -> Optional[Dict]:
-        """Xử lý câu hỏi về một công việc cụ thể"""
+        """Xử lý câu hỏi về một công việc cụ thể - HIỂN THỊ DANH SÁCH"""
         
         job_info = await self._extract_job_info(message)
         
@@ -1084,9 +1084,8 @@ class Chatbot:
             }
         
         logger.info(f"Analyzing job fit for: {job_info['title']}")
-        logger.info(f"CV skills: {cv_analysis.extracted_skills}")
         
-        # Phân tích mức độ phù hợp
+        # Phân tích mức độ phù hợp - trả về danh sách
         result = await self.job_advisor.analyze_job_fit(
             cv_analysis=cv_analysis,
             job_title=job_info['title'],
@@ -1097,37 +1096,97 @@ class Chatbot:
         if not result['found']:
             return {"response": result['message']}
         
-        job = result['job']
-        comp = result['comparison']
+        jobs = result.get('jobs', [])
+        comparisons = result.get('comparisons', [])
         
-        # Log chi tiết
-        logger.info(f"Job fit result: score={comp['total_score']}%")
-        logger.info(f"  Skill overlap: {comp.get('skill_overlap', [])}")
-        logger.info(f"  Skill gap: {comp.get('skill_gap', [])}")
+        if not jobs:
+            return {"response": "Không tìm thấy công việc phù hợp."}
         
-        # Tạo job object với đầy đủ thông tin
-        job_for_session = {
-            'job_id': str(job['id']),
-            'job_title': job['title'],
-            'company': job['company'],
-            'location': job.get('location', 'N/A'),
-            'salary': job.get('salary', 'Thương lượng'),
-            'match_score': comp['total_score'],
-            'skill_overlap': comp.get('skill_overlap', []),  # Đảm bảo có field này
-            'skill_gap': comp.get('skill_gap', []),          # Đảm bảo có field này
-            'match_reasons': comp.get('match_reasons', []),
-            'description': job.get('description', ''),
-            'requirements': job.get('requirements', '')
-        }
+        # Format response cho nhiều job
+        response = self._format_job_list_response_with_scores(jobs, comparisons, job_info['title'])
         
-        # Lưu vào session
-        self.session_manager.set_current_focus_job(user_id, job_for_session)
+        # Lưu job đầu tiên vào session
+        if jobs:
+            first_job = jobs[0]
+            first_comp = comparisons[0] if comparisons else {}
+            self.session_manager.set_current_focus_job(user_id, {
+                'job_id': str(first_job['id']),
+                'job_title': first_job['title'],
+                'company': first_job['company'],
+                'match_score': first_comp.get('total_score', 0),
+                'skill_overlap': first_comp.get('skill_overlap', []),
+                'skill_gap': first_comp.get('skill_gap', []),
+                'match_reasons': []
+            })
         
-        # Format response
-        response = self._format_job_fit_response(job, comp)
-        
-        return {"response": response, "job_found": True, "job": job_for_session}
+        return {"response": response, "job_found": True, "jobs": jobs}
 
+
+    def _format_job_list_response_with_scores(self, jobs: List[Dict], comparisons: List[Dict], search_title: str) -> str:
+        """Format danh sách job với điểm số"""
+        
+        response = f"## 📋 **Kết quả tìm kiếm cho '{search_title}'**\n\n"
+        response += f"✅ Tìm thấy **{len(jobs)}** công việc phù hợp với hồ sơ của bạn:\n\n"
+        
+        for i, (job, comp) in enumerate(zip(jobs, comparisons), 1):
+            score = comp.get('total_score', 0)
+            bar_length = int(score / 10) if score else 0
+            bar = "█" * bar_length + "░" * (10 - bar_length)
+            
+            # Xác định icon dựa trên score
+            if score >= 80:
+                icon = "🟢"
+                status = "Rất phù hợp"
+            elif score >= 65:
+                icon = "🟡"
+                status = "Phù hợp"
+            elif score >= 50:
+                icon = "🟠"
+                status = "Có thể thử"
+            else:
+                icon = "🔴"
+                status = "Cần cải thiện"
+            
+            response += f"""
+    ### {i}. **{job.get('title', 'N/A')}** tại **{job.get('company', 'N/A')}**
+    {icon} **{status}** | `{bar}` **{score}%**
+
+    📍 **Địa điểm:** {job.get('location', 'N/A')}
+    💰 **Mức lương:** {job.get('salary', 'Thương lượng')}
+    """
+            
+            # Hiển thị kỹ năng phù hợp
+            overlap = comp.get('skill_overlap', [])
+            if overlap:
+                skills_show = ', '.join(overlap[:5])
+                response += f"✅ **Kỹ năng phù hợp:** {skills_show}\n"
+            
+            # Hiển thị kỹ năng thiếu
+            gap = comp.get('skill_gap', [])
+            if gap:
+                gap_show = ', '.join(gap[:5])
+                response += f"⚠️ **Cần bổ sung:** {gap_show}\n"
+            
+            # Hiển thị kinh nghiệm
+            exp_msg = comp.get('exp_message', '')
+            if exp_msg:
+                response += f"📅 **Kinh nghiệm:** {exp_msg}\n"
+            
+            response += f"""
+    **👉** Để xem chi tiết, hãy nói: `"Xem chi tiết job số {i}"`
+
+    """
+        
+        response += """
+    ---
+    💬 **Bạn muốn:**
+    • Xem chi tiết một job: `"Xem chi tiết job số 1"`
+    • Hỏi về lộ trình học: `"Cần học gì để apply job này?"`
+    • So sánh các job: `"So sánh job 1 và job 2"`
+
+    Hãy cho tôi biết bạn cần tư vấn thêm nhé! 🎯"""
+        
+        return response
 
     async def _extract_job_info(self, message: str) -> Optional[Dict]:
         """Trích xuất thông tin công việc từ câu hỏi của user"""

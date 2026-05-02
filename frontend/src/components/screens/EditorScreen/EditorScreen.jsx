@@ -525,95 +525,80 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
         setTimeout(() => { isResettingRef.current = false; }, 0);
     }, [resetTimestamp, cvId, templateId]);
 
-    // ---------- Effect load storage (giữ nguyên) ----------
     useEffect(() => {
-        if (isResettingRef.current) return;
-
-        try {
-            const state = loadState() || {};
-            const savedCv = state[cvId];
-            if (savedCv) {
-                if (savedCv.data) setData(savedCv.data);
-                if (savedCv.sectionOrder) setSectionOrder(savedCv.sectionOrder);
-                if (savedCv.sectionTitles) setSectionTitles(savedCv.sectionTitles);
-                if (savedCv.styleConfig) {
-                    setStyleConfig(prev => ({
-                        ...DEFAULT_STYLE_CONFIG,
-                        ...savedCv.styleConfig,
-                        accentColor: savedCv.styleConfig.accentColor || getTemplateAccent(templateId)
-                    }));
-                }
-                if (savedCv.cvName) setCvName(savedCv.cvName);
-                if (savedCv.updatedAt) setLastSaved(savedCv.updatedAt);
-            }
-        } catch (err) {
-            console.error("Error loading saved state:", err);
-        }
-    }, [cvId, templateId]);
-
-    // ---------- Auto-save effect (giữ nguyên) ----------
-    useEffect(() => {
-        if (!isAutoSaveEnabled) {
-            setAutoSaveStatus('');
-            return;
-        }
-        if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-        setAutoSaveStatus('saving');
-        autoSaveTimerRef.current = setTimeout(() => {
+        const loadCVFromAPI = async () => {
+            if (!cvId) return;
             try {
-                const state = loadState() || {};
-                const now = new Date().toISOString();
-                state[cvId] = {
-                    templateId, data, cvName, sectionOrder,
-                    sectionTitles, styleConfig, updatedAt: now
-                };
-                state._cvList = state._cvList || [];
-                const existingIndex = state._cvList.findIndex(cv => cv.id === cvId);
-                const listItem = {
-                    id: cvId, templateId, name: cvName,
-                    accent: styleConfig?.accentColor || getTemplateAccent(templateId),
-                    updatedAt: "Vừa xong"
-                };
-                if (existingIndex >= 0) state._cvList[existingIndex] = listItem;
-                else state._cvList.push(listItem);
-                saveState(state);
-                setLastSaved(now);
-                setAutoSaveStatus('saved');
-                setTimeout(() => setAutoSaveStatus(prev => prev === 'saved' ? '' : prev), 3000);
+                const token = getToken();
+                const res = await fetch(`${API_BASE}/cv-builder/detail/${cvId}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (!res.ok) throw new Error('Failed to load CV');
+                const full = await res.json();
+                const saved = full.data || {};
+                if (saved.cvData) setData(saved.cvData);
+                if (saved.sectionOrder) setSectionOrder(saved.sectionOrder);
+                if (saved.sectionTitles) setSectionTitles(saved.sectionTitles);
+                if (saved.styleConfig) {
+                    setStyleConfig(prev => ({ ...DEFAULT_STYLE_CONFIG, ...saved.styleConfig }));
+                }
+                if (full.name) setCvName(full.name);
+                if (full.updatedAt) setLastSaved(full.updatedAt);
             } catch (err) {
-                console.error("Auto-save error:", err);
+                console.error("Error loading CV from API:", err);
             }
-        }, 2000);
-        return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
-    }, [data, sectionOrder, sectionTitles, styleConfig, cvName, cvId, templateId, isAutoSaveEnabled]);
+        };
+        loadCVFromAPI();
+    }, [cvId]);
 
     useEffect(() => () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); }, []);
 
-    const handleSave = () => {
-        setIsSaving(true);
+    const performSave = async (dataToSave, titles, order, config, name) => {
         try {
-            const state = loadState() || {};
-            const now = new Date().toISOString();
-            state[cvId] = {
-                templateId, data, cvName, sectionOrder,
-                sectionTitles, styleConfig, updatedAt: now
-            };
-            state._cvList = state._cvList || [];
-            const existingIndex = state._cvList.findIndex(cv => cv.id === cvId);
-            const listItem = {
-                id: cvId, templateId, name: cvName,
-                accent: styleConfig?.accentColor || getTemplateAccent(templateId),
-                updatedAt: "Vừa xong"
-            };
-            if (existingIndex >= 0) state._cvList[existingIndex] = listItem;
-            else state._cvList.push(listItem);
-            saveState(state);
-            setLastSaved(now);
+            const token = getToken();
+            const res = await fetch(`${API_BASE}/cv-builder/update/${cvId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    name,
+                    data: {
+                        cvData: dataToSave,
+                        sectionTitles: titles,
+                        sectionOrder: order,
+                        styleConfig: config
+                    }
+                })
+            });
+            if (!res.ok) throw new Error('Save failed');
+            setLastSaved(new Date().toISOString());
+            return true;
         } catch (err) {
             console.error("Save error:", err);
+            return false;
         }
-        setTimeout(() => setIsSaving(false), 500);
     };
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        await performSave(data, sectionTitles, sectionOrder, styleConfig, cvName);
+        setIsSaving(false);
+    };
+
+    // Auto-save effect (same as before but using performSave)
+    useEffect(() => {
+        if (!isAutoSaveEnabled) return;
+        if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+        setAutoSaveStatus('saving');
+        autoSaveTimerRef.current = setTimeout(async () => {
+            const success = await performSave(data, sectionTitles, sectionOrder, styleConfig, cvName);
+            setAutoSaveStatus(success ? 'saved' : 'error');
+            setTimeout(() => setAutoSaveStatus(prev => prev === 'saved' ? '' : prev), 3000);
+        }, 2000);
+        return () => clearTimeout(autoSaveTimerRef.current);
+    }, [data, sectionOrder, sectionTitles, styleConfig, cvName, cvId, isAutoSaveEnabled]);
 
     const toggleAutoSave = () => {
         const newValue = !isAutoSaveEnabled;
@@ -701,7 +686,7 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
         }
         setShowTranslated(false);
         setTranslatedData(null);
-        setTranslatedSectionTitles(null);   
+        setTranslatedSectionTitles(null);
     };
 
     const openAssistModal = (section = null) => {

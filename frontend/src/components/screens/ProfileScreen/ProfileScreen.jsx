@@ -8,15 +8,6 @@ import { getToken } from '../../../utils/auth'
 
 const API = 'http://localhost:3000/api'
 
-// Đọc data chi tiết CV từ cv_builder_state[cvId].data
-function getCVData(cvId) {
-  try {
-    const raw = localStorage.getItem('cv_builder_state')
-    if (!raw) return {}
-    const state = JSON.parse(raw)
-    return state[cvId]?.data || {}
-  } catch { return {} }
-}
 
 const AI_INSIGHTS = [
   { icon: '👁', text: 'Bạn thường xem kỹ JD có "React", "TypeScript" và lương >25tr', source: 'Từ 47 lần xem' },
@@ -41,12 +32,25 @@ const CONNECTED_ACCOUNTS = [
 
 // ─── Import CV Modal ──────────────────────────────────────────────────────────
 // Nhận cvList trực tiếp từ App state qua props — không đọc localStorage
-function ImportCVModal({ onClose, onImport, authHeaders, cvList = [] }) {
+function ImportCVModal({ onClose, onImport, authHeaders}) {
   const [analyzedCVs, setAnalyzedCVs] = useState([])
+  const [localCVs, setLocalCVs] = useState([]);
   const [selectedCV, setSelectedCV] = useState(null)
   const [importing, setImporting] = useState(false)
   const [tab, setTab] = useState('local')
+  const [loadingLocal, setLoadingLocal] = useState(false);
   const [loadingAnalyzed, setLoadingAnalyzed] = useState(false)
+
+  useEffect(() => {
+    setLoadingLocal(true);
+    fetch(`${API}/cv-builder/list`, { headers: authHeaders })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => {
+        setLocalCVs(data.map(cv => ({ ...cv, type: 'local' })));
+      })
+      .catch(() => {})
+      .finally(() => setLoadingLocal(false));
+  }, []);
 
   useEffect(() => {
     setLoadingAnalyzed(true)
@@ -68,7 +72,7 @@ function ImportCVModal({ onClose, onImport, authHeaders, cvList = [] }) {
     }
   }
 
-  const currentList = tab === 'local' ? cvList : analyzedCVs
+  const currentList = tab === 'local' ? localCVs : analyzedCVs;
 
   return (
     <div style={{
@@ -108,7 +112,7 @@ function ImportCVModal({ onClose, onImport, authHeaders, cvList = [] }) {
         {/* Tabs */}
         <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--bg)', padding: '0 22px' }}>
           {[
-            { id: 'local', label: '✏️ CV đã tạo', count: cvList.length },
+            { id: 'local', label: '✏️ CV đã tạo', count: localCVs.length },
             { id: 'analyzed', label: '📤 CV đã tải lên', count: analyzedCVs.length },
           ].map(t => (
             <button key={t.id} onClick={() => { setTab(t.id); setSelectedCV(null) }}
@@ -165,7 +169,7 @@ function ImportCVModal({ onClose, onImport, authHeaders, cvList = [] }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{
                       width: 36, height: 36, borderRadius: 8, flexShrink: 0,
-                    background: iconBg,
+                      background: iconBg,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontWeight: 700, fontSize: 16, color: '#fff',
                     }}>
@@ -350,19 +354,17 @@ function AnalyzedCVPreview({ cv, authHeaders }) {
   )
 }
 
-// ─── Preview CV tự tạo ────────────────────────────────────────────────────────
+// ─── Preview CV tự tạo (dùng dữ liệu từ API) ────────────────────────────────
 function LocalCVPreview({ cv }) {
-  // Data chi tiết lưu trong cv_builder_state[cv.id].data, không nằm trong _cvList
-  const [cvData, setCvData] = useState({})
-  useEffect(() => { setCvData(getCVData(cv.id)) }, [cv.id])
-
-  const info = cvData.personalInfo || {}
-  const experiences = cvData.experiences || []
-  const education = cvData.education || []
-  const skills = cvData.skills || []
-  const certifications = cvData.certifications || []
-  const summary = cvData.summary || ''
-  const hasData = info.fullName || experiences.length > 0 || skills.length > 0
+  // Dữ liệu CV được lưu trong cv.data.cvData (backend trả về)
+  const cvData = cv.data?.cvData || {};
+  const info = cvData.personalInfo || {};
+  const experiences = cvData.experiences || [];
+  const education = cvData.education || [];
+  const skills = cvData.skills || [];
+  const certifications = cvData.certifications || [];
+  const summary = cvData.summary || '';
+  const hasData = info.fullName || experiences.length > 0 || skills.length > 0;
 
   if (!hasData) {
     return (
@@ -371,10 +373,12 @@ function LocalCVPreview({ cv }) {
         borderRadius: 8, border: '1px solid rgba(245,158,11,0.2)',
         fontSize: 13, color: 'var(--ink3)', lineHeight: 1.6,
       }}>
-        <div style={{ fontWeight: 600, marginBottom: 6, color: '#b45309' }}>⚠️ CV chưa có dữ liệu chi tiết</div>
+        <div style={{ fontWeight: 600, marginBottom: 6, color: '#b45309' }}>
+          ⚠️ CV chưa có dữ liệu chi tiết
+        </div>
         CV này chưa được điền nội dung trong Editor. Hệ thống sẽ chỉ dùng tên CV khi nhập.
       </div>
-    )
+    );
   }
 
   return (
@@ -388,14 +392,13 @@ function LocalCVPreview({ cv }) {
         {info.address && <div style={{ color: 'var(--ink3)', fontSize: 12 }}>📍 {info.address}</div>}
         {info.linkedin && <div style={{ color: 'var(--ink3)', fontSize: 12 }}>🔗 {info.linkedin}</div>}
       </div>
+
       {summary && (
         <PreviewSection label="Mục tiêu">
-          <p
-            style={{ margin: 0, color: 'var(--ink2)', fontSize: 12 }}
-            dangerouslySetInnerHTML={{ __html: summary }}
-          />
+          <p style={{ margin: 0, color: 'var(--ink2)', fontSize: 12 }} dangerouslySetInnerHTML={{ __html: summary }} />
         </PreviewSection>
       )}
+
       {experiences.length > 0 && (
         <PreviewSection label="Kinh nghiệm">
           {experiences.map((e, i) => (
@@ -403,11 +406,14 @@ function LocalCVPreview({ cv }) {
               <span style={{ fontWeight: 600 }}>{e.position}</span>
               {e.company && <span style={{ color: 'var(--ink3)' }}> · {e.company}</span>}
               {e.duration && <span style={{ color: 'var(--ink4)', fontSize: 11 }}> ({e.duration})</span>}
-              {e.description && <div style={{ color: 'var(--ink3)', fontSize: 11, marginTop: 2 }} dangerouslySetInnerHTML={{ __html: e.description }} />}
+              {e.description && (
+                <div style={{ color: 'var(--ink3)', fontSize: 11, marginTop: 2 }} dangerouslySetInnerHTML={{ __html: e.description }} />
+              )}
             </div>
           ))}
         </PreviewSection>
       )}
+
       {education.length > 0 && (
         <PreviewSection label="Học vấn">
           {education.map((e, i) => (
@@ -419,21 +425,23 @@ function LocalCVPreview({ cv }) {
           ))}
         </PreviewSection>
       )}
+
       {skills.length > 0 && (
         <PreviewSection label="Kỹ năng">
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
             {skills.map((s, i) => {
-              const label = typeof s === 'string' ? s : (s.category || s.name || '')
+              const label = typeof s === 'string' ? s : (s.category || s.name || '');
               return label ? (
                 <span key={i} style={{
                   padding: '2px 8px', borderRadius: 6, fontSize: 11,
                   background: 'var(--bg3)', color: 'var(--ink2)', fontWeight: 500,
                 }}>{label}</span>
-              ) : null
+              ) : null;
             })}
           </div>
         </PreviewSection>
       )}
+
       {certifications.length > 0 && (
         <PreviewSection label="Chứng chỉ">
           {certifications.map((c, i) => (
@@ -446,7 +454,7 @@ function LocalCVPreview({ cv }) {
         </PreviewSection>
       )}
     </div>
-  )
+  );
 }
 
 function PreviewSection({ label, children }) {
@@ -465,7 +473,8 @@ function PreviewSection({ label, children }) {
 function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
   const [cvList, setCvList] = useState(() => {
     try {
-      const raw = localStorage.getItem('cv_builder_state')
+      const key = profile?.userID ? `cv_builder_state_${profile.userID}` : 'cv_builder_state'
+      const raw = localStorage.getItem(key)
       const state = raw ? JSON.parse(raw) : {}
       const list = state._cvList
       return Array.isArray(list) && list.length > 0 ? list : cvListProp
@@ -474,10 +483,11 @@ function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
   useEffect(() => {
     const sync = () => {
       try {
-        const raw = localStorage.getItem('cv_builder_state')
+        const key = profile?.userID ? `cv_builder_state_${profile.userID}` : 'cv_builder_state'
+        const raw = localStorage.getItem(key)
         const state = raw ? JSON.parse(raw) : {}
         if (Array.isArray(state._cvList)) setCvList(state._cvList)
-      } catch {}
+      } catch { }
     }
     window.addEventListener('storage', sync)
     window.addEventListener('focus', sync)
@@ -805,7 +815,7 @@ function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
 
     setTimeout(() => setImportMsg(''), 5000)
   }
-  
+
   return (
     <div id="s8">
       <div className="app-layout">

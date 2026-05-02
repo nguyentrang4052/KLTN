@@ -163,18 +163,6 @@ function AIRouteJobDetail({ backPath, jobBasePath }) {
   )
 }
 
-function getCVListFromStorage() {
-  try {
-    const raw = localStorage.getItem('cv_builder_state')
-    if (!raw) return []
-    const state = JSON.parse(raw)
-    // state._cvList là array metadata do CreatedCVScreen/persistCVList lưu
-    return Array.isArray(state._cvList) ? state._cvList : []
-  } catch {
-    return []
-  }
-}
-
 
 function App() {
   const location = useLocation()
@@ -203,19 +191,6 @@ function App() {
 
   const [screen, setScreen] = useState('myCV')
   const navigate = useNavigate()
-
-  const [cvList, setCvList] = useState([])
-  useEffect(() => {
-    const loadCVs = () => setCvList(getCVListFromStorage())
-    loadCVs()
-    window.addEventListener('focus', loadCVs)
-    window.addEventListener('storage', loadCVs)
-    return () => {
-      window.removeEventListener('focus', loadCVs)
-      window.removeEventListener('storage', loadCVs)
-    }
-  }, [])
-
 
   return (
     <div className="app">
@@ -290,7 +265,7 @@ function App() {
             <ProtectedRoute><DashboardScreen /></ProtectedRoute>
           } />
           <Route path="/profile" element={
-            <ProtectedRoute><ProfileScreen cvList={cvList} /></ProtectedRoute>
+            <ProtectedRoute><ProfileScreen/></ProtectedRoute>
           } />
 
           <Route path="/settings" element={

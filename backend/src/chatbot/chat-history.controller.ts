@@ -9,8 +9,9 @@ export class ChatHistoryController {
     constructor(private chatHistoryService: ChatHistoryService) {}
 
     @Get('get-sessions')
+    @UseGuards(JwtAuthGuard)
     getSessions(@Req() req: any) {
-        return this.chatHistoryService.findSessionByUser(req.sub);
+        return this.chatHistoryService.findSessionByUser(req.user?.sub);
     }
 
     @Post('create-sessions')
@@ -21,6 +22,7 @@ export class ChatHistoryController {
     }
 
     @Get('sessions/:sessionID/messages')
+    @UseGuards(JwtAuthGuard)
     getMessages(@Param('sessionID') sessionID: number) {
         return this.chatHistoryService.findMessagesBySession(sessionID);
     }
@@ -33,6 +35,7 @@ export class ChatHistoryController {
     }
 
     @Post('delete-session/:sessionID')
+    @UseGuards(JwtAuthGuard)
     deleteSession(@Param('sessionID') sessionID: number) {
         return this.chatHistoryService.deleteSession(sessionID);
     }

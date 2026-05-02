@@ -20,6 +20,7 @@ import { ChatbotModule } from './chatbot/chatbot.module';
 import { RedisModule } from './redis/redis.module';
 import { ChatHistoryModule } from './chatbot/chat-history.module';
 import { CvAssistantModule } from './cv-assistant/cv-assistant.module';
+import { CvBuilderModule } from './cv-builder/cv-builder.module';
 
 
 @Module({
@@ -54,6 +55,7 @@ import { CvAssistantModule } from './cv-assistant/cv-assistant.module';
     RedisModule,
     ChatHistoryModule,
     CvAssistantModule,
+    CvBuilderModule,
   ],
   controllers: [AppController],
   providers: [AppService],

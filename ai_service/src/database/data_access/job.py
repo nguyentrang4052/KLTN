@@ -19,6 +19,7 @@ class JobDataAccess:
         return cleaned
 
     async def find_by_id(self, job_id: int) -> Optional[JobPosting]:
+        """Tìm job theo ID - CHỈ JOB CHƯA HẾT HẠN"""
         query = """
             SELECT 
                 j."jobID" as id,
@@ -46,77 +47,14 @@ class JobDataAccess:
             LEFT JOIN "Industry" i ON j."industryID" = i.id
             LEFT JOIN "JobSkill" js ON j."jobID" = js."jobID"
             LEFT JOIN "Skill" s ON js."skillID" = s."skillID"
-            WHERE j."jobID" = $1 AND j."isActive" = true
+            WHERE j."jobID" = $1 
+              AND j."isActive" = true
+              AND (j.deadline IS NULL OR j.deadline > NOW())
             GROUP BY j."jobID", c."companyName", i.name
         """
         row = await db.fetchrow(query, job_id)
         return JobPosting(**self._format_row(row)) if row else None
 
-    # async def search_by_skills(
-    #     self,
-    #     skills: List[str],
-    #     location: Optional[str] = None,
-    #     job_type: Optional[str] = None,
-    #     experience: Optional[str] = None,
-    #     limit: int = 10,
-    #     offset: int = 0,
-    # ) -> List[JobPosting]:
-    #     """Search jobs by user skills - CHỈ LẤY JOB CHƯA HẾT HẠN"""
-    #     if not skills:
-    #         return await self.get_all_active_jobs(limit=limit)
-        
-    #     skills_lower = [s.lower() for s in skills]
-        
-    #     query = """
-    #         SELECT 
-    #             j."jobID" as id,
-    #             j.title,
-    #             c."companyName" as company,
-    #             j.location,
-    #             j.salary,
-    #             j.description,
-    #             j.requirement as requirements,
-    #             j."jobType" as job_type,
-    #             j."workingTime" as working_time,
-    #             j."experienceYear" as experience_year,
-    #             j."postedAt" as posted_at,
-    #             j.deadline,
-    #             j."isActive" as is_active,
-    #             i.name as industry,
-    #             array_agg(DISTINCT s.name) as skills,
-    #             COUNT(DISTINCT s."skillID") as match_count
-    #         FROM "Job" j
-    #         JOIN "Company" c ON j."companyID" = c."companyID"
-    #         LEFT JOIN "Industry" i ON j."industryID" = i.id
-    #         LEFT JOIN "JobSkill" js ON j."jobID" = js."jobID"
-    #         LEFT JOIN "Skill" s ON js."skillID" = s."skillID"
-    #         WHERE j."isActive" = true 
-    #         AND (j.deadline IS NULL OR j.deadline > NOW())
-    #         AND LOWER(s.name) = ANY($1::text[])
-    #         AND ($2::text IS NULL OR j.location ILIKE $2 OR j."shortLocation" ILIKE $2)
-    #         AND ($3::text IS NULL OR j."jobType" = $3)
-    #         AND ($4::text IS NULL OR j."experienceYear" = $4)
-    #         GROUP BY j."jobID", c."companyName", i.name
-    #         HAVING COUNT(DISTINCT s."skillID") >= 1
-    #         ORDER BY match_count DESC, j."postedAt" DESC NULLS LAST
-    #         LIMIT $5 OFFSET $6
-    #     """
-        
-    #     rows = await db.fetch(
-    #         query,
-    #         skills_lower,
-    #         f"%{location}%" if location else None,
-    #         job_type,
-    #         experience,
-    #         limit,
-    #         offset,
-    #     )
-    #     jobs = [JobPosting(**self._format_row(dict(r))) for r in rows]
-        
-    #     if not jobs:
-    #         jobs = await self.get_all_active_jobs(limit=limit)
-        
-    #     return jobs
     
     async def search_jobs_by_title(self, title_keywords: List[str], limit: int = 10) -> List[Dict[str, Any]]:
         """Tìm kiếm job theo title keywords - CHỈ JOB CHƯA HẾT HẠN"""
@@ -275,7 +213,7 @@ class JobDataAccess:
     async def get_recommended_jobs(
         self, user_id: int, min_match: float = 70.0, limit: int = 10
     ) -> List[Dict[str, Any]]:
-        """Get AI recommended jobs for user"""
+        """Get AI recommended jobs for user - CHỈ JOB CHƯA HẾT HẠN"""
         query = """
             SELECT 
                 j."jobID" as id,
@@ -294,16 +232,18 @@ class JobDataAccess:
             WHERE jr."userID" = $1
               AND jr."matchPercent" >= $2
               AND j."isActive" = true
+              AND (j.deadline IS NULL OR j.deadline > NOW())
             GROUP BY j."jobID", c."companyName", jr."matchPercent"
             ORDER BY jr."matchPercent" DESC
             LIMIT $3
         """
         return await db.fetch(query, user_id, min_match, limit)
 
+
     async def get_active_jobs_for_embedding(
         self, limit: int = 1000
     ) -> List[Dict[str, Any]]:
-        """Get jobs for vector store ingestion"""
+        """Get jobs for vector store ingestion - CHỈ JOB CHƯA HẾT HẠN"""
         query = """
             SELECT 
                 j."jobID"::text as id,
@@ -326,12 +266,12 @@ class JobDataAccess:
             LEFT JOIN "JobSkill" js ON j."jobID" = js."jobID"
             LEFT JOIN "Skill" s ON js."skillID" = s."skillID"
             WHERE j."isActive" = true
+              AND (j.deadline IS NULL OR j.deadline > NOW())
             GROUP BY j."jobID", c."companyName", i.name
             LIMIT $1
         """
-
         rows = await db.fetch(query, limit)
-
+        
         return [
             {
                 "id": f"job_{r['id']}",
@@ -349,7 +289,7 @@ class JobDataAccess:
                 Requirements: {r['requirements'] or 'N/A'}
                 Benefits: {r['benefit'] or 'N/A'}
                 """.strip(),
-                "metadata":self._clean_meta({
+                "metadata": self._clean_meta({
                     "source": "job_postings",
                     "category": "job_description",
                     "job_id": r["id"],
@@ -364,7 +304,7 @@ class JobDataAccess:
     async def get_salary_stats(
         self, title: str, location: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Extract salary stats from job postings"""
+        """Extract salary stats from job postings - CHỈ JOB CHƯA HẾT HẠN"""
         query = """
             SELECT 
                 MIN(CAST(REGEXP_REPLACE(REGEXP_REPLACE(salary, '[^0-9]', '', 'g'), '^0+', '') AS INTEGER)) as min_salary,
@@ -373,6 +313,7 @@ class JobDataAccess:
             FROM "Job"
             WHERE title ILIKE $1
               AND "isActive" = true
+              AND (deadline IS NULL OR deadline > NOW())
               AND salary IS NOT NULL
               AND salary != ''
               AND ($2::text IS NULL OR location ILIKE $2 OR "shortLocation" ILIKE $2)
@@ -413,11 +354,10 @@ class JobDataAccess:
         location: Optional[str] = None,
         limit: int = 10
     ) -> List[Dict[str, Any]]:
-        """Tìm kiếm job theo từ khóa (title, company, description)"""
+        """Tìm kiếm job theo từ khóa - CHỈ JOB CHƯA HẾT HẠN"""
         if not keywords:
             return []
         
-        # Tạo điều kiện tìm kiếm
         search_conditions = []
         params = []
         param_idx = 1
@@ -457,7 +397,9 @@ class JobDataAccess:
             LEFT JOIN "Industry" i ON j."industryID" = i.id
             LEFT JOIN "JobSkill" js ON j."jobID" = js."jobID"
             LEFT JOIN "Skill" s ON js."skillID" = s."skillID"
-            WHERE j."isActive" = true AND {where_clause}
+            WHERE j."isActive" = true 
+              AND (j.deadline IS NULL OR j.deadline > NOW())
+              AND {where_clause}
             GROUP BY j."jobID", c."companyName", i.name
             ORDER BY j."postedAt" DESC NULLS LAST
             LIMIT ${param_idx}
@@ -493,6 +435,7 @@ class JobDataAccess:
             LEFT JOIN "JobSkill" js ON j."jobID" = js."jobID"
             LEFT JOIN "Skill" s ON js."skillID" = s."skillID"
             WHERE j."isActive" = true 
+            AND (j.deadline IS NULL OR j.deadline > NOW())
             AND j.title ILIKE $1
             AND ($2::text IS NULL OR c."companyName" ILIKE $2)
             GROUP BY j."jobID", c."companyName"
@@ -566,6 +509,7 @@ class JobDataAccess:
             LEFT JOIN "JobSkill" js ON j."jobID" = js."jobID"
             LEFT JOIN "Skill" s ON js."skillID" = s."skillID"
             WHERE j."isActive" = true AND {where_clause}
+            AND (j.deadline IS NULL OR j.deadline > NOW())
             GROUP BY j."jobID", c."companyName"
             ORDER BY j."postedAt" DESC NULLS LAST
             LIMIT ${param_idx}
@@ -619,6 +563,7 @@ class JobDataAccess:
             LEFT JOIN "JobSkill" js ON j."jobID" = js."jobID"
             LEFT JOIN "Skill" s ON js."skillID" = s."skillID"
             WHERE j."isActive" = true AND ({where_clause})
+            AND (j.deadline IS NULL OR j.deadline > NOW())
             GROUP BY j."jobID", c."companyName"
             ORDER BY j."postedAt" DESC NULLS LAST
             LIMIT ${param_idx}

@@ -306,6 +306,9 @@ export default function AIAssistantScreen({ onNavigate }) {
             const res = await fetchWithTimeout(`${API_BASE_URL}/chat-history/get-sessions`, {
                 method: 'GET',
                 credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
             });
             if (!res.ok) throw new Error('Failed');
             return await res.json();
@@ -340,6 +343,8 @@ export default function AIAssistantScreen({ onNavigate }) {
             const res = await fetchWithTimeout(`${API_BASE_URL}/chat-history/sessions/${sessionID}/messages`, {
                 method: 'GET',
                 credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`}
             });
             if (!res.ok) throw new Error('Failed');
             return await res.json();
@@ -390,6 +395,9 @@ export default function AIAssistantScreen({ onNavigate }) {
                 await fetchWithTimeout(`${API_BASE_URL}/chat-history/delete-session/${sessionID}`, {
                     method: 'POST',
                     credentials: 'include',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
                 });
                 setSessions((prev) => prev.filter((s) => s.id !== sessionID));
                 if (currentSessionId === sessionID)
