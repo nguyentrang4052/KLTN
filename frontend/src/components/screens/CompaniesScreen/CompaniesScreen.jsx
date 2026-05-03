@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './CompaniesScreen.css'
+import { createPortal } from 'react-dom'
+import { getToken } from '../../../utils/auth'
 
 const API = 'http://localhost:3000/api'
 
@@ -100,6 +102,17 @@ export default function CompaniesScreen() {
   const [page, setPage] = useState(1)
   const [listView, setListView] = useState(false)
   const [loadingCompanies, setLoadingCompanies] = useState(false)
+
+  const [suggestions, setSuggestions] = useState([])
+  const [recentSearches, setRecentSearches] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('company_search_history') || '[]') }
+    catch { return [] }
+  })
+  const [showDropdown, setShowDropdown] = useState(false)
+  const searchInputRef = useRef(null)
+  const [searchPos, setSearchPos] = useState({ top: 0, left: 0, width: 0 })
+  const suggestDebounceRef = useRef(null)
+  const token = getToken()
 
   useEffect(() => {
     Promise.all([
@@ -207,6 +220,72 @@ export default function CompaniesScreen() {
     return pages
   }
 
+  const saveRecentSearch = (kw) => {
+    if (!kw?.trim()) return
+    setRecentSearches(prev => {
+      const filtered = prev.filter(k => k !== kw.trim())
+      const updated = [kw.trim(), ...filtered].slice(0, 6)
+      localStorage.setItem('company_search_history', JSON.stringify(updated))
+      return updated
+    })
+  }
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (searchInputRef.current && !searchInputRef.current.contains(e.target))
+        setShowDropdown(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const handleKeywordChange = (e) => {
+    const val = e.target.value
+    setKeyword(val)
+    setShowDropdown(true)
+    clearTimeout(suggestDebounceRef.current)
+    if (!val.trim()) { setSuggestions([]); return }
+    suggestDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API}/companies/suggestions?q=${encodeURIComponent(val)}`)
+        const data = await res.json()
+        setSuggestions(Array.isArray(data) ? data : [])
+      } catch { setSuggestions([]) }
+    }, 250)
+  }
+
+  const handleSearchFocus = () => {
+    if (searchInputRef.current) {
+      const rect = searchInputRef.current.getBoundingClientRect()
+      setSearchPos({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      })
+    }
+    setShowDropdown(true)
+  }
+
+  const handleSearch = () => {
+    setPage(1)
+    saveRecentSearch(keyword)
+    setShowDropdown(false)
+    fetchCompanies()
+  }
+
+  const handleQuickSearch = (kw) => {
+    setKeyword(kw)
+    setPage(1)
+    saveRecentSearch(kw)
+    setSuggestions([])
+    setShowDropdown(false)
+  }
+
+  const showSearchDropdown = showDropdown && (
+    (keyword.trim() && suggestions.length > 0) ||
+    (!keyword.trim() && recentSearches.length > 0)
+  )
+
   return (
     <div className="cs-screen">
 
@@ -249,17 +328,99 @@ export default function CompaniesScreen() {
             Tìm kiếm nơi làm việc lý tưởng từ các công ty hàng đầu Việt Nam và quốc tế.
           </p>
           <div className="cs-hero__search">
-            <div className="cs-hero__field">
+            <div className="cs-hero__field" style={{ position: 'relative' }} ref={searchInputRef}>
               <span className="cs-hero__field-ico">🔍</span>
-              <input type="text" placeholder="Tên công ty"
+              <input
+                type="text"
+                placeholder="Tên công ty"
                 value={keyword}
-                onChange={e => setKeyword(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { setPage(1); fetchCompanies() } }} />
+                onChange={handleKeywordChange}
+                onFocus={handleSearchFocus}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleSearch()
+                  if (e.key === 'Escape') setShowDropdown(false)
+                }}
+              />
+              {keyword && (
+                <button style={{
+                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'rgba(255,255,255,.5)', fontSize: 18, lineHeight: 1, padding: '0 4px',
+                }} onClick={() => { setKeyword(''); setSuggestions([]); setShowDropdown(false) }}>×</button>
+              )}
             </div>
-            <button className="cs-hero__search-btn" onClick={() => { setPage(1); fetchCompanies() }}>
+            <button className="cs-hero__search-btn" onClick={handleSearch}>
               🔍 Tìm kiếm
             </button>
           </div>
+
+          {showSearchDropdown && createPortal(
+            <>
+              <div
+                style={{ position: 'fixed', inset: 0, zIndex: 9996 }}
+                onMouseDown={(e) => { e.preventDefault(); setShowDropdown(false) }}
+              />
+              <div style={{
+                position: 'absolute',
+                top: searchPos.top, left: searchPos.left,
+                width: Math.max(searchPos.width, 320),
+                zIndex: 9997,
+                background: '#FEFCF7',
+                border: '1.5px solid #DDD6C6',
+                borderRadius: 12,
+                boxShadow: '0 8px 32px rgba(0,0,0,.15)',
+                overflow: 'hidden',
+              }}>
+                {!keyword.trim() && recentSearches.length > 0 && (
+                  <>
+                    <div style={{
+                      padding: '8px 14px 4px', fontSize: 11, fontWeight: 700,
+                      color: '#9A8D80', textTransform: 'uppercase', letterSpacing: 1,
+                    }}>
+                      Tìm kiếm gần đây
+                    </div>
+                    {recentSearches.map((h, i) => (
+                      <div key={i}
+                        style={{ padding: '9px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#1C1510' }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#F7F2EA'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        onMouseDown={(e) => { e.preventDefault(); handleQuickSearch(h) }}>
+                        <span style={{ opacity: .5 }}>🕐</span>
+                        {h}
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {keyword.trim() && suggestions.length > 0 && (
+                  <>
+                    <div style={{
+                      padding: '8px 14px 4px', fontSize: 11, fontWeight: 700,
+                      color: '#9A8D80', textTransform: 'uppercase', letterSpacing: 1,
+                    }}>
+                      Công ty gợi ý
+                    </div>
+                    {suggestions.map((s, i) => (
+                      <div key={i}
+                        style={{ padding: '8px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#1C1510' }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#F7F2EA'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        onMouseDown={(e) => { e.preventDefault(); handleQuickSearch(s.name) }}>
+                        {s.logo
+                          ? <img src={s.logo} alt={s.name} style={{ width: 22, height: 22, borderRadius: 4, objectFit: 'contain', background: '#eee' }} onError={e => e.target.style.display = 'none'} />
+                          : <div style={{ width: 22, height: 22, borderRadius: 4, background: getLogoColor(s.name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#fff', fontWeight: 700, flexShrink: 0 }}>
+                            {s.name?.[0]?.toUpperCase()}
+                          </div>
+                        }
+                        {s.name}
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            </>,
+            document.body
+          )}
         </div>
       </section>
 

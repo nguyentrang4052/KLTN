@@ -20,7 +20,7 @@ function Avatar({ avatar, initials, className }) {
   return <div className={className}>{initials}</div>
 }
 
-export default function Header({ notifCount: propNotifCount }) {
+export default function Header({ notifCount = 0 }) {
   const [ddOpen, setDdOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [user, setUser] = useState(getUser)
@@ -204,7 +204,7 @@ export default function Header({ notifCount: propNotifCount }) {
       .then(r => r.json())
       .then(data => setSavedCount(Array.isArray(data) ? data.length : 0))
       .catch(() => { })
-  }, [])
+  }, [location.pathname])
 
   useEffect(() => {
     const handleProfileUpdate = (event) => {
@@ -221,7 +221,7 @@ export default function Header({ notifCount: propNotifCount }) {
   const handleLogout = async () => {
     setDdOpen(false)
     await logoutRequest()
-    navigate('/login', { replace: true })
+    navigate('/', { replace: true })
   }
 
   const handleDdItem = (item) => {
@@ -309,215 +309,101 @@ export default function Header({ notifCount: propNotifCount }) {
         </nav>
 
         <div className="app-header__right">
-          <button className="app-header__quick-search" onClick={() => navigate('/jobs')}>
-            🔍 <span>Tìm kiếm nhanh...</span>
-          </button>
+          {user && (  // hoặc check token
+            <>
+              <button className="app-header__quick-search" onClick={() => navigate('/jobs')}>
+                🔍 <span>Tìm kiếm nhanh...</span>
+              </button>
 
-          {/* Notification Button với Popup */}
-          <div className="app-header__notif-wrap">
-            <button
-              className={`app-header__icon-btn${notifOpen ? ' active' : ''}`}
-              title="Thông báo"
-              onClick={() => {
-                setNotifOpen(o => !o)
-                setDdOpen(false)
-              }}
-            >
-              🔔
-              {unreadCount > 0 && (
-                <span className="app-header__notif-bubble">
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </span>
-              )}
-            </button>
+              <button
+                className={`app-header__icon-btn${location.pathname === '/notifications' ? ' active' : ''}`}
+                title="Thông báo"
+                onClick={() => navigate('/notifications')}
+              >
+                🔔
+                {notifCount > 0 && (
+                  <span className="app-header__notif-bubble">
+                    {notifCount > 99 ? '99+' : notifCount}
+                  </span>
+                )}
+              </button>
 
-            {notifOpen && (
-              <>
-                <div className="app-header__dd-overlay" onClick={handleOverlayClick} />
-                <div className="app-header__notif-dropdown">
-                  <div className="app-header__notif-header">
-                    <span className="app-header__notif-title">🔔 Thông báo</span>
-                    {notifications.length > 0 && (
-                      <button
-                        className="app-header__notif-readall"
-                        onClick={handleReadAll}
-                      >
-                        Đọc tất cả
-                      </button>
-                    )}
-                  </div>
+              <div className="app-header__divider" />
 
-                  <div className="app-header__notif-list">
-                    {notifications.length === 0 ? (
-                      <div className="app-header__notif-empty">
-                        Không có thông báo nào
-                      </div>
-                    ) : (
-                      // Trong phần render notifications:
-                      notifications.map(notif => (
-                        <div
-                          key={notif.id}
-                          className={`app-header__notif-item ${!notif.isRead ? 'unread' : ''}`}
-                          onClick={(e) => {
-                            handleClickNotif(e, notif.id);
-                            if (!notif.isRead) markAsRead(notif.id);
-                          }}
-                        >
-                          <div
-                            className="app-header__notif-ico"
-                            style={{ background: notif.type === 'expired' ? '#FEE2E2' : '#FDE8E4' }}
-                          >
-                            {notif.type === 'expired' ? '❌' : '⏰'}
-                          </div>
-
-                          <div className="app-header__notif-content">
-                            <div className="app-header__notif-item-title">
-                              {notif.title}
-                              {notif.emailSent && (
-                                <span title="Đã gửi email" style={{ marginLeft: 6, fontSize: 12 }}>
-                                  ✉️
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Hiển thị tên công ty nếu có */}
-                            {notif.job?.company?.companyName && (
-                              <div style={{ fontSize: 12, color: '#666', marginTop: 2 }}>
-                                🏢 {notif.job.company.companyName}
-                              </div>
-                            )}
-
-                            <div className="app-header__notif-job">
-                              {notif.content}
-                            </div>
-
-                            {/* Hiển thị deadline nếu có */}
-                            {notif.job?.deadline && (
-                              <div style={{ fontSize: 11, color: '#D4820A', marginTop: 4 }}>
-                                ⏰ {new Date(notif.job.deadline).toLocaleDateString('vi-VN')}
-                              </div>
-                            )}
-
-                            <div className="app-header__notif-time">
-                              {formatTimeAgo(notif.createdAt)}
-                            </div>
-                          </div>
-
-                          {!notif.isRead && <div className="app-header__notif-dot" />}
-                        </div>
-                      ))
-                    )}
-                  </div>
-
-                  {/* Email Notification Toggle */}
-                  <div className="app-header__notif-email-toggle">
-                    <div className="app-header__notif-email-info">
-                      <span className="app-header__notif-email-icon">📧</span>
-                      <div className="app-header__notif-email-text">
-                        <div className="app-header__notif-email-label">Thông báo qua email</div>
-                        <div className="app-header__notif-email-desc">
-                          Nhận thông báo về việc làm sắp hết hạn
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      className={`app-header__toggle-switch ${emailNotifEnabled ? 'on' : ''} ${isLoadingEmailPref ? 'loading' : ''}`}
-                      onClick={toggleEmail}
-                      disabled={isLoadingEmailPref}
-                      aria-pressed={emailNotifEnabled}
-                    >
-                      <span className="app-header__toggle-slider" />
-                    </button>
-                  </div>
-
-                  {/* <div 
-                    className="app-header__notif-footer"
-                    onClick={() => {
-                      navigate('/notifications')
-                      setNotifOpen(false)
-                    }}
-                  >
-                    Xem tất cả thông báo
-                  </div> */}
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="app-header__divider" />
-
-          <div className="app-header__avatar-wrap">
-            <button
-              className={`app-header__avatar-btn${ddOpen ? ' open' : ''}`}
-              onClick={() => {
-                setDdOpen(o => !o)
-                setNotifOpen(false)
-              }}
-            >
-              <Avatar
-                avatar={user?.avatar}
-                initials={initials}
-                className="app-header__av-circle"
-              />
-              <div className="app-header__av-meta">
-                <span className="app-header__av-name">
-                  {user?.fullName ?? 'Người dùng'}
-                </span>
-                <span className="app-header__av-plan">
-                  <span
-                    className="app-header__av-plan-dot"
-                    style={{ background: PLAN_DOT_COLOR[planName] ?? '#9A8D80' }}
+              <div className="app-header__avatar-wrap">
+                <button
+                  className={`app-header__avatar-btn${ddOpen ? ' open' : ''}`}
+                  onClick={() => setDdOpen(o => !o)}
+                >
+                  <Avatar
+                    avatar={user?.avatar}
+                    initials={initials}
+                    className="app-header__av-circle"
                   />
-                  {planDisplay}
-                </span>
-              </div>
-              <span className="app-header__av-caret">▾</span>
-            </button>
-
-            {ddOpen && (
-              <>
-                <div className="app-header__dd-overlay" onClick={handleOverlayClick} />
-                <div className="app-header__dropdown">
-
-                  <div className="app-header__dd-hero">
-                    <Avatar
-                      avatar={user?.avatar}
-                      initials={initials}
-                      className="app-header__dd-av"
-                    />
-                    <div>
-                      <div className="app-header__dd-name">
-                        {user?.fullName ?? 'Người dùng'}
-                      </div>
-                      <div className="app-header__dd-badge">⚡ {planDisplay}</div>
-                    </div>
+                  <div className="app-header__av-meta">
+                    <span className="app-header__av-name">
+                      {user?.fullName ?? 'Người dùng'}
+                    </span>
+                    <span className="app-header__av-plan">
+                      <span
+                        className="app-header__av-plan-dot"
+                        style={{ background: PLAN_DOT_COLOR[planName] ?? '#9A8D80' }}
+                      />
+                      {planDisplay}
+                    </span>
                   </div>
+                  <span className="app-header__av-caret">▾</span>
+                </button>
 
-                  {getDD_MENU(savedCount, unreadCount).map((section, si) => (
-                    <div className="app-header__dd-sec" key={si}>
-                      {section.label && (
-                        <div className="app-header__dd-sec-label">{section.label}</div>
-                      )}
-                      {section.items.map(item => (
-                        <button
-                          key={item.label}
-                          className={`app-header__dd-item${item.danger ? ' danger' : ''}`}
-                          onClick={() => handleDdItem(item)}
-                        >
-                          <span className="app-header__dd-item-ico">{item.ico}</span>
-                          <span>{item.label}</span>
-                          {item.tag && (
-                            <span className="app-header__dd-item-tag">{item.tag}</span>
+                {ddOpen && (
+                  <>
+                    <div className="app-header__dd-overlay" onClick={() => setDdOpen(false)} />
+                    <div className="app-header__dropdown">
+
+                      <div className="app-header__dd-hero">
+                        <Avatar
+                          avatar={user?.avatar}
+                          initials={initials}
+                          className="app-header__dd-av"
+                        />
+                        <div>
+                          <div className="app-header__dd-name">
+                            {user?.fullName ?? 'Người dùng'}
+                          </div>
+                          {/* <div className="app-header__dd-email">
+                        {user?.email ?? ''}
+                      </div> */}
+                          <div className="app-header__dd-badge">⚡ {planDisplay}</div>
+                        </div>
+                      </div>
+
+                      {getDD_MENU(savedCount, notifCount).map((section, si) => (
+                        <div className="app-header__dd-sec" key={si}>
+                          {section.label && (
+                            <div className="app-header__dd-sec-label">{section.label}</div>
                           )}
-                        </button>
+                          {section.items.map(item => (
+                            <button
+                              key={item.label}
+                              className={`app-header__dd-item${item.danger ? ' danger' : ''}`}
+                              onClick={() => handleDdItem(item)}
+                            >
+                              <span className="app-header__dd-item-ico">{item.ico}</span>
+                              <span>{item.label}</span>
+                              {item.tag && (
+                                <span className="app-header__dd-item-tag">{item.tag}</span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
                       ))}
-                    </div>
-                  ))}
 
-                </div>
-              </>
-            )}
-          </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </header>

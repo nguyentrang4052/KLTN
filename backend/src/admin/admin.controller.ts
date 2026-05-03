@@ -34,6 +34,21 @@ export class AdminController {
     return this.adminService.getStats();
   }
 
+  @Get('stats/monthly-registrations')
+  getMonthlyRegistrations() {
+    return this.adminService.getMonthlyRegistrations();
+  }
+
+  @Get('stats/weekly-status')
+  getWeeklyStatus() {
+    return this.adminService.getWeeklyStatus();
+  }
+
+  @Get('stats/plan-distribution')
+  getPlanDistribution() {
+    return this.adminService.getPlanDistribution();
+  }
+
   @Get('recent-users')
   getRecentUsers() {
     return this.adminService.getRecentUsers();

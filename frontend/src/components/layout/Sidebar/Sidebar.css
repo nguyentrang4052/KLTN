@@ -119,3 +119,14 @@
   font-size: 10px;
   color: #666;
 }
+
+.app-layout {
+  display: flex;
+  min-height: calc(100vh - 60px); /* trừ chiều cao header */
+}
+
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 48px; /* thêm dòng này */
+}

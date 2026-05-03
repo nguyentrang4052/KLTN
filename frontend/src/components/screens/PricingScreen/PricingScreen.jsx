@@ -13,11 +13,39 @@ const PLAN_STYLES = {
 
 const PLAN_RANK = { free: 0, pro: 1, elite: 2 };
 
+const daysSince = (iso) => iso
+  ? Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24))
+  : 999
+
 const LIMIT_ROWS = [
-  { field: 'jobSuggestPerDay', label: 'Đề xuất việc làm', unit: ' lần/ngày', icon: '💡' },
-  { field: 'cvAnalysisPerMonth', label: 'Phân tích CV', unit: ' lần/tháng', icon: '🔍' },
-  { field: 'cvMatchCheckCount', label: 'Kiểm tra độ phù hợp CV', unit: ' lần/tháng', icon: '🎯' },
-];
+  {
+    field: 'jobSuggestPerDay',
+    totalField: 'jobSuggestPerDay',   // dùng giá trị limit làm total
+    usedField: 'jobSuggestUsedToday', // field mới từ quota
+    label: 'Đề xuất việc làm',
+    unit: ' lần/ngày',
+    icon: '💡',
+    isDaily: true,                    // flag để hiển thị đúng label
+  },
+  {
+    field: 'cvAnalysisPerMonth',
+    totalField: 'cvAnalysisTotal',
+    usedField: 'cvAnalysisUsed',
+    label: 'Phân tích CV',
+    unit: ' lần/tháng',
+    icon: '🔍',
+    isDaily: false,
+  },
+  {
+    field: 'cvMatchCheckCount',
+    totalField: 'cvMatchCheckTotal',
+    usedField: 'cvMatchCheckUsed',
+    label: 'Kiểm tra độ phù hợp CV',
+    unit: ' lần/tháng',
+    icon: '🎯',
+    isDaily: false,
+  },
+]
 
 const FAQ_ITEMS = [
   // { q: 'Tôi có thể huỷ gói bất cứ lúc nào không?', a: 'Có, bạn có thể huỷ bất cứ lúc nào. Gói sẽ tiếp tục đến hết chu kỳ đã thanh toán.' },
@@ -37,6 +65,8 @@ export default function PricingScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [toast, setToast] = useState('');
+  const [quota, setQuota] = useState(null)
+  const [hasSuccessPayment, setHasSuccessPayment] = useState(false)
 
   useEffect(() => {
     const sync = () => setToken(getToken());
@@ -60,6 +90,21 @@ export default function PricingScreen() {
         if (resSub.ok) setCurrentSub(await resSub.json());
       } else {
         setCurrentSub(null);
+      }
+      if (token) {
+        const resQuota = await fetch(`${API}/subscriptions/quota`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (resQuota.ok) setQuota(await resQuota.json())
+      }
+      if (token) {
+        const resHistory = await fetch(`${API}/subscriptions/history`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (resHistory.ok) {
+          const history = await resHistory.json()
+          setHasSuccessPayment(Array.isArray(history) && history.length > 0)
+        }
       }
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
@@ -106,18 +151,20 @@ export default function PricingScreen() {
   const fmt = (n) => n === 0 ? 'Miễn phí' : n.toLocaleString('vi-VN') + 'đ';
   const formatDate = (iso) => iso ? new Date(iso).toLocaleDateString('vi-VN') : '';
   const getPrice = (plan) => billing === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice;
-  const isCurrent = (name) => currentSub?.planName === name && currentSub?.billing === billing;
+  const isCurrentPlan = (name) => currentSub?.planName === name  // chỉ check tên, không check billing
+  const isSameBilling = currentSub?.billing === billing
   const currentRank = PLAN_RANK[currentSub?.planName] ?? 0;
 
   const getBtnLabel = (plan) => {
-    if (isCurrent(plan.name)) return '✓ Gói hiện tại của bạn';
-    if (plan.name === 'free') return 'Mặc định';
-    if (submitting) return '⏳ Đang xử lý...';
-    if (!token) return 'Đăng nhập để nâng cấp';
-    if (currentSub && currentSub.planName !== 'free' && (PLAN_RANK[plan.name] ?? 0) < currentRank)
-      return `Hạ xuống ${plan.displayName} →`;
-    return `Nâng cấp lên ${plan.displayName} →`;
-  };
+    if (plan.name === 'free') return 'Mặc định'
+    if (!token) return 'Đăng nhập để nâng cấp'
+    if (submitting) return '⏳ Đang xử lý...'
+    if ((PLAN_RANK[plan.name] ?? 0) < currentRank) return 'Gói thấp hơn gói hiện tại'
+    if (isCurrentPlan(plan.name) && isSameBilling) return '✓ Gói hiện tại của bạn'
+    if (isCurrentPlan(plan.name) && !isSameBilling)
+      return `Chuyển sang ${billing === 'yearly' ? 'hàng năm' : 'hàng tháng'} →`
+    return `Nâng cấp lên ${plan.displayName} →`
+  }
 
   if (loading) return (
     <div className="pr-loading-screen">
@@ -144,10 +191,12 @@ export default function PricingScreen() {
         <div className="pr-hero-inner">
           <div className="pr-hero-tag">
             <span className="pr-hero-dot" />
-            
-              Đang dùng Gói <strong>{currentSub.displayName}</strong>
+            {currentSub
+              ? <>Đang dùng Gói <strong>{currentSub.displayName}</strong>
                 {currentSub.expiresAt && ` · Gia hạn ${formatDate(currentSub.expiresAt)}`}
-
+              </>
+              : 'Chọn gói phù hợp với bạn'
+            }
           </div>
           <h1 className="pr-hero-title">
             Chọn gói phù hợp với<br /><em>hành trình của bạn</em>
@@ -173,7 +222,6 @@ export default function PricingScreen() {
         </div>
       </div>
 
-      {/* Nút lịch sử luôn hiển thị khi đã đăng nhập */}
       {token && (
         <div style={{ maxWidth: 1200, margin: '28px auto 0', padding: '0 32px' }}>
           <div style={{
@@ -181,7 +229,6 @@ export default function PricingScreen() {
             padding: '14px 20px', display: 'flex', alignItems: 'center',
             justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
           }}>
-            {/* Thông tin gói — chỉ hiện khi đang có gói trả phí */}
             {currentSub && currentSub.planName !== 'free' ? (
               <div style={{ fontSize: 13, color: '#6B5E50', lineHeight: 1.7 }}>
                 <b style={{ color: '#1C1510' }}>Gói {currentSub.displayName}</b>
@@ -198,25 +245,27 @@ export default function PricingScreen() {
             )}
 
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              {/* Lịch sử luôn hiển thị */}
-              <button onClick={() => navigate('/services/payment')} style={{
-                padding: '7px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-                border: '1.5px solid #DDD6C6', background: 'transparent',
-                color: '#6B5E50', cursor: 'pointer', fontFamily: 'inherit',
-              }}>
-                🧾 Lịch sử thanh toán
-              </button>
+              {hasSuccessPayment && (
+                <button onClick={() => navigate('/services/payment')} style={{
+                  padding: '7px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+                  border: '1.5px solid #DDD6C6', background: 'transparent',
+                  color: '#6B5E50', cursor: 'pointer', fontFamily: 'inherit',
+                }}>
+                  🧾 Lịch sử thanh toán
+                </button>
+              )}
 
-              {/* Hoàn tiền và hủy — chỉ hiện khi đang có gói trả phí */}
               {currentSub && currentSub.planName !== 'free' && (
                 <>
-                  <button onClick={handleOpenRefund} style={{
-                    padding: '7px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-                    border: '1.5px solid #DDD6C6', background: 'transparent',
-                    color: '#9A8D80', cursor: 'pointer', fontFamily: 'inherit',
-                  }}>
-                    💸 Yêu cầu hoàn tiền
-                  </button>
+                  {daysSince(currentSub.paidAt) <= 7 && (
+                    <button onClick={handleOpenRefund} style={{
+                      padding: '7px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+                      border: '1.5px solid #DDD6C6', background: 'transparent',
+                      color: '#9A8D80', cursor: 'pointer', fontFamily: 'inherit',
+                    }}>
+                      💸 Yêu cầu hoàn tiền
+                    </button>
+                  )}
                   {currentSub.autoRenew && (
                     <button onClick={handleCancel} disabled={cancelLoading} style={{
                       padding: '7px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700,
@@ -238,7 +287,7 @@ export default function PricingScreen() {
           {plans.map((plan) => {
             const style = PLAN_STYLES[plan.name] ?? {};
             const price = getPrice(plan);
-            const current = isCurrent(plan.name);
+            const current = isCurrentPlan(plan.name)
             const limits = plan.limits;
 
             return (
@@ -272,25 +321,65 @@ export default function PricingScreen() {
                 </div>
 
                 <div className="pr-limits">
-                  {LIMIT_ROWS.map(({ field, label, unit, icon }) => {
-                    const val = limits?.[field];
-                    const unlimited = val === 999;
+                  {LIMIT_ROWS.map(({ field, label, unit, icon, totalField, usedField, isDaily }) => {
+                    const val = limits?.[field]
+                    const unlimited = val === 999
+
+                    const isActivePlan = current && quota && totalField && usedField
+                    const used = isActivePlan ? (quota[usedField] ?? 0) : null
+                    const total = isActivePlan
+                      ? (isDaily ? (quota[totalField] ?? val ?? 0) : (quota[totalField] ?? 0))
+                      : null
+                    const remaining = isActivePlan && !unlimited ? Math.max(0, total - used) : null
+                    const pct = isActivePlan && !unlimited && total > 0 ? Math.round((used / total) * 100) : 0
+
                     return (
                       <div key={field} className={`pr-limit-item${unlimited ? ' unlimited' : ''}`}>
                         <span className="pr-limit-icon">{icon}</span>
                         <span className="pr-limit-val">
-                          {val == null ? '—' : unlimited ? '∞' : `${val.toLocaleString('vi-VN')}${unit}`}
+                          {val == null ? '—'
+                            : unlimited ? '∞'
+                              : isActivePlan
+                                ? <span style={{ color: remaining === 0 ? '#C0412A' : '#2E6040' }}>
+                                  còn {remaining}/{total}
+                                </span>
+                                : `${val.toLocaleString('vi-VN')}${unit}`
+                          }
                         </span>
-                        <span className="pr-limit-lbl">{label}</span>
+                        <span className="pr-limit-lbl">
+                          {label}{isActivePlan && isDaily ? ' hôm nay' : isActivePlan ? ' tháng này' : ''}
+                        </span>
+
+                        {isActivePlan && !unlimited && (
+                          <div style={{ marginTop: 4, height: 4, borderRadius: 4, background: '#EFE9DC', overflow: 'hidden' }}>
+                            <div style={{
+                              height: '100%', borderRadius: 4,
+                              width: `${pct}%`,
+                              background: pct >= 90 ? '#C0412A' : pct >= 60 ? '#D4820A' : '#2E6040',
+                              transition: 'width .4s ease',
+                            }} />
+                          </div>
+                        )}
                       </div>
-                    );
+                    )
                   })}
                 </div>
 
                 <button
                   className="pr-plan-btn"
-                  style={!current ? { background: style.gradient } : {}}
-                  disabled={current || plan.name === 'free' || submitting}
+                  style={
+                    !isCurrentPlan(plan.name) && (PLAN_RANK[plan.name] ?? 0) >= currentRank
+                      ? { background: style.gradient }
+                      : isCurrentPlan(plan.name) && !isSameBilling
+                        ? { background: 'linear-gradient(135deg,#1565C0,#1976D2)' }
+                        : {}
+                  }
+                  disabled={
+                    (isCurrentPlan(plan.name) && isSameBilling) ||
+                    plan.name === 'free' ||
+                    submitting ||
+                    (PLAN_RANK[plan.name] ?? 0) < currentRank
+                  }
                   onClick={() => handleSubscribe(plan.name)}
                 >
                   {getBtnLabel(plan)}

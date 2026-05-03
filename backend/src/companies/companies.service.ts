@@ -14,7 +14,7 @@ const SIZE_RANGES: Record<string, { min?: number; max?: number }> = {
 
 @Injectable()
 export class CompaniesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   private async getCompanyIDsBySize(size: string): Promise<number[]> {
     const range = SIZE_RANGES[size];
@@ -211,5 +211,23 @@ export class CompaniesService {
         skills: j.skills.map((s) => s.skill.name),
       })),
     };
+  }
+
+  async getCompanySuggestions(q: string) {
+    if (!q || q.trim().length < 1) return [];
+    const companies = await this.prisma.company.findMany({
+      where: {
+        companyName: { contains: q.trim(), mode: 'insensitive' },
+        jobs: { some: { isActive: true, deadline: { gt: new Date() } } },
+      },
+      select: { companyName: true, companyLogo: true },
+      distinct: ['companyName'],
+      take: 6,
+      orderBy: { jobs: { _count: 'desc' } },
+    });
+    return companies.map((c) => ({
+      name: c.companyName,
+      logo: c.companyLogo,
+    }));
   }
 }

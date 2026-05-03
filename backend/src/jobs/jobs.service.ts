@@ -27,7 +27,7 @@ const JOB_TYPE_MAP: Record<string, string> = {
 
 @Injectable()
 export class JobsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async getJobs(dto: QueryJobsDto, accountID?: number) {
     const {
@@ -137,7 +137,6 @@ export class JobsService {
       }
     }
 
-
     // const filteredJobs = jobs.filter(j =>
     //   j.deadline && new Date(j.deadline) > new Date()
     // );
@@ -169,7 +168,12 @@ export class JobsService {
     if (salaryMax != null) {
       jobList = jobList.filter((j) => j._salaryNum <= salaryMax);
     }
-
+    if (sort === 'newest' && !keyword) {
+      for (let i = jobList.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [jobList[i], jobList[j]] = [jobList[j], jobList[i]];
+      }
+    }
     if (sort === 'salary')
       jobList = jobList.sort((a, b) => b._salaryNum - a._salaryNum);
     if (sort === 'match')
@@ -294,43 +298,130 @@ export class JobsService {
     });
   }
 
-  async getRecommendations(accountID: number) {
+  async getRecommendations(accountID: number, wasRecomputed = false) {
     const user = await this.prisma.user.findFirst({
       where: { accountID },
       select: { userID: true },
     });
-    if (!user) return [];
+    if (!user) return { data: [], quota: null };
 
-    const recs = await this.prisma.jobRecommendation.findMany({
+    const today = new Date().toISOString().slice(0, 10);
+    const month = new Date().toISOString().slice(0, 7);
+    const UNLIMITED = 999;
+    const PREVIEW_LIMIT = 3;
+
+    const activeSub = await this.prisma.userSubscription.findFirst({
       where: {
         userID: user.userID,
-        matchPercent: { gt: 49 },
+        status: 'active',
+        expiresAt: { gt: new Date() },
       },
+      include: {
+        plan: { include: { limits: true } },
+        quota: true,
+      },
+      orderBy: { startedAt: 'desc' },
+    });
+
+    let quota = activeSub?.quota ?? null;
+
+    if (quota && quota.jobSuggestResetDate !== today) {
+      quota = await this.prisma.userQuota.update({
+        where: { id: quota.id },
+        data: { jobSuggestUsedToday: 0, jobSuggestResetDate: today },
+      });
+    }
+
+    const planLimits = activeSub?.plan?.limits;
+    const jobSuggestPerDay = quota?.jobSuggestPerDay ?? planLimits?.jobSuggestPerDay ?? 3;
+    const isUnlimited = jobSuggestPerDay >= UNLIMITED;
+    const usedToday = quota?.jobSuggestUsedToday ?? 0;
+    const quotaExceeded = !isUnlimited && usedToday >= jobSuggestPerDay;
+
+    const recs = await this.prisma.jobRecommendation.findMany({
+      where: { userID: user.userID, matchPercent: { gt: 49 } },
       orderBy: { matchPercent: 'desc' },
-      // take: limit,
+      take: quotaExceeded ? PREVIEW_LIMIT : undefined,
       include: {
         job: {
           include: {
-            company: { select: { companyName: true, companyLogo: true } },
-            skills: { include: { skill: { select: { name: true } } }, take: 5 },
+            company: {
+              select: { companyID: true, companyName: true, companyLogo: true },
+            },
+            skills: {
+              include: { skill: { select: { name: true } } },
+              take: 5,
+            },
           },
         },
       },
     });
 
-    return recs.map((r) => ({
-      jobID: r.job.jobID,
-      title: r.job.title,
-      companyName: r.job.company.companyName,
-      companyLogo: r.job.company.companyLogo,
-      location: r.job.location,
-      shortLocation: r.job.shortLocation,
-      experienceYear: r.job.experienceYear,
-      salary: r.job.salary,
-      skills: r.job.skills.map((s) => s.skill.name),
-      matchPercent: r.matchPercent,
-      sourcePlatform: r.job.sourcePlatform,
-    }));
+    let newUsedToday = usedToday;
+    if (!isUnlimited && !quotaExceeded && wasRecomputed && recs.length > 0) {
+      if (quota) {
+        await this.prisma.userQuota.update({
+          where: { id: quota.id },
+          data: { jobSuggestUsedToday: { increment: 1 }, jobSuggestResetDate: today },
+        });
+      } else if (activeSub) {
+        await this.prisma.userQuota.create({
+          data: {
+            userID: user.userID,
+            month,
+            subscriptionID: activeSub.id,
+            jobSuggestPerDay,
+            jobSuggestUsedToday: 1,
+            jobSuggestResetDate: today,
+            cvAnalysisTotal: planLimits?.cvAnalysisPerMonth ?? 0,
+            cvMatchCheckTotal: planLimits?.cvMatchCheckCount ?? 0,
+            cvAnalysisUsed: 0,
+            cvMatchCheckUsed: 0,
+          },
+        });
+      } else {
+        await this.prisma.userQuota.create({
+          data: {
+            userID: user.userID,
+            month,
+            jobSuggestPerDay: 3,
+            jobSuggestUsedToday: 1,
+            jobSuggestResetDate: today,
+            cvAnalysisTotal: 0,
+            cvMatchCheckTotal: 0,
+            cvAnalysisUsed: 0,
+            cvMatchCheckUsed: 0,
+          },
+        });
+      }
+      newUsedToday = usedToday + 1;
+    }
+
+    return {
+      data: recs.map((r) => ({
+        jobID: r.job.jobID,
+        title: r.job.title,
+        companyID: r.job.company.companyID,
+        companyName: r.job.company.companyName,
+        companyLogo: r.job.company.companyLogo,
+        location: r.job.location,
+        shortLocation: r.job.shortLocation,
+        experienceYear: r.job.experienceYear,
+        salary: r.job.salary,
+        skills: r.job.skills.map((s) => s.skill.name),
+        matchPercent: r.matchPercent,
+        matchReason: r.reason,
+        sourcePlatform: r.job.sourcePlatform,
+      })),
+      quota: {
+        limit: isUnlimited ? null : jobSuggestPerDay,
+        usedToday: isUnlimited ? null : newUsedToday,
+        remaining: isUnlimited ? null : Math.max(0, jobSuggestPerDay - newUsedToday),
+        isUnlimited,
+        quotaExceeded,
+        resetAt: 'Ngày mai',
+      },
+    };
   }
 
   async logUserBehavior(accountID: number, jobID: number, action: string) {
@@ -342,6 +433,12 @@ export class JobsService {
     await this.prisma.userBehavior.create({
       data: { userID: user.userID, jobID, action },
     });
+
+    if (action === 'apply' || action === 'save') {
+      await this.prisma.jobRecommendation.deleteMany({
+        where: { userID: user.userID },
+      });
+    }
   }
 
   async getUserStats(accountID: number) {
@@ -371,12 +468,14 @@ export class JobsService {
       this.prisma.jobRecommendation.count({
         where: {
           userID: user.userID,
+          matchPercent: { gt: 49 },
           createdAt: { gte: todayStart, lt: todayEnd },
         },
       }),
       this.prisma.jobRecommendation.count({
         where: {
           userID: user.userID,
+          matchPercent: { gt: 49 },
           createdAt: {
             gte: new Date(todayStart.getTime() - 24 * 60 * 60 * 1000),
             lt: todayStart,
@@ -469,7 +568,6 @@ export class JobsService {
     const skip = (page - 1) * limit;
 
     const total = await this.prisma.savedJob.count({
-
       where: { userID: user.userID },
     });
 
@@ -662,5 +760,90 @@ export class JobsService {
         count: ind._count.jobs,
       })),
     };
+  }
+
+  async getJobMatch(accountID: number, jobID: number) {
+    const user = await this.prisma.user.findFirst({
+      where: { accountID },
+      select: { userID: true },
+    });
+    if (!user) return null;
+
+    const rec = await this.prisma.jobRecommendation.findUnique({
+      where: { userID_jobID: { userID: user.userID, jobID } },
+      select: { matchPercent: true, reason: true },
+    });
+
+    if (!rec) return null;
+
+    return {
+      matchPercent: rec.matchPercent,
+      reason: rec.reason,
+    };
+  }
+
+  async saveSearchHistory(accountID: number, keyword: string) {
+    await this.prisma.searchHistory.deleteMany({
+      where: { accountID, keyword },
+    });
+    await this.prisma.searchHistory.create({
+      data: { accountID, keyword },
+    });
+    const all = await this.prisma.searchHistory.findMany({
+      where: { accountID },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    });
+    if (all.length > 10) {
+      const toDelete = all.slice(10).map((r) => r.id);
+      await this.prisma.searchHistory.deleteMany({
+        where: { id: { in: toDelete } },
+      });
+    }
+  }
+
+  async getSearchHistory(accountID: number) {
+    const rows = await this.prisma.searchHistory.findMany({
+      where: { accountID },
+      orderBy: { createdAt: 'desc' },
+      take: 8,
+      select: { keyword: true },
+    });
+    return rows.map((r) => r.keyword);
+  }
+
+  async getSearchSuggestions(q: string) {
+    if (!q || q.trim().length < 1) return [];
+    const now = new Date();
+    const jobs = await this.prisma.job.findMany({
+      where: {
+        isActive: true,
+        deadline: { gt: now },
+        title: { contains: q.trim(), mode: 'insensitive' },
+      },
+      select: { title: true },
+      distinct: ['title'],
+      take: 20,
+      orderBy: { postedAt: 'desc' },
+    });
+
+    const seen = new Set<string>();
+    const result: { display: string; value: string }[] = [];
+
+    for (const j of jobs) {
+      if (!j.title) continue;
+      const display = j.title
+        .split(/\s*[–\-\(\[\|]/)[0]
+        .trim()
+        .replace(/\s+/g, ' ');
+      if (display.length < 3) continue;
+      const key = display.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push({ display, value: q.trim() });
+      if (result.length >= 6) break;
+    }
+
+    return result;
   }
 }

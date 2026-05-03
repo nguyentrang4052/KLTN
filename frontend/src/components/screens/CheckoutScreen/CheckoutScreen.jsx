@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { getToken } from '../../../utils/auth'
+import { getToken, fetchMe } from '../../../utils/auth'
 import { QRCodeSVG } from 'qrcode.react'
 import './CheckoutScreen.css'
 
@@ -162,6 +162,10 @@ export default function CheckoutScreen() {
                     setPaymentVerified(true)
                     setCountdownActive(false)
                     clearInterval(interval)
+
+                    const updatedUser = await fetchMe(token)
+                    window.dispatchEvent(new CustomEvent('userProfileUpdated', { detail: updatedUser }))
+
                     setTimeout(() => navigate('/services/payment', {
                         state: { fromCheckout: true, planDisplayName, transactionRef }
                     }), 1500)
@@ -518,7 +522,7 @@ export default function CheckoutScreen() {
                             </div>
                         </div>
 
-                       
+
                     </div>
                 </div>
             </div>

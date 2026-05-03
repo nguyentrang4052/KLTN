@@ -57,6 +57,10 @@ export class QueryJobsDto {
   source?: string;
 
   @IsOptional()
+  @IsString()
+  reason?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsNumber()
   salaryMin?: number;

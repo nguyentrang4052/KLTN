@@ -4,6 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 import { ConfigService } from '@nestjs/config';
 import {
   CreateSubscriptionDto,
@@ -12,11 +13,12 @@ import {
 } from '../dto/subscription.dto';
 
 import { PayOS } from '@payos/node';
+import { NotificationService } from 'src/notification/notification.service';
 
 const PLANS_CONFIG = {
   free: { displayName: 'Free', monthlyPrice: 0, yearlyPrice: 0 },
-  pro: { displayName: 'Pro', monthlyPrice: 10000, yearlyPrice: 15000 },
-  elite: { displayName: 'Elite', monthlyPrice: 10000, yearlyPrice: 15000 },
+  pro: { displayName: 'Pro', monthlyPrice: 10000, yearlyPrice: 96000 },
+  elite: { displayName: 'Elite', monthlyPrice: 10000, yearlyPrice: 96000 },
 };
 
 @Injectable()
@@ -26,6 +28,8 @@ export class SubscriptionService {
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
+    private mailService: MailService,
+    private notificationService: NotificationService,
   ) {
     this.payos = new PayOS({
       clientId: this.config.get('PAYOS_CLIENT_ID'),
@@ -42,6 +46,7 @@ export class SubscriptionService {
     userID: number,
     planName: string,
     billing: string,
+    subscriptionID: number,
     tx?: any,
   ): Promise<void> {
     const db = tx ?? this.prisma;
@@ -53,8 +58,8 @@ export class SubscriptionService {
     if (!plan?.limits) return;
 
     const month = this.currentMonth();
-    const { jobSuggestPerDay, cvAnalysisPerMonth, cvMatchCheckCount } =
-      plan.limits;
+    const today = new Date().toISOString().slice(0, 10);
+    const { jobSuggestPerDay, cvAnalysisPerMonth, cvMatchCheckCount } = plan.limits;
 
     const UNLIMITED = 999;
     const multiplier = billing === 'yearly' ? 12 : 1;
@@ -69,12 +74,6 @@ export class SubscriptionService {
         ? UNLIMITED
         : cvMatchCheckCount * multiplier;
 
-    const resolveTotal = (current: number | undefined, incoming: number) => {
-      if (incoming >= UNLIMITED) return UNLIMITED;
-      if ((current ?? 0) >= UNLIMITED) return UNLIMITED;
-      return { increment: incoming };
-    };
-
     const existing = await db.userQuota.findUnique({
       where: { userID_month: { userID, month } },
     });
@@ -83,15 +82,14 @@ export class SubscriptionService {
       await db.userQuota.update({
         where: { userID_month: { userID, month } },
         data: {
+          subscriptionID,
           jobSuggestPerDay,
-          cvAnalysisTotal: resolveTotal(
-            existing.cvAnalysisTotal,
-            cvAnalysisGrant,
-          ),
-          cvMatchCheckTotal: resolveTotal(
-            existing.cvMatchCheckTotal,
-            cvMatchGrant,
-          ),
+          jobSuggestUsedToday: 0,
+          jobSuggestResetDate: today,
+          cvAnalysisTotal: cvAnalysisGrant,
+          cvMatchCheckTotal: cvMatchGrant,
+          cvAnalysisUsed: 0,
+          cvMatchCheckUsed: 0,
         },
       });
     } else {
@@ -99,7 +97,10 @@ export class SubscriptionService {
         data: {
           userID,
           month,
+          subscriptionID,
           jobSuggestPerDay,
+          jobSuggestUsedToday: 0,
+          jobSuggestResetDate: today,
           cvAnalysisTotal: cvAnalysisGrant,
           cvMatchCheckTotal: cvMatchGrant,
           cvAnalysisUsed: 0,
@@ -111,15 +112,20 @@ export class SubscriptionService {
 
   private async revokeQuota(userID: number, tx?: any): Promise<void> {
     const db = tx ?? this.prisma;
-    const month = this.currentMonth();
 
-    const existing = await db.userQuota.findUnique({
-      where: { userID_month: { userID, month } },
+    const existing = await db.userQuota.findFirst({
+      where: {
+        userID,
+        subscription: {
+          status: { in: ['active', 'cancelled'] },
+        },
+      },
+      orderBy: { id: 'desc' },
     });
     if (!existing) return;
 
     await db.userQuota.update({
-      where: { userID_month: { userID, month } },
+      where: { id: existing.id },
       data: {
         jobSuggestPerDay: 3,
         cvAnalysisTotal: existing.cvAnalysisUsed,
@@ -135,46 +141,49 @@ export class SubscriptionService {
     });
     if (!user) throw new NotFoundException('User not found');
 
-    const month = this.currentMonth();
-    const quota = await this.prisma.userQuota.findUnique({
-      where: { userID_month: { userID: user.userID, month } },
-    });
-
-    if (!quota) {
-      const freeLimits = await this.prisma.planLimit.findFirst({
-        where: { plan: { name: 'free' } },
-      });
-      return {
-        month,
-        jobSuggestPerDay: freeLimits?.jobSuggestPerDay ?? 3,
-        cvAnalysisTotal: freeLimits?.cvAnalysisPerMonth ?? 0,
-        cvAnalysisUsed: 0,
-        cvAnalysisRemaining: freeLimits?.cvAnalysisPerMonth ?? 0,
-        cvMatchCheckTotal: freeLimits?.cvMatchCheckCount ?? 0,
-        cvMatchCheckUsed: 0,
-        cvMatchCheckRemaining: freeLimits?.cvMatchCheckCount ?? 0,
-      };
-    }
-
+    const today = new Date().toISOString().slice(0, 10);
     const UNLIMITED = 999;
     const remaining = (total: number, used: number) =>
       total >= UNLIMITED ? UNLIMITED : Math.max(0, total - used);
 
+    const { activeSub, quota } = await this.getActiveQuota(user.userID);
+
+    if (!quota) {
+      const limits = activeSub?.plan?.limits;
+      const jobSuggestPerDay = limits?.jobSuggestPerDay ?? 3;
+      const cvAnalysisPerMonth = limits?.cvAnalysisPerMonth ?? 0;
+      const cvMatchCheckCount = limits?.cvMatchCheckCount ?? 0;
+
+      return {
+        jobSuggestPerDay,
+        jobSuggestUsedToday: 0,
+        cvAnalysisTotal: cvAnalysisPerMonth,
+        cvAnalysisUsed: 0,
+        cvAnalysisRemaining: cvAnalysisPerMonth >= UNLIMITED ? UNLIMITED : cvAnalysisPerMonth,
+        cvMatchCheckTotal: cvMatchCheckCount,
+        cvMatchCheckUsed: 0,
+        cvMatchCheckRemaining: cvMatchCheckCount >= UNLIMITED ? UNLIMITED : cvMatchCheckCount,
+      };
+    }
+
+    if (quota.jobSuggestResetDate !== today) {
+      await this.prisma.userQuota.update({
+        where: { id: quota.id },
+        data: { jobSuggestUsedToday: 0, jobSuggestResetDate: today },
+      });
+      quota.jobSuggestUsedToday = 0;
+      quota.jobSuggestResetDate = today;
+    }
+
     return {
-      month: quota.month,
       jobSuggestPerDay: quota.jobSuggestPerDay,
+      jobSuggestUsedToday: quota.jobSuggestUsedToday,
       cvAnalysisTotal: quota.cvAnalysisTotal,
       cvAnalysisUsed: quota.cvAnalysisUsed,
-      cvAnalysisRemaining: remaining(
-        quota.cvAnalysisTotal,
-        quota.cvAnalysisUsed,
-      ),
+      cvAnalysisRemaining: remaining(quota.cvAnalysisTotal, quota.cvAnalysisUsed),
       cvMatchCheckTotal: quota.cvMatchCheckTotal,
       cvMatchCheckUsed: quota.cvMatchCheckUsed,
-      cvMatchCheckRemaining: remaining(
-        quota.cvMatchCheckTotal,
-        quota.cvMatchCheckUsed,
-      ),
+      cvMatchCheckRemaining: remaining(quota.cvMatchCheckTotal, quota.cvMatchCheckUsed),
     };
   }
 
@@ -188,56 +197,71 @@ export class SubscriptionService {
     });
     if (!user) throw new NotFoundException('User not found');
 
-    const month = this.currentMonth();
-    const quota = await this.prisma.userQuota.findUnique({
-      where: { userID_month: { userID: user.userID, month } },
-    });
-
+    const UNLIMITED = 999;
     const FEATURE_LABEL: Record<string, string> = {
       cvAnalysis: 'Phân tích CV',
       cvMatchCheck: 'Kiểm tra độ phù hợp CV',
     };
-    const UNLIMITED = 999;
+
+    const { activeSub, quota } = await this.getActiveQuota(user.userID);
 
     if (!quota) {
-      throw new BadRequestException(
-        `Bạn đã hết lượt ${FEATURE_LABEL[feature]} tháng này. Vui lòng nâng cấp gói.`,
-      );
+      const limits = activeSub?.plan?.limits;
+      const limit = feature === 'cvAnalysis'
+        ? (limits?.cvAnalysisPerMonth ?? 0)
+        : (limits?.cvMatchCheckCount ?? 0);
+
+      if (limit === 0) {
+        throw new BadRequestException(
+          `Bạn đã hết lượt ${FEATURE_LABEL[feature]}. Vui lòng nâng cấp gói.`,
+        );
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      const month = this.currentMonth();
+      await this.prisma.userQuota.create({
+        data: {
+          userID: user.userID,
+          month,
+          subscriptionID: activeSub!.id,
+          jobSuggestPerDay: limits?.jobSuggestPerDay ?? 3,
+          jobSuggestUsedToday: 0,
+          jobSuggestResetDate: today,
+          cvAnalysisTotal: limits?.cvAnalysisPerMonth ?? 0,
+          cvMatchCheckTotal: limits?.cvMatchCheckCount ?? 0,
+          cvAnalysisUsed: feature === 'cvAnalysis' ? 1 : 0,
+          cvMatchCheckUsed: feature === 'cvMatchCheck' ? 1 : 0,
+        },
+      });
+
+      return { success: true, feature };
     }
 
     if (feature === 'cvAnalysis') {
-      if (
-        quota.cvAnalysisTotal < UNLIMITED &&
-        quota.cvAnalysisUsed >= quota.cvAnalysisTotal
-      ) {
+      if (quota.cvAnalysisTotal < UNLIMITED && quota.cvAnalysisUsed >= quota.cvAnalysisTotal) {
         throw new BadRequestException(
-          `Bạn đã dùng hết ${quota.cvAnalysisTotal} lượt Phân tích CV tháng này.`,
+          `Bạn đã dùng hết ${quota.cvAnalysisTotal} lượt ${FEATURE_LABEL[feature]} trong chu kỳ này.`,
         );
       }
       await this.prisma.userQuota.update({
-        where: { userID_month: { userID: user.userID, month } },
+        where: { id: quota.id },
         data: { cvAnalysisUsed: { increment: 1 } },
       });
     }
 
     if (feature === 'cvMatchCheck') {
-      if (
-        quota.cvMatchCheckTotal < UNLIMITED &&
-        quota.cvMatchCheckUsed >= quota.cvMatchCheckTotal
-      ) {
+      if (quota.cvMatchCheckTotal < UNLIMITED && quota.cvMatchCheckUsed >= quota.cvMatchCheckTotal) {
         throw new BadRequestException(
-          `Bạn đã dùng hết ${quota.cvMatchCheckTotal} lượt Kiểm tra độ phù hợp CV tháng này.`,
+          `Bạn đã dùng hết ${quota.cvMatchCheckTotal} lượt ${FEATURE_LABEL[feature]} trong chu kỳ này.`,
         );
       }
       await this.prisma.userQuota.update({
-        where: { userID_month: { userID: user.userID, month } },
+        where: { id: quota.id },
         data: { cvMatchCheckUsed: { increment: 1 } },
       });
     }
 
     return { success: true, feature };
   }
-
 
   async subscribe(accountID: number, dto: CreateSubscriptionDto) {
     const user = await this.prisma.user.findFirst({
@@ -338,7 +362,6 @@ export class SubscriptionService {
     };
   }
 
-
   async confirmPayment(dto: ConfirmPaymentDto) {
     const payment = await this.prisma.payment.findUnique({
       where: { transactionRef: dto.transactionRef },
@@ -383,9 +406,46 @@ export class SubscriptionService {
             payment.userID,
             payment.subscription.plan.name,
             payment.subscription.billing,
+            payment.subscriptionID,
             tx,
           );
         });
+
+        const account = await this.prisma.account.findFirst({
+          where: { user: { userID: payment.userID } },
+          include: { user: true },
+        });
+        if (account) {
+          this.mailService
+            .sendPaymentInvoice(account.email, {
+              fullName: account.user?.fullName ?? undefined,
+              planDisplayName: payment.subscription.plan.displayName,
+              billing: payment.subscription.billing,
+              amount: payment.amount,
+              transactionRef: payment.transactionRef!,
+              paidAt: new Date(),
+              expiresAt: payment.subscription.expiresAt,
+            })
+            .catch((err) =>
+              console.error('[Mail] sendPaymentInvoice error:', err),
+            );
+        }
+        this.notificationService
+          .create({
+            userID: payment.userID,
+            type: 'payment_success',
+            title: `Kích hoạt gói ${payment.subscription.plan.displayName} thành công`,
+            body: `Thanh toán ${payment.amount.toLocaleString('vi-VN')}đ thành công. Gói có hiệu lực đến ${payment.subscription.expiresAt.toLocaleDateString('vi-VN')}.`,
+            metadata: {
+              planName: payment.subscription.plan.name,
+              amount: payment.amount,
+              transactionRef: payment.transactionRef,
+              expiresAt: payment.subscription.expiresAt,
+            },
+          })
+          .catch((err) =>
+            console.error('[Notification] payment_success error:', err),
+          );
 
         return {
           success: true,
@@ -408,7 +468,6 @@ export class SubscriptionService {
       };
     }
   }
-
 
   async requestRefund(accountID: number, dto: RefundDto) {
     const user = await this.prisma.user.findFirst({
@@ -535,6 +594,11 @@ export class SubscriptionService {
         plan: freePlan,
       };
     }
+    const lastPayment = await this.prisma.payment.findFirst({
+      where: { userID: user.userID, status: 'success' },
+      orderBy: { paidAt: 'desc' },
+      select: { paidAt: true },
+    });
 
     return {
       subscriptionID: sub.id,
@@ -546,6 +610,7 @@ export class SubscriptionService {
       expiresAt: sub.expiresAt,
       autoRenew: false,
       plan: sub.plan,
+      paidAt: lastPayment?.paidAt ?? null,
     };
   }
 
@@ -586,12 +651,54 @@ export class SubscriptionService {
   }
 
   async seedPlans() {
+    const LIMITS_CONFIG = {
+      free: {
+        jobSuggestPerDay: 3,
+        cvAnalysisPerMonth: 0,
+        cvMatchCheckCount: 0,
+      },
+      pro: {
+        jobSuggestPerDay: 20,
+        cvAnalysisPerMonth: 5,
+        cvMatchCheckCount: 10,
+      },
+      elite: {
+        jobSuggestPerDay: 999,
+        cvAnalysisPerMonth: 999,
+        cvMatchCheckCount: 999,
+      },
+    };
+
     for (const [name, config] of Object.entries(PLANS_CONFIG)) {
-      await this.prisma.subscriptionPlan.upsert({
+      const plan = await this.prisma.subscriptionPlan.upsert({
         where: { name },
         update: config,
         create: { name, ...config },
       });
+
+      const limits = LIMITS_CONFIG[name];
+      await this.prisma.planLimit.upsert({
+        where: { planID: plan.id },
+        update: limits,
+        create: { planID: plan.id, ...limits },
+      });
     }
+  }
+
+  private async getActiveQuota(userID: number) {
+    const activeSub = await this.prisma.userSubscription.findFirst({
+      where: {
+        userID,
+        status: 'active',
+        expiresAt: { gt: new Date() },
+      },
+      include: {
+        plan: { include: { limits: true } },
+        quota: true,
+      },
+      orderBy: { startedAt: 'desc' },
+    });
+
+    return { activeSub, quota: activeSub?.quota ?? null };
   }
 }

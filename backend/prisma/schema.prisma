@@ -16,6 +16,9 @@ model Account {
   active    Boolean  @default(true)
   user      User?
   role      String   @default("user")
+  jobAlerts JobAlert[]
+  emailNotification Boolean @default(false)
+  searchHistory SearchHistory[]
 }
 
 model User {
@@ -37,7 +40,6 @@ model User {
   payments      Payment[]
   quotas UserQuota[]
   refundRequests RefundRequest[]
-  emailNotificationsEnabled Boolean      @default(false)
   notifications Notification[]
   cvAnalyses   CVAnalysis[] 
   cvAnalysisCaches CVAnalysisCache[]
@@ -118,6 +120,7 @@ model JobRecommendation {
   userID       Int
   jobID        Int
   matchPercent Float
+  reason       String? 
   createdAt    DateTime @default(now())
   job          Job      @relation(fields: [jobID], references: [jobID])
   user         User     @relation(fields: [userID], references: [userID])
@@ -216,6 +219,7 @@ model UserSubscription {
   user       User     @relation(fields: [userID], references: [userID])
   plan       SubscriptionPlan @relation(fields: [planID], references: [id])
   payments   Payment[]
+  quota UserQuota?
 }
 
 model Payment {
@@ -238,17 +242,21 @@ model Payment {
 model UserQuota {
   id                  Int      @id @default(autoincrement())
   userID              Int
-  month               String  
-  
-  jobSuggestPerDay    Int      @default(3)   
-  cvAnalysisTotal     Int      @default(0)   
-  cvMatchCheckTotal   Int      @default(0)  
-  
+  subscriptionID      Int?     @unique  
+  month               String         
+
+  jobSuggestPerDay    Int      @default(3)
+  jobSuggestUsedToday Int      @default(0)
+  jobSuggestResetDate String?
+
+  cvAnalysisTotal     Int      @default(0)
+  cvMatchCheckTotal   Int      @default(0)
   cvAnalysisUsed      Int      @default(0)
   cvMatchCheckUsed    Int      @default(0)
 
   updatedAt           DateTime @updatedAt
   user                User     @relation(fields: [userID], references: [userID])
+  subscription        UserSubscription? @relation(fields: [subscriptionID], references: [id])
 
   @@unique([userID, month])
 }
@@ -268,24 +276,6 @@ model RefundRequest {
 
   user    User    @relation(fields: [userID], references: [userID])
   payment Payment @relation(fields: [paymentID], references: [id])
-}
-
-model Notification {
-  id        Int      @id @default(autoincrement())
-  userID    Int
-  title     String
-  content   String
-  type      String   // 'deadline' | 'expired'
-  isRead    Boolean  @default(false)
-  emailSent Boolean  @default(false)  
-  jobID    Int?     
-  createdAt DateTime @default(now())
-
-  user      User     @relation(fields: [userID], references: [userID])
-  job       Job?     @relation(fields: [jobID], references: [jobID])
-  
-  @@index([userID])
-  @@index([jobID])
 }
 
 
@@ -360,4 +350,41 @@ model CVBuilder {
   user User @relation(fields: [userID], references: [userID], onDelete: Cascade)
 
   @@index([userID])
+}
+
+model JobAlert {
+  id        Int      @id @default(autoincrement())
+  accountID Int
+  keyword   String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  account   Account  @relation(fields: [accountID], references: [accountID])
+
+  @@unique([accountID, keyword])
+}
+
+model Notification {
+  id        Int       @id @default(autoincrement())
+  userID    Int
+  type      String    // 'subscription_expiry' | 'job_deadline' | 'job_alert' | 'payment_success'
+  title     String
+  body      String
+  isRead    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+  metadata  Json?    
+
+  user User @relation(fields: [userID], references: [userID])
+  dedupeKey String?   @unique
+  deletedAt DateTime?
+}
+
+model SearchHistory {
+  id        Int      @id @default(autoincrement())
+  accountID Int
+  keyword   String
+  createdAt DateTime @default(now())
+  account   Account  @relation(fields: [accountID], references: [accountID])
+
+  @@index([accountID])
 }

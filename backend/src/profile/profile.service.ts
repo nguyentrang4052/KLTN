@@ -225,4 +225,122 @@ export class ProfileService {
       data: { avatar: null },
     });
   }
+
+  async getInsights(userID: number) {
+    const [behaviors, savedJobs, applies, profile] = await Promise.all([
+      this.prisma.userBehavior.findMany({
+        where: { userID, action: 'view' },
+        include: {
+          job: {
+            include: { skills: { include: { skill: true } }, industry: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+      }),
+      this.prisma.savedJob.findMany({
+        where: { userID },
+        include: { job: { select: { jobType: true, title: true } } },
+        take: 50,
+      }),
+      this.prisma.applyHistory.findMany({
+        where: { userID },
+        include: { job: { select: { salary: true } } },
+        orderBy: { appliedAt: 'desc' },
+        take: 50,
+      }),
+      this.prisma.userProfile.findFirst({
+        where: { userID },
+        include: { industry: true },
+        orderBy: { updatedAt: 'desc' },
+      }),
+    ]);
+
+    const skillCount = new Map<string, number>();
+    for (const b of behaviors) {
+      for (const js of b.job.skills) {
+        const name = js.skill.name;
+        skillCount.set(name, (skillCount.get(name) ?? 0) + 1);
+      }
+    }
+    const topSkills = [...skillCount.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([name]) => name);
+
+    const indCount = new Map<string, number>();
+    for (const b of behaviors) {
+      const ind = b.job.industry?.name;
+      if (ind) indCount.set(ind, (indCount.get(ind) ?? 0) + 1);
+    }
+    const topIndustries = [...indCount.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 2)
+      .map(([name]) => name);
+
+    const remoteCount = savedJobs.filter((s) =>
+      ['remote', 'hybrid'].some((t) =>
+        s.job.jobType?.toLowerCase().includes(t),
+      ),
+    ).length;
+    const remotePct =
+      savedJobs.length > 0
+        ? Math.round((remoteCount / savedJobs.length) * 100)
+        : 0;
+
+    const insights: { icon: string; text: string; source: string }[] = [];
+    const preferences: { key: string; value: string }[] = [];
+
+    if (topSkills.length > 0) {
+      insights.push({
+        icon: '👁',
+        text: `Bạn thường xem kỹ JD có "${topSkills.join('", "')}"`,
+        source: `Từ ${behaviors.length} lần xem`,
+      });
+    }
+
+    if (savedJobs.length > 0) {
+      insights.push({
+        icon: '🔖',
+        text:
+          remotePct > 0
+            ? `${remotePct}% tin bạn lưu là Hybrid hoặc Remote`
+            : `Bạn đã lưu ${savedJobs.length} việc làm`,
+        source: `Từ ${savedJobs.length} lần lưu`,
+      });
+    }
+
+    if (applies.length > 0) {
+      insights.push({
+        icon: '⚡',
+        text: `Bạn đã ứng tuyển ${applies.length} vị trí`,
+        source: `Tổng số lần apply`,
+      });
+    }
+
+    if (topIndustries.length > 0) {
+      const total = behaviors.length || 1;
+      const topInd = topIndustries[0];
+      const pct = Math.round(((indCount.get(topInd) ?? 0) / total) * 100);
+      insights.push({
+        icon: '🏢',
+        text: `Ưu tiên ngành ${topIndustries.join(', ')} chiếm ${pct}% lượt xem`,
+        source: 'Phân tích toàn lịch sử',
+      });
+    }
+
+    if (profile?.industry)
+      preferences.push({ key: 'Ngành ưu tiên', value: profile.industry.name });
+    if (profile?.workingType)
+      preferences.push({
+        key: 'Hình thức làm việc',
+        value: profile.workingType,
+      });
+    if (profile?.expectedSalary)
+      preferences.push({ key: 'Lương kỳ vọng', value: profile.expectedSalary });
+    if (profile?.careerLevel)
+      preferences.push({ key: 'Cấp bậc', value: profile.careerLevel });
+
+    return { insights, preferences };
+  }
 }

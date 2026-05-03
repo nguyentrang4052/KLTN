@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './CompanyDetailScreen.css'
+import Header from '../../layout/Header/Header'
 
 const API = 'http://localhost:3000/api'
 const JOBS_PER_PAGE = 10
@@ -156,7 +157,7 @@ function showToast(message) {
   setTimeout(() => t.remove(), 2800)
 }
 
-export default function CompanyDetailScreen({ company, onBack, token, jobBasePath = '/home/job' }) {
+export default function CompanyDetailScreen({ company, onBack, token, jobBasePath = '/home/job', notifCount = 0 }) {
   const navigate = useNavigate()
 
   const [tab, setTab] = useState('overview')
@@ -289,29 +290,12 @@ export default function CompanyDetailScreen({ company, onBack, token, jobBasePat
     }).catch(console.error)
   }
 
-  const handleApply = async (jobId, e) => {
+  const handleApply = (jobId, e) => {
     if (e) e.stopPropagation()
-
-    // Đã đăng nhập → navigate đến JobDetailScreen
-    if (token) {
-      trackBehavior(jobId, 'view')
-      navigate(`${jobBasePath}/${jobId}`)
-      return
-    }
-
-    // Chưa đăng nhập → mở ApplyModal
-    setApplyLoading(true)
-    try {
-      const res = await fetch(`${API}/jobs/${jobId}`)
-      const data = await res.json()
-      setApplyJob(data)
-      trackBehavior(jobId, 'apply')
-    } catch (err) {
-      console.error(err)
-      showToast('Không thể tải thông tin việc làm')
-    } finally {
-      setApplyLoading(false)
-    }
+    trackBehavior(jobId, 'view')
+    navigate(`${jobBasePath}/${jobId}`, {
+      state: { fromPath: window.location.pathname }
+    })
   }
 
   const renderJobPages = () => {
@@ -348,6 +332,7 @@ export default function CompanyDetailScreen({ company, onBack, token, jobBasePat
 
   return (
     <div className="cd-page">
+      {/* <Header notifCount={notifCount} /> */}
       {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
       {applyJob && <ApplyModal job={applyJob} onClose={() => setApplyJob(null)} />}
 
@@ -598,7 +583,7 @@ export default function CompanyDetailScreen({ company, onBack, token, jobBasePat
                                   disabled={applyLoading}
                                   onClick={(e) => handleApply(j.id, e)}
                                 >
-                                  {applyLoading ? '⏳' : token ? '👁 Xem chi tiết' : '⚡ Ứng tuyển'}
+                                  👁 Xem chi tiết
                                 </button>
                               </div>
                             </div>

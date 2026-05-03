@@ -3,13 +3,14 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import './JobDetailScreen.css'
 import Badge from '../../common/Badge/Badge'
 import { getToken } from '../../../utils/auth'
+import Header from '../../layout/Header/Header'
 
 const API = 'http://localhost:3000/api'
 
 function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
   const params = useParams()
   const navigate = useNavigate()
-  const location = useLocation() 
+  const location = useLocation()
   const id = jobId ?? params.id
   const token = getToken()
 
@@ -22,14 +23,17 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
   const returnUrl = location.state?.fromPath || '/home'
   const scrollY = location.state?.scrollY || 0
 
-   const handleBack = () => {
-    // Navigate về URL cũ, state sẽ được đọc bởi HomeScreen
-    navigate(returnUrl, {
-      state: { scrollY }  // Truyền lại scrollY để HomeScreen restore
-    })
+  const [matchInfo, setMatchInfo] = useState(null)
+
+  const handleBack = () => {
+    if (location.state?.fromPath) {
+      navigate(location.state.fromPath, {
+        state: { scrollY: location.state?.scrollY || 0 }
+      })
+    } else {
+      navigate(-1)
+    }
   }
-
-
 
   useEffect(() => {
     if (!id) return
@@ -43,16 +47,30 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
       .finally(() => setLoading(false))
   }, [id])
 
+
   useEffect(() => {
     if (!token || !id) return
     fetch(`${API}/jobs/saved`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(data => {
-        const ids = new Set((Array.isArray(data) ? data : []).map(s => s.job?.jobID ?? s.jobID))
+        const list = Array.isArray(data) ? data : (data?.data ?? [])
+        const ids = new Set(list.map(s => s.job?.jobID ?? s.jobID))
         setSaved(ids.has(Number(id)))
       })
       .catch(console.error)
   }, [token, id])
+
+
+  useEffect(() => {
+    if (!token || !id) return
+    fetch(`${API}/jobs/${id}/match`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(data => setMatchInfo(data))
+      .catch(console.error)
+  }, [token, id])
+
 
   const handleSave = async () => {
     if (!token) { setShowLoginModal(true); return }
@@ -99,12 +117,6 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
     }
   }
 
-  const matchData = [
-    { label: 'Kỹ năng kỹ thuật', value: 95, color: 'f-sage' },
-    { label: 'Kinh nghiệm', value: 80, color: 'f-rust' },
-    { label: 'Mức lương', value: 90, color: 'f-amber' },
-    { label: 'Địa điểm', value: 70, color: 'f-teal' },
-  ]
 
   if (loading) {
     return (
@@ -127,7 +139,6 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
   const logoLetter = job.company?.companyName?.[0]?.toUpperCase() ?? '?'
 
   return (
-
     <div id="s4">
       {onBack && (
         <div style={{
@@ -304,7 +315,7 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
                 </div>
               </div>
 
-              <div className="ai-box">
+              {/* <div className="ai-box">
                 <div className="ai-box-header">
                   <div className="ai-box-title">🤖 Phân tích AI — Mức độ phù hợp</div>
                 </div>
@@ -331,6 +342,31 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
                   </div>
                 </div>
               </div>
+               */}
+
+              {matchInfo ? (
+                <div className="ai-box">
+                  <div className="ai-box-header">
+                    <div className="ai-box-title">🤖 Phân tích AI — Mức độ phù hợp</div>
+                  </div>
+                  <div className="ai-box-content">
+                    <div className="ai-ring" style={{
+                      background: `conic-gradient(var(--sage) 0% ${matchInfo.matchPercent}%, var(--bg3) ${matchInfo.matchPercent}%)`
+                    }}>
+                      <div className="ai-ring-in">
+                        <div className="ai-ring-n">{Math.round(matchInfo.matchPercent)}%</div>
+                        <div className="ai-ring-s">Match</div>
+                      </div>
+                    </div>
+                    {matchInfo.reason && (
+                      <div className="ai-reason">
+                        <span className="ai-reason-icon">💡</span>
+                        <span>{matchInfo.reason}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : null}
 
               <div className="divider" />
 

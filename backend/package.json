@@ -20,6 +20,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
     "@google/generative-ai": "^0.24.1",
     "@nestjs-modules/mailer": "^2.3.4",
     "@nestjs/axios": "^4.0.1",
@@ -28,7 +29,9 @@
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.1.17",
+    "@nestjs/platform-socket.io": "^11.1.19",
     "@nestjs/schedule": "^6.1.1",
+    "@nestjs/websockets": "^11.1.19",
     "@payos/node": "^2.0.5",
     "@prisma/client": "^6.19.2",
     "axios": "^1.15.0",
@@ -38,6 +41,7 @@
     "cluster-key-slot": "^1.1.2",
     "ioredis": "^5.10.1",
     "jsonrepair": "^3.14.0",
+    "jwt-decode": "^4.0.0",
     "multer": "^2.1.1",
     "p-queue": "^9.1.2",
     "pdf-to-img": "^6.0.0",
@@ -48,7 +52,8 @@
     "rxjs": "^7.8.1",
     "sharp": "^0.34.5",
     "stripe": "^22.0.0",
-    "tesseract.js": "^7.0.0"
+    "tesseract.js": "^7.0.0",
+    "socket.io": "^4.8.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

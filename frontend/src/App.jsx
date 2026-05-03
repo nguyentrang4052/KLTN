@@ -37,20 +37,38 @@ import AdminRefunds from './components/Admin/AdminRefunds/AdminRefunds'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getToken } from './utils/auth'
 
+import { jwtDecode } from 'jwt-decode'
+import { useNotifications } from './hook/useNotifications'
+
 
 import { CVStoreProvider } from './store/cvStore'
 import TemplatePickerScreen from './components/screens/TemplatePickerScreen/TemplatePickerScreen'
 import MyCVScreen from './components/screens/MyCVScreen/MyCVScreen'
 
 
+function isTokenExpired(token) {
+  try {
+    const decoded = jwtDecode(token)
+    return decoded.exp * 1000 < Date.now()
+  } catch {
+    return true
+  }
+}
+
+
 function ProtectedRoute({ children }) {
   const location = useLocation()
   const token = localStorage.getItem('token') || sessionStorage.getItem('token')
-  if (!token) {
-    return <Navigate to="/login" state={{ from: location }} replace />
+
+  if (!token || isTokenExpired(token)) {
+    localStorage.removeItem('token')
+    sessionStorage.removeItem('token')
+    return <Navigate to="/" state={{ from: location }} replace />
   }
+
   return children
 }
+
 
 function AdminRoute({ children }) {
   const location = useLocation()
@@ -92,12 +110,14 @@ function CompanyDetailScreenRouteForCompanies() {
   const { id } = useParams()
   const navigate = useNavigate()
   const token = getToken()
+  const notifContext = useNotifications()
   return (
     <CompanyDetailScreen
       company={{ id: Number(id) }}
       onBack={() => navigate(-1)}
       token={token}
       jobBasePath={`/companies/${id}/jobs`}
+      notifCount={notifContext.unreadCount}
     />
   )
 }
@@ -106,12 +126,14 @@ function CompanyDetailScreenRouteForHome() {
   const { id } = useParams()
   const navigate = useNavigate()
   const token = getToken()
+  const notifContext = useNotifications()
   return (
     <CompanyDetailScreen
       company={{ id: Number(id) }}
       onBack={() => navigate(-1)}
       token={token}
       jobBasePath={`/home/companies/${id}/jobs`}
+      notifCount={notifContext.unreadCount}
     />
   )
 }
@@ -166,6 +188,7 @@ function AIRouteJobDetail({ backPath, jobBasePath }) {
 
 function App() {
   const location = useLocation()
+  const notifContext = useNotifications()
 
   const HIDE_HEADER_ROUTES = [
     '/',
@@ -182,23 +205,41 @@ function App() {
 
   const hideHeader =
     HIDE_HEADER_ROUTES.includes(location.pathname) ||
-    location.pathname.startsWith('/admin') ||
-    location.pathname.startsWith('/jobs/companies/') ||
-    location.pathname.startsWith('/home/companies/') ||
-    location.pathname.startsWith('/companies/') ||
-    location.pathname.startsWith('/home/job/') ||
-    location.pathname.startsWith('/jobs/job/')
+    location.pathname.startsWith('/admin')
+  // location.pathname.startsWith('/jobs/companies/') ||
+  // location.pathname.startsWith('/home/companies/')
+  // location.pathname.startsWith('/companies/')
+  // location.pathname.startsWith('/home/job/') ||
+  // location.pathname.startsWith('/jobs/job/')
 
   const [screen, setScreen] = useState('myCV')
   const navigate = useNavigate()
 
   return (
     <div className="app">
-      {!hideHeader && <Header />}
+      {!hideHeader && <Header notifCount={notifContext.unreadCount} />}
 
       <div className="screen-container">
         <Routes>
-          <Route path="/" element={<LandingScreen />} />
+          {/* <Route path="/" element={<LandingScreen />} /> */}
+          <Route path="/" element={
+            (() => {
+              const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+
+              if (!token || isTokenExpired(token)) {
+                localStorage.removeItem('token')
+                sessionStorage.removeItem('token')
+                return <LandingScreen />
+              }
+
+              try {
+                const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}')
+                if (user.role === 'admin') return <Navigate to="/admin" replace />
+              } catch { }
+
+              return <Navigate to="/home" replace />
+            })()
+          } />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -302,7 +343,9 @@ function App() {
           } />
 
           <Route path="/notifications" element={
-            <ProtectedRoute><NotificationsScreen /></ProtectedRoute>
+            <ProtectedRoute>
+              <NotificationsScreen notifContext={notifContext} />
+            </ProtectedRoute>
           } />
 
 

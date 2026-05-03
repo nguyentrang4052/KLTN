@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { JobsService } from './jobs.service';
+import { AIRecommendationService } from './ai-job-recommendation.service';
 import { QueryJobsDto } from '../dto/jobs.dto';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { OptionalJwtGuard } from '../guards/optional-jwt';
@@ -24,7 +25,10 @@ interface RequestWithUser extends Request {
 
 @Controller('jobs')
 export class JobsController {
-  constructor(private readonly jobsService: JobsService) {}
+  constructor(
+    private readonly jobsService: JobsService,
+    private readonly aiRecommendation: AIRecommendationService,
+  ) { }
 
   @Get()
   @UseGuards(OptionalJwtGuard)
@@ -41,8 +45,9 @@ export class JobsController {
   @Get('recommendations')
   @UseGuards(JwtAuthGuard)
   async getRecommendations(@GetUser() user: JwtUser) {
-    await this.jobsService.computeAndSaveRecommendations(user.sub);
-    return this.jobsService.getRecommendations(user.sub);
+    const wasRecomputed =
+      await this.aiRecommendation.computeAndSaveRecommendations(user.sub);
+    return this.jobsService.getRecommendations(user.sub, wasRecomputed);
   }
 
   @Get('saved')
@@ -66,6 +71,27 @@ export class JobsController {
     return this.jobsService.getTrendingKeywords();
   }
 
+  @Post('search-history')
+  @UseGuards(OptionalJwtGuard)
+  async saveSearchHistory(
+    @Body('keyword') keyword: string,
+    @Req() req: RequestWithUser,
+  ) {
+    if (!keyword?.trim() || !req.user?.sub) return;
+    await this.jobsService.saveSearchHistory(req.user.sub, keyword.trim());
+  }
+
+  @Get('search-history')
+  @UseGuards(JwtAuthGuard)
+  async getSearchHistory(@GetUser() user: JwtUser) {
+    return this.jobsService.getSearchHistory(user.sub);
+  }
+
+  @Get('search-suggestions')
+  async getSearchSuggestions(@Query('q') q: string) {
+    return this.jobsService.getSearchSuggestions(q);
+  }
+
   @Get(':id')
   getJobById(@Param('id', ParseIntPipe) id: number) {
     return this.jobsService.getJobById(id);
@@ -81,6 +107,15 @@ export class JobsController {
     const allowedActions = ['view', 'save', 'apply', 'click'];
     const validAction = allowedActions.includes(action) ? action : 'view';
     return this.jobsService.logUserBehavior(user.sub, jobID, validAction);
+  }
+
+  @Get(':id/match')
+  @UseGuards(JwtAuthGuard)
+  getJobMatch(
+    @Param('id', ParseIntPipe) jobID: number,
+    @GetUser() user: JwtUser,
+  ) {
+    return this.jobsService.getJobMatch(user.sub, jobID);
   }
 
   @UseGuards(JwtAuthGuard)

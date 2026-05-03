@@ -21,7 +21,7 @@ import { RedisModule } from './redis/redis.module';
 import { ChatHistoryModule } from './chatbot/chat-history/chat-history.module';
 import { CvAssistantModule } from './cv-assistant/cv-assistant.module';
 import { CvBuilderModule } from './cv-builder/cv-builder.module';
-
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
   imports: [
@@ -40,6 +40,7 @@ import { CvBuilderModule } from './cv-builder/cv-builder.module';
     CvAnalyzerModule,
     SubscriptionModule,
     AdminModule,
+    NotificationModule,
     CacheModule.registerAsync({
       useFactory: async () => ({
         store: await redisStore({
@@ -59,6 +60,5 @@ import { CvBuilderModule } from './cv-builder/cv-builder.module';
   ],
   controllers: [AppController],
   providers: [AppService],
-  
 })
-export class AppModule {}
+export class AppModule { }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import './HomeScreen.css'
 import JobCard from '../../common/JobCard/JobCard'
@@ -47,12 +48,16 @@ export default function HomeScreen() {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const resultsRef = useRef(null)
-
   const [token, setToken] = useState(() => getToken())
-
-  // Đọc state từ URL - chỉ đọc 1 lần khi mount
   const [keyword, setKeyword] = useState(() => searchParams.get('keyword') || '')
-  const [locationFilter, setLocationFilter] = useState(() => searchParams.get('location') || '')
+  const [locationFilter, setLocationFilter] = useState(() => {
+    const loc = searchParams.get('location')
+    return loc ? loc.split(',').filter(Boolean) : []
+  })
+
+  const [locOpen, setLocOpen] = useState(false)
+  const locRef = useRef(null)
+  const [locPos, setLocPos] = useState({ top: 0, left: 0, width: 0 })
   const [sort, setSort] = useState(() => searchParams.get('sort') || 'newest')
   const [page, setPage] = useState(() => parseInt(searchParams.get('page') || '1'))
   const [industryFilter, setIndustryFilter] = useState(() => {
@@ -63,7 +68,6 @@ export default function HomeScreen() {
     searchParams.get('platform') || 'Tất cả'
   )
 
-  // Các state khác
   const [jobs, setJobs] = useState([])
   const [recommendations, setRecommendations] = useState([])
   const [industries, setIndustries] = useState([])
@@ -78,67 +82,113 @@ export default function HomeScreen() {
   const [loadingStats, setLoadingStats] = useState(false)
   const [savedJobIds, setSavedJobIds] = useState(new Set())
 
-  // SSE state
   const [crawlStatus, setCrawlStatus] = useState(null)
   const [isRealtime, setIsRealtime] = useState(false)
   const eventSourceRef = useRef(null)
+  const [locations, setLocations] = useState([])
 
-  // Hàm cập nhật URL - KHÔNG dùng searchParams trong dependency để tránh loop
-  const updateURLParams = useCallback((updates) => {
-    setSearchParams(prevParams => {
-      const newParams = new URLSearchParams(prevParams)
-      
-      Object.entries(updates).forEach(([key, value]) => {
-        if (value === null || value === undefined || value === '' || value === 'Tất cả') {
-          newParams.delete(key)
-        } else {
-          newParams.set(key, String(value))
-        }
+  const pageRef = useRef(page)
+  const sortRef = useRef(sort)
+  const keywordRef = useRef(keyword)
+  const industryFilterRef = useRef(industryFilter)
+  const activePlatformRef = useRef(activePlatform)
+  const locationFilterRef = useRef(locationFilter)
+  const tokenRef = useRef(token)
+  const [recQuota, setRecQuota] = useState(null)
+
+  const [suggestions, setSuggestions] = useState([])
+  const [searchHistory, setSearchHistory] = useState([])
+  const [showDropdown, setShowDropdown] = useState(false)
+  const searchInputRef = useRef(null)
+  const [searchPos, setSearchPos] = useState({ top: 0, left: 0, width: 0 })
+  const debounceRef = useRef(null)
+
+  useEffect(() => { pageRef.current = page }, [page])
+  useEffect(() => { sortRef.current = sort }, [sort])
+  useEffect(() => { keywordRef.current = keyword }, [keyword])
+  useEffect(() => { industryFilterRef.current = industryFilter }, [industryFilter])
+  useEffect(() => { activePlatformRef.current = activePlatform }, [activePlatform])
+  useEffect(() => { locationFilterRef.current = locationFilter }, [locationFilter])
+  useEffect(() => { tokenRef.current = token }, [token])
+
+  const searchParamsRef = useRef(searchParams)
+  useEffect(() => { searchParamsRef.current = searchParams }, [searchParams])
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (searchInputRef.current && !searchInputRef.current.contains(e.target))
+        setShowDropdown(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const handleLocOpen = () => {
+    if (locRef.current) {
+      const rect = locRef.current.getBoundingClientRect()
+      setLocPos({
+        top: rect.bottom + window.scrollY + 6,
+        left: rect.left + window.scrollX,
+        width: Math.max(rect.width, 220),
       })
-      
-      return newParams
-    }, { replace: true })
+    }
+    setLocOpen(o => !o)
+  }
+
+  const handleSearchFocus = () => {
+    if (searchInputRef.current) {
+      const rect = searchInputRef.current.getBoundingClientRect()
+      setSearchPos({
+        top: rect.bottom + window.scrollY + 6,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      })
+    }
+    setShowDropdown(true)
+  }
+
+  useEffect(() => {
+    fetch(`${API}/common/locations`)
+      .then(r => r.json())
+      .then(data => setLocations(data))
+      .catch(console.error)
+  }, [])
+
+  const updateURLParams = useCallback((updates) => {
+    const newParams = new URLSearchParams(searchParamsRef.current)
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null || value === undefined || value === '' || value === 'Tất cả') {
+        newParams.delete(key)
+      } else {
+        newParams.set(key, String(value))
+      }
+    })
+    setSearchParams(newParams, { replace: true })
   }, [setSearchParams])
 
   // Chỉ sync URL khi sort thay đổi (KHÔNG gọi setPage)
   useEffect(() => {
-    updateURLParams({ sort: sort !== 'newest' ? sort : null })
-  }, [sort, updateURLParams])
+    updateURLParams({
+      keyword: keyword || null,
+      page: page > 1 ? page : null,
+      sort: sort !== 'newest' ? sort : null,
+      industry: industryFilter || null,
+      platform: activePlatform !== 'Tất cả' ? activePlatform : null,
+      location: locationFilter.length > 0 ? locationFilter.join(',') : null,
+    })
+  }, [keyword, page, sort, industryFilter, activePlatform, locationFilter, updateURLParams])
 
   // Chỉ sync URL khi industry thay đổi (KHÔNG gọi setPage)
-  useEffect(() => {
-    const newIndustry = industryFilter || null
-    updateURLParams({ industry: newIndustry })
-  }, [industryFilter, updateURLParams])
-
-  // Khi đổi platform: reset page về 1 và sync URL
-  const handlePlatformChange = useCallback((platform) => {
-    setActivePlatform(platform)
-    setCatPage(0)
-    setIndustryFilter(null)
-    setPage(1)
-    updateURLParams({ 
-      platform: platform !== 'Tất cả' ? platform : null,
-      page: null,
-      industry: null
-    })
-  }, [updateURLParams])
-
-  // Khôi phục scroll khi back
   useEffect(() => {
     if (location.state?.scrollY) {
       const timer = setTimeout(() => {
         window.scrollTo(0, location.state.scrollY)
-        navigate(location.pathname + location.search, {
-          replace: true,
-          state: {}
-        })
+        navigate(location.pathname + location.search, { replace: true, state: {} })
       }, 100)
       return () => clearTimeout(timer)
     }
   }, [location, navigate])
 
-  // Các effect cũ
   useEffect(() => {
     const sync = () => setToken(getToken())
     window.addEventListener('focus', sync)
@@ -179,57 +229,68 @@ export default function HomeScreen() {
     }
   }, [page, meta.totalPages])
 
-  // Effect fetch jobs - chạy khi page hoặc filter thay đổi, đồng thời update URL
-  useEffect(() => {
-    console.log('Fetching jobs with page:', page)
-    
-    const fetchJobs = async () => {
-      setLoadingJobs(true)
-      try {
-        const params = new URLSearchParams({ page: String(page), limit: '9', sort })
-        if (keyword) params.set('keyword', keyword)
-        if (locationFilter) params.append('locations', locationFilter)
-        if (industryFilter) params.set('industryId', String(industryFilter))
-        if (activePlatform && activePlatform !== 'Tất cả') params.set('source', activePlatform)
+  const fetchJobs = useCallback(async () => {
+    setLoadingJobs(true)
+    try {
+      const params = new URLSearchParams({
+        page: String(pageRef.current),
+        limit: '9',
+        sort: sortRef.current,
+      })
+      if (keywordRef.current) params.set('keyword', keywordRef.current)
+      const locs = locationFilterRef.current
+      if (locs.length > 0) locs.forEach(loc => params.append('locations', loc))
+      if (industryFilterRef.current) params.set('industryId', String(industryFilterRef.current))
+      if (activePlatformRef.current && activePlatformRef.current !== 'Tất cả')
+        params.set('source', activePlatformRef.current)
 
-        const headers = token ? { Authorization: `Bearer ${token}` } : {}
-        const res = await fetch(`${API}/jobs?${params}`, { headers })
-        const data = await res.json()
-        setJobs(data.data ?? [])
-        setMeta(data.meta ?? { total: 0, totalPages: 1 })
-
-        // Update URL sau khi fetch thành công - dùng functional update để tránh dependency loop
-        setSearchParams(prev => {
-          const newParams = new URLSearchParams(prev)
-          if (page > 1) {
-            newParams.set('page', String(page))
-          } else {
-            newParams.delete('page')
-          }
-          return newParams
-        }, { replace: true })
-        
-      } catch (err) {
-        console.error('Fetch jobs error:', err)
-      } finally {
-        setLoadingJobs(false)
-      }
+      const headers = tokenRef.current ? { Authorization: `Bearer ${tokenRef.current}` } : {}
+      const res = await fetch(`${API}/jobs?${params}`, { headers })
+      const data = await res.json()
+      setJobs(data.data ?? [])
+      setMeta(data.meta ?? { total: 0, totalPages: 1 })
+    } catch (err) {
+      console.error('Fetch jobs error:', err)
+    } finally {
+      setLoadingJobs(false)
     }
+  }, [])
 
+  useEffect(() => {
     fetchJobs()
-  }, [page, sort, keyword, locationFilter, industryFilter, token, activePlatform, setSearchParams])
+  }, [page, sort, keyword, industryFilter, activePlatform, token, fetchJobs])
+
+  const prevLocationFilterRef = useRef(locationFilter)
+  useEffect(() => {
+    const prev = prevLocationFilterRef.current
+    const curr = locationFilter
+    if (JSON.stringify(prev) !== JSON.stringify(curr)) {
+      prevLocationFilterRef.current = curr
+      fetchJobs()
+    }
+  }, [locationFilter, fetchJobs])
 
   useEffect(() => {
     if (!token) { setRecommendations([]); return }
-    setLoadingRecs(true)
-    fetch(`${API}/jobs/recommendations`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
-      .then(data => {
-        setRecommendations(Array.isArray(data) ? data : [])
-        setRecPage(1)
+    const fetchRecs = () => {
+      setLoadingRecs(true)
+      fetch(`${API}/jobs/recommendations`, {
+        headers: { Authorization: `Bearer ${token}` },
       })
-      .catch(console.error)
-      .finally(() => setLoadingRecs(false))
+        .then(r => r.json())
+        .then(res => {
+          const list = Array.isArray(res) ? res : (res.data ?? [])
+          const quotaInfo = Array.isArray(res) ? null : (res.quota ?? null)
+          setRecommendations(list)
+          setRecQuota(quotaInfo)
+          setRecPage(1)
+        })
+        .catch(console.error)
+        .finally(() => setLoadingRecs(false))
+    }
+    fetchRecs()
+    const interval = setInterval(fetchRecs, 60 * 60 * 1000)
+    return () => clearInterval(interval)
   }, [token])
 
   useEffect(() => {
@@ -240,7 +301,7 @@ export default function HomeScreen() {
       .then(setStats)
       .catch(console.error)
       .finally(() => setLoadingStats(false))
-  }, [token])
+  }, [token, recommendations.length])
 
   useEffect(() => {
     if (!token) { setSavedJobIds(new Set()); return }
@@ -255,12 +316,38 @@ export default function HomeScreen() {
 
   useEffect(() => {
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close()
-        console.log('SSE disconnected')
-      }
+      if (eventSourceRef.current) eventSourceRef.current.close()
     }
   }, [])
+
+  useEffect(() => {
+    if (!token) { setSearchHistory([]); return }
+    fetch(`${API}/jobs/search-history`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(data => setSearchHistory(Array.isArray(data) ? data : []))
+      .catch(console.error)
+  }, [token])
+
+  const handleKeywordChange = (e) => {
+    const val = e.target.value
+    setKeyword(val)
+    keywordRef.current = val
+    setShowDropdown(true)
+    clearTimeout(debounceRef.current)
+    if (!val.trim()) {
+      setSuggestions([])
+      return
+    }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API}/jobs/search-suggestions?q=${encodeURIComponent(val)}`)
+        const data = await res.json()
+        setSuggestions(Array.isArray(data) ? data : [])
+      } catch { setSuggestions([]) }
+    }, 250)
+  }
 
   const trackBehavior = useCallback((jobID, action) => {
     if (!token) return
@@ -273,73 +360,55 @@ export default function HomeScreen() {
 
   const handleJobClick = (job) => {
     const currentScrollY = window.scrollY
-
     if (!job.jobID || typeof job.jobID !== 'number') {
       console.error('Lỗi: jobID không hợp lệ!', job)
       alert('Lỗi: Không tìm thấy ID công việc.')
       return
     }
-
     trackBehavior(job.jobID, 'click')
     navigate(`/home/job/${job.jobID}`, {
-      state: {
-        scrollY: currentScrollY,
-        fromPath: location.pathname + location.search
-      }
+      state: { scrollY: currentScrollY, fromPath: location.pathname + location.search }
     })
   }
 
-  // const handleSearch = async () => {
-  //   setPage(1)
-  //   updateURLParams({
-  //     keyword: keyword || null,
-  //     location: locationFilter || null,
-  //     page: null
-  //   })
-
-  //   setLoadingJobs(true)
-
-  //   try {
-  //     const sessionId = `search_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-
-  //     const res = await fetch('http://localhost:8000/search-smart', {
-  //       method: 'POST',
-  //       headers: { 'Content-Type': 'application/json' },
-  //       body: JSON.stringify({
-  //         query: keyword,
-  //         session_id: sessionId
-  //       })
-  //     })
-
-  //     const data = await res.json()
-
-  //     if (data.existing_jobs?.length > 0) {
-  //       const normalizedJobs = data.existing_jobs.map(job => ({
-  //         ...job,
-  //         jobID: job.jobID || job.id || job.job_id,
-  //       }))
-  //       setJobs(normalizedJobs)
-  //       setMeta({ total: data.count, totalPages: 1 })
-  //     }
-
-  //     if (data.crawling) {
-  //       connectToEventStream()
-  //       setCrawlStatus({ type: 'searching', message: '🔍 Đang tìm việc mới nhất...' })
-  //     }
-
-  //   } catch (e) {
-  //     console.error('Search error:', e)
-  //   } finally {
-  //     setLoadingJobs(false)
-  //   }
-
-  //   setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
-  // }
-
   const handleSearch = () => {
     setPage(1)
-    setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
+    pageRef.current = 1
+    updateURLParams({
+      keyword: keywordRef.current || null,
+      location: locationFilter.length > 0 ? locationFilter.join(',') : null,
+      page: null,
+    })
+    if (keywordRef.current?.trim() && token) {
+      try {
+        await fetch(`${API}/jobs/search-history`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ keyword: keywordRef.current.trim() }),
+        });
+
+        const res = await fetch(`${API}/jobs/search-history`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setSearchHistory(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
   }
+
+  const handleQuickSearch = useCallback((kw) => {
+    const trimmed = kw.trim()
+    keywordRef.current = trimmed
+    setKeyword(trimmed)
+    setPage(1)
+    pageRef.current = 1
+    setSuggestions([])
+    setShowDropdown(false)
+    updateURLParams({ keyword: trimmed || null, page: null })
+  }, [updateURLParams])
 
   const handleIndustryClick = (indId) => {
     const newIndustry = industryFilter === indId ? null : indId
@@ -348,81 +417,10 @@ export default function HomeScreen() {
     setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
 
-  // const connectToEventStream = () => {
-  //   const es = new EventSource('http://localhost:8000/stream?channel=crawl:jobs')
-  //   eventSourceRef.current = es
-  //   setIsRealtime(true)
-
-  //   let fastCount = 0
-
-  //   es.onmessage = (event) => {
-  //     try {
-  //       const data = JSON.parse(event.data)
-
-  //       if (data.__done__ || data.__fast_done__) {
-  //         setCrawlStatus({
-  //           type: 'done',
-  //           message: `✅ Hoàn thành! ${data.total || fastCount} việc làm`
-  //         })
-  //         setIsRealtime(false)
-  //         es.close()
-  //         setTimeout(() => {
-  //           // Không gọi fetchJobs() ở đây nữa để tránh loop
-  //           setCrawlStatus(null)
-  //         }, 3000)
-  //         return
-  //       }
-
-  //       const jobID = data.jobID
-  //       if (!jobID) return
-
-  //       fastCount++
-
-  //       setJobs(prev => {
-  //         if (prev.find(j => j.jobID === jobID)) return prev
-
-  //         const newJob = {
-  //           jobID: jobID,
-  //           title: data.job?.title,
-  //           companyName: data.company?.companyName,
-  //           companyLogo: data.company?.companyLogo,
-  //           location: data.job?.location,
-  //           shortLocation: data.job?.shortLocation,
-  //           salary: data.job?.salary,
-  //           jobType: data.job?.jobType,
-  //           experienceYear: data.job?.experienceYear,
-  //           sourcePlatform: data.job?.sourcePlatform,
-  //           isNewJob: data.isNewJob ?? true,
-  //         }
-
-  //         return [newJob, ...prev]
-  //       })
-
-  //       setMeta(prev => ({ ...prev, total: prev.total + 1 }))
-
-  //       if (fastCount <= 10) {
-  //         setCrawlStatus({
-  //           type: 'streaming',
-  //           message: `📥 Đang nhận dữ liệu (${fastCount} việc làm mới)...`
-  //         })
-  //       } else {
-  //         setCrawlStatus({
-  //           type: 'deep',
-  //           message: '🔍 Đang tìm kiếm sâu thêm...'
-  //         })
-  //       }
-
-  //     } catch (err) {
-  //       console.error('SSE parse error:', err)
-  //     }
-  //   }
-
-  //   es.onerror = (err) => {
-  //     console.error('SSE error:', err)
-  //     es.close()
-  //     setIsRealtime(false)
-  //   }
-  // }
+  // const handlePageChange = useCallback((newPage) => {
+  //   pageRef.current = newPage
+  //   setPage(newPage)
+  // }, [])
 
   const renderPages = (curPage, totalPages, onPageChange) => {
     const pages = []
@@ -431,7 +429,6 @@ export default function HomeScreen() {
         onClick={() => onPageChange(n)}>{n}</button>
     )
     const addDots = (k) => pages.push(<span key={k} className="hs-pg-dots">…</span>)
-
     if (totalPages <= 7) {
       for (let i = 1; i <= totalPages; i++) addBtn(i)
     } else {
@@ -469,22 +466,17 @@ export default function HomeScreen() {
 
   const renderJobCard = (job) => (
     <div key={job.jobID} style={{ cursor: 'pointer', position: 'relative' }}
-      onClick={() => handleJobClick(job)}>
+      onClick={(e) => {
+        if (e.defaultPrevented) return
+        handleJobClick(job)
+      }}>
       {job.isNewJob && (
         <span style={{
-          position: 'absolute',
-          top: '-8px',
-          right: '-8px',
-          background: '#FF4757',
-          color: 'white',
-          padding: '4px 8px',
-          borderRadius: '12px',
-          fontSize: '11px',
-          fontWeight: 'bold',
-          zIndex: 10
-        }}>
-          MỚI
-        </span>
+          position: 'absolute', top: '-8px', right: '-8px',
+          background: '#FF4757', color: 'white',
+          padding: '4px 8px', borderRadius: '12px',
+          fontSize: '11px', fontWeight: 'bold', zIndex: 10,
+        }}>MỚI</span>
       )}
       <JobCard
         token={token}
@@ -516,6 +508,12 @@ export default function HomeScreen() {
   const catTotalPages = Math.ceil(industries.length / CAT_PAGE_SIZE)
   const pagedIndustries = industries.slice(catPage * CAT_PAGE_SIZE, (catPage + 1) * CAT_PAGE_SIZE)
 
+  // Ô trống → hiện lịch sử | Đang gõ → hiện suggestions
+  const showSearchDropdown = showDropdown && (
+    (keyword.trim() && suggestions.length > 0) ||
+    (!keyword.trim() && searchHistory.length > 0)
+  )
+
   return (
     <div className="hs-page">
       <div className="hs-hero">
@@ -531,28 +529,150 @@ export default function HomeScreen() {
               AI tổng hợp từ TopCV, CareerLink, CareerViet.
             </p>
             <div className="hs-hero-search">
-              <div className="hs-sf">
+              <div className="hs-sf" ref={searchInputRef}>
                 <span className="hs-sf-ico">🔍</span>
                 <input
                   className="hs-sf-inp"
                   placeholder="Tên công việc, kỹ năng..."
                   value={keyword}
-                  onChange={e => setKeyword(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                  onChange={handleKeywordChange}
+                  onFocus={handleSearchFocus}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') { setShowDropdown(false); handleSearch() }
+                    if (e.key === 'Escape') setShowDropdown(false)
+                  }}
                 />
+                {keyword && (
+                  <button className="hs-loc-clear" onClick={() => {
+                    keywordRef.current = ''
+                    setKeyword('')
+                    setSuggestions([])
+                    setShowDropdown(false)
+                    updateURLParams({ keyword: null, page: null })
+                  }}>×</button>
+                )}
               </div>
-              <div className="hs-sf hs-sf-loc">
+
+              {showSearchDropdown && createPortal(
+                <>
+                  <div
+                    style={{ position: 'fixed', inset: 0, zIndex: 9996 }}
+                    onMouseDown={(e) => { e.preventDefault(); setShowDropdown(false) }}
+                  />
+                  <div className="hs-search-dropdown" style={{
+                    position: 'absolute',
+                    top: searchPos.top,
+                    left: searchPos.left,
+                    width: Math.max(searchPos.width, 320),
+                    zIndex: 9997,
+                  }}>
+                    {/* Lịch sử — chỉ khi ô trống */}
+                    {!keyword.trim() && searchHistory.length > 0 && (
+                      <>
+                        <div className="hs-sd-section-hd">
+                          <span>Tìm kiếm gần đây</span>
+                        </div>
+                        {searchHistory.map((h, i) => (
+                          <div key={i} className="hs-sd-item"
+                            onMouseDown={(e) => { e.preventDefault(); handleQuickSearch(h) }}>
+                            <span className="hs-sd-ico">🕐</span>
+                            <span className="hs-sd-item-text">{h}</span>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                    {keyword.trim() && suggestions.length > 0 && (
+                      <>
+                        <div className="hs-sd-section-hd"><span>Gợi ý</span></div>
+                        {suggestions.map((s, i) => (
+                          <div key={i} className="hs-sd-item"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              const selectedKeyword = typeof s === 'object' ? s.display : s;
+                              setKeyword(selectedKeyword);
+                              setShowDropdown(false);
+                              navigate(`?keyword=${encodeURIComponent(selectedKeyword)}&page=1`);
+                            }}>
+                            <span className="hs-sd-ico">🔍</span>
+                            <span className="hs-sd-item-text">
+                              {typeof s === 'object' ? s.display : s}
+                            </span>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </>,
+                document.body
+              )}
+
+              <div className="hs-sf hs-sf-loc" ref={locRef}>
                 <span className="hs-sf-ico">📍</span>
-                <input
-                  className="hs-sf-inp"
-                  placeholder="Địa điểm..."
-                  value={locationFilter}
-                  onChange={e => setLocationFilter(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                />
+                <div
+                  className="hs-loc-display"
+                  style={{ color: locationFilter.length > 0 ? '#1C1510' : '#9A8D80' }}
+                  onClick={handleLocOpen}
+                >
+                  {locationFilter.length === 0 ? 'Địa điểm...'
+                    : locationFilter.length === 1 ? locationFilter[0]
+                      : `${locationFilter.length} địa điểm`}
+                </div>
+                {locationFilter.length > 0 && (
+                  <button className="hs-loc-clear" onClick={() => setLocationFilter([])}>×</button>
+                )}
               </div>
+
+              {locOpen && createPortal(
+                <>
+                  <div
+                    style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
+                    onClick={() => setLocOpen(false)}
+                  />
+                  <div style={{
+                    position: 'absolute',
+                    top: locPos.top, left: locPos.left, width: locPos.width,
+                    zIndex: 9999, background: '#FEFCF7',
+                    border: '1.5px solid #DDD6C6', borderRadius: 10,
+                    boxShadow: '0 8px 32px rgba(0,0,0,.15)',
+                    maxHeight: 280, overflowY: 'auto',
+                  }}>
+                    {locations.map(loc => {
+                      const selected = locationFilter.includes(loc.value)
+                      return (
+                        <div key={loc.value}
+                          className={`hs-loc-item${selected ? ' selected' : ''}`}
+                          onClick={() => setLocationFilter(prev =>
+                            selected ? prev.filter(l => l !== loc.value) : [...prev, loc.value]
+                          )}>
+                          <span className="hs-loc-checkbox">{selected ? '✓' : ''}</span>
+                          {loc.label}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>,
+                document.body
+              )}
+
               <button className="hs-search-btn" onClick={handleSearch}>Tìm kiếm</button>
             </div>
+
+            {locationFilter.length > 0 && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                {locationFilter.map(loc => (
+                  <span key={loc} style={{
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+                    background: 'rgba(255,255,255,.15)', color: '#F5EED8',
+                    border: '1px solid rgba(255,255,255,.25)',
+                  }}>
+                    📍 {loc}
+                    <span style={{ cursor: 'pointer', opacity: .7 }}
+                      onClick={() => setLocationFilter(prev => prev.filter(l => l !== loc))}>×</span>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="hs-hero-right">
@@ -560,10 +680,11 @@ export default function HomeScreen() {
               <div className="hs-stat-ico">🎯</div>
               <div className="hs-stat-n">{loadingStats ? '…' : (stats?.jobMatch?.count ?? '—')}</div>
               <div className="hs-stat-l">Việc phù hợp hôm nay</div>
-              <div className="hs-stat-s">
-                {stats ? `${stats.jobMatch?.delta} so với hôm qua` : token ? 'Đang tải...' : 'Đăng nhập để xem'}
-
-              </div>
+              {stats?.jobMatch?.delta && (
+                <div style={{ fontSize: 12, color: stats.jobMatch.delta.startsWith('+') ? '#4CAF50' : '#F44336' }}>
+                  {stats.jobMatch.delta} so với hôm qua
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -587,7 +708,7 @@ export default function HomeScreen() {
           <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
             {PLATFORMS.map(p => (
               <button key={p.value}
-                onClick={() => handlePlatformChange(p.value)}
+                onClick={() => { setActivePlatform(p.value); setPage(1) }}
                 style={{
                   padding: '7px 18px', borderRadius: 9,
                   border: `2px solid ${activePlatform === p.value ? p.color : '#DDD6C6'}`,
@@ -619,11 +740,8 @@ export default function HomeScreen() {
                     onClick={() => handleIndustryClick(cat.id)}>
                     <div className="hs-cat-icon-wrap">
                       <span style={{
-                        fontSize: 20, fontWeight: 800,
-                        color: cat.color,
-                        fontFamily: 'Roboto, sans-serif',
-                        lineHeight: 1,
-                        userSelect: 'none',
+                        fontSize: 20, fontWeight: 800, color: cat.color,
+                        fontFamily: 'Roboto, sans-serif', lineHeight: 1, userSelect: 'none',
                       }}>
                         {cat.letter}
                       </span>
@@ -695,13 +813,54 @@ export default function HomeScreen() {
               <div className="hs-sec-line" />
               <span className="hs-sec-ct">{recommendations.length} kết quả</span>
             </div>
+            {recQuota && !recQuota.isUnlimited && (
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '10px 18px', marginBottom: 14, borderRadius: 10,
+                background: recQuota.quotaExceeded ? '#FDE8E4' : '#F0F7FF',
+                border: `1px solid ${recQuota.quotaExceeded ? '#F5C0B0' : '#C8DFF8'}`,
+                fontSize: 13,
+              }}>
+                <span style={{ fontWeight: 600, color: recQuota.quotaExceeded ? '#C0412A' : '#1565C0' }}>
+                  💡 Lượt đề xuất hôm nay: {recQuota.usedToday}/{recQuota.limit}
+                  {recQuota.quotaExceeded
+                    ? ' · Đã hết lượt — đang hiển thị preview'
+                    : ` · Còn ${recQuota.remaining} lượt`}
+                </span>
+                {recQuota.quotaExceeded && (
+                  <button onClick={() => navigate('/services')} style={{
+                    padding: '5px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700,
+                    background: 'linear-gradient(135deg,#C0412A,#E05A40)',
+                    color: '#fff', border: 'none', cursor: 'pointer',
+                  }}>
+                    ⚡ Nâng cấp →
+                  </button>
+                )}
+              </div>
+            )}
             {loadingRecs ? (
               <div className="hs-loading">⟳ Đang tải việc làm...</div>
             ) : recommendations.length === 0 ? (
               <div className="hs-empty">Chưa có gợi ý — hãy cập nhật kỹ năng trong hồ sơ</div>
             ) : (
               <>
-                <div className="hs-grid">{pagedRecs.map(job => renderJobCard(job))}</div>
+                <div className="hs-grid">
+                  {pagedRecs.map(job => renderJobCard(job))}
+                  {recQuota?.quotaExceeded && recPage === recTotalPages && (
+                    <div onClick={() => navigate('/services')} style={{
+                      cursor: 'pointer', borderRadius: 14, border: '2px dashed #F5C0B0',
+                      background: 'linear-gradient(135deg,#FFF5F3,#FDE8E4)',
+                      display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', justifyContent: 'center',
+                      padding: '28px 20px', gap: 10, textAlign: 'center', minHeight: 160,
+                    }}>
+                      <div style={{ fontSize: 28 }}>🔒</div>
+                      <div style={{ fontWeight: 700, color: '#C0412A', fontSize: 14 }}>Còn nhiều việc phù hợp với bạn</div>
+                      <div style={{ color: '#9A8D80', fontSize: 12 }}>Nâng cấp Pro để xem thêm · Reset quota vào ngày mai</div>
+                      <div style={{ padding: '6px 16px', borderRadius: 8, fontWeight: 700, fontSize: 12, background: 'linear-gradient(135deg,#C0412A,#E05A40)', color: '#fff' }}>Nâng cấp ngay →</div>
+                    </div>
+                  )}
+                </div>
                 {recTotalPages > 1 && (
                   <Pagination curPage={recPage} totalPages={recTotalPages} onPageChange={setRecPage} />
                 )}
@@ -722,18 +881,10 @@ export default function HomeScreen() {
 
             {crawlStatus && (
               <div style={{
-                padding: '16px 24px',
-                margin: '20px 0',
-                background: crawlStatus.type === 'fast' ? '#FFF3CD' :
-                  crawlStatus.type === 'deep' ? '#D1ECF1' :
-                    crawlStatus.type === 'error' ? '#F8D7DA' : '#D4EDDA',
-                border: `1px solid ${crawlStatus.type === 'fast' ? '#FFEAA7' :
-                  crawlStatus.type === 'deep' ? '#74B9FF' :
-                    crawlStatus.type === 'error' ? '#F5C6CB' : '#C3E6CB'}`,
-                borderRadius: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px'
+                padding: '16px 24px', margin: '20px 0',
+                background: crawlStatus.type === 'deep' ? '#D1ECF1' : crawlStatus.type === 'error' ? '#F8D7DA' : '#D4EDDA',
+                border: `1px solid ${crawlStatus.type === 'deep' ? '#74B9FF' : crawlStatus.type === 'error' ? '#F5C6CB' : '#C3E6CB'}`,
+                borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px',
               }}>
                 <span style={{ fontSize: '20px' }}>
                   {crawlStatus.type === 'searching' && '🔍'}
@@ -742,29 +893,16 @@ export default function HomeScreen() {
                   {crawlStatus.type === 'done' && '✅'}
                   {crawlStatus.type === 'error' && '❌'}
                 </span>
-                <span style={{
-                  flex: 1,
-                  fontWeight: 600,
-                  color: crawlStatus.type === 'error' ? '#721C24' : '#333'
-                }}>
+                <span style={{ flex: 1, fontWeight: 600, color: crawlStatus.type === 'error' ? '#721C24' : '#333' }}>
                   {crawlStatus.message}
                 </span>
-                {(crawlStatus.type === 'searching' || crawlStatus.type === 'streaming' || crawlStatus.type === 'deep') && (
-                  <span style={{
-                    width: '20px',
-                    height: '20px',
-                    border: '2px solid #ccc',
-                    borderTopColor: '#333',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite'
-                  }} />
+                {['searching', 'streaming', 'deep'].includes(crawlStatus.type) && (
+                  <span style={{ width: '20px', height: '20px', border: '2px solid #ccc', borderTopColor: '#333', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
                 )}
               </div>
             )}
 
-            <style>{`
-              @keyframes spin { to { transform: rotate(360deg); } }
-            `}</style>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
             <div className="hs-sec-hd">
               <span className="hs-sec-title">💼 Tất cả việc làm</span>

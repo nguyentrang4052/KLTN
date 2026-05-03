@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
 import { JobAlertService } from './job-alert.service';
 import { JobAlertController } from './job-alert.controller';
-import { PrismaService } from '../../prisma/prisma.service';
-import { MailModule } from '../../mail/mail.module';
+import { PrismaModule } from '../../prisma/prisma.module';
+import { MailModule } from '../mail/mail.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
-  imports: [MailModule],
+  imports: [PrismaModule, MailModule, NotificationModule],
+  providers: [JobAlertService],
   controllers: [JobAlertController],
-  providers: [JobAlertService, PrismaService],
 })
 export class JobAlertModule {}
