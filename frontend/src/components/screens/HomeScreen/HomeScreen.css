@@ -982,3 +982,56 @@
 .hs-loc-tag-x:hover {
   opacity: 1;
 }
+
+.hs-search-dropdown {
+  position: absolute;
+  background: #FEFCF7;
+  border: 1.5px solid #DDD6C6;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.15);
+  overflow: hidden;
+  max-height: 380px;
+  overflow-y: auto;
+}
+.hs-sd-section-hd {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px 6px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: #9A8D80;
+}
+.hs-sd-section-hd button {
+  font-size: 11px;
+  color: #C0412A;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'Roboto', sans-serif;
+  padding: 0;
+  font-weight: 600;
+}
+.hs-sd-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  cursor: pointer;
+  font-size: 13.5px;
+  color: #1C1510;
+  transition: background .1s;
+}
+.hs-sd-item:hover { background: #F5F0E8; }
+.hs-sd-ico { font-size: 14px; flex-shrink: 0; opacity: .6; }
+.hs-sd-divider { height: 1px; background: #EDE8DF; margin: 4px 0; }
+
+.hs-sd-item-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 420px;
+  display: block;
+}

@@ -71,6 +71,27 @@ export class JobsController {
     return this.jobsService.getTrendingKeywords();
   }
 
+  @Post('search-history')
+  @UseGuards(OptionalJwtGuard)
+  async saveSearchHistory(
+    @Body('keyword') keyword: string,
+    @Req() req: RequestWithUser,
+  ) {
+    if (!keyword?.trim() || !req.user?.sub) return;
+    await this.jobsService.saveSearchHistory(req.user.sub, keyword.trim());
+  }
+
+  @Get('search-history')
+  @UseGuards(JwtAuthGuard)
+  async getSearchHistory(@GetUser() user: JwtUser) {
+    return this.jobsService.getSearchHistory(user.sub);
+  }
+
+  @Get('search-suggestions')
+  async getSearchSuggestions(@Query('q') q: string) {
+    return this.jobsService.getSearchSuggestions(q);
+  }
+
   @Get(':id')
   getJobById(@Param('id', ParseIntPipe) id: number) {
     return this.jobsService.getJobById(id);

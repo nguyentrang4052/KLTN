@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { createPortal } from 'react-dom'
 import { getToken } from '../../../utils/auth';
 import './JobSearchScreen.css';
 
@@ -121,6 +122,14 @@ function JobSearchScreen() {
   const [showMyAlerts, setShowMyAlerts] = useState(false);
 
   const [searchParams] = useSearchParams()
+
+  const [suggestions, setSuggestions] = useState([])
+  const [searchHistory, setSearchHistory] = useState([])
+  const [showDropdown, setShowDropdown] = useState(false)
+  const searchInputRef = useRef(null)
+  const [searchPos, setSearchPos] = useState({ top: 0, left: 0, width: 0 })
+  const suggestDebounceRef = useRef(null)
+  const historyDebounceRef = useRef(null)
 
   useEffect(() => {
     const kw = searchParams.get('keyword')
@@ -539,6 +548,81 @@ function JobSearchScreen() {
     ...activeFilters.locations.map(v => ({ cat: 'locations', value: v, label: `📍 ${v}` })),
   ];
 
+  useEffect(() => {
+    if (!token) { setSearchHistory([]); return }
+    fetch(`${API}/jobs/search-history`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(data => setSearchHistory(Array.isArray(data) ? data : []))
+      .catch(console.error)
+  }, [token])
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (searchInputRef.current && !searchInputRef.current.contains(e.target))
+        setShowDropdown(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const handleKeywordChange = (e) => {
+    const val = e.target.value
+    setKeyword(val)
+    setShowDropdown(true)
+
+    clearTimeout(suggestDebounceRef.current)
+    if (!val.trim()) { setSuggestions([]); return }
+    suggestDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API}/jobs/search-suggestions?q=${encodeURIComponent(val)}`)
+        const data = await res.json()
+        setSuggestions(Array.isArray(data) ? data : [])
+      } catch { setSuggestions([]) }
+    }, 250)
+  }
+
+  const saveHistory = async (kw) => {
+    if (!kw?.trim() || !token) return
+    try {
+      await fetch(`${API}/jobs/search-history`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ keyword: kw.trim() }),
+      })
+      setSearchHistory(prev => {
+        const filtered = prev.filter(k => k !== kw.trim())
+        return [kw.trim(), ...filtered].slice(0, 8)
+      })
+    } catch (err) { console.error(err) }
+  }
+
+  const handleSearchFocus = () => {
+    if (searchInputRef.current) {
+      const rect = searchInputRef.current.getBoundingClientRect()
+      setSearchPos({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      })
+    }
+    setShowDropdown(true)
+  }
+
+  const handleQuickSearch = (kw) => {
+    const trimmed = kw.trim()
+    setKeyword(trimmed)
+    setCurrentPage(1)
+    setSuggestions([])
+    setShowDropdown(false)
+  }
+
+  const showSearchDropdown = showDropdown && (
+    (keyword.trim() && suggestions.length > 0) ||
+    (!keyword.trim() && searchHistory.length > 0)
+  )
+
   return (
     <div className="app">
       {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
@@ -693,15 +777,107 @@ function JobSearchScreen() {
             background: 'var(--surf)', border: '1px solid var(--border)',
             borderRadius: '12px', padding: '12px',
           }}>
-            <div className="search-field" style={{ flex: 1 }}>
+            <div className="search-field" style={{ flex: 1, position: 'relative' }} ref={searchInputRef}>
               <span className="search-field-icon">🔍</span>
-              <input placeholder="Tên công việc, kỹ năng, công ty..."
+              <input
+                placeholder="Tên công việc, kỹ năng"
                 value={keyword}
-                onChange={e => setKeyword(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && setCurrentPage(1)} />
+                onChange={handleKeywordChange}
+                onFocus={handleSearchFocus}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') { setShowDropdown(false); setCurrentPage(1); saveHistory(keyword) }
+                  if (e.key === 'Escape') setShowDropdown(false)
+                }}
+              />
+              {keyword && (
+                <button style={{
+                  position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'var(--ink4)', fontSize: 16, lineHeight: 1, padding: '0 4px',
+                }} onClick={() => { setKeyword(''); setSuggestions([]); setShowDropdown(false) }}>×</button>
+              )}
             </div>
-            <button className="search-btn" onClick={() => setCurrentPage(1)}>Tìm kiếm</button>
+            <button className="search-btn" onClick={() => { setShowDropdown(false); setCurrentPage(1); saveHistory(keyword) }}>
+              Tìm kiếm
+            </button>
           </div>
+
+          {showSearchDropdown && createPortal(
+            <>
+              <div
+                style={{ position: 'fixed', inset: 0, zIndex: 9996 }}
+                onMouseDown={(e) => { e.preventDefault(); setShowDropdown(false) }}
+              />
+              <div style={{
+                position: 'absolute',
+                top: searchPos.top,
+                left: searchPos.left,
+                width: Math.max(searchPos.width, 320),
+                zIndex: 9997,
+                background: 'var(--surf)',
+                border: '1.5px solid var(--border)',
+                borderRadius: 12,
+                boxShadow: '0 8px 32px rgba(0,0,0,.15)',
+                overflow: 'hidden',
+              }}>
+                {/* Lịch sử */}
+                {!keyword.trim() && searchHistory.length > 0 && (
+                  <>
+                    <div style={{
+                      padding: '8px 14px 4px', fontSize: 11, fontWeight: 700,
+                      color: 'var(--ink4)', textTransform: 'uppercase', letterSpacing: 1,
+                    }}>
+                      Tìm kiếm gần đây
+                    </div>
+                    {searchHistory.map((h, i) => (
+                      <div key={i}
+                        style={{
+                          padding: '9px 14px', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          fontSize: 13, color: 'var(--ink)',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        onMouseDown={(e) => { e.preventDefault(); handleQuickSearch(h) }}>
+                        <span style={{ opacity: .5 }}>🕐</span>
+                        {h}
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {/* Gợi ý */}
+                {keyword.trim() && suggestions.length > 0 && (
+                  <>
+                    <div style={{
+                      padding: '8px 14px 4px', fontSize: 11, fontWeight: 700,
+                      color: 'var(--ink4)', textTransform: 'uppercase', letterSpacing: 1,
+                    }}>
+                      Gợi ý
+                    </div>
+                    {suggestions.map((s, i) => {
+                      const display = typeof s === 'object' ? s.display : s
+                      return (
+                        <div key={i}
+                          style={{
+                            padding: '9px 14px', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: 10,
+                            fontSize: 13, color: 'var(--ink)',
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                          onMouseDown={(e) => { e.preventDefault(); handleQuickSearch(display) }}>
+                          <span style={{ opacity: .5 }}>🔍</span>
+                          {display}
+                        </div>
+                      )
+                    })}
+                  </>
+                )}
+              </div>
+            </>,
+            document.body
+          )}
 
           {allChips.length > 0 && (
             <div className="active-filters">

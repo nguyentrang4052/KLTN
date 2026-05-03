@@ -4,7 +4,7 @@ import { QueryCompaniesDto } from '../dto/companies.dto';
 
 @Controller('companies')
 export class CompaniesController {
-  constructor(private readonly companiesService: CompaniesService) {}
+  constructor(private readonly companiesService: CompaniesService) { }
 
   @Get()
   getCompanies(@Query() dto: QueryCompaniesDto) {
@@ -24,6 +24,11 @@ export class CompaniesController {
   @Get('sizes')
   getSizes() {
     return this.companiesService.getSizes();
+  }
+
+  @Get('suggestions')
+  getSuggestions(@Query('q') q: string) {
+    return this.companiesService.getCompanySuggestions(q);
   }
 
   @Get(':id')

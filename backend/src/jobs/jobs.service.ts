@@ -781,4 +781,69 @@ export class JobsService {
       reason: rec.reason,
     };
   }
+
+  async saveSearchHistory(accountID: number, keyword: string) {
+    await this.prisma.searchHistory.deleteMany({
+      where: { accountID, keyword },
+    });
+    await this.prisma.searchHistory.create({
+      data: { accountID, keyword },
+    });
+    const all = await this.prisma.searchHistory.findMany({
+      where: { accountID },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    });
+    if (all.length > 10) {
+      const toDelete = all.slice(10).map((r) => r.id);
+      await this.prisma.searchHistory.deleteMany({
+        where: { id: { in: toDelete } },
+      });
+    }
+  }
+
+  async getSearchHistory(accountID: number) {
+    const rows = await this.prisma.searchHistory.findMany({
+      where: { accountID },
+      orderBy: { createdAt: 'desc' },
+      take: 8,
+      select: { keyword: true },
+    });
+    return rows.map((r) => r.keyword);
+  }
+
+  async getSearchSuggestions(q: string) {
+    if (!q || q.trim().length < 1) return [];
+    const now = new Date();
+    const jobs = await this.prisma.job.findMany({
+      where: {
+        isActive: true,
+        deadline: { gt: now },
+        title: { contains: q.trim(), mode: 'insensitive' },
+      },
+      select: { title: true },
+      distinct: ['title'],
+      take: 20,
+      orderBy: { postedAt: 'desc' },
+    });
+
+    const seen = new Set<string>();
+    const result: { display: string; value: string }[] = [];
+
+    for (const j of jobs) {
+      if (!j.title) continue;
+      const display = j.title
+        .split(/\s*[–\-\(\[\|]/)[0]
+        .trim()
+        .replace(/\s+/g, ' ');
+      if (display.length < 3) continue;
+      const key = display.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push({ display, value: q.trim() });
+      if (result.length >= 6) break;
+    }
+
+    return result;
+  }
 }

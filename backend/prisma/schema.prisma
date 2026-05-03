@@ -18,6 +18,7 @@ model Account {
   role      String   @default("user")
   jobAlerts JobAlert[]
   emailNotification Boolean @default(false)
+  searchHistory SearchHistory[]
 }
 
 model User {
@@ -313,9 +314,19 @@ model Notification {
   isRead    Boolean   @default(false)
   createdAt DateTime  @default(now())
   readAt    DateTime?
-  metadata  Json?     // jobID, planName, ... tuỳ type
+  metadata  Json?    
 
   user User @relation(fields: [userID], references: [userID])
   dedupeKey String?   @unique
   deletedAt DateTime?
+}
+
+model SearchHistory {
+  id        Int      @id @default(autoincrement())
+  accountID Int
+  keyword   String
+  createdAt DateTime @default(now())
+  account   Account  @relation(fields: [accountID], references: [accountID])
+
+  @@index([accountID])
 }

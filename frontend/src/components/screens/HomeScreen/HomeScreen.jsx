@@ -98,6 +98,13 @@ export default function HomeScreen() {
   const tokenRef = useRef(token)
   const [recQuota, setRecQuota] = useState(null)
 
+  const [suggestions, setSuggestions] = useState([])
+  const [searchHistory, setSearchHistory] = useState([])
+  const [showDropdown, setShowDropdown] = useState(false)
+  const searchInputRef = useRef(null)
+  const [searchPos, setSearchPos] = useState({ top: 0, left: 0, width: 0 })
+  const debounceRef = useRef(null)
+
   useEffect(() => { pageRef.current = page }, [page])
   useEffect(() => { sortRef.current = sort }, [sort])
   useEffect(() => { keywordRef.current = keyword }, [keyword])
@@ -109,6 +116,15 @@ export default function HomeScreen() {
   const searchParamsRef = useRef(searchParams)
   useEffect(() => { searchParamsRef.current = searchParams }, [searchParams])
 
+  useEffect(() => {
+    const handler = (e) => {
+      if (searchInputRef.current && !searchInputRef.current.contains(e.target))
+        setShowDropdown(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
   const handleLocOpen = () => {
     if (locRef.current) {
       const rect = locRef.current.getBoundingClientRect()
@@ -119,6 +135,18 @@ export default function HomeScreen() {
       })
     }
     setLocOpen(o => !o)
+  }
+
+  const handleSearchFocus = () => {
+    if (searchInputRef.current) {
+      const rect = searchInputRef.current.getBoundingClientRect()
+      setSearchPos({
+        top: rect.bottom + window.scrollY + 6,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      })
+    }
+    setShowDropdown(true)
   }
 
   useEffect(() => {
@@ -142,13 +170,14 @@ export default function HomeScreen() {
 
   useEffect(() => {
     updateURLParams({
+      keyword: keyword || null,
       page: page > 1 ? page : null,
       sort: sort !== 'newest' ? sort : null,
       industry: industryFilter || null,
       platform: activePlatform !== 'Tất cả' ? activePlatform : null,
       location: locationFilter.length > 0 ? locationFilter.join(',') : null,
     })
-  }, [page, sort, industryFilter, activePlatform, locationFilter, updateURLParams])
+  }, [keyword, page, sort, industryFilter, activePlatform, locationFilter, updateURLParams])
 
   useEffect(() => {
     if (location.state?.scrollY) {
@@ -210,7 +239,6 @@ export default function HomeScreen() {
       const headers = tokenRef.current ? { Authorization: `Bearer ${tokenRef.current}` } : {}
       const res = await fetch(`${API}/jobs?${params}`, { headers })
       const data = await res.json()
-      // console.log('job sample:', data.data?.[0])
       setJobs(data.data ?? [])
       setMeta(data.meta ?? { total: 0, totalPages: 1 })
     } catch (err) {
@@ -280,11 +308,38 @@ export default function HomeScreen() {
 
   useEffect(() => {
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close()
-      }
+      if (eventSourceRef.current) eventSourceRef.current.close()
     }
   }, [])
+
+  useEffect(() => {
+    if (!token) { setSearchHistory([]); return }
+    fetch(`${API}/jobs/search-history`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(data => setSearchHistory(Array.isArray(data) ? data : []))
+      .catch(console.error)
+  }, [token])
+
+  const handleKeywordChange = (e) => {
+    const val = e.target.value
+    setKeyword(val)
+    keywordRef.current = val
+    setShowDropdown(true)
+    clearTimeout(debounceRef.current)
+    if (!val.trim()) {
+      setSuggestions([])
+      return
+    }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API}/jobs/search-suggestions?q=${encodeURIComponent(val)}`)
+        const data = await res.json()
+        setSuggestions(Array.isArray(data) ? data : [])
+      } catch { setSuggestions([]) }
+    }, 250)
+  }
 
   const trackBehavior = useCallback((jobID, action) => {
     if (!token) return
@@ -310,39 +365,42 @@ export default function HomeScreen() {
 
   const handleSearch = async () => {
     setPage(1)
+    pageRef.current = 1
     updateURLParams({
-      keyword: keyword || null,
+      keyword: keywordRef.current || null,
       location: locationFilter.length > 0 ? locationFilter.join(',') : null,
       page: null,
     })
-    setLoadingJobs(true)
-    try {
-      const sessionId = `search_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      const res = await fetch('http://localhost:8000/search-smart', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: keyword, session_id: sessionId }),
-      })
-      const data = await res.json()
-      if (data.existing_jobs?.length > 0) {
-        const normalizedJobs = data.existing_jobs.map(job => ({
-          ...job,
-          jobID: job.jobID || job.id || job.job_id,
-        }))
-        setJobs(normalizedJobs)
-        setMeta({ total: data.count, totalPages: 1 })
+    if (keywordRef.current?.trim() && token) {
+      try {
+        await fetch(`${API}/jobs/search-history`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ keyword: keywordRef.current.trim() }),
+        });
+
+        const res = await fetch(`${API}/jobs/search-history`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setSearchHistory(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error(err);
       }
-      if (data.crawling) {
-        connectToEventStream()
-        setCrawlStatus({ type: 'searching', message: '🔍 Đang tìm việc mới nhất...' })
-      }
-    } catch (e) {
-      console.error('Search error:', e)
-    } finally {
-      setLoadingJobs(false)
     }
     setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
   }
+
+  const handleQuickSearch = useCallback((kw) => {
+    const trimmed = kw.trim()
+    keywordRef.current = trimmed
+    setKeyword(trimmed)
+    setPage(1)
+    pageRef.current = 1
+    setSuggestions([])
+    setShowDropdown(false)
+    updateURLParams({ keyword: trimmed || null, page: null })
+  }, [updateURLParams])
 
   const handleIndustryClick = (indId) => {
     const newIndustry = industryFilter === indId ? null : indId
@@ -356,58 +414,58 @@ export default function HomeScreen() {
     setPage(newPage)
   }, [])
 
-  const connectToEventStream = () => {
-    const es = new EventSource('http://localhost:8000/stream?channel=crawl:jobs')
-    eventSourceRef.current = es
-    setIsRealtime(true)
-    let fastCount = 0
-    es.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        if (data.__done__ || data.__fast_done__) {
-          setCrawlStatus({ type: 'done', message: `✅ Hoàn thành! ${data.total || fastCount} việc làm` })
-          setIsRealtime(false)
-          es.close()
-          setTimeout(() => { fetchJobs(); setCrawlStatus(null) }, 3000)
-          return
-        }
-        const jobID = data.jobID
-        if (!jobID) return
-        fastCount++
-        setJobs(prev => {
-          if (prev.find(j => j.jobID === jobID)) return prev
-          const newJob = {
-            jobID,
-            title: data.job?.title,
-            companyName: data.company?.companyName,
-            companyLogo: data.company?.companyLogo,
-            location: data.job?.location,
-            shortLocation: data.job?.shortLocation,
-            salary: data.job?.salary,
-            jobType: data.job?.jobType,
-            experienceYear: data.job?.experienceYear,
-            sourcePlatform: data.job?.sourcePlatform,
-            isNewJob: data.isNewJob ?? true,
-          }
-          return [newJob, ...prev]
-        })
-        setMeta(prev => ({ ...prev, total: prev.total + 1 }))
-        if (fastCount <= 10) {
-          setCrawlStatus({ type: 'streaming', message: `📥 Đang nhận dữ liệu (${fastCount} việc làm mới)...` })
-        } else {
-          setCrawlStatus({ type: 'deep', message: '🔍 Đang tìm kiếm sâu thêm...' })
-        }
-      } catch (err) {
-        console.error('SSE parse error:', err)
-      }
-    }
-    es.onerror = (err) => {
-      console.error('SSE error:', err)
-      es.close()
-      setIsRealtime(false)
-      setTimeout(fetchJobs, 2000)
-    }
-  }
+  // const connectToEventStream = () => {
+  //   const es = new EventSource('http://localhost:8000/stream?channel=crawl:jobs')
+  //   eventSourceRef.current = es
+  //   setIsRealtime(true)
+  //   let fastCount = 0
+  //   es.onmessage = (event) => {
+  //     try {
+  //       const data = JSON.parse(event.data)
+  //       if (data.__done__ || data.__fast_done__) {
+  //         setCrawlStatus({ type: 'done', message: `✅ Hoàn thành! ${data.total || fastCount} việc làm` })
+  //         setIsRealtime(false)
+  //         es.close()
+  //         setTimeout(() => { fetchJobs(); setCrawlStatus(null) }, 3000)
+  //         return
+  //       }
+  //       const jobID = data.jobID
+  //       if (!jobID) return
+  //       fastCount++
+  //       setJobs(prev => {
+  //         if (prev.find(j => j.jobID === jobID)) return prev
+  //         const newJob = {
+  //           jobID,
+  //           title: data.job?.title,
+  //           companyName: data.company?.companyName,
+  //           companyLogo: data.company?.companyLogo,
+  //           location: data.job?.location,
+  //           shortLocation: data.job?.shortLocation,
+  //           salary: data.job?.salary,
+  //           jobType: data.job?.jobType,
+  //           experienceYear: data.job?.experienceYear,
+  //           sourcePlatform: data.job?.sourcePlatform,
+  //           isNewJob: data.isNewJob ?? true,
+  //         }
+  //         return [newJob, ...prev]
+  //       })
+  //       setMeta(prev => ({ ...prev, total: prev.total + 1 }))
+  //       if (fastCount <= 10) {
+  //         setCrawlStatus({ type: 'streaming', message: `📥 Đang nhận dữ liệu (${fastCount} việc làm mới)...` })
+  //       } else {
+  //         setCrawlStatus({ type: 'deep', message: '🔍 Đang tìm kiếm sâu thêm...' })
+  //       }
+  //     } catch (err) {
+  //       console.error('SSE parse error:', err)
+  //     }
+  //   }
+  //   es.onerror = (err) => {
+  //     console.error('SSE error:', err)
+  //     es.close()
+  //     setIsRealtime(false)
+  //     setTimeout(fetchJobs, 2000)
+  //   }
+  // }
 
   const renderPages = (curPage, totalPages, onPageChange) => {
     const pages = []
@@ -495,6 +553,12 @@ export default function HomeScreen() {
   const catTotalPages = Math.ceil(industries.length / CAT_PAGE_SIZE)
   const pagedIndustries = industries.slice(catPage * CAT_PAGE_SIZE, (catPage + 1) * CAT_PAGE_SIZE)
 
+  // Ô trống → hiện lịch sử | Đang gõ → hiện suggestions
+  const showSearchDropdown = showDropdown && (
+    (keyword.trim() && suggestions.length > 0) ||
+    (!keyword.trim() && searchHistory.length > 0)
+  )
+
   return (
     <div className="hs-page">
       <div className="hs-hero">
@@ -510,16 +574,82 @@ export default function HomeScreen() {
               AI tổng hợp từ TopCV, CareerLink, CareerViet.
             </p>
             <div className="hs-hero-search">
-              <div className="hs-sf">
+              <div className="hs-sf" ref={searchInputRef}>
                 <span className="hs-sf-ico">🔍</span>
                 <input
                   className="hs-sf-inp"
                   placeholder="Tên công việc, kỹ năng..."
                   value={keyword}
-                  onChange={e => setKeyword(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                  onChange={handleKeywordChange}
+                  onFocus={handleSearchFocus}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') { setShowDropdown(false); handleSearch() }
+                    if (e.key === 'Escape') setShowDropdown(false)
+                  }}
                 />
+                {keyword && (
+                  <button className="hs-loc-clear" onClick={() => {
+                    keywordRef.current = ''
+                    setKeyword('')
+                    setSuggestions([])
+                    setShowDropdown(false)
+                    updateURLParams({ keyword: null, page: null })
+                  }}>×</button>
+                )}
               </div>
+
+              {showSearchDropdown && createPortal(
+                <>
+                  <div
+                    style={{ position: 'fixed', inset: 0, zIndex: 9996 }}
+                    onMouseDown={(e) => { e.preventDefault(); setShowDropdown(false) }}
+                  />
+                  <div className="hs-search-dropdown" style={{
+                    position: 'absolute',
+                    top: searchPos.top,
+                    left: searchPos.left,
+                    width: Math.max(searchPos.width, 320),
+                    zIndex: 9997,
+                  }}>
+                    {/* Lịch sử — chỉ khi ô trống */}
+                    {!keyword.trim() && searchHistory.length > 0 && (
+                      <>
+                        <div className="hs-sd-section-hd">
+                          <span>Tìm kiếm gần đây</span>
+                        </div>
+                        {searchHistory.map((h, i) => (
+                          <div key={i} className="hs-sd-item"
+                            onMouseDown={(e) => { e.preventDefault(); handleQuickSearch(h) }}>
+                            <span className="hs-sd-ico">🕐</span>
+                            <span className="hs-sd-item-text">{h}</span>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                    {keyword.trim() && suggestions.length > 0 && (
+                      <>
+                        <div className="hs-sd-section-hd"><span>Gợi ý</span></div>
+                        {suggestions.map((s, i) => (
+                          <div key={i} className="hs-sd-item"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              const selectedKeyword = typeof s === 'object' ? s.display : s;
+                              setKeyword(selectedKeyword);
+                              setShowDropdown(false);
+                              navigate(`?keyword=${encodeURIComponent(selectedKeyword)}&page=1`);
+                            }}>
+                            <span className="hs-sd-ico">🔍</span>
+                            <span className="hs-sd-item-text">
+                              {typeof s === 'object' ? s.display : s}
+                            </span>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </>,
+                document.body
+              )}
 
               <div className="hs-sf hs-sf-loc" ref={locRef}>
                 <span className="hs-sf-ico">📍</span>
@@ -554,13 +684,11 @@ export default function HomeScreen() {
                     {locations.map(loc => {
                       const selected = locationFilter.includes(loc.value)
                       return (
-                        <div
-                          key={loc.value}
+                        <div key={loc.value}
                           className={`hs-loc-item${selected ? ' selected' : ''}`}
                           onClick={() => setLocationFilter(prev =>
                             selected ? prev.filter(l => l !== loc.value) : [...prev, loc.value]
-                          )}
-                        >
+                          )}>
                           <span className="hs-loc-checkbox">{selected ? '✓' : ''}</span>
                           {loc.label}
                         </div>
@@ -573,6 +701,7 @@ export default function HomeScreen() {
 
               <button className="hs-search-btn" onClick={handleSearch}>Tìm kiếm</button>
             </div>
+
             {locationFilter.length > 0 && (
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
                 {locationFilter.map(loc => (
@@ -737,24 +866,18 @@ export default function HomeScreen() {
                 border: `1px solid ${recQuota.quotaExceeded ? '#F5C0B0' : '#C8DFF8'}`,
                 fontSize: 13,
               }}>
-                <span style={{
-                  fontWeight: 600,
-                  color: recQuota.quotaExceeded ? '#C0412A' : '#1565C0',
-                }}>
+                <span style={{ fontWeight: 600, color: recQuota.quotaExceeded ? '#C0412A' : '#1565C0' }}>
                   💡 Lượt đề xuất hôm nay: {recQuota.usedToday}/{recQuota.limit}
                   {recQuota.quotaExceeded
                     ? ' · Đã hết lượt — đang hiển thị preview'
                     : ` · Còn ${recQuota.remaining} lượt`}
                 </span>
                 {recQuota.quotaExceeded && (
-                  <button
-                    onClick={() => navigate('/services')}
-                    style={{
-                      padding: '5px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700,
-                      background: 'linear-gradient(135deg,#C0412A,#E05A40)',
-                      color: '#fff', border: 'none', cursor: 'pointer',
-                    }}
-                  >
+                  <button onClick={() => navigate('/services')} style={{
+                    padding: '5px 14px', borderRadius: 7, fontSize: 12, fontWeight: 700,
+                    background: 'linear-gradient(135deg,#C0412A,#E05A40)',
+                    color: '#fff', border: 'none', cursor: 'pointer',
+                  }}>
                     ⚡ Nâng cấp →
                   </button>
                 )}
@@ -768,29 +891,18 @@ export default function HomeScreen() {
               <>
                 <div className="hs-grid">
                   {pagedRecs.map(job => renderJobCard(job))}
-                  {/* Upsell card cuối grid khi hết quota — chỉ hiện ở trang cuối */}
                   {recQuota?.quotaExceeded && recPage === recTotalPages && (
                     <div onClick={() => navigate('/services')} style={{
                       cursor: 'pointer', borderRadius: 14, border: '2px dashed #F5C0B0',
                       background: 'linear-gradient(135deg,#FFF5F3,#FDE8E4)',
                       display: 'flex', flexDirection: 'column',
                       alignItems: 'center', justifyContent: 'center',
-                      padding: '28px 20px', gap: 10, textAlign: 'center',
-                      minHeight: 160,
+                      padding: '28px 20px', gap: 10, textAlign: 'center', minHeight: 160,
                     }}>
                       <div style={{ fontSize: 28 }}>🔒</div>
-                      <div style={{ fontWeight: 700, color: '#C0412A', fontSize: 14 }}>
-                        Còn nhiều việc phù hợp với bạn
-                      </div>
-                      <div style={{ color: '#9A8D80', fontSize: 12 }}>
-                        Nâng cấp Pro để xem thêm · Reset quota vào ngày mai
-                      </div>
-                      <div style={{
-                        padding: '6px 16px', borderRadius: 8, fontWeight: 700, fontSize: 12,
-                        background: 'linear-gradient(135deg,#C0412A,#E05A40)', color: '#fff',
-                      }}>
-                        Nâng cấp ngay →
-                      </div>
+                      <div style={{ fontWeight: 700, color: '#C0412A', fontSize: 14 }}>Còn nhiều việc phù hợp với bạn</div>
+                      <div style={{ color: '#9A8D80', fontSize: 12 }}>Nâng cấp Pro để xem thêm · Reset quota vào ngày mai</div>
+                      <div style={{ padding: '6px 16px', borderRadius: 8, fontWeight: 700, fontSize: 12, background: 'linear-gradient(135deg,#C0412A,#E05A40)', color: '#fff' }}>Nâng cấp ngay →</div>
                     </div>
                   )}
                 </div>
@@ -815,12 +927,8 @@ export default function HomeScreen() {
             {crawlStatus && (
               <div style={{
                 padding: '16px 24px', margin: '20px 0',
-                background: crawlStatus.type === 'fast' ? '#FFF3CD'
-                  : crawlStatus.type === 'deep' ? '#D1ECF1'
-                    : crawlStatus.type === 'error' ? '#F8D7DA' : '#D4EDDA',
-                border: `1px solid ${crawlStatus.type === 'fast' ? '#FFEAA7'
-                  : crawlStatus.type === 'deep' ? '#74B9FF'
-                    : crawlStatus.type === 'error' ? '#F5C6CB' : '#C3E6CB'}`,
+                background: crawlStatus.type === 'deep' ? '#D1ECF1' : crawlStatus.type === 'error' ? '#F8D7DA' : '#D4EDDA',
+                border: `1px solid ${crawlStatus.type === 'deep' ? '#74B9FF' : crawlStatus.type === 'error' ? '#F5C6CB' : '#C3E6CB'}`,
                 borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px',
               }}>
                 <span style={{ fontSize: '20px' }}>
@@ -834,11 +942,7 @@ export default function HomeScreen() {
                   {crawlStatus.message}
                 </span>
                 {['searching', 'streaming', 'deep'].includes(crawlStatus.type) && (
-                  <span style={{
-                    width: '20px', height: '20px',
-                    border: '2px solid #ccc', borderTopColor: '#333',
-                    borderRadius: '50%', animation: 'spin 1s linear infinite',
-                  }} />
+                  <span style={{ width: '20px', height: '20px', border: '2px solid #ccc', borderTopColor: '#333', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
                 )}
               </div>
             )}
@@ -861,7 +965,6 @@ export default function HomeScreen() {
               <Pagination curPage={page} totalPages={meta.totalPages} onPageChange={handlePageChange} />
             )}
           </div>
-
         )}
       </div>
     </div>

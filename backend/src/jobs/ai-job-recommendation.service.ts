@@ -64,7 +64,6 @@ export class AIRecommendationService {
       return false;
     }
 
-    // Check cache SAU KHI có userID
     const latest = await this.prisma.jobRecommendation.findFirst({
       where: { userID },
       orderBy: { createdAt: 'desc' },
@@ -89,20 +88,20 @@ export class AIRecommendationService {
 
       if (!hasContext) {
         await this.prisma.jobRecommendation.deleteMany({ where: { userID } });
-        return false; // finally vẫn chạy, delete lock — ok
+        return false;
       }
 
       const candidates = await this.fetchCandidateJobs(userID, userContext);
       if (candidates.length === 0) {
         await this.prisma.jobRecommendation.deleteMany({ where: { userID } });
-        return false; // finally vẫn chạy — ok
+        return false;
       }
 
       const scores = await this.scoreJobsWithAI(userContext, candidates);
       await this.saveRecommendations(userID, scores);
       return scores.length > 0;
     } finally {
-      this.computingLocks.delete(userID); // luôn chạy dù return hay throw
+      this.computingLocks.delete(userID);
     }
   }
 

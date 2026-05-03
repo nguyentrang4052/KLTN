@@ -19,7 +19,6 @@ export class RecommendationCron {
 
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
-    // Lấy danh sách userID có data cũ hơn 1 giờ
     const staleUsers = await this.prisma.jobRecommendation.groupBy({
       by: ['userID'],
       having: {
