@@ -3,13 +3,16 @@ crawlers/topcv.py — Async adapter từ topcv(2).py gốc.
 """
 import asyncio
 import random
-import re
 import json
 import os
 import time
 from urllib.parse import urljoin
 from playwright.async_api import Browser, TimeoutError as PlaywrightTimeout
 from .base import BaseCrawler
+import re
+from curl_cffi import requests as curl_requests
+from bs4 import BeautifulSoup
+
 
 BASE_URL = "https://www.topcv.vn"
 COOKIES_FILE = "topcv_cookies.json"
@@ -58,26 +61,28 @@ class TopCVCrawler(BaseCrawler):
 
     async def _browser_(self):
         if not self._browser:
-            self._browser = await self.playwright.chromium.launch(
+            # Dùng firefox thay vì chromium (khó bị Cloudflare detect hơn)
+            self._browser = await self.playwright.firefox.launch(
                 headless=True,
-                args=[
-                    "--disable-blink-features=AutomationControlled",
-                    "--no-sandbox",
-                    "--disable-dev-shm-usage",
-                    "--disable-gpu",
-                    "--disable-web-security",
-                ]
+                args=["--no-sandbox", "--disable-dev-shm-usage"]
             )
         return self._browser
 
+# XÓA DÒNG NÀY Ở ĐẦU FILE
+# from playwright_stealth import stealth_async
+
+# Trong _new_page(), thay thế bằng:
     async def _new_page(self, block_resources: bool = False):
         browser = await self._browser_()
         ctx = await browser.new_context(
-            user_agent=random.choice(USER_AGENTS),
-            viewport={"width": 1440, "height": 900},
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             locale="vi-VN",
+            viewport={"width": 1280, "height": 800},
             timezone_id="Asia/Ho_Chi_Minh",
-            extra_http_headers={"Accept-Language": "vi-VN,vi;q=0.9,en;q=0.8"},
+            extra_http_headers={
+                "Accept-Language": "vi-VN,vi;q=0.9",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            }
         )
         
         if os.path.exists(COOKIES_FILE):
@@ -98,11 +103,28 @@ class TopCVCrawler(BaseCrawler):
             )
         
         page = await ctx.new_page()
+        
+        # Anti-detect script thay thế playwright_stealth
         await page.add_init_script("""
             Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
             Object.defineProperty(navigator, 'plugins', {get: () => [1,2,3,4,5]});
+            Object.defineProperty(navigator, 'languages', {get: () => ['vi-VN', 'vi', 'en-US', 'en']});
             window.chrome = { runtime: {} };
+            Object.defineProperty(navigator, 'hardwareConcurrency', {get: () => 8});
+            Object.defineProperty(navigator, 'deviceMemory', {get: () => 8});
+            
+            // Xóa traces của automation
+            delete navigator.__proto__.webdriver;
+            
+            // Spoof permissions
+            const originalQuery = window.navigator.permissions.query;
+            window.navigator.permissions.query = (parameters) => (
+                parameters.name === 'notifications' 
+                    ? Promise.resolve({state: Notification.permission}) 
+                    : originalQuery(parameters)
+            );
         """)
+        
         return ctx, page
 
     async def _save_cookies(self, ctx):
@@ -148,68 +170,99 @@ class TopCVCrawler(BaseCrawler):
         seen = set()
 
         try:
+            print("[TopCV] Lấy cookies sạch bằng curl_cffi trước...")
+            
+            # === BƯỚC 1: Dùng curl_cffi để bypass Cloudflare, lấy cookies ===
+            try:
+                session = curl_requests.Session(impersonate="chrome120")
+                resp = session.get(
+                    BASE_URL,
+                    headers={
+                        "Accept-Language": "vi-VN,vi;q=0.9",
+                        "Referer": "https://www.google.com/",
+                    },
+                    timeout=20
+                )
+                
+                # Lấy cookies từ session
+                cookies = []
+                for cookie in session.cookies.jar:
+                    cookies.append({
+                        "name": cookie.name,
+                        "value": cookie.value,
+                        "domain": cookie.domain or ".topcv.vn",
+                        "path": cookie.path or "/",
+                    })
+                
+                # Add cookies vào Playwright context
+                if cookies:
+                    await ctx.add_cookies(cookies)
+                    print(f"[TopCV] Đã add {len(cookies)} cookies từ curl_cffi")
+                    
+            except Exception as e:
+                print(f"[TopCV] curl_cffi lỗi: {e}")
+
+            # === BƯỚC 2: Dùng Playwright với cookies sạch để lấy categories ===
             await self._rate_limit()
             await page.goto(BASE_URL, wait_until="domcontentloaded", timeout=30000)
 
-            # ✅ Đợi đúng element cần dùng
-            await page.wait_for_selector(".top-category--item h3 a", state="attached", timeout=10000)
+            # Đợi element
+            try:
+                await page.wait_for_selector(".top-category--item h3 a", state="attached", timeout=10000)
+            except Exception as e:
+                print(f"[TopCV] Không tìm thấy selector: {e}")
+                # Thử screenshot xem có gì
+                await page.screenshot(path="/mnt/agents/output/topcv_debug.png", full_page=True)
+                print("[TopCV] Đã lưu screenshot: /mnt/agents/output/topcv_debug.png")
 
-
+            # Scroll xuống trigger lazy load
             await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
             await page.wait_for_timeout(500)
 
-            # ✅ Scroll hết carousel
-            while True:
+            # Scroll carousel hết nếu có
+            for _ in range(20):
                 try:
                     next_btn = page.locator(".btn-next.btn-navigation")
-
                     if await next_btn.count() == 0:
                         break
-
                     class_attr = await next_btn.get_attribute("class") or ""
                     aria_disabled = await next_btn.get_attribute("aria-disabled")
-
                     if "disabled" in class_attr or aria_disabled == "true":
                         break
-
                     await next_btn.click()
                     await page.wait_for_timeout(500)
-
                 except:
                     break
 
-            # ✅ Đợi DOM stable sau khi scroll xong
-            await page.wait_for_function("""
-            () => {
-                const items = document.querySelectorAll('.top-category--item h3 a');
-                return items.length > 5;
-            }
-            """)
+            # Đợi DOM stable
+            try:
+                await page.wait_for_function(
+                    "() => document.querySelectorAll('.top-category--item h3 a').length > 5",
+                    timeout=10000
+                )
+            except:
+                print("[TopCV] Warning: Không đủ 5 items sau khi scroll")
 
-            # ✅ Lấy data bằng evaluate (tránh lỗi locator async)
+            # Lấy data
             data = await page.evaluate("""
-            () => {
-                return Array.from(document.querySelectorAll('.top-category--item h3 a'))
+                () => Array.from(document.querySelectorAll('.top-category--item h3 a'))
                     .map(a => ({
                         title: a.innerText.trim(),
                         href: a.getAttribute('href')
-                    }));
-            }
+                    }))
+                    .filter(x => x.href && x.title)
             """)
 
-            # ✅ Build list + remove duplicate
+            print(f"[TopCV] Tìm thấy {len(data)} items từ DOM")
+
             for item in data:
                 title = item.get("title")
                 href = item.get("href")
-
                 if href:
                     url = urljoin(BASE_URL, href)
                     if url not in seen:
                         seen.add(url)
-                        categories.append({
-                            "title": title,
-                            "url": url
-                        })
+                        categories.append({"title": title, "url": url})
 
         except Exception as e:
             print(f"[TopCV] Lỗi get_categories: {e}")
@@ -218,12 +271,12 @@ class TopCVCrawler(BaseCrawler):
             await self._save_cookies(ctx)
             await ctx.close()
 
-        # ✅ Filter theo query
+        # Filter theo query
         if query:
             q = query.lower()
             categories = [c for c in categories if q in c["title"].lower()]
 
-        # ✅ fallback nếu không có category match
+        # Fallback
         if not categories and query:
             categories = [{
                 "title": query,
@@ -232,7 +285,6 @@ class TopCVCrawler(BaseCrawler):
 
         print(f"[TopCV] {len(categories)} categories")
         return categories
-
     # =========================
     # STEP 2: JOB LINKS
     # =========================
@@ -617,140 +669,115 @@ class TopCVCrawler(BaseCrawler):
         finally:
             await ctx.close()
 
-
-
-
-
     async def get_job_links_for_page(self, category: dict, page: int) -> tuple[list[str], bool]:
-        """Lấy links từ 1 page cụ thể"""
-        print(f"[TopCV Debug] === Bắt đầu get_job_links_for_page: page={page} ===")
+        """Lấy links từ 1 page cụ thể - DÙNG CURL_CFFI BYPASS CLOUDFLARE"""
+        print(f"[TopCV] === Bắt đầu get_job_links_for_page: page={page} ===")
         
-        ctx, page_obj = await self._new_page()
         links = []
         seen = set()
+        base_url = category["url"]
+        
+        # Build URL
+        if page > 1:
+            if "?" in base_url:
+                url = f"{base_url}&page={page}"
+            else:
+                url = f"{base_url}?page={page}"
+        else:
+            url = base_url
+        
+        print(f"[TopCV] Truy cập URL: {url}")
         
         try:
-            await self._rate_limit()
+            # === DÙNG CURL_CFFI THAY VÌ PLAYWRIGHT ===
+            resp = curl_requests.get(
+                url,
+                impersonate="chrome120",
+                headers={
+                    "Accept-Language": "vi-VN,vi;q=0.9",
+                    "Referer": "https://www.google.com/",
+                },
+                timeout=20
+            )
             
-            # Build URL
-            base_url = category["url"]
-            if page > 1:
-                if "?" in base_url:
-                    url = f"{base_url}&page={page}"
-                else:
-                    url = f"{base_url}?page={page}"
-            else:
-                url = base_url
+            print(f"[TopCV] Response status: {resp.status_code}")
             
-            print(f"[TopCV Debug] Truy cập URL: {url}")
-            
-            # ===== SỬA: Dùng domcontentloaded thay vì networkidle =====
-            # networkidle hay timeout vì TopCV có nhiều tracking scripts
-            try:
-                response = await page_obj.goto(url, wait_until="domcontentloaded", timeout=30000)
-                print(f"[TopCV Debug] Response status: {response.status if response else 'None'}")
-            except Exception as e:
-                print(f"[TopCV Debug] Lỗi goto: {e}, thử lại với load...")
-                try:
-                    response = await page_obj.goto(url, wait_until="load", timeout=30000)
-                except:
-                    print(f"[TopCV Debug] Vẫn lỗi, trả về rỗng")
-                    return [], False
-            
-            # Chờ lâu hơn để JS render (thay vì đợi networkidle)
-            await page_obj.wait_for_timeout(2500)
-            
-            # Check Cloudflare
-            title = await page_obj.title()
-            content = await page_obj.content()
-            
-            if any(marker in content for marker in CLOUDFLARE_MARKERS) or "Just a moment" in title:
-                print(f"[TopCV Debug] ⚠️ Cloudflare detected, đợi 20s...")
-                await asyncio.sleep(20)
-                # Thử reload
-                await page_obj.reload(wait_until="domcontentloaded", timeout=30000)
-                await page_obj.wait_for_timeout(2000)
-
-            print(f"[TopCV Debug] Page title: {title}")
-
-            # Chờ selector với timeout hợp lý
-            try:
-                # Thử nhiều selector khác nhau
-                selectors = ["h3.title a", ".job-item h3 a", ".job-title a", "a[href*='/viec-lam/']"]
-                found = False
-                for sel in selectors:
-                    try:
-                        await page_obj.wait_for_selector(sel, timeout=8000)
-                        found = True
-                        print(f"[TopCV Debug] Tìm thấy selector: {sel}")
-                        break
-                    except:
-                        continue
-                
-                if not found:
-                    print(f"[TopCV Debug] Không tìm thấy selector nào")
-                    return [], False
-                    
-            except Exception as e:
-                print(f"[TopCV Debug] Lỗi chờ selector: {e}")
+            if resp.status_code != 200:
+                print(f"[TopCV] ❌ Status không 200: {resp.status_code}")
                 return [], False
-
-            # Lấy links - dùng evaluate để chắc chắn
-            elements = await page_obj.query_selector_all("h3.title a")
-            if not elements:
-                elements = await page_obj.query_selector_all(".job-item h3 a")
-            if not elements:
-                elements = await page_obj.query_selector_all("a[href*='/viec-lam/']")
-
-            print(f"[TopCV Debug] Số elements: {len(elements)}")
-
-            for i, el in enumerate(elements):
+            
+            html = resp.text
+            
+            # Check Cloudflare challenge
+            if any(x in html for x in ["Attention Required!", "cf-browser-verification", "Just a moment"]):
+                print(f"[TopCV] ⚠️ Vẫn gặp Cloudflare challenge")
+                return [], False
+            
+            # Parse bằng BeautifulSoup
+            soup = BeautifulSoup(html, "html.parser")
+            
+            # Tìm job links - thử nhiều selector
+            selectors = [
+                "h3.title a[href*='/viec-lam/']",
+                ".job-item h3 a[href*='/viec-lam/']",
+                "a[href*='/viec-lam/']",
+            ]
+            
+            elements = []
+            for sel in selectors:
+                elements = soup.select(sel)
+                if len(elements) >= 5:
+                    print(f"[TopCV] Dùng selector: {sel} ({len(elements)} items)")
+                    break
+            
+            print(f"[TopCV] Số elements: {len(elements)}")
+            
+            for el in elements:
                 try:
-                    href = await el.get_attribute("href")
+                    href = el.get("href")
                     if href:
                         full = urljoin(BASE_URL, href)
+                        # Chỉ lấy link job, không lấy link category
                         if full not in seen and "/viec-lam/" in full and not "/viec-lam/c" in full:
                             seen.add(full)
                             links.append(full)
                 except:
                     continue
-
-            print(f"[TopCV Debug] Tổng links unique: {len(links)}")
+            
+            print(f"[TopCV] Tổng links unique: {len(links)}")
             if links:
-                print(f"[TopCV Debug] Link đầu tiên: {links[0]}")
-
+                print(f"[TopCV] Link đầu tiên: {links[0]}")
+            
             # Check next page
             has_next = False
             try:
-                next_btn = await page_obj.query_selector("a[rel='next']:not(.disabled)")
+                # Check nút next
+                next_btn = soup.select_one("a[rel='next']:not(.disabled)")
                 if next_btn:
                     has_next = True
                 
+                # Hoặc check pagination text
                 if not has_next:
-                    # Check pagination text
-                    paginate_el = await page_obj.query_selector("#job-listing-paginate-text")
+                    paginate_el = soup.select_one("#job-listing-paginate-text")
                     if paginate_el:
-                        text = await paginate_el.inner_text()
-                        import re
+                        text = paginate_el.get_text()
                         m = re.search(r"(\d+)\s*/\s*(\d+)", text)
                         if m:
                             current, total = int(m.group(1)), int(m.group(2))
                             has_next = current < total
-                            print(f"[TopCV Debug] Page {current}/{total}")
-                        
+                            print(f"[TopCV] Page {current}/{total}")
+                            
             except Exception as e:
-                print(f"[TopCV Debug] Lỗi check next: {e}")
+                print(f"[TopCV] Lỗi check next: {e}")
                 has_next = False
-
+            
             return links, has_next
             
         except Exception as e:
-            print(f"[TopCV Debug] ❌ Lỗi nghiêm trọng: {e}")
+            print(f"[TopCV] ❌ Lỗi curl_cffi: {e}")
             return [], False
         finally:
-            await self._save_cookies(ctx)
-            await ctx.close()
-            print(f"[TopCV Debug] === Kết thúc ===")
+            print(f"[TopCV] === Kết thúc ===")
 
 
 

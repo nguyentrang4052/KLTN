@@ -414,19 +414,6 @@
   letter-spacing: .4px;
 }
 
-/* .f__badge--hot {
-  background: rgba(192,65,42,.2);
-  color: var(--rust2);
-  border: 1px solid rgba(192,65,42,.3);
-}
-
-.f__badge--new {
-  background: rgba(58,107,74,.2);
-  color: var(--sage2);
-  border: 1px solid rgba(58,107,74,.3);
-} */
-
-/* Contact strip */
 .f__contact {
   padding: 24px 0;
   border-top: 1px solid var(--border);

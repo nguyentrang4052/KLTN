@@ -128,9 +128,9 @@ export class CvAnalyzerService {
         }
     }
 
-    async mapCVToProfile(cvAnalysisId: number, userId: number) {
-        this.logger.log(`User ${userId} mapping CV ${cvAnalysisId} to profile`);
-        return this.cvAnalysisRepository.mapToUserProfile(cvAnalysisId, userId);
+    async mapCVToProfile(cvBuilderId: number, userId: number) {
+        this.logger.log(`User ${userId} mapping CV ${cvBuilderId} to profile`);
+        return this.cvAnalysisRepository.mapToUserProfile(cvBuilderId, userId);
     }
 
     async getUserCVHistory(userId: number) {
