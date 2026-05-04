@@ -332,6 +332,12 @@ export class JobsService {
       });
     }
 
+    if (!quota) {
+      quota = await this.prisma.userQuota.findFirst({
+        where: { userID: user.userID, month },
+      }) ?? null;
+    }
+
     const planLimits = activeSub?.plan?.limits;
     const jobSuggestPerDay = quota?.jobSuggestPerDay ?? planLimits?.jobSuggestPerDay ?? 3;
     const isUnlimited = jobSuggestPerDay >= UNLIMITED;
@@ -380,8 +386,13 @@ export class JobsService {
           },
         });
       } else {
-        await this.prisma.userQuota.create({
-          data: {
+        await this.prisma.userQuota.upsert({
+          where: { userID_month: { userID: user.userID, month } },
+          update: {
+            jobSuggestUsedToday: { increment: 1 },
+            jobSuggestResetDate: today
+          },
+          create: {
             userID: user.userID,
             month,
             jobSuggestPerDay: 3,

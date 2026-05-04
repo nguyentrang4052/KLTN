@@ -18,6 +18,7 @@ interface UserContext {
     savedJobTitles: string[];
     appliedJobTitles: string[];
   };
+  cvSummary: string | null;
 }
 
 interface JobCandidate {
@@ -39,6 +40,9 @@ interface AIScoreResult {
   reason: string;
 }
 
+// Thứ tự cấp bậc để so sánh career level
+const CAREER_LEVELS = ['intern', 'fresher', 'junior', 'middle', 'senior', 'lead', 'manager'];
+
 @Injectable()
 export class AIRecommendationService {
   private readonly logger = new Logger(AIRecommendationService.name);
@@ -47,7 +51,7 @@ export class AIRecommendationService {
   constructor(
     private prisma: PrismaService,
     private gemini: GeminiService,
-  ) {}
+  ) { }
 
   async computeAndSaveRecommendations(accountID: number): Promise<boolean> {
     const user = await this.prisma.user.findFirst({
@@ -69,8 +73,7 @@ export class AIRecommendationService {
       select: { createdAt: true },
     });
 
-    const ONE_HOUR = 60 * 60 * 1000;
-    // const ONE_HOUR = 1 * 60 * 1000;
+    const ONE_HOUR = 1 * 60 * 1000;
     if (latest && Date.now() - latest.createdAt.getTime() < ONE_HOUR) {
       this.logger.log(`Skipping recompute — data is fresh (userID=${userID})`);
       return false;
@@ -82,8 +85,8 @@ export class AIRecommendationService {
       const hasContext =
         userContext.skills.length > 0 ||
         userContext.profile.jobTitle ||
-        userContext.behaviors.recentViewedTitles.length > 0;
-        // userContext.cvSummary;
+        userContext.behaviors.recentViewedTitles.length > 0 ||
+        userContext.cvSummary;
 
       if (!hasContext) {
         await this.prisma.jobRecommendation.deleteMany({ where: { userID } });
@@ -96,7 +99,7 @@ export class AIRecommendationService {
         return false;
       }
 
-      const scores = await this.scoreJobsWithAI(userContext, candidates);
+      const scores = await this.scoreJobs(userContext, candidates);
       await this.saveRecommendations(userID, scores);
       return scores.length > 0;
     } finally {
@@ -104,44 +107,242 @@ export class AIRecommendationService {
     }
   }
 
-  private async buildUserContext(userID: number): Promise<UserContext> {
-    const [
-      skillRows,
-      profileRow,
-      behaviorRows,
-      savedRows
-    ] = await Promise.all([
-      this.prisma.userSkill.findMany({
-        where: { userID },
-        include: { skill: { select: { name: true } } },
-      }),
-      this.prisma.userProfile.findFirst({
-        where: { userID },
-        include: { industry: { select: { name: true } } },
-        orderBy: { updatedAt: 'desc' },
-      }),
-      this.prisma.userBehavior.findMany({
-        where: { userID },
-        include: {
-          job: {
-            select: {
-              title: true,
-              industry: { select: { name: true } },
-            },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 30,
-      }),
-      this.prisma.savedJob.findMany({
-        where: { userID },
-        include: { job: { select: { title: true } } },
-        orderBy: { savedAt: 'desc' },
-        take: 10,
-      }),
-    ]);
+  //  matchPercent = skillScore    × 0.40
+  //              + careerScore   × 0.20
+  //              + industryScore × 0.15
+  //              + salaryScore   × 0.15
+  //              + behaviorScore × 0.10
 
-    const recentViewedTitles = [
+  private computeMatchScore(ctx: UserContext, job: JobCandidate): number {
+    // Skill score
+    const userSkills = new Set(ctx.skills.map((s) => s.toLowerCase()));
+    const jobSkills = job.skills.map((s) => s.toLowerCase());
+    const matchedSkills = jobSkills.filter((s) => userSkills.has(s)).length;
+    const skillScore = jobSkills.length
+      ? (matchedSkills / jobSkills.length) * 100
+      : 50; // Không có skill tag, trung lập
+
+    // Career level score
+    //    Khớp đúng = 100, lệch 1 bậc = 60, lệch 2+ = 20, không xác định = 50
+    const userLvlRaw = ctx.profile.careerLevel?.toLowerCase() ?? '';
+    const jobLvlRaw = job.experienceYear?.toLowerCase() ?? '';
+    const userLvlIdx = CAREER_LEVELS.findIndex((l) => userLvlRaw.includes(l));
+    const jobLvlIdx = CAREER_LEVELS.findIndex((l) => jobLvlRaw.includes(l));
+    let careerScore: number;
+    if (userLvlIdx === -1 || jobLvlIdx === -1) {
+      careerScore = 50;
+    } else {
+      const diff = Math.abs(userLvlIdx - jobLvlIdx);
+      careerScore = diff === 0 ? 100 : diff === 1 ? 60 : 20;
+    }
+
+    // Industry score
+    //    Khớp ngành trong profile = 100, thấy trong lịch sử xem = 70, không khớp = 0
+    const industryScore =
+      ctx.profile.industry && ctx.profile.industry === job.industryName
+        ? 100
+        : ctx.behaviors.recentViewedIndustries.includes(job.industryName ?? '')
+          ? 70
+          : 0;
+
+    // 4. Salary score (15%)
+    //    So sánh lương kỳ vọng của user với lương job
+    //    Job lương >= 80% kỳ vọng = 100, >= 60% = 60, < 60% = 20, không có data = 50
+    const expectedNum = this.parseSalaryToNumber(ctx.profile.expectedSalary);
+    const jobSalaryNum = this.parseSalaryToNumber(job.salary);
+    let salaryScore: number;
+    if (!expectedNum || !jobSalaryNum) {
+      salaryScore = 50;
+    } else {
+      const ratio = jobSalaryNum / expectedNum;
+      salaryScore = ratio >= 0.8 ? 100 : ratio >= 0.6 ? 60 : 20;
+    }
+
+    // 5. Behavior score (10%)
+    //    Job đã lưu = 100, job đã xem (title tương tự) = 70, không có = 0
+    const titleLower = (job.title ?? '').toLowerCase();
+    const isSaved = ctx.behaviors.savedJobTitles.some((t) =>
+      titleLower.includes(t.toLowerCase()) || t.toLowerCase().includes(titleLower),
+    );
+    const isViewed = ctx.behaviors.recentViewedTitles.some((t) =>
+      titleLower.includes(t.toLowerCase()) || t.toLowerCase().includes(titleLower),
+    );
+    const behaviorScore = isSaved ? 100 : isViewed ? 70 : 0;
+
+    const total =
+      skillScore * 0.40 +
+      careerScore * 0.20 +
+      industryScore * 0.15 +
+      salaryScore * 0.15 +
+      behaviorScore * 0.10;
+
+    return Math.round(Math.min(100, Math.max(0, total)));
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  Lấy con số từ chuỗi lương (VD: "15 triệu" → 15, "1000$" → 1000)
+  // ─────────────────────────────────────────────────────────────
+  private parseSalaryToNumber(salary: string | null): number | null {
+    if (!salary) return null;
+    const digits = salary.replace(/[^\d]/g, '');
+    const num = parseInt(digits, 10);
+    return isNaN(num) || num === 0 ? null : num;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  Tính điểm hàng loạt → lọc >= 50 → top 20 → Gemini viết reason
+  // ─────────────────────────────────────────────────────────────
+  private async scoreJobs(
+    ctx: UserContext,
+    jobs: JobCandidate[],
+  ): Promise<AIScoreResult[]> {
+    // Bước 1: Tính điểm bằng công thức, lọc và sắp xếp
+    const scored = jobs
+      .map((job) => ({ job, score: this.computeMatchScore(ctx, job) }))
+      .filter(({ score }) => score >= 50)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 30); // Giữ top 30 để Gemini viết reason
+
+    if (scored.length === 0) return [];
+
+    this.logger.log(
+      `Formula scored ${scored.length} jobs >= 50% for AI reason generation`,
+    );
+
+    // Bước 2: Gửi top jobs lên Gemini chỉ để lấy reason (không tính điểm nữa)
+    try {
+      const reasons = await this.fetchReasonsFromAI(ctx, scored);
+
+      // Merge: điểm từ công thức, reason từ Gemini
+      return scored.map(({ job, score }) => ({
+        jobID: job.jobID,
+        matchPercent: score,
+        reason: reasons[job.jobID] ?? this.buildDefaultReason(ctx, job, score),
+      }));
+    } catch (err) {
+      this.logger.warn(
+        'Gemini reason generation failed — using default reasons',
+        err?.message,
+      );
+      // Fallback: vẫn dùng điểm công thức, chỉ reason là mặc định
+      return scored.map(({ job, score }) => ({
+        jobID: job.jobID,
+        matchPercent: score,
+        reason: this.buildDefaultReason(ctx, job, score),
+      }));
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  Gọi Gemini CHỈ để viết reason — không để Gemini tính điểm
+  // ─────────────────────────────────────────────────────────────
+  private async fetchReasonsFromAI(
+    ctx: UserContext,
+    scored: { job: JobCandidate; score: number }[],
+  ): Promise<Record<number, string>> {
+    const userBlock = this.buildUserBlock(ctx);
+    const jobsBlock = JSON.stringify(
+      scored.map(({ job, score }) => ({
+        jobID: job.jobID,
+        title: job.title,
+        company: job.companyName,
+        industry: job.industryName,
+        skills: job.skills,
+        experience: job.experienceYear,
+        salary: job.salary,
+        matchPercent: score,
+      })),
+    );
+
+    const prompt = `Bạn là chuyên viên tư vấn nghề nghiệp.
+Dưới đây là thông tin ứng viên và danh sách việc làm đã được tính điểm phù hợp sẵn.
+Nhiệm vụ của bạn: viết 1 câu lý do ngắn gọn (tiếng Việt) giải thích tại sao job đó phù hợp với ứng viên.
+
+## Thông tin ứng viên
+${userBlock}
+
+## Danh sách job (đã có matchPercent)
+${jobsBlock}
+
+## Yêu cầu
+- Trả về ONLY JSON array, không markdown, không giải thích ngoài JSON.
+- Format: [{"jobID": number, "reason": "1 câu tiếng Việt"}]
+- Reason dựa trên điểm nổi bật nhất: skill, ngành, mức lương, kinh nghiệm.`;
+
+    const raw = await this.gemini.scoreJobs(prompt);
+    const arr: { jobID: number; reason: string }[] = Array.isArray(raw)
+      ? raw
+      : this.parseReasonArray(typeof raw === 'string' ? raw : JSON.stringify(raw));
+
+    return Object.fromEntries(
+      arr
+        .filter((r) => typeof r.jobID === 'number' && typeof r.reason === 'string')
+        .map((r) => [r.jobID, r.reason]),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  Reason mặc định khi Gemini lỗi — dựa vào thành phần cao nhất
+  // ─────────────────────────────────────────────────────────────
+  private buildDefaultReason(
+    ctx: UserContext,
+    job: JobCandidate,
+    score: number,
+  ): string {
+    const userSkills = new Set(ctx.skills.map((s) => s.toLowerCase()));
+    const matchedSkills = job.skills.filter((s) => userSkills.has(s.toLowerCase()));
+
+    if (matchedSkills.length > 0) {
+      return `Phù hợp ${score}% — khớp kỹ năng: ${matchedSkills.slice(0, 3).join(', ')}.`;
+    }
+    if (ctx.profile.industry === job.industryName) {
+      return `Phù hợp ${score}% — đúng ngành ${job.industryName}.`;
+    }
+    return `Phù hợp ${score}% dựa trên hồ sơ và hành vi của bạn.`;
+  }
+
+  private parseReasonArray(raw: string): { jobID: number; reason: string }[] {
+    try {
+      const clean = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const arr = JSON.parse(clean);
+      return Array.isArray(arr) ? arr : [];
+    } catch {
+      return [];
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  Các method giữ nguyên từ bản cũ
+  // ─────────────────────────────────────────────────────────────
+  private async buildUserContext(userID: number): Promise<UserContext> {
+    const [skillRows, profileRow, behaviorRows, savedRows] =
+      await Promise.all([
+        this.prisma.userSkill.findMany({
+          where: { userID },
+          include: { skill: { select: { name: true } } },
+        }),
+        this.prisma.userProfile.findFirst({
+          where: { userID },
+          include: { industry: { select: { name: true } } },
+          orderBy: { updatedAt: 'desc' },
+        }),
+        this.prisma.userBehavior.findMany({
+          where: { userID },
+          include: {
+            job: { select: { title: true, industry: { select: { name: true } } } },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 30,
+        }),
+        this.prisma.savedJob.findMany({
+          where: { userID },
+          include: { job: { select: { title: true } } },
+          orderBy: { savedAt: 'desc' },
+          take: 10,
+        }),
+      ]);
+
+    const recentViewedTitles: string[] = [
       ...new Set(
         behaviorRows
           .filter((b) => b.action === 'view' && b.job.title)
@@ -150,7 +351,7 @@ export class AIRecommendationService {
       ),
     ];
 
-    const recentViewedIndustries = [
+    const recentViewedIndustries: string[] = [
       ...new Set(
         behaviorRows
           .map((b) => b.job.industry?.name)
@@ -174,8 +375,9 @@ export class AIRecommendationService {
         savedJobTitles: savedRows
           .map((s) => s.job.title)
           .filter((t): t is string => !!t),
-        appliedJobTitles: []
+        appliedJobTitles: [],
       },
+      cvSummary: null,
     };
   }
 
@@ -183,7 +385,6 @@ export class AIRecommendationService {
     userID: number,
     ctx: UserContext,
   ): Promise<JobCandidate[]> {
-
     const industryNames = [
       ...new Set([
         ...ctx.behaviors.recentViewedIndustries,
@@ -196,9 +397,8 @@ export class AIRecommendationService {
     });
     const industryIDs = matchedIndustries.map((i) => i.id);
 
-    const skillNames = ctx.skills;
     const matchedSkills = await this.prisma.skill.findMany({
-      where: { name: { in: skillNames } },
+      where: { name: { in: ctx.skills } },
       select: { skillID: true },
     });
     const skillIDs = matchedSkills.map((s) => s.skillID);
@@ -216,21 +416,19 @@ export class AIRecommendationService {
     const where: any =
       orConditions.length > 0
         ? {
-            isActive: true,
-            deadline: { gt: new Date() },
-            // jobID: { notIn: appliedIDs },
-            OR: orConditions,
-          }
+          isActive: true,
+          deadline: { gt: new Date() },
+          OR: orConditions,
+        }
         : {
-            isActive: true,
-            deadline: { gt: new Date() },
-            // jobID: { notIn: appliedIDs },
-          };
+          isActive: true,
+          deadline: { gt: new Date() },
+        };
 
     const jobs = await this.prisma.job.findMany({
       where,
       orderBy: { postedAt: 'desc' },
-      take: 60, // Send up to 60 to Claude; it will filter further
+      take: 100,
       include: {
         company: { select: { companyName: true } },
         industry: { select: { name: true } },
@@ -252,86 +450,6 @@ export class AIRecommendationService {
     }));
   }
 
-  private async scoreJobsWithAI(
-    ctx: UserContext,
-    jobs: JobCandidate[],
-  ): Promise<AIScoreResult[]> {
-    try {
-      const userBlock = this.buildUserBlock(ctx);
-      const jobsBlock = JSON.stringify(
-        jobs.map((j) => ({
-          id: j.jobID,
-          title: j.title,
-          company: j.companyName,
-          industry: j.industryName,
-          skills: j.skills,
-          experience: j.experienceYear,
-          salary: j.salary,
-          jobType: j.jobType,
-          desc: j.description,
-          req: j.requirement,
-        })),
-      );
-
-      const prompt = `You are a career counselor AI. Score how well each job matches the candidate.
-
-
-## Candidate profile
-${userBlock}
-
-## Job list (JSON)
-${jobsBlock}
-
-## Instructions
-- Score each job from 0–100 based on overall fit (skills match, career level, industry relevance, salary expectations, job type preference, behavioral signals).
-- Only include jobs with score >= 50.
-- Return ONLY a valid JSON array. No markdown, no explanation outside JSON.
-- Format: [{"jobID": number, "matchPercent": number, "reason": "1 sentence max"}]
-- Reason must be in Vietnamese.`;
-
-      const raw = await this.gemini.scoreJobs(prompt);
-      if (Array.isArray(raw)) return this.normalizeScores(raw);
-      return this.parseScores(
-        typeof raw === 'string' ? raw : JSON.stringify(raw),
-      );
-    } catch (err:any) {
-      const is429 =
-        err?.statusCode === 429 ||
-        err?.status === 429 ||
-        err?.message?.includes('429') ||
-        err?.message?.includes('Too Many Requests');
-
-      if (is429) {
-        this.logger.warn(
-          'Gemini quota exceeded — falling back to skill-based scoring',
-        );
-        return this.fallbackScoring(ctx, jobs);
-      }
-      throw err;
-    }
-  }
-
-  private fallbackScoring(
-    ctx: UserContext,
-    jobs: JobCandidate[],
-  ): AIScoreResult[] {
-    const userSkills = new Set(ctx.skills.map((s) => s.toLowerCase()));
-
-    return jobs
-      .map((job) => {
-        const jobSkills = job.skills.map((s) => s.toLowerCase());
-        const matched = jobSkills.filter((s) => userSkills.has(s)).length;
-        const total = jobSkills.length || 1;
-        const matchPercent = Math.round((matched / total) * 100);
-        return {
-          jobID: job.jobID,
-          matchPercent,
-          reason: 'Dựa trên kỹ năng phù hợp',
-        };
-      })
-      .filter((r) => r.matchPercent >= 50);
-  }
-
   private async saveRecommendations(
     userID: number,
     scores: AIScoreResult[],
@@ -347,7 +465,7 @@ ${jobsBlock}
       validJobIDs.push(s.jobID);
       await this.prisma.jobRecommendation.upsert({
         where: { userID_jobID: { userID, jobID: s.jobID } },
-        update: { matchPercent: s.matchPercent, reason: s.reason},
+        update: { matchPercent: s.matchPercent, reason: s.reason },
         create: {
           userID,
           jobID: s.jobID,
@@ -356,82 +474,29 @@ ${jobsBlock}
         },
       });
     }
+
     await this.prisma.jobRecommendation.deleteMany({
       where: { userID, jobID: { notIn: validJobIDs } },
     });
 
     this.logger.log(
-      `Saved ${scores.length} AI recommendations for userID=${userID}`,
+      `Saved ${scores.length} recommendations for userID=${userID}`,
     );
   }
 
   private buildUserBlock(ctx: UserContext): string {
     const lines: string[] = [];
-
-    if (ctx.profile.jobTitle)
-      lines.push(`- Desired role: ${ctx.profile.jobTitle}`);
-    if (ctx.profile.careerLevel)
-      lines.push(`- Career level: ${ctx.profile.careerLevel}`);
-    if (ctx.profile.experienceYear)
-      lines.push(`- Experience: ${ctx.profile.experienceYear}`);
-    if (ctx.profile.industry)
-      lines.push(`- Preferred industry: ${ctx.profile.industry}`);
-    if (ctx.profile.expectedSalary)
-      lines.push(`- Expected salary: ${ctx.profile.expectedSalary}`);
-    if (ctx.profile.workingType)
-      lines.push(`- Working type preference: ${ctx.profile.workingType}`);
-    if (ctx.skills.length) lines.push(`- Skills: ${ctx.skills.join(', ')}`);
-
+    if (ctx.profile.jobTitle) lines.push(`- Vị trí mong muốn: ${ctx.profile.jobTitle}`);
+    if (ctx.profile.careerLevel) lines.push(`- Cấp bậc: ${ctx.profile.careerLevel}`);
+    if (ctx.profile.experienceYear) lines.push(`- Kinh nghiệm: ${ctx.profile.experienceYear}`);
+    if (ctx.profile.industry) lines.push(`- Ngành ưu tiên: ${ctx.profile.industry}`);
+    if (ctx.profile.expectedSalary) lines.push(`- Lương kỳ vọng: ${ctx.profile.expectedSalary}`);
+    if (ctx.profile.workingType) lines.push(`- Hình thức làm việc: ${ctx.profile.workingType}`);
+    if (ctx.skills.length) lines.push(`- Kỹ năng: ${ctx.skills.join(', ')}`);
     if (ctx.behaviors.recentViewedTitles.length)
-      lines.push(
-        `- Recently viewed jobs: ${ctx.behaviors.recentViewedTitles.join(', ')}`,
-      );
+      lines.push(`- Jobs đã xem: ${ctx.behaviors.recentViewedTitles.join(', ')}`);
     if (ctx.behaviors.savedJobTitles.length)
-      lines.push(`- Saved jobs: ${ctx.behaviors.savedJobTitles.join(', ')}`);
-    if (ctx.behaviors.appliedJobTitles.length)
-      lines.push(`- Applied to: ${ctx.behaviors.appliedJobTitles.join(', ')}`);
-
+      lines.push(`- Jobs đã lưu: ${ctx.behaviors.savedJobTitles.join(', ')}`);
     return lines.join('\n');
-  }
-
-  private normalizeScores(arr: any[]): AIScoreResult[] {
-    return arr
-      .filter(
-        (item: any) =>
-          typeof item.jobID === 'number' &&
-          typeof item.matchPercent === 'number',
-      )
-      .map((item: any) => ({
-        jobID: item.jobID,
-        matchPercent: Math.min(100, Math.max(0, Math.round(item.matchPercent))),
-        reason: item.reason ?? '',
-      }));
-  }
-
-  private parseScores(raw: string): AIScoreResult[] {
-    try {
-      const clean = raw
-        .replace(/```json/gi, '')
-        .replace(/```/g, '')
-        .trim();
-
-      const arr = JSON.parse(clean);
-      if (!Array.isArray(arr)) return [];
-
-      return arr
-        .filter(
-          (item: any) =>
-            typeof item.jobID === 'number' &&
-            typeof item.matchPercent === 'number',
-        )
-        .map((item: any) => ({
-          jobID: item.jobID,
-          matchPercent: Math.min(100, Math.max(0, Math.round(item.matchPercent))),
-          reason: item.reason ?? '',
-        }));
-    } catch (err) {
-      this.logger.error('Failed to parse AI score response', err);
-      return [];
-    }
   }
 }

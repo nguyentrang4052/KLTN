@@ -289,7 +289,7 @@ export default function HomeScreen() {
         .finally(() => setLoadingRecs(false))
     }
     fetchRecs()
-    const interval = setInterval(fetchRecs, 60 * 60 * 1000)
+    const interval = setInterval(fetchRecs, 1 * 60 * 1000)
     return () => clearInterval(interval)
   }, [token])
 
@@ -371,7 +371,7 @@ export default function HomeScreen() {
     })
   }
 
-  const handleSearch = async() => {
+  const handleSearch = async () => {
     setPage(1)
     pageRef.current = 1
     updateURLParams({
@@ -841,7 +841,7 @@ export default function HomeScreen() {
             {loadingRecs ? (
               <div className="hs-loading">⟳ Đang tải việc làm...</div>
             ) : recommendations.length === 0 ? (
-              <div className="hs-empty">Chưa có gợi ý — hãy cập nhật kỹ năng trong hồ sơ</div>
+              <div className="hs-empty">Chưa có gợi ý — hãy cập nhật hồ sơ</div>
             ) : (
               <>
                 <div className="hs-grid">

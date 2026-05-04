@@ -12,12 +12,12 @@ export class RecommendationCron {
     private aiRecommendation: AIRecommendationService,
   ) {}
 
-  @Cron(CronExpression.EVERY_HOUR)
-  // @Cron('* * * * *')
+  // @Cron(CronExpression.EVERY_HOUR)
+  @Cron('* * * * *')
   async recomputeStaleRecommendations() {
     this.logger.log('Cron: checking stale recommendations...');
 
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const oneHourAgo = new Date(Date.now() - 1 * 60 * 1000);
 
     const staleUsers = await this.prisma.jobRecommendation.groupBy({
       by: ['userID'],
