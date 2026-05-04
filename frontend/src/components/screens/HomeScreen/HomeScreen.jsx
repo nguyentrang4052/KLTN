@@ -166,7 +166,6 @@ export default function HomeScreen() {
     setSearchParams(newParams, { replace: true })
   }, [setSearchParams])
 
-  // Chỉ sync URL khi sort thay đổi (KHÔNG gọi setPage)
   useEffect(() => {
     updateURLParams({
       keyword: keyword || null,
@@ -178,7 +177,6 @@ export default function HomeScreen() {
     })
   }, [keyword, page, sort, industryFilter, activePlatform, locationFilter, updateURLParams])
 
-  // Chỉ sync URL khi industry thay đổi (KHÔNG gọi setPage)
   useEffect(() => {
     if (location.state?.scrollY) {
       const timer = setTimeout(() => {
@@ -221,7 +219,7 @@ export default function HomeScreen() {
       .finally(() => setLoadingIndustries(false))
   }, [activePlatform])
 
-  // Handler chuyển trang - chỉ set state, không gọi updateURLParams ở đây
+
   const handlePageChange = useCallback((newPage) => {
     if (newPage >= 1 && newPage <= meta.totalPages && newPage !== page) {
       setPage(newPage)
@@ -508,7 +506,6 @@ export default function HomeScreen() {
   const catTotalPages = Math.ceil(industries.length / CAT_PAGE_SIZE)
   const pagedIndustries = industries.slice(catPage * CAT_PAGE_SIZE, (catPage + 1) * CAT_PAGE_SIZE)
 
-  // Ô trống → hiện lịch sử | Đang gõ → hiện suggestions
   const showSearchDropdown = showDropdown && (
     (keyword.trim() && suggestions.length > 0) ||
     (!keyword.trim() && searchHistory.length > 0)
@@ -566,7 +563,7 @@ export default function HomeScreen() {
                     width: Math.max(searchPos.width, 320),
                     zIndex: 9997,
                   }}>
-                    {/* Lịch sử — chỉ khi ô trống */}
+
                     {!keyword.trim() && searchHistory.length > 0 && (
                       <>
                         <div className="hs-sd-section-hd">
@@ -824,7 +821,7 @@ export default function HomeScreen() {
                 <span style={{ fontWeight: 600, color: recQuota.quotaExceeded ? '#C0412A' : '#1565C0' }}>
                   💡 Lượt đề xuất hôm nay: {recQuota.usedToday}/{recQuota.limit}
                   {recQuota.quotaExceeded
-                    ? ' · Đã hết lượt — đang hiển thị preview'
+                    ? ' · Đã hết lượt'
                     : ` · Còn ${recQuota.remaining} lượt`}
                 </span>
                 {recQuota.quotaExceeded && (

@@ -325,7 +325,7 @@ export default function PricingScreen() {
                     const val = limits?.[field]
                     const unlimited = val === 999
 
-                    const isActivePlan = current && quota && totalField && usedField
+                    const isActivePlan = quota && totalField && usedField && (current || plan.name === 'free')
                     const used = isActivePlan ? (quota[usedField] ?? 0) : null
                     const total = isActivePlan
                       ? (isDaily ? (quota[totalField] ?? val ?? 0) : (quota[totalField] ?? 0))
