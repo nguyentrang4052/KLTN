@@ -272,6 +272,32 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   transition: all 0.25s;
+  position: relative;
+}
+
+/* ── Nút "Đăng nhập để sử dụng" trên feat-card Chatbot ── */
+.btn-login-feature {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgb(35, 42, 162);
+  background: rgba(35, 42, 162, 0.08);
+  border: 1px solid rgba(35, 42, 162, 0.25);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+  letter-spacing: 0.2px;
+  z-index: 1;
+}
+
+.btn-login-feature:hover {
+  background: rgb(35, 42, 162);
+  border-color: rgb(35, 42, 162);
+  color: #fff;
 }
 
 .feat-card:hover {
@@ -302,4 +328,279 @@
   color: var(--ink3);
   font-size: 15px;
   line-height: 1.7;
+}
+/* ── Hero card footer & trust badges ── */
+.hero-card-footer {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  font-size: 11px;
+  color: #555;
+  text-align: center;
+}
+
+.hero-trust {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.hero-trust > span:first-child {
+  font-size: 11px;
+  color: #555;
+}
+
+.hero-trust-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  padding: 3px 9px;
+}
+
+/* ── Intro / How it works section ── */
+.intro-section {
+  padding: 96px 64px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.intro-eyebrow {
+  font-size: 11px;
+  color: rgb(35, 42, 162);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 12px;
+}
+
+.intro-title {
+  font-family: 'Roboto', serif;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--ink);
+  letter-spacing: -1.5px;
+  margin-bottom: 14px;
+}
+
+.intro-sub {
+  font-size: 16px;
+  color: var(--ink3);
+  line-height: 1.75;
+  max-width: 560px;
+  margin-bottom: 64px;
+}
+
+/* ── Steps ── */
+.intro-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  margin-bottom: 72px;
+  position: relative;
+}
+
+/* connector line between steps */
+.intro-steps::before {
+  content: '';
+  position: absolute;
+  top: 28px;
+  left: calc(33.33% / 2 + 16px);
+  right: calc(33.33% / 2 + 16px);
+  height: 1px;
+  background: linear-gradient(to right, var(--border) 0%, rgb(35,42,162) 50%, var(--border) 100%);
+  opacity: 0.3;
+}
+
+.intro-step {
+  padding: 0 28px;
+  border-right: 1px solid var(--border);
+}
+
+.intro-step:first-child { padding-left: 0; }
+.intro-step:last-child  { border-right: none; }
+
+.intro-step-num {
+  font-family: 'Roboto', serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+  opacity: 0.7;
+}
+
+.intro-step-icon {
+  font-size: 32px;
+  margin-bottom: 14px;
+}
+
+.intro-step-title {
+  font-family: 'Roboto', serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 10px;
+  letter-spacing: -0.4px;
+}
+
+.intro-step-desc {
+  font-size: 14px;
+  color: var(--ink3);
+  line-height: 1.75;
+}
+
+/* ── CTA Banner ── */
+.intro-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  background: linear-gradient(135deg, rgb(18,22,105) 0%, rgb(35,42,162) 100%);
+  border-radius: 20px;
+  padding: 40px 48px;
+  flex-wrap: wrap;
+}
+
+.intro-banner-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.5);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  margin-bottom: 10px;
+}
+
+.intro-banner-title {
+  font-family: 'Roboto', serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.6px;
+  margin-bottom: 8px;
+}
+
+.intro-banner-sub {
+  font-size: 14px;
+  color: rgba(255,255,255,0.55);
+  line-height: 1.65;
+  max-width: 480px;
+}
+
+.intro-banner-btn {
+  flex-shrink: 0;
+  padding: 14px 32px;
+  background: #fff;
+  color: rgb(35,42,162);
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.15s;
+  white-space: nowrap;
+}
+
+.intro-banner-btn:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+/* ── Responsive intro ── */
+@media (max-width: 900px) {
+  .intro-section {
+    padding: 64px 24px;
+  }
+  .intro-steps {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .intro-steps::before { display: none; }
+  .intro-step {
+    padding: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 32px;
+  }
+  .intro-step:last-child { border-bottom: none; padding-bottom: 0; }
+  .intro-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 28px 24px;
+  }
+}
+
+/* ── Hero card: platform intro ── */
+.hc-intro-text {
+  font-size: 13px;
+  color: #aaa;
+  line-height: 1.75;
+  margin: 0 0 18px 0;
+}
+
+.hc-intro-text strong {
+  color: #ddd;
+  font-weight: 600;
+}
+
+.hc-pillars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.hc-pillar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+}
+
+.hc-pillar-icon {
+  font-size: 20px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.06);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.hc-pillar-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ddd;
+  margin-bottom: 2px;
+}
+
+.hc-pillar-sub {
+  font-size: 11px;
+  color: #666;
+}
+
+.hc-note {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.6;
+  padding: 10px 12px;
+  border: 1px dashed rgba(255,255,255,0.1);
+  border-radius: 8px;
+  font-style: normal;
+}
+
+.hc-note em {
+  color: var(--amber2);
+  font-style: normal;
+  font-weight: 600;
 }

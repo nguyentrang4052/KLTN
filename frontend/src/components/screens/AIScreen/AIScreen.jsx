@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import './AIScreen.css';
 import { useNavigate } from 'react-router-dom';
 import { getToken } from '../../../utils/auth';
+import { useLocation } from 'react-router-dom';
 
 const API_BASE_URL = 'http://localhost:3000/api';
 
@@ -123,6 +124,7 @@ function CVAttachment({ fileName, fileUrl, fileSize, setPreviewFile }) {
 
 function JobMatchCard({ job, onSelect }) {
     const navigate = useNavigate();
+    const location = useLocation()
     return (
         <div className="ai-job-card" onClick={() => onSelect?.(job)}>
             <div className="ai-job-header">
@@ -130,7 +132,12 @@ function JobMatchCard({ job, onSelect }) {
                     className="ai-job-title"
                     onClick={(e) => {
                         e.stopPropagation();
-                        navigate(`/ai/jobs/${job.job_id}`);
+                        navigate(`/ai/jobs/${job.job_id}`, {
+                            state: {
+                                fromPath: location.pathname,
+                                scrollY: window.scrollY
+                            }
+                        });
                     }}
                 >
                     {job.job_title}
@@ -215,7 +222,7 @@ export default function AIAssistantScreen({ onNavigate }) {
     const [isUploading, setIsUploading] = useState(false);
     const [uploadedCV, setUploadedCV] = useState(null); // { name, size, type, url }
 
-        // State cho rename và pin
+    // State cho rename và pin
     const [editingSessionId, setEditingSessionId] = useState(null);
     const [editTitle, setEditTitle] = useState('');
     const [renaming, setRenaming] = useState(false);
@@ -287,7 +294,8 @@ export default function AIAssistantScreen({ onNavigate }) {
                 method: 'GET',
                 credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`}
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
             });
             if (!res.ok) throw new Error('Failed');
             return await res.json();
@@ -685,10 +693,10 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
     }, []);
 
 
-        /* ── Rename Session ── */
+    /* ── Rename Session ── */
     const renameSession = useCallback(async (sessionId, newTitle) => {
         if (!newTitle || !newTitle.trim()) return;
-        
+
         setRenaming(true);
         try {
             const response = await fetchWithTimeout(`${API_BASE_URL}/chat-history/rename-session/${sessionId}`, {
@@ -700,16 +708,16 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                 credentials: 'include',
                 body: JSON.stringify({ title: newTitle.trim() }),
             });
-            
+
             if (!response.ok) throw new Error('Rename failed');
-            
+
             // Cập nhật local state
-            setSessions(prev => prev.map(session => 
-                session.id === sessionId 
+            setSessions(prev => prev.map(session =>
+                session.id === sessionId
                     ? { ...session, title: newTitle.trim() }
                     : session
             ));
-            
+
         } catch (err) {
             console.error('Rename session error:', err);
         } finally {
@@ -731,13 +739,13 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                 credentials: 'include',
                 body: JSON.stringify({ isPinned: !isPinned }),
             });
-            
+
             if (!response.ok) throw new Error('Pin failed');
-            
+
             // Cập nhật local state
             setSessions(prev => {
-                const updated = prev.map(session => 
-                    session.id === sessionId 
+                const updated = prev.map(session =>
+                    session.id === sessionId
                         ? { ...session, isPinned: !isPinned }
                         : session
                 );
@@ -748,7 +756,7 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                     return new Date(b.updatedAt) - new Date(a.updatedAt);
                 });
             });
-            
+
         } catch (err) {
             console.error('Pin session error:', err);
         }
@@ -774,7 +782,7 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
     /* ── Render History Item ── */
     const renderHistoryItem = (session) => {
         const isEditing = editingSessionId === session.id;
-        
+
         return (
             <div
                 key={session.id}
@@ -784,7 +792,7 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                 <span className="ai-history-icon">
                     {session.isPinned ? '📌' : '💬'}
                 </span>
-                
+
                 {isEditing ? (
                     <input
                         type="text"
@@ -801,11 +809,11 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                         {session.title || 'New Chat'}
                     </span>
                 )}
-                
+
                 <span className="ai-history-date">
                     {formatDate(session.updatedAt)}
                 </span>
-                
+
                 <div className="ai-history-actions">
                     <button
                         className="ai-history-pin"
@@ -817,7 +825,7 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                     >
                         {session.isPinned ? '📌' : '📍'}
                     </button>
-                    
+
                     <button
                         className="ai-history-rename"
                         onClick={(e) => startRename(session, e)}
@@ -825,7 +833,7 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                     >
                         ✏️
                     </button>
-                    
+
                     <button
                         className="ai-history-delete"
                         onClick={(e) => {

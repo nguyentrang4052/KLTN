@@ -311,10 +311,7 @@ export default function Header({ notifCount = 0 }) {
         <div className="app-header__right">
           {user && (  // hoặc check token
             <>
-              <button className="app-header__quick-search" onClick={() => navigate('/jobs')}>
-                🔍 <span>Tìm kiếm nhanh...</span>
-              </button>
-
+              
               <button
                 className={`app-header__icon-btn${location.pathname === '/notifications' ? ' active' : ''}`}
                 title="Thông báo"

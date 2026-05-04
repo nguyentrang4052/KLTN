@@ -111,12 +111,53 @@
 }
 
 /* ── Profile grid (form inputs) ──
-   FIX: profile-grid thiếu display:grid và columns */
+   JSX dùng className="form-grid profile-grid" nên cần định nghĩa cả hai */
+.form-grid,
 .profile-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px 20px;
+  gap: 14px 20px;
   margin-bottom: 0;
+}
+
+/* ── Form group & label ── */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink3);
+  letter-spacing: 0.2px;
+}
+
+/* ── Input / Select base ── */
+.inp {
+  height: 36px;
+  padding: 0 11px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  font-size: 13px;
+  color: var(--ink1);
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  appearance: auto;             /* giữ arrow cho select */
+}
+
+.inp:focus {
+  border-color: rgb(35, 42, 162);
+  box-shadow: 0 0 0 3px rgba(35, 42, 162, 0.10);
+}
+
+.inp::placeholder {
+  color: var(--ink4);
+  font-size: 12px;
 }
 
 /* ── Pref rows ── */
@@ -336,6 +377,7 @@
   .p-name { font-size: 18px; }
 
   /* Form grid: 1 cột trên mobile */
+  .form-grid,
   .profile-grid {
     grid-template-columns: 1fr;
     gap: 10px;

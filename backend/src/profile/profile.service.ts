@@ -227,7 +227,7 @@ export class ProfileService {
   }
 
   async getInsights(userID: number) {
-    const [behaviors, savedJobs, applies, profile] = await Promise.all([
+    const [behaviors, savedJobs, profile] = await Promise.all([
       this.prisma.userBehavior.findMany({
         where: { userID, action: 'view' },
         include: {
@@ -243,12 +243,12 @@ export class ProfileService {
         include: { job: { select: { jobType: true, title: true } } },
         take: 50,
       }),
-      this.prisma.applyHistory.findMany({
-        where: { userID },
-        include: { job: { select: { salary: true } } },
-        orderBy: { appliedAt: 'desc' },
-        take: 50,
-      }),
+      // this.prisma.applyHistory.findMany({
+      //   where: { userID },
+      //   include: { job: { select: { salary: true } } },
+      //   orderBy: { appliedAt: 'desc' },
+      //   take: 50,
+      // }),
       this.prisma.userProfile.findFirst({
         where: { userID },
         include: { industry: true },
@@ -310,13 +310,13 @@ export class ProfileService {
       });
     }
 
-    if (applies.length > 0) {
-      insights.push({
-        icon: '⚡',
-        text: `Bạn đã ứng tuyển ${applies.length} vị trí`,
-        source: `Tổng số lần apply`,
-      });
-    }
+    // if (applies.length > 0) {
+    //   insights.push({
+    //     icon: '⚡',
+    //     text: `Bạn đã ứng tuyển ${applies.length} vị trí`,
+    //     source: `Tổng số lần apply`,
+    //   });
+    // }
 
     if (topIndustries.length > 0) {
       const total = behaviors.length || 1;

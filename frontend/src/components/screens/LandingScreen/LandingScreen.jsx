@@ -8,73 +8,59 @@ function LandingScreen() {
       icon: '🔍',
       bg: '#FDE8E4',
       title: 'Tổng hợp đa nền tảng',
-      desc: 'Tự động thu thập việc làm từ các nguồn lớn nhất. Cập nhật realtime, không bỏ sót cơ hội nào.',
-      target: 's2'
-    },
-    {
-      icon: '🧠',
-      bg: '#FEF0D0',
-      title: 'AI học theo hành vi',
-      desc: 'Phân tích click, lưu tin, apply để hiểu sở thích của bạn và đề xuất ngày càng chính xác hơn.',
-      target: 's2'
-    },
-    {
-      icon: '⚡',
-      bg: '#E0F0E6',
-      title: 'Ứng tuyển nhanh',
-      desc: 'Xem việc từ nhiều nền tảng và ứng tuyển trực tiếp trên trang gốc chỉ với một lần nhấn.',
-      target: 's5'
-    },
-    {
-      icon: '📄',
-      bg: '#D8EFF4',
-      title: 'CV Builder thông minh',
-      desc: 'Tạo CV chuyên nghiệp, AI tối ưu nội dung và từ khoá ATS theo từng vị trí ứng tuyển.',
-      target: 's6'
+      desc: 'Thu thập việc làm từ các nền tảng tuyển dụng uy tín như TopCV, CareerViet, CareerLink và cập nhật liên tục.',
+      target: 's1'
     },
     {
       icon: '🎯',
+      bg: '#FEF0D0',
+      title: 'Gợi ý việc phù hợp',
+      desc: 'Phân tích CV và so sánh với yêu cầu công việc để đề xuất những vị trí phù hợp nhất.',
+      target: 's1'
+    },
+    {
+      icon: '🧠',
+      bg: '#E0F0E6',
+      title: 'AI học theo hành vi',
+      desc: 'Dựa trên hành vi tìm kiếm, xem, lưu tin để cải thiện độ chính xác của gợi ý theo thời gian.',
+      target: 's1'
+    },
+    {
+      icon: '⚡',
+      bg: '#D8EFF4',
+      title: 'Ứng tuyển nhanh',
+      desc: 'Chuyển đến trang tuyển dụng gốc chỉ với một lần nhấn để hoàn tất nộp hồ sơ.',
+      target: 's1'
+    },
+    {
+      icon: '📄',
       bg: '#E4E5F8',
-      title: 'Match Score AI',
-      desc: 'Mỗi tin được chấm điểm phù hợp với hồ sơ bạn. Biết ngay cơ hội trúng tuyển trước khi apply.',
+      title: 'CV Builder AI',
+      desc: 'Tải lên CV để chuyển đổi sang template mới, gợi ý chỉnh sửa nội dung và tối ưu theo vị trí ứng tuyển. Hỗ trợ dịch CV Anh–Việt, Việt–Anh và tự động đồng bộ thông tin vào hồ sơ cá nhân.',
       target: 's2'
     },
     {
-      icon: '📊',
-      bg: '#FDE8E4',
-      title: 'Kanban theo dõi',
-      desc: 'Bảng Kanban quản lý toàn bộ đơn ứng tuyển. Từ nộp hồ sơ đến nhận Offer — mọi thứ trong tầm tay.',
-      target: 's7'
+      icon: '💬',
+      bg: '#FFF4E5',
+      title: 'Chatbot hỗ trợ tìm việc',
+      desc: 'Trợ lý AI giúp bạn tìm kiếm việc làm, gợi ý vị trí phù hợp và hỗ trợ định hướng nghề nghiệp dựa trên CV của bạn.',
+      target: 's3'
     }
   ]
 
-  // const jobs = [
-  //   { logo: 'F', color: 'l-fpt', title: 'Senior React Dev', company: 'FPT Software', salary: '25-35tr', match: 94, matchColor: '#4E8E62' },
-  //   { logo: 'V', color: 'l-vng', title: 'Full-stack Engineer', company: 'VNG Corp', salary: '30-45tr', match: 89, matchColor: '#4E8E62' },
-  //   { logo: 'S', color: 'l-shopee', title: 'Frontend Lead', company: 'Shopee VN', salary: '40-60tr', match: 81, matchColor: '#D4820A' }
-  // ]
-
   const navigate = useNavigate()
-  
-  // const handleFeatureClick = (target) => {
-  //   if (target && onNavigate) {
-  //     onNavigate(target)
-  //   }
-  // }
-
   const handleFeatureClick = (target) => {
 
-  const map = {
-    s2: "/dashboard",
-    s4: "/job/1",
-    s6: "/cv-builder",
-    s7: "/applications"
-  }
+    const map = {
+      s1: "/jobs",
+      s2: "/cv-templates",
+      s3: "/login"
+    }
 
-  if (map[target]) {
-    navigate(map[target])
+    if (map[target]) {
+      navigate(map[target])
+    }
   }
-}
 
   return (
     <div id="s1">
@@ -104,7 +90,6 @@ function LandingScreen() {
 
         <div className="hero">
           <div className="hero-left">
-            {/* <div className="hero-eyebrow">✦ Nền tảng tìm việc AI đầu tiên tại Việt Nam</div> */}
             <h1 className="hero-title">
               Tìm việc <em>thông minh</em>,<br />kết nối <em>đúng cơ hội</em>
             </h1>
@@ -117,43 +102,90 @@ function LandingScreen() {
               >
                 Bắt đầu tìm việc
               </Button>
-              {/* <Button
-                variant="landing-outline2"
-                size="lg"
-                icon="▷"
-              >
-                Xem demo
-              </Button> */}
             </div>
-            {/* <div className="hero-stats">
-              <div className="h-stat"><div className="h-stat-n">50K+</div><div className="h-stat-l">Việc làm mỗi ngày</div></div>
-              <div className="h-stat"><div className="h-stat-n">15+</div><div className="h-stat-l">Nền tảng tích hợp</div></div>
-              <div className="h-stat"><div className="h-stat-n">92%</div><div className="h-stat-l">Độ chính xác AI</div></div>
-            </div> */}
           </div>
 
-          {/* <div className="hero-right">
+          <div className="hero-right">
             <div className="hero-card">
-              <div className="hero-card-title">🤖 AI đề xuất cho bạn hôm nay</div>
-              <div className="hero-job-preview">
-                {jobs.map((job, idx) => (
-                  <div
-                    key={idx}
-                    className="hjp"
-                    onClick={() => navigate("/job/:id")}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <div className={`hjp-logo ${job.color}`}>{job.logo}</div>
-                    <div className="hjp-info">
-                      <div className="hjp-title">{job.title}</div>
-                      <div className="hjp-co">{job.company} • {job.salary}</div>
+              <div className="hero-card-title">🌐 GZCONNECT là gì?</div>
+              <p className="hc-intro-text">
+                Nền tảng trung gian giúp bạn <strong>tìm kiếm, so sánh và theo dõi</strong> hàng chục nghìn tin tuyển dụng từ nhiều trang việc làm lớn — tất cả trong một nơi duy nhất.
+              </p>
+              <div className="hc-pillars">
+                {[
+                  { icon: '🔗', label: 'Tổng hợp từ nhiều nguồn', sub: 'TopCV · CareerLink · CareerViet' },
+                  { icon: '🧠', label: 'AI chấm điểm phù hợp', sub: 'Lọc việc đúng với hồ sơ của bạn' },
+                ].map((p, i) => (
+                  <div key={i} className="hc-pillar">
+                    <div className="hc-pillar-icon">{p.icon}</div>
+                    <div>
+                      <div className="hc-pillar-label">{p.label}</div>
+                      <div className="hc-pillar-sub">{p.sub}</div>
                     </div>
-                    <div className="hjp-match" style={{ color: job.matchColor }}>{job.match}%</div>
                   </div>
                 ))}
               </div>
+              <div className="hc-note">
+                💡 GZCONNECT không tuyển dụng trực tiếp — chúng tôi giúp bạn <em>tìm đúng nơi</em> để ứng tuyển.
+              </div>
             </div>
-          </div> */}
+            <div className="hero-trust">
+              <span>Tích hợp với</span>
+              {['TopCV', 'CareerLink', 'CareerViet'].map(p => (
+                <span key={p} className="hero-trust-badge">{p}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="intro-section">
+        <div className="intro-eyebrow">Cách hoạt động</div>
+        <h2 className="intro-title">Ba bước để có việc làm mơ ước</h2>
+        <p className="intro-sub">
+          GZCONNECT tự động hoá toàn bộ hành trình tìm việc — từ tổng hợp tin đến theo dõi đơn ứng tuyển.
+        </p>
+        <div className="intro-steps">
+          {[
+            {
+              num: '01',
+              icon: '🧑‍💼',
+              title: 'Tạo hồ sơ thông minh',
+              desc: 'Điền thông tin một lần hoặc import thẳng từ CV có sẵn. AI sẽ tự học sở thích và kỹ năng của bạn để cá nhân hoá đề xuất.',
+              color: '#527CE6',
+            },
+            {
+              num: '02',
+              icon: '🔎',
+              title: 'Khám phá việc phù hợp',
+              desc: 'Việc làm được tổng hợp từ các nền tảng như TopCV, CareerLink, CareerViet và gợi ý dựa trên hồ sơ, đặc trưng và thao tác của bạn tại nền tảng.',
+              color: 'var(--amber2)',
+            },
+            {
+              num: '03',
+              icon: '🚀',
+              title: 'Ứng tuyển',
+              desc: 'Khi nhấn "Apply", bạn sẽ được chuyển đến trang tuyển dụng gốc để nộp hồ sơ. GZCONNECT không trực tiếp quản lý quá trình ứng tuyển.',
+              color: 'var(--sage2)',
+            },
+          ].map((step, i) => (
+            <div key={i} className="intro-step">
+              <div className="intro-step-num" style={{ color: step.color }}>{step.num}</div>
+              <div className="intro-step-icon">{step.icon}</div>
+              <div className="intro-step-title">{step.title}</div>
+              <div className="intro-step-desc">{step.desc}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="intro-banner">
+          <div className="intro-banner-left">
+            <div className="intro-banner-title">Bắt đầu ngay hôm nay</div>
+            <div className="intro-banner-sub">Tham gia cùng hàng nghìn ứng viên đang dùng GZCONNECT để tìm việc nhanh hơn, thông minh hơn.</div>
+          </div>
+          <button className="intro-banner-btn" onClick={() => navigate('/jobs')}>
+            Tìm việc ngay →
+          </button>
         </div>
       </div>
 
@@ -167,9 +199,17 @@ function LandingScreen() {
             <div
               key={idx}
               className="feat-card"
-              onClick={() => handleFeatureClick(feat.target)} 
+              onClick={() => handleFeatureClick(feat.target)}
               style={{ cursor: feat.target ? 'pointer' : 'default' }}
             >
+              {feat.title === 'Chatbot hỗ trợ tìm việc' && (
+                <button
+                  className="btn-login-feature"
+                  onClick={() => navigate('/login')}
+                >
+                  Đăng nhập để sử dụng
+                </button>
+              )}
               <div className="feat-ico" style={{ background: feat.bg }}>{feat.icon}</div>
               <div className="feat-title">{feat.title}</div>
               <div className="feat-desc">{feat.desc}</div>

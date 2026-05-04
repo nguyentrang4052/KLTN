@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "./Footer.css";
+import { useNavigate } from "react-router-dom";
 
 const IconChevron = () => (
   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -30,46 +31,29 @@ const IconMapPin = () => (
 /* ─── Data ───────────────────────────────────────────────────── */
 const FOOTER_LINKS = {
   "Tìm việc làm": [
-    { label: "Việc làm IT / Tech", href: "/jobs/it" },
-    { label: "Việc làm Marketing", href: "/jobs/marketing" },
-    { label: "Việc làm Tài chính", href: "/jobs/finance" },
-    { label: "Việc làm Thiết kế", href: "/jobs/design" },
-    { label: "Việc làm Remote", href: "/jobs/remote" },
-    { label: "Việc làm Fresher", href: "/jobs/fresher" },
+    { label: "Việc làm IT / Tech", href: "/jobs?keyword=it" },
+    { label: "Việc làm Marketing", href: "/jobs?keyword=marketing" },
+    { label: "Việc làm Tài chính", href: "/jobs?keyword=Tài chính" },
+    { label: "Việc làm Remote", href: "/jobs?keyword=remote" },
+    { label: "Việc làm Fresher", href: "/jobs?keyword=fresher" },
   ],
   "Công cụ": [
-    { label: "CV Builder AI", href: "/cv-builder" },
-    { label: "AI Match Score", href: "/ai-match" },
-    { label: "Auto Apply", href: "/auto-apply" },
+    { label: "CV Builder AI", href: "/cv-templates" },
+    { label: "AI Match Score", href: "/login" },
     { label: "Salary Insights", href: "/salary" },
-    { label: "Interview Prep AI", href: "/interview-prep" },
-    { label: "Career Roadmap", href: "/career-roadmap" },
+    // { label: "Interview Prep AI", href: "/interview-prep" },
   ],
-  "Công ty": [
+  "Giới thiệu": [
     { label: "Về GZCONNECT", href: "/about" },
-    { label: "Đội ngũ", href: "/team" },
     { label: "Blog & Tin tức", href: "/blog" },
-    { label: "Tuyển dụng nội bộ", href: "/careers" },
-    { label: "Quan hệ báo chí", href: "/press" },
     { label: "Liên hệ", href: "/contact" },
   ],
   "Hỗ trợ": [
-    { label: "Trung tâm trợ giúp", href: "/help" },
-    { label: "Hướng dẫn sử dụng", href: "/guide" },
     { label: "Câu hỏi thường gặp", href: "/faq" },
     { label: "Chính sách bảo mật", href: "/privacy" },
     { label: "Điều khoản sử dụng", href: "/terms" },
-    { label: "Chính sách Cookie", href: "/cookies" },
   ],
 };
-
-
-const STATS = [
-  { value: "200K+", label: "Người dùng đang tìm việc" },
-  { value: "50K+", label: "Việc làm mới mỗi ngày" },
-  { value: "15+", label: "Nền tảng tích hợp" },
-  { value: "92%", label: "Độ chính xác AI Match" },
-];
 
 const PLATFORMS = [
   "TopCV", "CareerLink", "CareerViet"];
@@ -86,6 +70,7 @@ export default function Footer() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const year = new Date().getFullYear();
+  const navigate = useNavigate();
 
   const handleSubscribe = () => {
     if (!email.trim() || !email.includes("@")) return;
@@ -95,6 +80,11 @@ export default function Footer() {
   };
 
   const scrollTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
+
+  const handleNavigate = (href) => {
+    navigate(href);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   return (
     <footer className="f">
@@ -117,15 +107,12 @@ export default function Footer() {
                 <ul className="f__list">
                   {links.map((link) => (
                     <li className="f__list-item" key={link.label}>
-                      <a href={link.href}>
-                        <span style={{ flex: 1 }}>{link.label}</span>
-                        {link.badge && (
-                          <span className={`f__badge f__badge--${link.badge === "Hot" ? "hot" : "new"}`}>
-                            {link.badge}
-                          </span>
-                        )}
-                        <span className="f__arr"><IconChevron /></span>
-                      </a>
+                      <span
+                        onClick={() => handleNavigate(link.href)}
+                        style={{ cursor: "pointer", flex: 1 }}
+                      >
+                        {link.label}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -169,11 +156,16 @@ export default function Footer() {
           </div>
           <div className="f__bottom-links">
             {BOTTOM_LINKS.map((l) => (
-              <a key={l.label} href={l.href}>{l.label}</a>
+              <span
+                key={l.label}
+                onClick={() => handleNavigate(l.href)}
+                style={{ cursor: "pointer" }}
+              >
+                {l.label}
+              </span>
             ))}
           </div>
           <div className="f__bottom-right">
-            {/* <button className="f__lang-btn">🌐 Tiếng Việt ▾</button> */}
             <button className="f__top-btn" onClick={scrollTop}>↑ Lên đầu</button>
           </div>
         </div>

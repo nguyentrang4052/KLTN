@@ -371,7 +371,7 @@ export default function HomeScreen() {
     })
   }
 
-  const handleSearch = () => {
+  const handleSearch = async() => {
     setPage(1)
     pageRef.current = 1
     updateURLParams({
@@ -680,11 +680,11 @@ export default function HomeScreen() {
               <div className="hs-stat-ico">🎯</div>
               <div className="hs-stat-n">{loadingStats ? '…' : (stats?.jobMatch?.count ?? '—')}</div>
               <div className="hs-stat-l">Việc phù hợp hôm nay</div>
-              {stats?.jobMatch?.delta && (
+              {/* {stats?.jobMatch?.delta && (
                 <div style={{ fontSize: 12, color: stats.jobMatch.delta.startsWith('+') ? '#4CAF50' : '#F44336' }}>
                   {stats.jobMatch.delta} so với hôm qua
                 </div>
-              )}
+              )} */}
             </div>
           </div>
         </div>

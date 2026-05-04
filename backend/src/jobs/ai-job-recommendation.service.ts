@@ -18,7 +18,6 @@ interface UserContext {
     savedJobTitles: string[];
     appliedJobTitles: string[];
   };
-  cvSummary: string | null;
 }
 
 interface JobCandidate {
@@ -83,8 +82,8 @@ export class AIRecommendationService {
       const hasContext =
         userContext.skills.length > 0 ||
         userContext.profile.jobTitle ||
-        userContext.behaviors.recentViewedTitles.length > 0 ||
-        userContext.cvSummary;
+        userContext.behaviors.recentViewedTitles.length > 0;
+        // userContext.cvSummary;
 
       if (!hasContext) {
         await this.prisma.jobRecommendation.deleteMany({ where: { userID } });
@@ -110,9 +109,7 @@ export class AIRecommendationService {
       skillRows,
       profileRow,
       behaviorRows,
-      savedRows,
-      appliedRows,
-      cvRows,
+      savedRows
     ] = await Promise.all([
       this.prisma.userSkill.findMany({
         where: { userID },
@@ -141,17 +138,6 @@ export class AIRecommendationService {
         include: { job: { select: { title: true } } },
         orderBy: { savedAt: 'desc' },
         take: 10,
-      }),
-      this.prisma.applyHistory.findMany({
-        where: { userID },
-        include: { job: { select: { title: true } } },
-        orderBy: { appliedAt: 'desc' },
-        take: 10,
-      }),
-      this.prisma.cV.findMany({
-        where: { userID },
-        select: { title: true },
-        take: 3,
       }),
     ]);
 
@@ -188,14 +174,8 @@ export class AIRecommendationService {
         savedJobTitles: savedRows
           .map((s) => s.job.title)
           .filter((t): t is string => !!t),
-        appliedJobTitles: appliedRows
-          .map((a) => a.job.title)
-          .filter((t): t is string => !!t),
+        appliedJobTitles: []
       },
-      cvSummary:
-        cvRows.length > 0
-          ? `User has CVs titled: ${cvRows.map((c) => c.title).join(', ')}`
-          : null,
     };
   }
 
@@ -203,12 +183,6 @@ export class AIRecommendationService {
     userID: number,
     ctx: UserContext,
   ): Promise<JobCandidate[]> {
-    const appliedIDs = (
-      await this.prisma.applyHistory.findMany({
-        where: { userID },
-        select: { jobID: true },
-      })
-    ).map((a) => a.jobID);
 
     const industryNames = [
       ...new Set([
@@ -244,13 +218,13 @@ export class AIRecommendationService {
         ? {
             isActive: true,
             deadline: { gt: new Date() },
-            jobID: { notIn: appliedIDs },
+            // jobID: { notIn: appliedIDs },
             OR: orConditions,
           }
         : {
             isActive: true,
             deadline: { gt: new Date() },
-            jobID: { notIn: appliedIDs },
+            // jobID: { notIn: appliedIDs },
           };
 
     const jobs = await this.prisma.job.findMany({
@@ -320,7 +294,7 @@ ${jobsBlock}
       return this.parseScores(
         typeof raw === 'string' ? raw : JSON.stringify(raw),
       );
-    } catch (err) {
+    } catch (err:any) {
       const is429 =
         err?.statusCode === 429 ||
         err?.status === 429 ||
@@ -407,7 +381,6 @@ ${jobsBlock}
     if (ctx.profile.workingType)
       lines.push(`- Working type preference: ${ctx.profile.workingType}`);
     if (ctx.skills.length) lines.push(`- Skills: ${ctx.skills.join(', ')}`);
-    if (ctx.cvSummary) lines.push(`- CV: ${ctx.cvSummary}`);
 
     if (ctx.behaviors.recentViewedTitles.length)
       lines.push(

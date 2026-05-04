@@ -78,7 +78,7 @@ export class JobAlertService {
     });
   }
 
-  @Cron('0 8 * * *')
+  @Cron('* * * * *')
   async sendDailyAlerts() {
     const activeAlerts = await this.prisma.jobAlert.findMany({
       where: { active: true },
@@ -126,7 +126,7 @@ export class JobAlertService {
             company: { select: { companyName: true } },
             skills: { include: { skill: { select: { name: true } } } },
           },
-          // take: 5,
+          take: 5,
           orderBy: { postedAt: 'desc' },
         });
 

@@ -137,7 +137,7 @@ function JobSearchScreen() {
       setKeyword(kw)
       setCurrentPage(1)
     }
-  }, [])
+  }, [searchParams])
 
   useEffect(() => {
     const sync = () => setToken(getToken());

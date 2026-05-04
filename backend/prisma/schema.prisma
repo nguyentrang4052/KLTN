@@ -112,7 +112,6 @@ model Job {
   sourceTrackings JobSourceTracking[]
   savedJobs       SavedJob[]
   behaviors       UserBehavior[]
-  notifications Notification[]
 }
 
 model JobRecommendation {
