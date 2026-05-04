@@ -26,13 +26,19 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
   const [matchInfo, setMatchInfo] = useState(null)
 
   const handleBack = () => {
-    if (location.state?.fromPath) {
-      navigate(location.state.fromPath, {
+    const fromPath = location.state?.fromPath
+
+    if (fromPath === '/ai-assistant') {
+      navigate('/ai-assistant')
+      return
+    }
+    if (fromPath) {
+      navigate(fromPath, {
         state: { scrollY: location.state?.scrollY || 0 }
       })
-    } else {
-      navigate(-1)
+      return
     }
+    navigate(-1)
   }
 
   useEffect(() => {

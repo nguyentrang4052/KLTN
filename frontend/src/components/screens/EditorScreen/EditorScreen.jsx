@@ -911,7 +911,7 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
                     </div>
 
                     {/* Nút AI Assist tổng thể */}
-                    <button
+                    {/* <button
                         onClick={() => openAssistModal(null)}
                         style={{
                             padding: "4px 12px",
@@ -928,7 +928,7 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
                         }}
                     >
                         ✨ AI Assist
-                    </button>
+                    </button> */}
 
                     <div style={{
                         display: "flex",

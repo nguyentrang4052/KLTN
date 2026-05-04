@@ -40,7 +40,7 @@
 }
 
 .notif-empty-icon  { font-size: 48px; opacity: .5; margin-bottom: 4px; }
-.notif-empty-title { font-family: 'Instrument Serif', serif; font-size: 22px; color: var(--notif-ink2); }
+.notif-empty-title { font-family: 'Roboto', serif; font-size: 22px; color: var(--notif-ink2); }
 .notif-empty-sub   { font-size: 13.5px; color: var(--notif-ink3); }
 
 .notif-tabs {
@@ -232,7 +232,7 @@
   color: var(--notif-ink3);
   cursor: pointer;
   transition: all .15s;
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Roboto', sans-serif;
 }
 
 .notif-readall-btn:hover {

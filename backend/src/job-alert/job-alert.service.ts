@@ -126,7 +126,7 @@ export class JobAlertService {
             company: { select: { companyName: true } },
             skills: { include: { skill: { select: { name: true } } } },
           },
-          // take: 5,
+          take: 5,
           orderBy: { postedAt: 'desc' },
         });
 

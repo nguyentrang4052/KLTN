@@ -8,17 +8,17 @@ datasource db {
 }
 
 model Account {
-  accountID         Int             @id @default(autoincrement())
-  email             String          @unique
-  password          String
-  provider          String
-  createdAt         DateTime        @default(now())
-  active            Boolean         @default(true)
-  user              User?
-  role              String          @default("user")
-  jobAlerts         JobAlert[]
-  emailNotification Boolean         @default(false)
-  searchHistory     SearchHistory[]
+  accountID Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  provider  String
+  createdAt DateTime @default(now())
+  active    Boolean  @default(true)
+  user      User?
+  role      String   @default("user")
+  jobAlerts JobAlert[]
+  emailNotification Boolean @default(false)
+  searchHistory SearchHistory[]
 }
 
 model User {
@@ -36,19 +36,19 @@ model User {
   behaviors          UserBehavior[]
   profiles           UserProfile[]
   skills             UserSkill[]
-  subscriptions      UserSubscription[]
-  payments           Payment[]
-  quotas             UserQuota[]
-  refundRequests     RefundRequest[]
-  notifications      Notification[]
-  cvAnalyses         CVAnalysis[]
-  cvAnalysisCaches   CVAnalysisCache[]
-  chatSession        ChatSession[]
-  cvBuilder          CVBuilder[]
+  subscriptions UserSubscription[]
+  payments      Payment[]
+  quotas UserQuota[]
+  refundRequests RefundRequest[]
+  notifications Notification[]
+  cvAnalyses   CVAnalysis[] 
+  cvAnalysisCaches CVAnalysisCache[]
+  chatSession ChatSession[]
+  cvBuilder CVBuilder[]
 }
 
 model UserProfile {
-  id             Int      @id @default(autoincrement())
+  id             Int       @id @default(autoincrement())
   jobTitle       String?
   experienceYear String?
   careerLevel    String?
@@ -57,7 +57,7 @@ model UserProfile {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  userID     Int       @unique
+  userID     Int   @unique
   user       User      @relation(fields: [userID], references: [userID])
   industryID Int?
   industry   Industry? @relation(fields: [industryID], references: [id])
@@ -70,6 +70,7 @@ model UserSkill {
   skill   Skill @relation(fields: [skillID], references: [skillID])
   user    User  @relation(fields: [userID], references: [userID])
 }
+
 
 model Company {
   companyID      Int     @id @default(autoincrement())
@@ -111,7 +112,6 @@ model Job {
   sourceTrackings JobSourceTracking[]
   savedJobs       SavedJob[]
   behaviors       UserBehavior[]
-  notifications   Notification[]
 }
 
 model JobRecommendation {
@@ -119,7 +119,7 @@ model JobRecommendation {
   userID       Int
   jobID        Int
   matchPercent Float
-  reason       String?
+  reason       String? 
   createdAt    DateTime @default(now())
   job          Job      @relation(fields: [jobID], references: [jobID])
   user         User     @relation(fields: [userID], references: [userID])
@@ -158,7 +158,7 @@ model Industry {
 model Skill {
   skillID    Int         @id @default(autoincrement())
   industryID Int
-  name       String
+  name       String      
   jobs       JobSkill[]
   industry   Industry    @relation(fields: [industryID], references: [id])
   users      UserSkill[]
@@ -176,6 +176,7 @@ model UserBehavior {
   user      User     @relation(fields: [userID], references: [userID])
 }
 
+
 model JobSourceTracking {
   id            Int      @id @default(autoincrement())
   jobID         Int
@@ -186,158 +187,161 @@ model JobSourceTracking {
 }
 
 model SubscriptionPlan {
-  id            Int                @id @default(autoincrement())
-  name          String             @unique
-  displayName   String
-  monthlyPrice  Int                @default(0)
-  yearlyPrice   Int                @default(0)
-  createdAt     DateTime           @default(now())
+  id           Int      @id @default(autoincrement())
+  name         String   @unique  
+  displayName  String
+  monthlyPrice Int      @default(0)
+  yearlyPrice  Int      @default(0)
+  createdAt    DateTime @default(now())
   subscriptions UserSubscription[]
   limits        PlanLimit?
 }
 
 model PlanLimit {
-  id                 Int              @id @default(autoincrement())
-  planID             Int              @unique
-  jobSuggestPerDay   Int              @default(3)
-  cvAnalysisPerMonth Int              @default(0)
-  cvMatchCheckCount  Int              @default(0)
-  plan               SubscriptionPlan @relation(fields: [planID], references: [id])
+  id                  Int    @id @default(autoincrement())
+  planID              Int    @unique
+  jobSuggestPerDay    Int    @default(3)    
+  cvAnalysisPerMonth  Int    @default(0)  
+  cvMatchCheckCount   Int    @default(0) 
+  plan                SubscriptionPlan @relation(fields: [planID], references: [id])
 }
 
 model UserSubscription {
-  id        Int              @id @default(autoincrement())
-  userID    Int
-  planID    Int
-  billing   String
-  status    String
-  startedAt DateTime         @default(now())
-  expiresAt DateTime
-  autoRenew Boolean          @default(true)
-  user      User             @relation(fields: [userID], references: [userID])
-  plan      SubscriptionPlan @relation(fields: [planID], references: [id])
-  payments  Payment[]
-  quota     UserQuota?
+  id         Int      @id @default(autoincrement())
+  userID     Int
+  planID     Int
+  billing    String
+  status     String
+  startedAt  DateTime @default(now())
+  expiresAt  DateTime
+  autoRenew  Boolean  @default(true)
+  user       User     @relation(fields: [userID], references: [userID])
+  plan       SubscriptionPlan @relation(fields: [planID], references: [id])
+  payments   Payment[]
+  quota UserQuota?
 }
 
 model Payment {
-  id             Int              @id @default(autoincrement())
+  id             Int      @id @default(autoincrement())
   userID         Int
   subscriptionID Int
   amount         Int
-  currency       String           @default("VND")
+  currency       String   @default("VND")
   status         String
   method         String?
-  transactionRef String?          @unique
+  transactionRef String?  @unique
   paidAt         DateTime?
-  createdAt      DateTime         @default(now())
-  user           User             @relation(fields: [userID], references: [userID])
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userID], references: [userID])
   subscription   UserSubscription @relation(fields: [subscriptionID], references: [id])
   refundRequest  RefundRequest?
 }
 
-model UserQuota {
-  id             Int    @id @default(autoincrement())
-  userID         Int
-  subscriptionID Int?   @unique
-  month          String
 
-  jobSuggestPerDay    Int     @default(3)
-  jobSuggestUsedToday Int     @default(0)
+model UserQuota {
+  id                  Int      @id @default(autoincrement())
+  userID              Int
+  subscriptionID      Int?     @unique  
+  month               String         
+
+  jobSuggestPerDay    Int      @default(3)
+  jobSuggestUsedToday Int      @default(0)
   jobSuggestResetDate String?
 
-  cvAnalysisTotal   Int @default(0)
-  cvMatchCheckTotal Int @default(0)
-  cvAnalysisUsed    Int @default(0)
-  cvMatchCheckUsed  Int @default(0)
+  cvAnalysisTotal     Int      @default(0)
+  cvMatchCheckTotal   Int      @default(0)
+  cvAnalysisUsed      Int      @default(0)
+  cvMatchCheckUsed    Int      @default(0)
 
-  updatedAt    DateTime          @updatedAt
-  user         User              @relation(fields: [userID], references: [userID])
-  subscription UserSubscription? @relation(fields: [subscriptionID], references: [id])
+  updatedAt           DateTime @updatedAt
+  user                User     @relation(fields: [userID], references: [userID])
+  subscription        UserSubscription? @relation(fields: [subscriptionID], references: [id])
 
   @@unique([userID, month])
 }
 
 model RefundRequest {
-  id            Int       @id @default(autoincrement())
+  id            Int      @id @default(autoincrement())
   userID        Int
-  paymentID     Int       @unique
+  paymentID     Int      @unique
   reason        String
   accountNumber String
   accountName   String
   bankName      String
-  status        String    @default("pending") // pending | approved | rejected
-  createdAt     DateTime  @default(now())
+  status        String   @default("pending") // pending | approved | rejected
+  createdAt     DateTime @default(now())
   resolvedAt    DateTime?
-  note          String?
+  note          String?  
 
   user    User    @relation(fields: [userID], references: [userID])
   payment Payment @relation(fields: [paymentID], references: [id])
 }
 
+
 model CVAnalysis {
-  id       Int    @id @default(autoincrement())
-  userID   Int
-  fileHash String @unique // SHA256 hash để kiểm tra trùng file
-  filename String
-  result   Json // Lưu toàn bộ kết quả phân tích JSON
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userID], references: [userID], onDelete: Cascade)
-
+  id         Int      @id @default(autoincrement())
+  userID     Int
+  fileHash   String   @unique // SHA256 hash để kiểm tra trùng file
+  filename   String
+  result     Json     // Lưu toàn bộ kết quả phân tích JSON
+  
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  user       User     @relation(fields: [userID], references: [userID], onDelete: Cascade)
+  
   @@index([userID])
   @@index([fileHash])
   @@index([createdAt])
 }
 
+
 model CVAnalysisCache {
-  id        Int      @id @default(autoincrement())
-  userID    Int
-  fileHash  String   @unique
-  filename  String
-  result    Json
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
-
-  user User @relation(fields: [userID], references: [userID], onDelete: Cascade)
-
+  id         Int      @id @default(autoincrement())
+  userID     Int
+  fileHash   String   @unique
+  filename   String
+  result     Json     
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+  
+  user       User     @relation(fields: [userID], references: [userID], onDelete: Cascade)
+  
   @@index([userID])
   @@index([fileHash])
 }
 
 model ChatSession {
-  id        Int           @id @default(autoincrement())
+  id        Int @id @default(autoincrement())
   userID    Int
-  title     String        @default("New Chat")
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  isPinned  Boolean       @default(false)
-  user      User          @relation(fields: [userID], references: [userID], onDelete: Cascade)
+  title     String @default("New Chat")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isPinned  Boolean         @default(false)
+  user      User     @relation(fields: [userID], references: [userID], onDelete: Cascade)
   messages  ChatMessage[]
 }
 
 model ChatMessage {
-  id        Int         @id @default(autoincrement())
+  id        Int @id @default(autoincrement())
   sessionID Int
   role      String
   content   String?
-  type      String      @default("text")
+  type      String @default("text")
   metadata  Json?
-  createdAt DateTime    @default(now())
+  createdAt DateTime @default(now())
   session   ChatSession @relation(fields: [sessionID], references: [id], onDelete: Cascade)
 
   @@index([sessionID])
   @@index([createdAt])
   @@index([sessionID, createdAt])
-}
+} 
 
 model CVBuilder {
   id         Int      @id @default(autoincrement())
   userID     Int
   name       String
-  templateId String
+  templateId String   
   data       Json
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -361,19 +365,17 @@ model JobAlert {
 model Notification {
   id        Int       @id @default(autoincrement())
   userID    Int
-  type      String // 'subscription_expiry' | 'job_deadline' | 'job_alert' | 'payment_success'
+  type      String    // 'subscription_expiry' | 'job_deadline' | 'job_alert' | 'payment_success'
   title     String
   body      String
   isRead    Boolean   @default(false)
   createdAt DateTime  @default(now())
   readAt    DateTime?
-  metadata  Json?
+  metadata  Json?    
 
-  user      User      @relation(fields: [userID], references: [userID])
+  user User @relation(fields: [userID], references: [userID])
   dedupeKey String?   @unique
   deletedAt DateTime?
-  job       Job?      @relation(fields: [jobJobID], references: [jobID])
-  jobJobID  Int?
 }
 
 model SearchHistory {

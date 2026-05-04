@@ -905,9 +905,7 @@ function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
                       <div style={{ display: 'flex' }}>
                         {[
                           { label: 'Đã xem', value: stats.viewCount, icon: '👁' },
-                          { label: 'Đã lưu', value: stats.saveCount, icon: '🔖' },
-                          { label: 'Đã apply', value: stats.applyCount, icon: '⚡' },
-                          { label: 'Đề xuất', value: stats.recommendCount, icon: '🎯' },
+                          { label: 'Đã lưu', value: stats.saveCount, icon: '🔖' }
                         ].map((s, i) => (
                           <div key={i} style={{
                             flex: 1, textAlign: 'center',
@@ -1075,44 +1073,12 @@ function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
                     </div>
                   </div>
 
-                  <div className="card profile-card">
-                    <div className="profile-section-title">Tùy chỉnh AI đề xuất</div>
-                    {aiData.preferences.length > 0 ? (
-                      aiData.preferences.map((pref, idx) => (
-                        <div key={idx} className="pref-row">
-                          <span className="pref-k">{pref.key}</span>
-                          <span className="pref-v">{pref.value}</span>
-                        </div>
-                      ))
-                    ) : (
-                      <div style={{ fontSize: 13, color: 'var(--ink4)' }}>
-                        Hãy cập nhật hồ sơ nghề nghiệp để AI cá nhân hóa đề xuất.
-                      </div>
-                    )}
-                    {[
-                      { key: 'Thông báo việc mới', active: true },
-                      { key: 'Auto apply khi match >90%', active: false },
-                    ].map((toggle, idx) => (
-                      <div key={idx} className="pref-row" style={{ opacity: 0.5 }}>
-                        <span className="pref-k">{toggle.key}</span>
-                        <div className="toggle-wrap">
-                          <div className={`toggle ${toggle.active ? 'on' : 'off'}`}>
-                            <div className="toggle-dot" />
-                          </div>
-                          <span className="toggle-label" style={{ fontSize: 11, color: 'var(--ink4)' }}>
-                            Sắp ra mắt
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
                 </div>
 
                 <div className="p-right">
 
                   <div className="card profile-card">
-                    <div className="profile-section-title">🧠 AI đã học gì từ bạn</div>
+                    <div className="profile-section-title">🧠 Hoạt động của bạn </div>
                     {aiData.insights.length === 0 ? (
                       <div style={{ fontSize: 13, color: 'var(--ink4)', padding: '8px 0' }}>
                         Chưa đủ dữ liệu — hãy xem thêm việc làm để AI phân tích hành vi của bạn.

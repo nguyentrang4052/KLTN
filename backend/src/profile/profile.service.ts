@@ -6,7 +6,7 @@ import { UpdateProfileDto, UpdateUserProfileDto } from '../dto/profile.dto';
 
 @Injectable()
 export class ProfileService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async getProfileByAccountID(accountID: number) {
     const user = await this.prisma.user.findFirst({
@@ -70,10 +70,10 @@ export class ProfileService {
       // cvs: user.cvs,
       plan: activeSub
         ? {
-            name: activeSub.plan.name,
-            displayName: activeSub.plan.displayName,
-            expiresAt: activeSub.expiresAt,
-          }
+          name: activeSub.plan.name,
+          displayName: activeSub.plan.displayName,
+          expiresAt: activeSub.expiresAt,
+        }
         : { name: 'free', displayName: 'Free', expiresAt: null },
     };
   }
@@ -194,7 +194,7 @@ export class ProfileService {
         }),
       ]);
 
-    return { viewCount, saveCount, applyCount};
+    return { viewCount, saveCount, applyCount };
   }
 
   async updateAvatar(userID: number, file: Express.Multer.File) {
@@ -227,7 +227,7 @@ export class ProfileService {
   }
 
   async getInsights(userID: number) {
-    const [behaviors, savedJobs, applies, profile] = await Promise.all([
+    const [behaviors, savedJobs, profile] = await Promise.all([
       this.prisma.userBehavior.findMany({
         where: { userID, action: 'view' },
         include: {
@@ -243,12 +243,12 @@ export class ProfileService {
         include: { job: { select: { jobType: true, title: true } } },
         take: 50,
       }),
-      this.prisma.applyHistory.findMany({
-        where: { userID },
-        include: { job: { select: { salary: true } } },
-        orderBy: { appliedAt: 'desc' },
-        take: 50,
-      }),
+      // this.prisma.applyHistory.findMany({
+      //   where: { userID },
+      //   include: { job: { select: { salary: true } } },
+      //   orderBy: { appliedAt: 'desc' },
+      //   take: 50,
+      // }),
       this.prisma.userProfile.findFirst({
         where: { userID },
         include: { industry: true },
@@ -310,13 +310,13 @@ export class ProfileService {
       });
     }
 
-    if (applies.length > 0) {
-      insights.push({
-        icon: '⚡',
-        text: `Bạn đã ứng tuyển ${applies.length} vị trí`,
-        source: `Tổng số lần apply`,
-      });
-    }
+    // if (applies.length > 0) {
+    //   insights.push({
+    //     icon: '⚡',
+    //     text: `Bạn đã ứng tuyển ${applies.length} vị trí`,
+    //     source: `Tổng số lần apply`,
+    //   });
+    // }
 
     if (topIndustries.length > 0) {
       const total = behaviors.length || 1;
