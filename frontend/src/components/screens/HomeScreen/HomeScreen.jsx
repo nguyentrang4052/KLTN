@@ -675,13 +675,21 @@ export default function HomeScreen() {
           <div className="hs-hero-right">
             <div className="hs-stat hs-stat-accent">
               <div className="hs-stat-ico">🎯</div>
-              <div className="hs-stat-n">{loadingStats ? '…' : (stats?.jobMatch?.count ?? '—')}</div>
-              <div className="hs-stat-l">Việc phù hợp hôm nay</div>
-              {/* {stats?.jobMatch?.delta && (
+              <div className="hs-stat-n">
+                {loadingStats ? '…'
+                  : recQuota?.quotaExceeded ? '—'
+                    : (stats?.jobMatch?.count ?? '—')}
+              </div>
+              <div className="hs-stat-l">
+                {recQuota?.quotaExceeded
+                  ? 'Hết lượt đề xuất hôm nay'
+                  : 'Việc phù hợp hôm nay'}
+              </div>
+              {!recQuota?.quotaExceeded && stats?.jobMatch?.delta && (
                 <div style={{ fontSize: 12, color: stats.jobMatch.delta.startsWith('+') ? '#4CAF50' : '#F44336' }}>
                   {stats.jobMatch.delta} so với hôm qua
                 </div>
-              )} */}
+              )}
             </div>
           </div>
         </div>
