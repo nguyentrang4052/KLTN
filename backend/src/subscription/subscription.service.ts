@@ -699,6 +699,16 @@ export class SubscriptionService {
       orderBy: { startedAt: 'desc' },
     });
 
-    return { activeSub, quota: activeSub?.quota ?? null };
+    let quota = activeSub?.quota ?? null;
+
+    // tìm quota trực tiếp cho user free
+    if (!quota) {
+      const month = this.currentMonth();
+      quota = await this.prisma.userQuota.findFirst({
+        where: { userID, month },
+      }) ?? null;
+    }
+
+    return { activeSub, quota };
   }
 }

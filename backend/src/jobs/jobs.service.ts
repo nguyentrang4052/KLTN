@@ -364,48 +364,40 @@ export class JobsService {
     });
 
     let newUsedToday = usedToday;
-    if (!isUnlimited && !quotaExceeded && wasRecomputed && recs.length > 0) {
-      if (quota) {
-        await this.prisma.userQuota.update({
-          where: { id: quota.id },
-          data: { jobSuggestUsedToday: { increment: 1 }, jobSuggestResetDate: today },
-        });
-      } else if (activeSub) {
-        await this.prisma.userQuota.create({
-          data: {
-            userID: user.userID,
-            month,
-            subscriptionID: activeSub.id,
-            jobSuggestPerDay,
-            jobSuggestUsedToday: 1,
-            jobSuggestResetDate: today,
-            cvAnalysisTotal: planLimits?.cvAnalysisPerMonth ?? 0,
-            cvMatchCheckTotal: planLimits?.cvMatchCheckCount ?? 0,
-            cvAnalysisUsed: 0,
-            cvMatchCheckUsed: 0,
-          },
-        });
+    if (!isUnlimited && !quotaExceeded && recs.length > 0) {
+      // Re-fetch để tránh race condition
+      const freshQuota = await this.prisma.userQuota.findFirst({
+        where: { userID: user.userID, month },
+      });
+      const freshUsed = freshQuota?.jobSuggestUsedToday ?? 0;
+
+      if (freshUsed < jobSuggestPerDay) {
+        if (freshQuota) {
+          await this.prisma.userQuota.update({
+            where: { id: freshQuota.id },
+            data: { jobSuggestUsedToday: { increment: 1 }, jobSuggestResetDate: today },
+          });
+        } else {
+          await this.prisma.userQuota.upsert({
+            where: { userID_month: { userID: user.userID, month } },
+            update: { jobSuggestUsedToday: { increment: 1 }, jobSuggestResetDate: today },
+            create: {
+              userID: user.userID,
+              month,
+              jobSuggestPerDay: 3,
+              jobSuggestUsedToday: 1,
+              jobSuggestResetDate: today,
+              cvAnalysisTotal: 0,
+              cvMatchCheckTotal: 0,
+              cvAnalysisUsed: 0,
+              cvMatchCheckUsed: 0,
+            },
+          });
+        }
+        newUsedToday = freshUsed + 1;
       } else {
-        await this.prisma.userQuota.upsert({
-          where: { userID_month: { userID: user.userID, month } },
-          update: {
-            jobSuggestUsedToday: { increment: 1 },
-            jobSuggestResetDate: today
-          },
-          create: {
-            userID: user.userID,
-            month,
-            jobSuggestPerDay: 3,
-            jobSuggestUsedToday: 1,
-            jobSuggestResetDate: today,
-            cvAnalysisTotal: 0,
-            cvMatchCheckTotal: 0,
-            cvAnalysisUsed: 0,
-            cvMatchCheckUsed: 0,
-          },
-        });
+        newUsedToday = freshUsed;
       }
-      newUsedToday = usedToday + 1;
     }
 
     return {
