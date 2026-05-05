@@ -1,6 +1,6 @@
 import { Injectable, forwardRef, Inject } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { NotificationGateway } from './notification.gateway';
+import { NotificationGateway } from '../websocket-gateway/notification.gateway';
 import { CreateNotificationDto } from '../dto/notification.dto';
 
 @Injectable()

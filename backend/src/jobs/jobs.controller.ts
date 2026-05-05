@@ -18,6 +18,7 @@ import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { OptionalJwtGuard } from '../guards/optional-jwt';
 import { GetUser } from 'src/auth/decorators/get-user.decorator';
 import type { JwtUser } from 'src/auth/interfaces/jwt-user.interface';
+import { JobsGateway } from 'src/websocket-gateway/jobs.gateway';
 
 interface RequestWithUser extends Request {
   user?: JwtUser;
@@ -28,6 +29,7 @@ export class JobsController {
   constructor(
     private readonly jobsService: JobsService,
     private readonly aiRecommendation: AIRecommendationService,
+    private readonly jobsGateway: JobsGateway,
   ) { }
 
   @Get()
@@ -90,6 +92,16 @@ export class JobsController {
   @Get('search-suggestions')
   async getSearchSuggestions(@Query('q') q: string) {
     return this.jobsService.getSearchSuggestions(q);
+  }
+
+  @Post('internal/broadcast-new-jobs')
+  broadcastNewJobs(
+    @Body('count') count: number,
+    @Body('secret') secret: string,
+  ) {
+    if (secret !== process.env.INTERNAL_SECRET) return;
+    this.jobsGateway.broadcastNewJobs(count);
+    return { ok: true };
   }
 
   @Get(':id')

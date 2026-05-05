@@ -6,11 +6,17 @@ import { RecommendationCron } from './recommendation.cron';
 import { GeminiModule } from '../gemini/gemini.module';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
+import { JobsGateway } from '../websocket-gateway/jobs.gateway';
 
 @Module({
   imports: [PrismaModule, ConfigModule, GeminiModule],
   controllers: [JobsController],
-  providers: [JobsService, AIRecommendationService, RecommendationCron],
-  exports: [JobsService, AIRecommendationService],
+  providers: [
+    JobsService,
+    AIRecommendationService,
+    RecommendationCron,
+    JobsGateway,
+  ],
+  exports: [JobsService, AIRecommendationService, JobsGateway],
 })
 export class JobsModule {}

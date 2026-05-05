@@ -3,7 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { NotificationScheduler } from './notification.scheduler';
 import { NotificationService } from './notification.service';
-import { NotificationGateway } from './notification.gateway';
+import { NotificationGateway } from '../websocket-gateway/notification.gateway';
 import { NotificationController } from './notification.controller';
 import { MailModule } from '../mail/mail.module';
 import { PrismaModule } from '../../prisma/prisma.module';
@@ -24,4 +24,4 @@ import { PrismaModule } from '../../prisma/prisma.module';
   controllers: [NotificationController],
   exports: [NotificationService],
 })
-export class NotificationModule {}
+export class NotificationModule { }
