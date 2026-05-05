@@ -438,11 +438,13 @@ export class JobsService {
     });
     if (!user) return;
 
+    if (action === 'apply') return;
+
     await this.prisma.userBehavior.create({
       data: { userID: user.userID, jobID, action },
     });
 
-    if (action === 'apply' || action === 'save') {
+    if (action === 'save') {
       await this.prisma.jobRecommendation.deleteMany({
         where: { userID: user.userID },
       });
@@ -792,13 +794,13 @@ export class JobsService {
 
   async saveSearchHistory(accountID: number, keyword: string) {
     await this.prisma.searchHistory.deleteMany({
-      where: { accountID, keyword },
+      where: { accountID, keyword, type: 'job' },
     });
     await this.prisma.searchHistory.create({
-      data: { accountID, keyword },
+      data: { accountID, keyword, type: 'job' },
     });
     const all = await this.prisma.searchHistory.findMany({
-      where: { accountID },
+      where: { accountID, type: 'job' },
       orderBy: { createdAt: 'desc' },
       select: { id: true },
     });
@@ -812,7 +814,7 @@ export class JobsService {
 
   async getSearchHistory(accountID: number) {
     const rows = await this.prisma.searchHistory.findMany({
-      where: { accountID },
+      where: { accountID, type: 'job' },
       orderBy: { createdAt: 'desc' },
       take: 8,
       select: { keyword: true },

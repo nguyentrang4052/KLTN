@@ -233,13 +233,13 @@ export class CompaniesService {
 
   async saveCompanySearchHistory(accountID: number, keyword: string) {
     await this.prisma.searchHistory.deleteMany({
-      where: { accountID, keyword },
+      where: { accountID, keyword, type: 'company' },
     });
     await this.prisma.searchHistory.create({
-      data: { accountID, keyword },
+      data: { accountID, keyword, type: 'company' },
     });
     const all = await this.prisma.searchHistory.findMany({
-      where: { accountID },
+      where: { accountID, type: 'company' },
       orderBy: { createdAt: 'desc' },
       select: { id: true },
     });
@@ -253,7 +253,7 @@ export class CompaniesService {
 
   async getCompanySearchHistory(accountID: number) {
     const rows = await this.prisma.searchHistory.findMany({
-      where: { accountID },
+      where: { accountID, type: 'company' },
       orderBy: { createdAt: 'desc' },
       take: 6,
       select: { keyword: true },

@@ -383,6 +383,7 @@ model SearchHistory {
   id        Int      @id @default(autoincrement())
   accountID Int
   keyword   String
+  type      String   @default("job") // "job" | "company"
   createdAt DateTime @default(now())
   account   Account  @relation(fields: [accountID], references: [accountID])
 

@@ -323,6 +323,24 @@ ${cvText}`;
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
+    private extractFirstJsonObject(text: string): string | null {
+        let start = text.indexOf('{');
+        if (start === -1) return null;
+
+        let depth = 0;
+
+        for (let i = start; i < text.length; i++) {
+            if (text[i] === '{') depth++;
+            if (text[i] === '}') depth--;
+
+            if (depth === 0) {
+                return text.substring(start, i + 1);
+            }
+        }
+
+        return null;
+    }
+
     private extractJsonFromResponse(text: string): any {
         // Bước 1: Làm sạch
         let cleaned = text
@@ -331,12 +349,20 @@ ${cvText}`;
             .trim();
 
         // Bước 2: Tìm JSON object (tìm cặp ngoặc nhọn ngoài cùng)
-        const firstBrace = cleaned.indexOf('{');
-        const lastBrace = cleaned.lastIndexOf('}');
+        // const firstBrace = cleaned.indexOf('{');
+        // const lastBrace = cleaned.lastIndexOf('}');
 
-        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-            cleaned = cleaned.substring(firstBrace, lastBrace + 1);
-        } else {
+
+        // if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        //     cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+        // } 
+
+        const firstJson = this.extractFirstJsonObject(cleaned);
+
+        if (firstJson) {
+            cleaned = firstJson;
+        }
+        else {
             // Nếu không tìm thấy cặp ngoặc, thử bắt bất kỳ JSON-like structure
             const match = cleaned.match(/\{[\s\S]*\}/);
             if (match) cleaned = match[0];
@@ -612,39 +638,39 @@ Chỉ trả về JSON, không markdown, không giải thích thêm.
     }
 
     async scoreJobs(prompt: string): Promise<any> {
-    try {
-      this.logger.log(`Scoring jobs with model: ${this.model}`);
-      const generativeModel = this.genAI.getGenerativeModel({
-        model: this.model,
-        generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: 8192,
-        },
-      });
+        try {
+            this.logger.log(`Scoring jobs with model: ${this.model}`);
+            const generativeModel = this.genAI.getGenerativeModel({
+                model: this.model,
+                generationConfig: {
+                    temperature: 0.1,
+                    maxOutputTokens: 8192,
+                },
+            });
 
-      const result = await generativeModel.generateContent(prompt);
-      const text = result.response.text();
+            const result = await generativeModel.generateContent(prompt);
+            const text = result.response.text();
 
-      this.logger.log('Job scoring response received');
-      return this.extractJsonFromResponse(text);
-    } catch (error: any) {
-      const statusCode =
-        error?.status ||
-        error?.response?.status ||
-        (error?.message?.includes('503') ? 503 : null) ||
-        (error?.message?.includes('429') ? 429 : null);
+            this.logger.log('Job scoring response received');
+            return this.extractJsonFromResponse(text);
+        } catch (error: any) {
+            const statusCode =
+                error?.status ||
+                error?.response?.status ||
+                (error?.message?.includes('503') ? 503 : null) ||
+                (error?.message?.includes('429') ? 429 : null);
 
-      this.logger.error('Gemini scoreJobs error:', {
-        statusCode,
-        message: error?.message,
-      });
+            this.logger.error('Gemini scoreJobs error:', {
+                statusCode,
+                message: error?.message,
+            });
 
-      throw new HttpException(
-        `Gemini API Error: ${error?.message || 'Unknown error'}`,
-        statusCode === 503
-          ? HttpStatus.SERVICE_UNAVAILABLE
-          : HttpStatus.BAD_REQUEST,
-      );
+            throw new HttpException(
+                `Gemini API Error: ${error?.message || 'Unknown error'}`,
+                statusCode === 503
+                    ? HttpStatus.SERVICE_UNAVAILABLE
+                    : HttpStatus.BAD_REQUEST,
+            );
+        }
     }
-  }
 }

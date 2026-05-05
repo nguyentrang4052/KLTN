@@ -15,15 +15,15 @@ export class AdminService {
 
   // ─── DASHBOARD ───────────────────────────────────────────
   async getStats() {
-    const [total, active, locked, pro] = await Promise.all([
+    const [total, active, locked, notFree] = await Promise.all([
       this.prisma.account.count({ where: { role: 'user' } }),
       this.prisma.account.count({ where: { role: 'user', active: true } }),
       this.prisma.account.count({ where: { role: 'user', active: false } }),
       this.prisma.userSubscription.count({
-        where: { status: 'active', plan: { name: { not: 'Free' } } },
+        where: { status: 'active', plan: { name: { not: 'free' } } },
       }),
     ]);
-    return { total, active, locked, pro };
+    return { total, active, locked, notFree };
   }
 
   async getRecentUsers() {
