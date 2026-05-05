@@ -230,4 +230,34 @@ export class CompaniesService {
       logo: c.companyLogo,
     }));
   }
+
+  async saveCompanySearchHistory(accountID: number, keyword: string) {
+    await this.prisma.searchHistory.deleteMany({
+      where: { accountID, keyword },
+    });
+    await this.prisma.searchHistory.create({
+      data: { accountID, keyword },
+    });
+    const all = await this.prisma.searchHistory.findMany({
+      where: { accountID },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    });
+    if (all.length > 10) {
+      const toDelete = all.slice(10).map((r) => r.id);
+      await this.prisma.searchHistory.deleteMany({
+        where: { id: { in: toDelete } },
+      });
+    }
+  }
+
+  async getCompanySearchHistory(accountID: number) {
+    const rows = await this.prisma.searchHistory.findMany({
+      where: { accountID },
+      orderBy: { createdAt: 'desc' },
+      take: 6,
+      select: { keyword: true },
+    });
+    return rows.map((r) => r.keyword);
+  }
 }
