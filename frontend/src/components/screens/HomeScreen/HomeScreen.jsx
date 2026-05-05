@@ -363,7 +363,7 @@ export default function HomeScreen() {
       alert('Lỗi: Không tìm thấy ID công việc.')
       return
     }
-    trackBehavior(job.jobID, 'click')
+    trackBehavior(job.jobID, 'view')
     navigate(`/home/job/${job.jobID}`, {
       state: { scrollY: currentScrollY, fromPath: location.pathname + location.search }
     })
