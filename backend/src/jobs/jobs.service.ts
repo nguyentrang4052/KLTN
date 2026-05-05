@@ -325,7 +325,7 @@ export class JobsService {
 
     let quota = activeSub?.quota ?? null;
 
-    if (quota && quota.jobSuggestResetDate !== today) {
+    if (quota && (quota.jobSuggestResetDate == null || quota.jobSuggestResetDate < today)) {
       quota = await this.prisma.userQuota.update({
         where: { id: quota.id },
         data: { jobSuggestUsedToday: 0, jobSuggestResetDate: today },
@@ -336,6 +336,13 @@ export class JobsService {
       quota = await this.prisma.userQuota.findFirst({
         where: { userID: user.userID, month },
       }) ?? null;
+
+      if (quota && (quota.jobSuggestResetDate == null || quota.jobSuggestResetDate < today)) {
+        quota = await this.prisma.userQuota.update({
+          where: { id: quota.id },
+          data: { jobSuggestUsedToday: 0, jobSuggestResetDate: today },
+        });
+      }
     }
 
     const planLimits = activeSub?.plan?.limits;
@@ -363,20 +370,18 @@ export class JobsService {
       },
     });
 
+    // Chỉ tính quota khi wasRecomputed = true
     let newUsedToday = usedToday;
-    if (!isUnlimited && !quotaExceeded && recs.length > 0) {
-      // Re-fetch để tránh race condition
-      const freshQuota = await this.prisma.userQuota.findFirst({
-        where: { userID: user.userID, month },
-      });
-      const freshUsed = freshQuota?.jobSuggestUsedToday ?? 0;
+    if (!isUnlimited && !quotaExceeded && recs.length > 0 && wasRecomputed) {
+      const currentUsed = quota?.jobSuggestUsedToday ?? 0;
 
-      if (freshUsed < jobSuggestPerDay) {
-        if (freshQuota) {
+      if (currentUsed < jobSuggestPerDay) {
+        if (quota) {
           await this.prisma.userQuota.update({
-            where: { id: freshQuota.id },
+            where: { id: quota.id },
             data: { jobSuggestUsedToday: { increment: 1 }, jobSuggestResetDate: today },
           });
+          newUsedToday = currentUsed + 1;
         } else {
           await this.prisma.userQuota.upsert({
             where: { userID_month: { userID: user.userID, month } },
@@ -393,10 +398,10 @@ export class JobsService {
               cvMatchCheckUsed: 0,
             },
           });
+          newUsedToday = 1;
         }
-        newUsedToday = freshUsed + 1;
       } else {
-        newUsedToday = freshUsed;
+        newUsedToday = currentUsed;
       }
     }
 

@@ -73,8 +73,11 @@ export class AIRecommendationService {
       select: { createdAt: true },
     });
 
-    const ONE_HOUR = 1 * 60 * 1000;
-    if (latest && Date.now() - latest.createdAt.getTime() < ONE_HOUR) {
+    const ONE_HOUR = 60 * 60 * 1000;
+    const diff = latest ? Date.now() - latest.createdAt.getTime() : null;
+    this.logger.log(`Time diff: ${diff}ms, ONE_HOUR: ${ONE_HOUR}ms`);
+
+    if (latest && diff !== null && diff >= 0 && diff < ONE_HOUR) {
       this.logger.log(`Skipping recompute — data is fresh (userID=${userID})`);
       return false;
     }
@@ -145,9 +148,9 @@ export class AIRecommendationService {
           ? 70
           : 0;
 
-    // 4. Salary score (15%)
-    //    So sánh lương kỳ vọng của user với lương job
-    //    Job lương >= 80% kỳ vọng = 100, >= 60% = 60, < 60% = 20, không có data = 50
+    // Salary score
+    // So sánh lương kỳ vọng của user với lương job
+    // Job lương >= 80% kỳ vọng = 100, >= 60% = 60, < 60% = 20, không có data = 50
     const expectedNum = this.parseSalaryToNumber(ctx.profile.expectedSalary);
     const jobSalaryNum = this.parseSalaryToNumber(job.salary);
     let salaryScore: number;
@@ -158,8 +161,8 @@ export class AIRecommendationService {
       salaryScore = ratio >= 0.8 ? 100 : ratio >= 0.6 ? 60 : 20;
     }
 
-    // 5. Behavior score (10%)
-    //    Job đã lưu = 100, job đã xem (title tương tự) = 70, không có = 0
+    // Behavior score
+    // Job đã lưu = 100, job đã xem (title tương tự) = 70, không có = 0
     const titleLower = (job.title ?? '').toLowerCase();
     const isSaved = ctx.behaviors.savedJobTitles.some((t) =>
       titleLower.includes(t.toLowerCase()) || t.toLowerCase().includes(titleLower),
@@ -179,9 +182,6 @@ export class AIRecommendationService {
     return Math.round(Math.min(100, Math.max(0, total)));
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Lấy con số từ chuỗi lương (VD: "15 triệu" → 15, "1000$" → 1000)
-  // ─────────────────────────────────────────────────────────────
   private parseSalaryToNumber(salary: string | null): number | null {
     if (!salary) return null;
     const digits = salary.replace(/[^\d]/g, '');
@@ -189,14 +189,10 @@ export class AIRecommendationService {
     return isNaN(num) || num === 0 ? null : num;
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Tính điểm hàng loạt → lọc >= 50 → top 20 → Gemini viết reason
-  // ─────────────────────────────────────────────────────────────
   private async scoreJobs(
     ctx: UserContext,
     jobs: JobCandidate[],
   ): Promise<AIScoreResult[]> {
-    // Bước 1: Tính điểm bằng công thức, lọc và sắp xếp
     const scored = jobs
       .map((job) => ({ job, score: this.computeMatchScore(ctx, job) }))
       .filter(({ score }) => score >= 50)
@@ -209,7 +205,7 @@ export class AIRecommendationService {
       `Formula scored ${scored.length} jobs >= 50% for AI reason generation`,
     );
 
-    // Bước 2: Gửi top jobs lên Gemini chỉ để lấy reason (không tính điểm nữa)
+    // Gửi top jobs lên Gemini chỉ để lấy reason
     try {
       const reasons = await this.fetchReasonsFromAI(ctx, scored);
 
@@ -224,7 +220,7 @@ export class AIRecommendationService {
         'Gemini reason generation failed — using default reasons',
         err?.message,
       );
-      // Fallback: vẫn dùng điểm công thức, chỉ reason là mặc định
+      // vẫn dùng điểm công thức, chỉ reason là mặc định
       return scored.map(({ job, score }) => ({
         jobID: job.jobID,
         matchPercent: score,
@@ -233,9 +229,6 @@ export class AIRecommendationService {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Gọi Gemini CHỈ để viết reason — không để Gemini tính điểm
-  // ─────────────────────────────────────────────────────────────
   private async fetchReasonsFromAI(
     ctx: UserContext,
     scored: { job: JobCandidate; score: number }[],
@@ -281,9 +274,6 @@ ${jobsBlock}
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Reason mặc định khi Gemini lỗi — dựa vào thành phần cao nhất
-  // ─────────────────────────────────────────────────────────────
   private buildDefaultReason(
     ctx: UserContext,
     job: JobCandidate,
@@ -311,9 +301,6 @@ ${jobsBlock}
     }
   }
 
-  // ─────────────────────────────────────────────────────────────
-  //  Các method giữ nguyên từ bản cũ
-  // ─────────────────────────────────────────────────────────────
   private async buildUserContext(userID: number): Promise<UserContext> {
     const [skillRows, profileRow, behaviorRows, savedRows] =
       await Promise.all([
