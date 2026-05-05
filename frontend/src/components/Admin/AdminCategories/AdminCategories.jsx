@@ -148,7 +148,7 @@ export default function AdminCategories() {
         <div className="adm-cats__left">
           <div className="adm-cats__left-head">
             <span className="adm-card__title">Lĩnh vực</span>
-            <button className="adm-add-btn-sm" onClick={() => { setForm({}); setModal('industry') }}>+</button>
+            {/* <button className="adm-add-btn-sm" onClick={() => { setForm({}); setModal('industry') }}>+</button> */}
           </div>
 
           <button
@@ -189,10 +189,10 @@ export default function AdminCategories() {
                   {currentIndustry ? `Kỹ năng — ${currentIndustry.name}` : 'Tất cả kỹ năng'}
                 </span>
               </div>
-              <button className="adm-add-btn"
+              {/* <button className="adm-add-btn"
                 onClick={() => { setForm({ industryId: selectedInd || '' }); setModal('skill') }}>
                 + Thêm kỹ năng
-              </button>
+              </button> */}
             </div>
 
             <div className="adm-cats__search-wrap">

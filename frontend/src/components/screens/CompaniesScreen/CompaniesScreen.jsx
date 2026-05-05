@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import './CompaniesScreen.css'
 import { createPortal } from 'react-dom'
 import { getToken } from '../../../utils/auth'
+import { useJobsSocket } from '../../../hook/useJobsSocket'
 
 const API = 'http://localhost:3000/api'
 
@@ -285,6 +286,15 @@ export default function CompaniesScreen() {
     (keyword.trim() && suggestions.length > 0) ||
     (!keyword.trim() && recentSearches.length > 0)
   )
+
+  useJobsSocket(useCallback(() => {
+    fetch(`${API}/companies/top`)
+      .then(r => r.json())
+      .then(data => setTopCompanies(Array.isArray(data) ? data : []))
+      .catch(console.error)
+
+    fetchCompanies()
+  }, [fetchCompanies]))
 
   return (
     <div className="cs-screen">

@@ -281,7 +281,6 @@ function JobSearchScreen() {
         return newData;
       });
       setMeta(data.meta ?? { total: 0, totalPages: 1 });
-      setMeta(data.meta ?? { total: 0, totalPages: 1 });
     } catch (err) {
       console.error(err);
     } finally {
@@ -387,9 +386,9 @@ function JobSearchScreen() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`, 
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ keyword: alertKeyword.trim() }), 
+        body: JSON.stringify({ keyword: alertKeyword.trim() }),
       });
       const data = await res.json();
       setAlertMsg(data.message ?? 'Đăng ký thành công!');
