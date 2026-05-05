@@ -121,6 +121,7 @@ export class CompaniesService {
 
   async getTopCompanies(limit = 5) {
     const now = new Date();
+
     const companies = await this.prisma.company.findMany({
       include: {
         _count: {
@@ -129,16 +130,22 @@ export class CompaniesService {
           },
         },
       },
-      orderBy: { jobs: { _count: 'desc' } },
-      take: limit,
+      where: {
+        jobs: {
+          some: { isActive: true, deadline: { gt: now } },
+        },
+      },
     });
 
-    return companies.map((c) => ({
-      companyID: c.companyID,
-      name: c.companyName,
-      logo: c.companyLogo,
-      jobCount: c._count.jobs,
-    }));
+    return companies
+      .map((c) => ({
+        companyID: c.companyID,
+        name: c.companyName,
+        logo: c.companyLogo,
+        jobCount: c._count.jobs,
+      }))
+      .sort((a, b) => b.jobCount - a.jobCount)
+      .slice(0, limit);
   }
 
   async getLocations() {
