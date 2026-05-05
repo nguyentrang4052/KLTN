@@ -105,10 +105,11 @@ export default function CompaniesScreen() {
   const [loadingCompanies, setLoadingCompanies] = useState(false)
 
   const [suggestions, setSuggestions] = useState([])
-  const [recentSearches, setRecentSearches] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('company_search_history') || '[]') }
-    catch { return [] }
-  })
+  // const [recentSearches, setRecentSearches] = useState(() => {
+  //   try { return JSON.parse(localStorage.getItem('company_search_history') || '[]') }
+  //   catch { return [] }
+  // })
+  const [recentSearches, setRecentSearches] = useState([])
   const [showDropdown, setShowDropdown] = useState(false)
   const searchInputRef = useRef(null)
   const [searchPos, setSearchPos] = useState({ top: 0, left: 0, width: 0 })
@@ -221,14 +222,48 @@ export default function CompaniesScreen() {
     return pages
   }
 
-  const saveRecentSearch = (kw) => {
+  useEffect(() => {
+    if (token) {
+      fetch(`${API}/companies/search-history`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(r => r.json())
+        .then(data => setRecentSearches(Array.isArray(data) ? data : []))
+        .catch(() => {
+          try { setRecentSearches(JSON.parse(localStorage.getItem('company_search_history') || '[]')) }
+          catch { }
+        })
+    } else {
+      try { setRecentSearches(JSON.parse(localStorage.getItem('company_search_history') || '[]')) }
+      catch { }
+    }
+  }, [token])
+
+  const saveRecentSearch = async (kw) => {
     if (!kw?.trim()) return
-    setRecentSearches(prev => {
-      const filtered = prev.filter(k => k !== kw.trim())
-      const updated = [kw.trim(), ...filtered].slice(0, 6)
-      localStorage.setItem('company_search_history', JSON.stringify(updated))
-      return updated
-    })
+    if (token) {
+      try {
+        await fetch(`${API}/companies/search-history`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ keyword: kw.trim() }),
+        })
+        setRecentSearches(prev => {
+          const filtered = prev.filter(k => k !== kw.trim())
+          return [kw.trim(), ...filtered].slice(0, 6)
+        })
+      } catch { }
+    } else {
+      setRecentSearches(prev => {
+        const filtered = prev.filter(k => k !== kw.trim())
+        const updated = [kw.trim(), ...filtered].slice(0, 6)
+        localStorage.setItem('company_search_history', JSON.stringify(updated))
+        return updated
+      })
+    }
   }
 
   useEffect(() => {
@@ -296,6 +331,8 @@ export default function CompaniesScreen() {
     fetchCompanies()
   }, [fetchCompanies]))
 
+
+
   return (
     <div className="cs-screen">
 
@@ -355,7 +392,7 @@ export default function CompaniesScreen() {
                 <button style={{
                   position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
                   background: 'none', border: 'none', cursor: 'pointer',
-                  color: 'rgba(255,255,255,.5)', fontSize: 18, lineHeight: 1, padding: '0 4px',
+                  color: '#9A8D80', fontSize: 18, lineHeight: 1, padding: '0 4px',
                 }} onClick={() => { setKeyword(''); setSuggestions([]); setShowDropdown(false) }}>×</button>
               )}
             </div>
