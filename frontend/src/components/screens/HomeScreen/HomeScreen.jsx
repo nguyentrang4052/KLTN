@@ -287,7 +287,7 @@ export default function HomeScreen() {
         .finally(() => setLoadingRecs(false))
     }
     fetchRecs()
-    const interval = setInterval(fetchRecs, 1 * 60 * 1000)
+    const interval = setInterval(fetchRecs, 60 * 60 * 1000)
     return () => clearInterval(interval)
   }, [token])
 
@@ -685,11 +685,11 @@ export default function HomeScreen() {
                   ? 'Hết lượt đề xuất hôm nay'
                   : 'Việc phù hợp hôm nay'}
               </div>
-              {!recQuota?.quotaExceeded && stats?.jobMatch?.delta && (
+              {/* {!recQuota?.quotaExceeded && stats?.jobMatch?.delta && (
                 <div style={{ fontSize: 12, color: stats.jobMatch.delta.startsWith('+') ? '#4CAF50' : '#F44336' }}>
                   {stats.jobMatch.delta} so với hôm qua
                 </div>
-              )}
+              )} */}
             </div>
           </div>
         </div>

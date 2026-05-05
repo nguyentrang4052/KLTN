@@ -22,11 +22,9 @@ import { CVStoreProvider } from './store/cvStore'
 
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <CVStoreProvider>
-        <App />
-      </CVStoreProvider>
-    </BrowserRouter>
-  </React.StrictMode>
+  <BrowserRouter>
+    <CVStoreProvider>
+      <App />
+    </CVStoreProvider>
+  </BrowserRouter>
 )
