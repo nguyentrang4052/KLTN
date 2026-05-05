@@ -69,15 +69,13 @@ export class AIRecommendationService {
 
     const latest = await this.prisma.jobRecommendation.findFirst({
       where: { userID },
-      orderBy: { createdAt: 'desc' },
-      select: { createdAt: true },
+      orderBy: { updatedAt: 'desc' },
+      select: { updatedAt: true },
     });
 
-    const ONE_HOUR = 60 * 60 * 1000;
-    const diff = latest ? Date.now() - latest.createdAt.getTime() : null;
-    this.logger.log(`Time diff: ${diff}ms, ONE_HOUR: ${ONE_HOUR}ms`);
+    const ONE_HOUR_AGO = new Date(Date.now() - 60 * 60 * 1000);
 
-    if (latest && diff !== null && diff >= 0 && diff < ONE_HOUR) {
+    if (latest && latest.updatedAt > ONE_HOUR_AGO) {
       this.logger.log(`Skipping recompute — data is fresh (userID=${userID})`);
       return false;
     }
@@ -279,21 +277,73 @@ ${jobsBlock}
     job: JobCandidate,
     score: number,
   ): string {
-    const userSkills = new Set(ctx.skills.map((s) => s.toLowerCase()));
-    const matchedSkills = job.skills.filter((s) => userSkills.has(s.toLowerCase()));
+    const parts: string[] = [];
 
+    const userSkills = new Set(ctx.skills.map((s) => s.toLowerCase()));
+    const matchedSkills = job.skills.filter((s) =>
+      userSkills.has(s.toLowerCase()),
+    );
     if (matchedSkills.length > 0) {
-      return `Phù hợp ${score}% — khớp kỹ năng: ${matchedSkills.slice(0, 3).join(', ')}.`;
+      parts.push(`khớp kỹ năng ${matchedSkills.slice(0, 3).join(', ')}`);
     }
-    if (ctx.profile.industry === job.industryName) {
-      return `Phù hợp ${score}% — đúng ngành ${job.industryName}.`;
+
+    if (ctx.profile.industry === job.industryName && job.industryName) {
+      parts.push(`đúng ngành ${job.industryName}`);
+    } else if (
+      ctx.behaviors.recentViewedIndustries.includes(job.industryName ?? '')
+    ) {
+      parts.push(`ngành bạn quan tâm`);
     }
-    return `Phù hợp ${score}% dựa trên hồ sơ và hành vi của bạn.`;
+
+    if (ctx.profile.careerLevel && job.experienceYear) {
+      const userLvlIdx = CAREER_LEVELS.findIndex((l) =>
+        ctx.profile.careerLevel!.toLowerCase().includes(l),
+      );
+      const jobLvlIdx = CAREER_LEVELS.findIndex((l) =>
+        job.experienceYear!.toLowerCase().includes(l),
+      );
+      if (
+        userLvlIdx !== -1 &&
+        jobLvlIdx !== -1 &&
+        Math.abs(userLvlIdx - jobLvlIdx) <= 1
+      ) {
+        parts.push(`phù hợp cấp bậc ${job.experienceYear}`);
+      }
+    }
+
+    const expectedNum = this.parseSalaryToNumber(ctx.profile.expectedSalary);
+    const jobSalaryNum = this.parseSalaryToNumber(job.salary);
+    if (expectedNum && jobSalaryNum && jobSalaryNum >= expectedNum * 0.8) {
+      parts.push(`mức lương phù hợp kỳ vọng`);
+    }
+
+    if (
+      ctx.behaviors.savedJobTitles.some((t) =>
+        (job.title ?? '').toLowerCase().includes(t.toLowerCase()),
+      )
+    ) {
+      parts.push(`tương tự việc bạn đã lưu`);
+    } else if (
+      ctx.behaviors.recentViewedTitles.some((t) =>
+        (job.title ?? '').toLowerCase().includes(t.toLowerCase()),
+      )
+    ) {
+      parts.push(`tương tự việc bạn đã xem`);
+    }
+
+    if (parts.length === 0) {
+      return `Phù hợp ${score}% dựa trên hồ sơ của bạn.`;
+    }
+
+    return `Phù hợp ${score}% — ${parts.join(', ')}.`;
   }
 
   private parseReasonArray(raw: string): { jobID: number; reason: string }[] {
     try {
-      const clean = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const clean = raw
+        .replace(/```json/gi, '')
+        .replace(/```/g, '')
+        .trim();
       const arr = JSON.parse(clean);
       return Array.isArray(arr) ? arr : [];
     } catch {
@@ -302,32 +352,33 @@ ${jobsBlock}
   }
 
   private async buildUserContext(userID: number): Promise<UserContext> {
-    const [skillRows, profileRow, behaviorRows, savedRows] =
-      await Promise.all([
-        this.prisma.userSkill.findMany({
-          where: { userID },
-          include: { skill: { select: { name: true } } },
-        }),
-        this.prisma.userProfile.findFirst({
-          where: { userID },
-          include: { industry: { select: { name: true } } },
-          orderBy: { updatedAt: 'desc' },
-        }),
-        this.prisma.userBehavior.findMany({
-          where: { userID },
-          include: {
-            job: { select: { title: true, industry: { select: { name: true } } } },
+    const [skillRows, profileRow, behaviorRows, savedRows] = await Promise.all([
+      this.prisma.userSkill.findMany({
+        where: { userID },
+        include: { skill: { select: { name: true } } },
+      }),
+      this.prisma.userProfile.findFirst({
+        where: { userID },
+        include: { industry: { select: { name: true } } },
+        orderBy: { updatedAt: 'desc' },
+      }),
+      this.prisma.userBehavior.findMany({
+        where: { userID },
+        include: {
+          job: {
+            select: { title: true, industry: { select: { name: true } } },
           },
-          orderBy: { createdAt: 'desc' },
-          take: 30,
-        }),
-        this.prisma.savedJob.findMany({
-          where: { userID },
-          include: { job: { select: { title: true } } },
-          orderBy: { savedAt: 'desc' },
-          take: 10,
-        }),
-      ]);
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 30,
+      }),
+      this.prisma.savedJob.findMany({
+        where: { userID },
+        include: { job: { select: { title: true } } },
+        orderBy: { savedAt: 'desc' },
+        take: 10,
+      }),
+    ]);
 
     const recentViewedTitles: string[] = [
       ...new Set(
@@ -404,13 +455,13 @@ ${jobsBlock}
       orConditions.length > 0
         ? {
           isActive: true,
-          deadline: { gt: new Date() },
-          OR: orConditions,
-        }
+            deadline: { gt: new Date() },
+            OR: orConditions,
+          }
         : {
-          isActive: true,
-          deadline: { gt: new Date() },
-        };
+            isActive: true,
+            deadline: { gt: new Date() },
+          };
 
     const jobs = await this.prisma.job.findMany({
       where,
@@ -452,7 +503,11 @@ ${jobsBlock}
       validJobIDs.push(s.jobID);
       await this.prisma.jobRecommendation.upsert({
         where: { userID_jobID: { userID, jobID: s.jobID } },
-        update: { matchPercent: s.matchPercent, reason: s.reason },
+        update: {
+          matchPercent: s.matchPercent,
+          reason: s.reason,
+          // createdAt: new Date(),
+        },
         create: {
           userID,
           jobID: s.jobID,
@@ -473,15 +528,23 @@ ${jobsBlock}
 
   private buildUserBlock(ctx: UserContext): string {
     const lines: string[] = [];
-    if (ctx.profile.jobTitle) lines.push(`- Vị trí mong muốn: ${ctx.profile.jobTitle}`);
-    if (ctx.profile.careerLevel) lines.push(`- Cấp bậc: ${ctx.profile.careerLevel}`);
-    if (ctx.profile.experienceYear) lines.push(`- Kinh nghiệm: ${ctx.profile.experienceYear}`);
-    if (ctx.profile.industry) lines.push(`- Ngành ưu tiên: ${ctx.profile.industry}`);
-    if (ctx.profile.expectedSalary) lines.push(`- Lương kỳ vọng: ${ctx.profile.expectedSalary}`);
-    if (ctx.profile.workingType) lines.push(`- Hình thức làm việc: ${ctx.profile.workingType}`);
+    if (ctx.profile.jobTitle)
+      lines.push(`- Vị trí mong muốn: ${ctx.profile.jobTitle}`);
+    if (ctx.profile.careerLevel)
+      lines.push(`- Cấp bậc: ${ctx.profile.careerLevel}`);
+    if (ctx.profile.experienceYear)
+      lines.push(`- Kinh nghiệm: ${ctx.profile.experienceYear}`);
+    if (ctx.profile.industry)
+      lines.push(`- Ngành ưu tiên: ${ctx.profile.industry}`);
+    if (ctx.profile.expectedSalary)
+      lines.push(`- Lương kỳ vọng: ${ctx.profile.expectedSalary}`);
+    if (ctx.profile.workingType)
+      lines.push(`- Hình thức làm việc: ${ctx.profile.workingType}`);
     if (ctx.skills.length) lines.push(`- Kỹ năng: ${ctx.skills.join(', ')}`);
     if (ctx.behaviors.recentViewedTitles.length)
-      lines.push(`- Jobs đã xem: ${ctx.behaviors.recentViewedTitles.join(', ')}`);
+      lines.push(
+        `- Jobs đã xem: ${ctx.behaviors.recentViewedTitles.join(', ')}`,
+      );
     if (ctx.behaviors.savedJobTitles.length)
       lines.push(`- Jobs đã lưu: ${ctx.behaviors.savedJobTitles.join(', ')}`);
     return lines.join('\n');
