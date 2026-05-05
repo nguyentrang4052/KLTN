@@ -1,0 +1,122 @@
+/* ── TermsPage.css ── */
+
+.tp-root {
+  background: var(--ink);
+  min-height: 100vh;
+  font-family: 'Roboto', serif;
+}
+
+/* HERO */
+.tp-hero {
+  position: relative;
+  overflow: hidden;
+  background: var(--ink);
+  padding: 72px 64px 80px;
+}
+
+.tp-hero-inner {
+  position: relative;
+  z-index: 10;
+  max-width: 620px;
+}
+
+.tp-badge-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.tp-version-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(192,65,42,0.1);
+  border: 1px solid rgba(192,65,42,0.25);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 12px;
+  color: var(--rust2);
+  font-weight: 600;
+}
+
+/* WARNING */
+.tp-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: rgba(192,65,42,0.06);
+  border: 1px solid rgba(192,65,42,0.2);
+  border-radius: 14px;
+  padding: 18px 22px;
+}
+
+.tp-warning-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.tp-warning-text {
+  font-size: 14px;
+  color: var(--ink3);
+  line-height: 1.75;
+}
+
+.tp-warning-text strong {
+  color: var(--rust2);
+  font-weight: 700;
+}
+
+/* TERMS GRID */
+.tp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.tp-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px 26px;
+  transition: border-color 0.22s, transform 0.22s, box-shadow 0.22s;
+}
+
+.tp-card:hover {
+  border-color: var(--rust);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.07);
+}
+
+.tp-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.tp-card-icon {
+  width: 40px;
+  height: 40px;
+  background: rgba(192,65,42,0.08);
+  border: 1px solid rgba(192,65,42,0.15);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.tp-card-text {
+  font-size: 13px;
+  color: var(--ink3);
+  line-height: 1.8;
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .tp-hero { padding: 56px 24px 64px; }
+  .tp-grid { grid-template-columns: 1fr; }
+}
