@@ -162,126 +162,95 @@ class TopCVCrawler(BaseCrawler):
         return ["sourceLink"]
 
     # =========================
+    # HARDCODED CATEGORIES (từ DOM topcv.vn - tránh Cloudflare)
+    # Cập nhật lại nếu TopCV thay đổi cấu trúc URL.
+    # =========================
+    STATIC_CATEGORIES = [
+        {"title": "Kinh doanh - Bán hàng",                                    "url": "https://www.topcv.vn/tim-viec-lam-kinh-doanh-ban-hang-cr1"},
+        {"title": "Marketing - PR - Quảng cáo",                               "url": "https://www.topcv.vn/tim-viec-lam-marketing-pr-quang-cao-cr92"},
+        {"title": "Chăm sóc khách hàng (Customer Service) - Vận hành",        "url": "https://www.topcv.vn/tim-viec-lam-cham-soc-khach-hang-customer-service-van-hanh-cr158"},
+        {"title": "Nhân sự - Hành chính - Pháp chế",                          "url": "https://www.topcv.vn/tim-viec-lam-nhan-su-hanh-chinh-phap-che-cr177"},
+        {"title": "Công nghệ Thông tin",                                       "url": "https://www.topcv.vn/tim-viec-lam-cong-nghe-thong-tin-cr257"},
+        {"title": "Tài chính - Ngân hàng - Bảo hiểm",                         "url": "https://www.topcv.vn/tim-viec-lam-tai-chinh-ngan-hang-bao-hiem-cr206"},
+        {"title": "Bất động sản",                                              "url": "https://www.topcv.vn/tim-viec-lam-bat-dong-san-cr333"},
+        {"title": "Kế toán - Kiểm toán - Thuế",                               "url": "https://www.topcv.vn/tim-viec-lam-ke-toan-kiem-toan-thue-cr392"},
+        {"title": "Sản xuất",                                                  "url": "https://www.topcv.vn/tim-viec-lam-san-xuat-cr417"},
+        {"title": "Giáo dục - Đào tạo",                                        "url": "https://www.topcv.vn/tim-viec-lam-giao-duc-dao-tao-cr477"},
+        {"title": "Bán lẻ - Dịch vụ đời sống",                                "url": "https://www.topcv.vn/tim-viec-lam-ban-le-dich-vu-doi-song-cr544"},
+        {"title": "Phim và truyền hình - Báo chí - Xuất bản",                 "url": "https://www.topcv.vn/tim-viec-lam-phim-va-truyen-hinh-bao-chi-xuat-ban-cr612"},
+        {"title": "Điện - Điện tử - Viễn thông",                              "url": "https://www.topcv.vn/tim-viec-lam-dien-dien-tu-vien-thong-cr644"},
+        {"title": "Logistics - Thu mua - Kho - Vận tải",                       "url": "https://www.topcv.vn/tim-viec-lam-logistics-thu-mua-kho-van-tai-cr711"},
+        {"title": "Tư vấn chuyên môn",                                         "url": "https://www.topcv.vn/tim-viec-lam-tu-van-chuyen-mon-cr750"},
+        {"title": "Dược - Y tế - Sức khoẻ - Công nghệ sinh học",              "url": "https://www.topcv.vn/tim-viec-lam-duoc-y-te-suc-khoe-cong-nghe-sinh-hoc-cr781"},
+        {"title": "Thiết kế",                                                   "url": "https://www.topcv.vn/tim-viec-lam-thiet-ke-cr826"},
+        {"title": "Nhà hàng - Khách sạn - Du lịch",                            "url": "https://www.topcv.vn/tim-viec-lam-nha-hang-khach-san-du-lich-cr857"},
+        {"title": "Năng lượng - Môi trường - Nông nghiệp",                     "url": "https://www.topcv.vn/tim-viec-lam-nang-luong-moi-truong-nong-nghiep-cr883"},
+        {"title": "Nhóm nghề khác",                                             "url": "https://www.topcv.vn/tim-viec-lam-nhom-nghe-khac-cr899"},
+    ]
+
+    # =========================
     # STEP 1: CATEGORIES
     # =========================
     async def get_categories(self, query: str = "") -> list[dict]:
-        ctx, page = await self._new_page()
+        """
+        Trả về categories từ danh sách tĩnh (tránh Cloudflare block khi dùng Playwright).
+        Thử fetch live từ curl_cffi trước; nếu lỗi/bị block thì fallback về STATIC_CATEGORIES.
+        """
         categories = []
         seen = set()
 
+        # === THỬ LẤY LIVE TỪ CURL_CFFI ===
         try:
-            print("[TopCV] Lấy cookies sạch bằng curl_cffi trước...")
-            
-            # === BƯỚC 1: Dùng curl_cffi để bypass Cloudflare, lấy cookies ===
-            try:
-                session = curl_requests.Session(impersonate="chrome120")
-                resp = session.get(
-                    BASE_URL,
-                    headers={
-                        "Accept-Language": "vi-VN,vi;q=0.9",
-                        "Referer": "https://www.google.com/",
-                    },
-                    timeout=20
-                )
-                
-                # Lấy cookies từ session
-                cookies = []
-                for cookie in session.cookies.jar:
-                    cookies.append({
-                        "name": cookie.name,
-                        "value": cookie.value,
-                        "domain": cookie.domain or ".topcv.vn",
-                        "path": cookie.path or "/",
-                    })
-                
-                # Add cookies vào Playwright context
-                if cookies:
-                    await ctx.add_cookies(cookies)
-                    print(f"[TopCV] Đã add {len(cookies)} cookies từ curl_cffi")
-                    
-            except Exception as e:
-                print(f"[TopCV] curl_cffi lỗi: {e}")
+            print("[TopCV] Thử lấy categories từ curl_cffi...")
+            session = curl_requests.Session(impersonate="chrome120")
+            resp = session.get(
+                BASE_URL,
+                headers={
+                    "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8",
+                    "Referer": "https://www.google.com/",
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                },
+                timeout=20,
+            )
 
-            # === BƯỚC 2: Dùng Playwright với cookies sạch để lấy categories ===
-            await self._rate_limit()
-            await page.goto(BASE_URL, wait_until="domcontentloaded", timeout=30000)
+            if resp.status_code == 200 and not any(x in resp.text for x in CLOUDFLARE_MARKERS):
+                soup = BeautifulSoup(resp.text, "html.parser")
+                for a in soup.select(".top-category--item h3 a"):
+                    title = a.get_text(strip=True)
+                    href = a.get("href")
+                    if title and href:
+                        url = urljoin(BASE_URL, href)
+                        if url not in seen:
+                            seen.add(url)
+                            categories.append({"title": title, "url": url})
 
-            # Đợi element
-            try:
-                await page.wait_for_selector(".top-category--item h3 a", state="attached", timeout=10000)
-            except Exception as e:
-                print(f"[TopCV] Không tìm thấy selector: {e}")
-                # Thử screenshot xem có gì
-                await page.screenshot(path="/mnt/agents/output/topcv_debug.png", full_page=True)
-                print("[TopCV] Đã lưu screenshot: /mnt/agents/output/topcv_debug.png")
-
-            # Scroll xuống trigger lazy load
-            await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-            await page.wait_for_timeout(500)
-
-            # Scroll carousel hết nếu có
-            for _ in range(20):
-                try:
-                    next_btn = page.locator(".btn-next.btn-navigation")
-                    if await next_btn.count() == 0:
-                        break
-                    class_attr = await next_btn.get_attribute("class") or ""
-                    aria_disabled = await next_btn.get_attribute("aria-disabled")
-                    if "disabled" in class_attr or aria_disabled == "true":
-                        break
-                    await next_btn.click()
-                    await page.wait_for_timeout(500)
-                except:
-                    break
-
-            # Đợi DOM stable
-            try:
-                await page.wait_for_function(
-                    "() => document.querySelectorAll('.top-category--item h3 a').length > 5",
-                    timeout=10000
-                )
-            except:
-                print("[TopCV] Warning: Không đủ 5 items sau khi scroll")
-
-            # Lấy data
-            data = await page.evaluate("""
-                () => Array.from(document.querySelectorAll('.top-category--item h3 a'))
-                    .map(a => ({
-                        title: a.innerText.trim(),
-                        href: a.getAttribute('href')
-                    }))
-                    .filter(x => x.href && x.title)
-            """)
-
-            print(f"[TopCV] Tìm thấy {len(data)} items từ DOM")
-
-            for item in data:
-                title = item.get("title")
-                href = item.get("href")
-                if href:
-                    url = urljoin(BASE_URL, href)
-                    if url not in seen:
-                        seen.add(url)
-                        categories.append({"title": title, "url": url})
+                if categories:
+                    print(f"[TopCV] ✅ curl_cffi lấy được {len(categories)} categories")
+                else:
+                    print("[TopCV] ⚠️ curl_cffi OK nhưng không parse được categories")
+            else:
+                print(f"[TopCV] ⚠️ curl_cffi status={resp.status_code} hoặc bị Cloudflare")
 
         except Exception as e:
-            print(f"[TopCV] Lỗi get_categories: {e}")
+            print(f"[TopCV] curl_cffi lỗi: {e}")
 
-        finally:
-            await self._save_cookies(ctx)
-            await ctx.close()
+        # === FALLBACK VỀ STATIC NẾU LIVE TRỐNG ===
+        if not categories:
+            print("[TopCV] Dùng STATIC_CATEGORIES làm fallback")
+            categories = list(self.STATIC_CATEGORIES)
 
-        # Filter theo query
+        # === FILTER THEO QUERY ===
         if query:
             q = query.lower()
-            categories = [c for c in categories if q in c["title"].lower()]
-
-        # Fallback
-        if not categories and query:
-            categories = [{
-                "title": query,
-                "url": f"{BASE_URL}/tim-viec-lam?keyword={query}"
-            }]
+            filtered = [c for c in categories if q in c["title"].lower()]
+            if filtered:
+                categories = filtered
+            else:
+                # Query không khớp category nào → dùng URL search trực tiếp
+                categories = [{
+                    "title": query,
+                    "url": f"{BASE_URL}/tim-viec-lam?keyword={query}",
+                }]
 
         print(f"[TopCV] {len(categories)} categories")
         return categories
@@ -353,228 +322,198 @@ class TopCVCrawler(BaseCrawler):
         return links
 
     # =========================
-    # STEP 3: JOB DETAIL
+    # STEP 3: JOB DETAIL — dùng curl_cffi, không dùng Playwright
     # =========================
     async def get_job_detail(self, url: str, industry: str) -> dict:
         await self._rate_limit()
-        ctx, page = await self._new_page()
 
-        try:
-            # ===== LOAD PAGE (RETRY với Cloudflare) =====
-            loaded_ok = False
-            for attempt in range(3):
-                try:
-                    await page.goto(url, wait_until="domcontentloaded", timeout=30000)
-                except Exception:
-                    if attempt == 2:
-                        return None
-                    await asyncio.sleep(2)
+        # Tách job_url nếu là format "job_url|company_url" (giống CareerLink)
+        if "|" in url:
+            job_url, _ = url.split("|", 1)
+        else:
+            job_url = url
+
+        html = await self._fetch_html(job_url)
+        if not html:
+            return None
+
+        soup = BeautifulSoup(html, "html.parser")
+
+        # ===== TITLE =====
+        title = ""
+        for sel in ["h1.job-detail__info--title", ".job-detail__info h1", "h1"]:
+            el = soup.select_one(sel)
+            if el:
+                title = self._clean(el.get_text())
+                if title:
+                    break
+        if not title:
+            # fallback: <title> tag
+            title_tag = soup.find("title")
+            title = self._clean(title_tag.get_text()) if title_tag else ""
+        if not title:
+            print(f"[TopCV] ❌ Không lấy được title: {job_url}")
+            return None
+
+        # ===== SALARY + DEADLINE =====
+        salary = ""
+        salary_el = soup.select_one(".job-detail__info--section-content-value")
+        if salary_el:
+            salary = self._clean(salary_el.get_text())
+
+        deadline = ""
+        deadline_el = soup.select_one(".job-detail__info--deadline-date")
+        if deadline_el:
+            deadline = self._clean(deadline_el.get_text())
+
+        # ===== EXPERIENCE =====
+        experience = ""
+        for sec in soup.select(".job-detail__info--section-content"):
+            t_el = sec.select_one(".job-detail__info--section-content-title")
+            v_el = sec.select_one(".job-detail__info--section-content-value")
+            if t_el and v_el and "kinh nghiệm" in t_el.get_text().lower():
+                experience = self._clean(v_el.get_text())
+                break
+
+        # ===== DESCRIPTION / REQUIREMENT / BENEFIT =====
+        def _section_text(keyword: str) -> str:
+            for sec in soup.select(SELECTORS["description_block"]):
+                h3 = sec.select_one("h3")
+                if h3 and keyword.lower() in h3.get_text().lower():
+                    content = sec.select_one(SELECTORS["description_content"])
+                    if content:
+                        return content.get_text(separator="\n").strip()
+            return ""
+
+        description = _section_text("Mô tả công việc")
+        requirement  = _section_text("Yêu cầu ứng viên")
+        benefit      = _section_text("Quyền lợi")
+
+        # ===== WORKING TIME =====
+        working_time = ""
+        for sec in soup.select(SELECTORS["description_block"]):
+            h3 = sec.select_one("h3")
+            if h3 and "Thời gian làm việc" in h3.get_text():
+                items = sec.select(SELECTORS["working_time"])
+                working_time = " | ".join(
+                    self._clean(i.get_text()) for i in items if i.get_text(strip=True)
+                )
+                break
+
+        # ===== LOCATION =====
+        short_location = ""
+        location = ""
+        loc_items = soup.select(".job-description__item--content div[style*='margin-bottom']")
+        if loc_items:
+            first = loc_items[0]
+            strong = first.select_one("strong")
+            if strong:
+                short_location = self._clean(strong.get_text().replace(":", ""))
+            full_text = self._clean(first.get_text())
+            if full_text:
+                location = re.sub(r"^-?\s*", "", full_text)
+
+        # ===== SKILLS =====
+        skills = [
+            a.get("title", "").strip()
+            for a in soup.select(".job-tags__group-list-tag a.item.search-from-tag.link")
+            if a.get("title")
+        ]
+        print(f"[TopCV] {title} - {len(skills)} skills")
+
+        # ===== JOB TYPE =====
+        job_type = ""
+        for info in soup.select(".box-general-group-info"):
+            label = info.select_one(".box-general-group-info-title")
+            if label and "Hình thức làm việc" in label.get_text():
+                value = info.select_one(".box-general-group-info-value")
+                if value:
+                    job_type = self._clean(value.get_text())
+                break
+
+        # ===== COMPANY =====
+        company_name = "Không rõ"
+        company_url_val = None
+        for sel in ["a.name", ".company-name a", "h3.company-name", ".job-company a"]:
+            el = soup.select_one(sel)
+            if el:
+                company_name = self._clean(el.get_text()) or "Không rõ"
+                company_url_val = el.get("href")
+                break
+
+        if company_name == "Không rõ":
+            logo_el = soup.select_one("a.company-logo img")
+            if logo_el:
+                alt = logo_el.get("alt", "")
+                if alt:
+                    company_name = self._clean(alt) or "Không rõ"
+                parent = soup.select_one("a.company-logo")
+                if parent:
+                    company_url_val = parent.get("href")
+
+        if company_url_val:
+            company_url_val = urljoin(BASE_URL, company_url_val)
+
+        company_data = await self._crawl_company(company_url_val, location, company_name)
+
+        return {
+            "industry": industry,
+            "job": {
+                "title": title,
+                "shortLocation": short_location,
+                "location": location,
+                "salary": salary,
+                "description": description,
+                "requirement": requirement,
+                "benefit": benefit,
+                "other": "",
+                "jobType": job_type,
+                "workingTime": working_time,
+                "experienceYear": experience,
+                "postedAt": "",
+                "deadline": deadline,
+                "sourcePlatform": "TopCV",
+                "sourceLink": job_url,
+            },
+            "company": company_data,
+            "skills": skills,
+            "_conflict_key": "sourceLink",
+        }
+
+    async def _fetch_html(self, url: str, retries: int = 3) -> str | None:
+        """Fetch HTML bằng curl_cffi, retry nếu bị block."""
+        for attempt in range(retries):
+            try:
+                resp = curl_requests.get(
+                    url,
+                    impersonate="chrome120",
+                    headers={
+                        "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8",
+                        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                        "Referer": "https://www.topcv.vn/",
+                    },
+                    timeout=25,
+                )
+                if resp.status_code != 200:
+                    print(f"[TopCV] ⚠️ HTTP {resp.status_code}: {url}")
+                    if attempt < retries - 1:
+                        await asyncio.sleep(3 * (attempt + 1))
                     continue
-
-                # ===== CLOUDFLARE CHECK =====
-                try:
-                    page_content = await page.content()
-                except Exception:
-                    return None
-
-                if any(x in page_content for x in CLOUDFLARE_MARKERS):
-                    print(f"[TopCV] 🚫 Cloudflare (attempt {attempt+1}): {url}")
-                    wait_time = 15 + attempt * 15  # 15s, 30s, 45s
-                    await asyncio.sleep(wait_time)
-                    if attempt == 2:
-                        return None
-                    # Tạo context mới để lấy cookies sạch
-                    try:
-                        await ctx.close()
-                    except Exception:
-                        pass
-                    ctx, page = await self._new_page()
-                    try:
-                        await page.goto(BASE_URL, wait_until="domcontentloaded", timeout=20000)
-                        await asyncio.sleep(4)
-                    except Exception:
-                        pass
+                html = resp.text
+                if any(x in html for x in ["Sorry, you have been blocked", "cf-browser-verification", "Just a moment", "Checking your browser"]):
+                    print(f"[TopCV] 🚫 Bị block (attempt {attempt+1}): {url}")
+                    if attempt < retries - 1:
+                        await asyncio.sleep(10 * (attempt + 1))
                     continue
-
-                loaded_ok = True
-                break  # Không bị Cloudflare, thoát loop
-
-            if not loaded_ok:
-                return None
-
-            # ===== WAIT + SCROLL =====
-            await page.wait_for_timeout(1500)
-            await self._human_scroll(page)
-            await page.wait_for_timeout(1000)
-
-            # ===== GET TITLE (FIX TIMEOUT) =====
-            title = ""
-            for sel in [
-                "h1.job-detail__info--title",  # giữ nguyên selector cũ
-                ".job-detail__info h1",
-                "h1"
-            ]:
-                try:
-                    el = await page.query_selector(sel)
-                    if el:
-                        t = (await el.inner_text()).strip()
-                        if t:
-                            title = t
-                            break
-                except:
-                    continue
-
-            if not title:
-                try:
-                    title = await page.title()
-                except:
-                    title = ""
-
-            if not title:
-                print(f"[TopCV] ❌ Không lấy được title: {url}")
-                return None
-
-            # ===== BASIC INFO (GIỮ NGUYÊN) =====
-            basic_info = await page.evaluate("""
-                () => {
-                    const result = {};
-                    const salary = document.querySelector('.job-detail__info--section-content-value');
-                    result.salary = salary ? salary.innerText.trim() : null;
-                    const deadline = document.querySelector('.job-detail__info--deadline-date');
-                    result.deadline = deadline ? deadline.innerText.trim() : null;
-                    return result;
-                }
-            """)
-            salary = basic_info.get('salary') or ""
-            deadline = basic_info.get('deadline') or ""
-
-            # ===== EXPERIENCE (GIỮ NGUYÊN) =====
-            experience = ""
-            sections = await page.query_selector_all(".job-detail__info--section-content")
-            for sec in sections:
-                try:
-                    title_el = await sec.query_selector(".job-detail__info--section-content-title")
-                    value_el = await sec.query_selector(".job-detail__info--section-content-value")
-                    if title_el and value_el:
-                        if "kinh nghiệm" in (await title_el.inner_text()).lower():
-                            experience = self._clean(await value_el.inner_text())
-                            break
-                except:
-                    continue
-
-            # ===== DESCRIPTION (GIỮ NGUYÊN) =====
-            description = await self._get_section_by_keyword(page, "Mô tả công việc") or ""
-            requirement = await self._get_section_by_keyword(page, "Yêu cầu ứng viên") or ""
-            benefit = await self._get_section_by_keyword(page, "Quyền lợi") or ""
-
-            # ===== WORKING TIME (GIỮ NGUYÊN) =====
-            working_time = ""
-            sections = await page.query_selector_all(SELECTORS["description_block"])
-            for sec in sections:
-                try:
-                    h3 = await sec.query_selector("h3")
-                    if h3 and "Thời gian làm việc" in await h3.inner_text():
-                        items = await sec.query_selector_all(SELECTORS["working_time"])
-                        working_time = " | ".join([
-                            self._clean(await i.inner_text())
-                            for i in items if await i.inner_text()
-                        ])
-                        break
-                except:
-                    continue
-
-            # ===== LOCATION (GIỮ NGUYÊN) =====
-            short_location = ""
-            location = ""
-            loc_items = await page.query_selector_all(
-                ".job-description__item--content div[style*='margin-bottom']"
-            )
-            if loc_items:
-                first = loc_items[0]
-                strong = await first.query_selector("strong")
-                if strong:
-                    short_location = self._clean(
-                        (await strong.inner_text()).replace(":", "")
-                    )
-                full_text = self._clean(await first.inner_text())
-                if full_text:
-                    location = re.sub(r"^-?\s*", "", full_text)
-
-            # ===== SKILLS (GIỮ NGUYÊN) =====
-            skills = await page.evaluate("""
-                () => Array.from(document.querySelectorAll('.job-tags__group-list-tag a.item.search-from-tag.link'))
-                    .map(a => a.getAttribute('title'))
-                    .filter(t => t)
-                    .map(t => t.trim())
-            """)
-            print(f"[TopCV] {title} - {len(skills)} skills")
-            # ===== JOB TYPE (GIỮ NGUYÊN) =====
-            job_type = ""
-            infos = await page.query_selector_all(".box-general-group-info")
-            for info in infos:
-                try:
-                    label = await info.query_selector(".box-general-group-info-title")
-                    if label and "Hình thức làm việc" in await label.inner_text():
-                        value = await info.query_selector(".box-general-group-info-value")
-                        if value:
-                            job_type = self._clean(await value.inner_text())
-                            break
-                except:
-                    continue
-
-            # ===== COMPANY (GIỮ NGUYÊN) =====
-            company_el = await page.query_selector(
-                "a.name, .company-name a, h3.company-name, .job-company a"
-            )
-            company_name = "Không rõ"
-            company_url = None
-            
-            if company_el:
-                company_name = self._clean(await company_el.inner_text()) or "Không rõ"
-                company_url = await company_el.get_attribute("href")
-
-            if company_name == "Không rõ":
-                logo_el = await page.query_selector("a.company-logo img")
-                if logo_el:
-                    alt = await logo_el.get_attribute("alt")
-                    if alt:
-                        company_name = self._clean(alt) or "Không rõ"
-                    parent = await page.query_selector("a.company-logo")
-                    if parent:
-                        company_url = await parent.get_attribute("href")
-
-            company_data = await self._crawl_company(company_url, location, company_name)
-
-            return {
-                "industry": industry,
-                "job": {
-                    "title": title,
-                    "shortLocation": short_location,
-                    "location": location,
-                    "salary": salary,
-                    "description": description,
-                    "requirement": requirement,
-                    "benefit": benefit,
-                    "other": "",
-                    "jobType": job_type,
-                    "workingTime": working_time,
-                    "experienceYear": experience,
-                    "postedAt": "",
-                    "deadline": deadline,
-                    "sourcePlatform": "TopCV",
-                    "sourceLink": url,
-                },
-                "company": company_data,
-                "skills": skills,
-                # conflict_key dùng để upsert đúng field có unique constraint
-                "_conflict_key": "sourceLink",
-            }
-
-        finally:
-            await self._save_cookies(ctx)
-            await ctx.close()
+                return html
+            except Exception as e:
+                print(f"[TopCV] ❌ Lỗi fetch (attempt {attempt+1}): {e}")
+                if attempt < retries - 1:
+                    await asyncio.sleep(3)
+        return None
 
     async def _get_section_by_keyword(self, page, keyword):
+        """Giữ lại cho compatibility, không dùng trong get_job_detail mới."""
         sections = await page.query_selector_all(SELECTORS["description_block"])
         for sec in sections:
             try:
@@ -588,7 +527,7 @@ class TopCVCrawler(BaseCrawler):
         return ""
 
     # =========================
-    # STEP 4: COMPANY - FIX LỖI NoneType
+    # STEP 4: COMPANY — dùng curl_cffi
     # =========================
     async def _crawl_company(self, company_url: str, location: str, fallback_name: str):
         if not company_url:
@@ -602,51 +541,42 @@ class TopCVCrawler(BaseCrawler):
             }
 
         await self._rate_limit()
-        ctx, page = await self._new_page(block_resources=True)
-        
-        try:
-            await page.goto(company_url, wait_until="domcontentloaded", timeout=20000)
-            await page.wait_for_timeout(800)
+        html = await self._fetch_html(company_url)
 
-            # Size - FIX: đảm bảo không None
+        if not html:
+            return {
+                "companyName": fallback_name or "Không rõ",
+                "companyWebsite": company_url,
+                "address": location or "",
+                "companyLogo": None,
+                "companySize": None,
+                "companyProfile": None,
+            }
+
+        try:
+            soup = BeautifulSoup(html, "html.parser")
+
+            # Size
             company_size = None
-            try:
-                elements = await page.query_selector_all(".company-subdetail-info-text")
-                for el in elements:
-                    text = await el.inner_text()
-                    text_clean = self._clean(text)
-                    if text_clean and "nhân viên" in text_clean.lower():
-                        company_size = text_clean
-                        break
-            except:
-                pass
+            for el in soup.select(".company-subdetail-info-text"):
+                text = self._clean(el.get_text())
+                if text and "nhân viên" in text.lower():
+                    company_size = text
+                    break
 
             # Logo
             company_logo = None
-            try:
-                logo_el = await page.query_selector(".company-image-logo img")
-                if logo_el:
-                    company_logo = await logo_el.get_attribute("src")
-            except:
-                pass
+            logo_el = soup.select_one(".company-image-logo img")
+            if logo_el:
+                company_logo = logo_el.get("src")
 
-            # Profile - FIX: đảm bảo không có None trong list
-            company_profile = None
-            try:
-                profile_items = await page.query_selector_all(".company-info .content p")
-                profile_parts = []
-                for p in profile_items[:10]:
-                    try:
-                        text = await p.text_content()
-                        if text:
-                            cleaned = self._clean(text)
-                            if cleaned:
-                                profile_parts.append(cleaned)
-                    except:
-                        continue
-                company_profile = "\n".join(profile_parts) if profile_parts else None
-            except Exception as e:
-                print(f"[TopCV] Lỗi lấy profile: {e}")
+            # Profile
+            profile_parts = [
+                self._clean(p.get_text())
+                for p in soup.select(".company-info .content p")[:10]
+                if self._clean(p.get_text())
+            ]
+            company_profile = "\n".join(profile_parts) if profile_parts else None
 
             return {
                 "companyName": fallback_name or "Không rõ",
@@ -657,7 +587,7 @@ class TopCVCrawler(BaseCrawler):
                 "companyProfile": company_profile,
             }
         except Exception as e:
-            print(f"[TopCV] Lỗi company {company_url}: {e}")
+            print(f"[TopCV] Lỗi parse company {company_url}: {e}")
             return {
                 "companyName": fallback_name or "Không rõ",
                 "companyWebsite": company_url,
@@ -666,8 +596,6 @@ class TopCVCrawler(BaseCrawler):
                 "companySize": None,
                 "companyProfile": None,
             }
-        finally:
-            await ctx.close()
 
     async def get_job_links_for_page(self, category: dict, page: int) -> tuple[list[str], bool]:
         """Lấy links từ 1 page cụ thể - DÙNG CURL_CFFI BYPASS CLOUDFLARE"""
