@@ -9,9 +9,14 @@ asyncpg==0.29.0
 sqlalchemy[asyncio]==2.0.25
 alembic==1.13.1
 
-# Vector Store & Embeddings
+# Vector Store & Embeddings (FIX COMPAT)
 chromadb==0.4.22
 sentence-transformers==2.2.2
+transformers==4.30.2
+huggingface_hub==0.14.1
+numpy==1.26.4
+
+# AI / API
 openai==1.12.0
 
 # Cache
@@ -21,6 +26,9 @@ redis==5.0.1
 PyPDF2==3.0.1
 python-docx==1.1.0
 pymupdf==1.23.21
+pytesseract>=0.3.10
+Pillow>=9.0.0
+pdf2image>=1.16.0
 
 # Utilities
 pydantic==2.6.1
@@ -33,9 +41,3 @@ structlog==24.1.0
 # Testing
 pytest==8.0.0
 pytest-asyncio==0.23.5
-
-python-docx
-PyMuPDF>=1.23.0
-pytesseract>=0.3.10
-Pillow>=9.0.0
-pdf2image>=1.16.0

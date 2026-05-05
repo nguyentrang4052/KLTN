@@ -252,7 +252,11 @@ function JobSearchScreen() {
     setLoadingRecs(true);
     fetch(`${API}/jobs/recommendations`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
-      .then(data => { setRecommendations(Array.isArray(data) ? data : []); setRecPage(1); })
+      .then(res => {
+        const list = Array.isArray(res) ? res : (res.data ?? []);
+        setRecommendations(list);
+        setRecPage(1);
+      })
       .catch(console.error)
       .finally(() => setLoadingRecs(false));
   }, [sort, token]);

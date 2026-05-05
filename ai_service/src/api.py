@@ -11,6 +11,7 @@ import os
 import httpx
 from src.service.chatbot import Chatbot
 from src.config.settings import settings
+print("DEBUG =", settings.debug)
 import structlog
 import asyncio
 from src.service.translation_service import get_translation_service, Language

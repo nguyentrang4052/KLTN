@@ -87,3 +87,8 @@ ai_service/venv/
 crawl/venv/
 __pycache__/
 *.pyc
+
+chroma_db/
+chroma_db_cache/
+*.sqlite3
+*.pickle
