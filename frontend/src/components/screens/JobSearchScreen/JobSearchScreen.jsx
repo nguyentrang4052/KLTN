@@ -77,7 +77,6 @@ function JobSearchScreen() {
   const [token, setToken] = useState(() => getToken());
   const [keyword, setKeyword] = useState('');
   const [sort, setSort] = useState('newest');
-  const [currentPage, setCurrentPage] = useState(1);
   const [activeFilters, setActiveFilters] = useState({
     jobType: [], experience: [], industry: [], locations: [], source: [],
   });
@@ -122,7 +121,18 @@ function JobSearchScreen() {
   const [myAlerts, setMyAlerts] = useState([]);
   const [showMyAlerts, setShowMyAlerts] = useState(false);
 
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const currentPage = parseInt(searchParams.get('page')) || 1;
+
+  // const isFirstPage = useRef(true);
+
+  const goToPage = useCallback((page, replace = false) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('page', String(page));
+      return next;
+    }, { replace });
+  }, [setSearchParams]);
 
   const [suggestions, setSuggestions] = useState([])
   const [searchHistory, setSearchHistory] = useState([])
@@ -155,10 +165,9 @@ function JobSearchScreen() {
 
 
   useEffect(() => {
-    const kw = searchParams.get('keyword')
-    if (kw) {
+    const kw = searchParams.get('keyword') ?? ''
+    if (kw !== keyword) {
       setKeyword(kw)
-      setCurrentPage(1)
     }
   }, [searchParams])
 
@@ -429,7 +438,7 @@ function JobSearchScreen() {
         : [...current, value];
       return { ...prev, [category]: updated };
     });
-    setCurrentPage(1);
+    goToPage(1, true)
   };
 
   const toggleJobType = (value) => {
@@ -437,7 +446,7 @@ function JobSearchScreen() {
       ...prev,
       jobType: prev.jobType.includes(value) ? [] : [value],
     }));
-    setCurrentPage(1);
+    goToPage(1, true)
   };
 
   const toggleExperience = (value) => {
@@ -445,7 +454,7 @@ function JobSearchScreen() {
       ...prev,
       experience: prev.experience.includes(value) ? [] : [value],
     }));
-    setCurrentPage(1);
+    goToPage(1, true)
   };
 
   const toggleSource = (value) => {
@@ -455,7 +464,7 @@ function JobSearchScreen() {
       jobType: [],
       industry: [],
     }));
-    setCurrentPage(1);
+    goToPage(1, true)
   };
 
   const clearFilters = () => {
@@ -464,7 +473,7 @@ function JobSearchScreen() {
       jobType: [], experience: [], industry: [], locations: [],
       source: [],
     });
-    setSalaryMin(0); setSalaryMax(0); setSalaryRange(100); setCurrentPage(1);
+    setSalaryMin(0); setSalaryMax(0); setSalaryRange(100); goToPage(1, true);
   };
 
   const showToast = (message) => {
@@ -516,7 +525,7 @@ function JobSearchScreen() {
     const total = meta.totalPages;
     const cur = currentPage;
     const addBtn = (n) => pages.push(
-      <button key={n} className={`pg-btn ${cur === n ? 'on' : ''}`} onClick={() => setCurrentPage(n)}>{n}</button>
+      <button key={n} className={`pg-btn ${cur === n ? 'on' : ''}`} onClick={() => goToPage(n)}>{n}</button>
     );
     const addDots = (k) => pages.push(
       <span key={k} style={{ display: 'flex', alignItems: 'center', padding: '0 6px', color: 'var(--ink4)' }}>…</span>
@@ -607,6 +616,7 @@ function JobSearchScreen() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+
   const handleKeywordChange = (e) => {
     const val = e.target.value
     setKeyword(val)
@@ -653,7 +663,7 @@ function JobSearchScreen() {
   const handleQuickSearch = (kw) => {
     const trimmed = kw.trim()
     setKeyword(trimmed)
-    setCurrentPage(1)
+    goToPage(1, true)
     setSuggestions([])
     setShowDropdown(false)
   }
@@ -758,7 +768,7 @@ function JobSearchScreen() {
                 {SALARY_OPTIONS.map(pill => (
                   <span key={pill.label}
                     className={`spill ${salaryMin === pill.min && salaryMax === pill.max ? 'on' : ''}`}
-                    onClick={() => { setSalaryMin(pill.min); setSalaryMax(pill.max); setSalaryRange(pill.max || 100); setCurrentPage(1); }}>
+                    onClick={() => { setSalaryMin(pill.min); setSalaryMax(pill.max); setSalaryRange(pill.max || 100); goToPage(1, true); }}>
                     {pill.label}
                   </span>
                 ))}
@@ -825,7 +835,7 @@ function JobSearchScreen() {
                 onChange={handleKeywordChange}
                 onFocus={handleSearchFocus}
                 onKeyDown={e => {
-                  if (e.key === 'Enter') { setShowDropdown(false); setCurrentPage(1); saveHistory(keyword) }
+                  if (e.key === 'Enter') { setShowDropdown(false); goToPage(1, true); saveHistory(keyword) }
                   if (e.key === 'Escape') setShowDropdown(false)
                 }}
               />
@@ -837,7 +847,7 @@ function JobSearchScreen() {
                 }} onClick={() => { setKeyword(''); setSuggestions([]); setShowDropdown(false) }}>×</button>
               )}
             </div>
-            <button className="search-btn" onClick={() => { setShowDropdown(false); setCurrentPage(1); saveHistory(keyword) }}>
+            <button className="search-btn" onClick={() => { setShowDropdown(false); goToPage(1, true); saveHistory(keyword) }}>
               Tìm kiếm
             </button>
           </div>
@@ -945,7 +955,7 @@ function JobSearchScreen() {
             <div className="sort-row">
               <span className="sort-label">Sắp xếp:</span>
               <select className="sort-sel" value={sort}
-                onChange={e => { setSort(e.target.value); setCurrentPage(1); }}>
+                onChange={e => { setSort(e.target.value); goToPage(1, true); }}>
                 {token && <option value="match">Phù hợp nhất</option>}
                 <option value="newest">Mới nhất</option>
                 <option value="salary">Lương cao nhất</option>
@@ -1072,9 +1082,9 @@ function JobSearchScreen() {
 
           {meta.totalPages > 1 && sort !== 'match' && (
             <div className="pagination">
-              <button className="pg-btn" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>‹</button>
+              <button className="pg-btn" disabled={currentPage === 1} onClick={() => goToPage(currentPage - 1)}>‹</button>
               {renderPages()}
-              <button className="pg-btn" disabled={currentPage === meta.totalPages} onClick={() => setCurrentPage(p => p + 1)}>›</button>
+              <button className="pg-btn" disabled={currentPage === meta.totalPages} onClick={() => goToPage(currentPage + 1)}>›</button>
             </div>
           )}
         </main>
@@ -1089,7 +1099,7 @@ function JobSearchScreen() {
           <div className="kw-grid">
             {trendingKeywords.map(kw => (
               <span key={kw.name} className="kw-pill"
-                onClick={() => { setKeyword(kw.name); setSort('newest'); setCurrentPage(1); }}>
+                onClick={() => { setKeyword(kw.name); setSort('newest'); goToPage(1, true); }}>
                 {kw.name}
               </span>
             ))}

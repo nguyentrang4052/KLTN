@@ -338,7 +338,7 @@ export default function CompanyDetailScreen({ company, onBack, token, jobBasePat
 
       <div className="cd-breadcrumb">
         <div className="cd-bc-inner">
-          <button className="cd-back" onClick={onBack}>← Quay lại</button>
+          <button className="cd-back" onClick={() => navigate(-1)}>← Quay lại</button>
           <span className="cd-bc-sep">›</span>
           <span>Công ty</span>
           <span className="cd-bc-sep">›</span>

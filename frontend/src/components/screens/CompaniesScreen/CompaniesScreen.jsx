@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import './CompaniesScreen.css'
 import { createPortal } from 'react-dom'
 import { getToken } from '../../../utils/auth'
@@ -100,7 +100,8 @@ export default function CompaniesScreen() {
   const [selectedLocations, setSelectedLocations] = useState([])
   const [checkedSize, setCheckedSize] = useState({})
   const [sort, setSort] = useState('jobs')
-  const [page, setPage] = useState(1)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const page = parseInt(searchParams.get('page')) || 1
   const [listView, setListView] = useState(false)
   const [loadingCompanies, setLoadingCompanies] = useState(false)
 
@@ -115,6 +116,14 @@ export default function CompaniesScreen() {
   const [searchPos, setSearchPos] = useState({ top: 0, left: 0, width: 0 })
   const suggestDebounceRef = useRef(null)
   const token = getToken()
+
+  const goToPage = useCallback((p, replace = false) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      next.set('page', String(p))
+      return next
+    }, { replace })
+  }, [setSearchParams])
 
   useEffect(() => {
     Promise.all([
@@ -151,7 +160,7 @@ export default function CompaniesScreen() {
   const isFirstRender = useRef(true)
   useEffect(() => {
     if (isFirstRender.current) { isFirstRender.current = false; return }
-    setPage(1)
+    goToPage(1, true)
   }, [selectedLocations, checkedSize, keyword, sort])
 
   useEffect(() => {
@@ -203,7 +212,7 @@ export default function CompaniesScreen() {
     const cur = page
     const addBtn = (n) => pages.push(
       <button key={n} className={`cs-pg-btn${cur === n ? ' on' : ''}`}
-        onClick={() => setPage(n)}>{n}</button>
+        onClick={() => goToPage(n)}>{n}</button>
     )
     const addDots = (k) => pages.push(
       <button key={k} className="cs-pg-btn" disabled>…</button>
@@ -303,7 +312,7 @@ export default function CompaniesScreen() {
   }
 
   const handleSearch = () => {
-    setPage(1)
+    goToPage(1, true)
     saveRecentSearch(keyword)
     setShowDropdown(false)
     fetchCompanies()
@@ -311,7 +320,7 @@ export default function CompaniesScreen() {
 
   const handleQuickSearch = (kw) => {
     setKeyword(kw)
-    setPage(1)
+    goToPage(1, true)
     saveRecentSearch(kw)
     setSuggestions([])
     setShowDropdown(false)
@@ -592,9 +601,9 @@ export default function CompaniesScreen() {
 
           {meta.totalPages > 1 && (
             <div className="cs-pagination">
-              <button className="cs-pg-btn" disabled={page === 1} onClick={() => setPage(p => p - 1)}>‹</button>
+              <button className="cs-pg-btn" disabled={page === 1} onClick={() => goToPage(page - 1)}>‹</button>
               {renderPages()}
-              <button className="cs-pg-btn" disabled={page === meta.totalPages} onClick={() => setPage(p => p + 1)}>›</button>
+              <button className="cs-pg-btn" disabled={page === meta.totalPages} onClick={() => goToPage(page + 1)}>›</button>
             </div>
           )}
         </main>
