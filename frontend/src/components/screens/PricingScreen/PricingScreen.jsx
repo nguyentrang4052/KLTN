@@ -110,7 +110,18 @@ export default function PricingScreen() {
     finally { setLoading(false); }
   }, [token]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    const currentToken = getToken();
+    const params = new URLSearchParams(window.location.search)
+    const hasReturnIntent = params.get('msg') === 'session_expired'
+
+    if (!currentToken && hasReturnIntent) {
+      navigate('/login?returnUrl=/services&msg=session_expired')
+      return
+    }
+
+    fetchData()
+  }, [fetchData])
 
   const handleSubscribe = (planName) => {
     if (!token) { navigate('/login'); return; }

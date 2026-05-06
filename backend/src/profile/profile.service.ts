@@ -6,7 +6,7 @@ import { UpdateProfileDto, UpdateUserProfileDto } from '../dto/profile.dto';
 
 @Injectable()
 export class ProfileService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async getProfileByAccountID(accountID: number) {
     const user = await this.prisma.user.findFirst({
@@ -184,15 +184,14 @@ export class ProfileService {
     applyCount: number;
     // recommendCount: number;
   }> {
-    const [viewCount, saveCount, applyCount] =
-      await Promise.all([
-        this.prisma.userBehavior.count({ where: { userID, action: 'view' } }),
-        this.prisma.savedJob.count({ where: { userID } }),
-        // this.prisma.applyHistory.count({ where: { userID } }),
-        this.prisma.jobRecommendation.count({
-          where: { userID, matchPercent: { gt: 49 } },
-        }),
-      ]);
+    const [viewCount, saveCount, applyCount] = await Promise.all([
+      this.prisma.userBehavior.count({ where: { userID, action: 'view' } }),
+      this.prisma.savedJob.count({ where: { userID } }),
+      // this.prisma.applyHistory.count({ where: { userID } }),
+      this.prisma.jobRecommendation.count({
+        where: { userID, matchPercent: { gt: 49 } },
+      }),
+    ]);
 
     return { viewCount, saveCount, applyCount };
   }

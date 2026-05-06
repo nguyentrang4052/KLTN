@@ -36,7 +36,7 @@ export class NotificationScheduler {
         userID: sub.userID,
         type: 'subscription_expiry',
         title: `Gói ${sub.plan.displayName} sắp hết hạn`,
-        body: `Gói của bạn sẽ hết hạn sau ${daysLeft} ngày (${sub.expiresAt.toLocaleDateString('vi-VN')}). Gia hạn ngay để không bị gián đoạn.`,
+        body: `Gói của bạn sẽ hết hạn sau ${daysLeft} ngày (${sub.expiresAt.toLocaleDateString('vi-VN')}). Theo dõi gia hạn để không bị gián đoạn.`,
         metadata: {
           planName: sub.plan.name,
           daysLeft,

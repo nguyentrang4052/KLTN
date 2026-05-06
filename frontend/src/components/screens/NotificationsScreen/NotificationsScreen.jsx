@@ -61,10 +61,15 @@ function NotificationsScreen({ notifContext }) {
   const [activeTab, setActiveTab] = useState('all')
   const [page, setPage] = useState(1)
 
+  const recentNotifications = useMemo(() => {
+    const twoMonthsAgo = new Date();
+    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+    return notifications.filter(n => new Date(n.createdAt) >= twoMonthsAgo)
+  }, [notifications])
+
   const filtered = useMemo(() => {
-    if (activeTab === 'all') return notifications
-    return notifications.filter(n => n.type === activeTab)
-  }, [notifications, activeTab])
+    return recentNotifications.filter(n => activeTab === 'all' || n.type === activeTab)
+  }, [recentNotifications, activeTab])
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
@@ -77,11 +82,11 @@ function NotificationsScreen({ notifContext }) {
 
   const unreadByType = useMemo(() => {
     const map = {}
-    notifications.forEach(n => {
+    recentNotifications.forEach(n => {
       if (!n.isRead) map[n.type] = (map[n.type] ?? 0) + 1
     })
     return map
-  }, [notifications])
+  }, [recentNotifications])
 
   const [emailNotification, setEmailNotification] = useState(null)
   const [savingPref, setSavingPref] = useState(false)
@@ -246,11 +251,11 @@ function NotificationsScreen({ notifContext }) {
 
                           <div className="n-actions">
                             {!notif.isRead && <div className="n-unread-dot" />}
-                            <button
+                            {/* <button
                               className="n-delete-btn"
                               onClick={(e) => { e.stopPropagation(); deleteOne(notif.id) }}
                               title="Xoá thông báo"
-                            >✕</button>
+                            >✕</button> */}
                           </div>
                         </div>
                       )

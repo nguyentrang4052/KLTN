@@ -10,7 +10,7 @@ export class JobAlertService {
     private prisma: PrismaService,
     private mail: MailService,
     private notificationService: NotificationService,
-  ) { }
+  ) {}
 
   async createAlert(accountID: number, keyword: string) {
     const existing = await this.prisma.jobAlert.findUnique({
@@ -103,22 +103,38 @@ export class JobAlertService {
           where: {
             isActive: true,
             postedAt: { gte: since },
-            OR: [
-              { title: { contains: alert.keyword, mode: 'insensitive' } },
-              { description: { contains: alert.keyword, mode: 'insensitive' } },
+            OR: [{ deadline: null }, { deadline: { gt: new Date() } }],
+            AND: [
               {
-                company: {
-                  companyName: { contains: alert.keyword, mode: 'insensitive' },
-                },
-              },
-              {
-                skills: {
-                  some: {
-                    skill: {
-                      name: { contains: alert.keyword, mode: 'insensitive' },
+                OR: [
+                  { title: { contains: alert.keyword, mode: 'insensitive' } },
+                  {
+                    description: {
+                      contains: alert.keyword,
+                      mode: 'insensitive',
                     },
                   },
-                },
+                  {
+                    company: {
+                      companyName: {
+                        contains: alert.keyword,
+                        mode: 'insensitive',
+                      },
+                    },
+                  },
+                  {
+                    skills: {
+                      some: {
+                        skill: {
+                          name: {
+                            contains: alert.keyword,
+                            mode: 'insensitive',
+                          },
+                        },
+                      },
+                    },
+                  },
+                ],
               },
             ],
           },
@@ -135,7 +151,8 @@ export class JobAlertService {
         const userID = alert.account.user?.userID;
 
         if (userID) {
-          const sent = await this.notificationService.createIfNotExists({
+          const sent = await this.notificationService
+            .createIfNotExists({
               userID,
               type: 'job_alert',
               title: `Việc làm mới cho "${alert.keyword}"`,
@@ -145,13 +162,15 @@ export class JobAlertService {
                 jobIDs: jobs.map((j) => j.jobID),
               },
               dedupeKey: `job_alert_${userID}_${alert.keyword}_${today}`,
-          })
+            })
             .catch((err) => {
               console.error('[Notif] createIfNotExists error:', err);
               return null;
             });
-          if (sent === null) continue;
+
+          if (sent === null) continue; // đã gửi hôm nay rồi, skip cả email
         }
+
         if (!alert.account.emailNotification) continue;
         await this.mail.sendJobAlert(alert.account.email, alert.keyword, jobs);
       } catch (err) {

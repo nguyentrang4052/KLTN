@@ -163,10 +163,12 @@ export class AIRecommendationService {
     // Job đã lưu = 100, job đã xem (title tương tự) = 70, không có = 0
     const titleLower = (job.title ?? '').toLowerCase();
     const isSaved = ctx.behaviors.savedJobTitles.some((t) =>
-      titleLower.includes(t.toLowerCase()) || t.toLowerCase().includes(titleLower),
+        titleLower.includes(t.toLowerCase()) ||
+        t.toLowerCase().includes(titleLower),
     );
     const isViewed = ctx.behaviors.recentViewedTitles.some((t) =>
-      titleLower.includes(t.toLowerCase()) || t.toLowerCase().includes(titleLower),
+        titleLower.includes(t.toLowerCase()) ||
+        t.toLowerCase().includes(titleLower),
     );
     const behaviorScore = isSaved ? 100 : isViewed ? 70 : 0;
 

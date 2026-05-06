@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import './Login.css'
 
 const IconMail = () => (
@@ -39,6 +39,7 @@ export default function Login({ onGoRegister, onGoForgot, onLoginSuccess }) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [remember, setRemember] = useState(true)
+  const [searchParams] = useSearchParams()
 
   const navigate = useNavigate()
 
@@ -64,7 +65,8 @@ export default function Login({ onGoRegister, onGoForgot, onLoginSuccess }) {
       if (data.user.role === 'admin') {
         navigate('/admin')
       } else {
-        navigate('/home')
+        const returnUrl = searchParams.get('returnUrl') || '/home'
+        navigate(returnUrl)
       }
     } catch (err) {
       setError(err.message)
@@ -123,6 +125,17 @@ export default function Login({ onGoRegister, onGoForgot, onLoginSuccess }) {
           <div className="auth-divider"><span>hoặc đăng nhập bằng email</span></div>
 
           <div className="auth-form">
+            {searchParams.get('msg') === 'session_expired' && (
+              <div style={{
+                background: 'rgba(192,65,42,0.08)',
+                border: '1px solid rgba(192,65,42,0.3)',
+                borderRadius: 8, padding: '10px 14px',
+                fontSize: 13, color: '#C0412A',
+                marginBottom: 12, textAlign: 'center',
+              }}>
+                🔒 Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.
+              </div>
+            )}
             {error && <div className="auth-error">⚠ {error}</div>}
 
             <div className="auth-field">

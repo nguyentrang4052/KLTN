@@ -24,4 +24,4 @@ import { PrismaModule } from '../../prisma/prisma.module';
   controllers: [NotificationController],
   exports: [NotificationService],
 })
-export class NotificationModule { }
+export class NotificationModule {}

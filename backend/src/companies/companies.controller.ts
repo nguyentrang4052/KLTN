@@ -23,7 +23,7 @@ interface RequestWithUser extends Request {
 
 @Controller('companies')
 export class CompaniesController {
-  constructor(private readonly companiesService: CompaniesService) { }
+  constructor(private readonly companiesService: CompaniesService) {}
 
   @Get()
   getCompanies(@Query() dto: QueryCompaniesDto) {
@@ -57,7 +57,10 @@ export class CompaniesController {
     @Req() req: RequestWithUser,
   ) {
     if (!keyword?.trim() || !req.user?.sub) return;
-    await this.companiesService.saveCompanySearchHistory(req.user.sub, keyword.trim());
+    await this.companiesService.saveCompanySearchHistory(
+      req.user.sub,
+      keyword.trim(),
+    );
   }
 
   @Get('search-history')

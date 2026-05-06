@@ -30,7 +30,7 @@ export class JobsController {
     private readonly jobsService: JobsService,
     private readonly aiRecommendation: AIRecommendationService,
     private readonly jobsGateway: JobsGateway,
-  ) { }
+  ) {}
 
   @Get()
   @UseGuards(OptionalJwtGuard)

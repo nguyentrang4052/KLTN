@@ -583,7 +583,6 @@ export class SubscriptionService {
       select: { userID: true },
     });
     if (!user) throw new NotFoundException('User not found');
-
     const sub = await this.prisma.userSubscription.findFirst({
       where: {
         userID: user.userID,
