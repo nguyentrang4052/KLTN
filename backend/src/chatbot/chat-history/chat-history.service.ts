@@ -60,22 +60,38 @@ export class ChatHistoryService {
         if (!session) {
             throw new NotFoundException(`Session ${dto.sessionID} not found`);
         }
+         const { sessionID, role, content, type, metadata } = dto;
 
-        const [message] = await this.prisma.$transaction([
-            this.prisma.chatMessage.create({
-                data: {
-                    sessionID: dto.sessionID,
-                    role: dto.role,
-                    content: dto.content,
-                    type: dto.type,
-                    metadata: dto.metadata,
-                },
-            }),
-            this.prisma.chatSession.update({
-                where: { id: dto.sessionID },
-                data: {},
-            }),
-        ]);
+        const message = await this.prisma.chatMessage.create({
+            data: {
+                sessionID,
+                role,
+                content: content || '',
+                type: type || 'text',
+                metadata: metadata || {},
+            },
+        });
+        if (role === 'user') {
+            const messageCount = await this.prisma.chatMessage.count({
+                where: { sessionID, role: 'user' },
+            });
+
+            if (messageCount === 1) {
+                // Lấy nội dung message để làm title
+                let newTitle = dto.content.trim();
+                if (newTitle.length > 50) {
+                    newTitle = newTitle.substring(0, 47) + '...';
+                }
+
+                await this.prisma.chatSession.update({
+                    where: { id: sessionID },
+                    data: {
+                        title: newTitle,
+                        updatedAt: new Date(),
+                    },
+                });
+            }
+        }
         return message;
     }
 
@@ -95,11 +111,11 @@ export class ChatHistoryService {
         const session = await this.prisma.chatSession.findFirst({
             where: { id: sessionID, userID },
         });
-        
+
         if (!session) {
             throw new NotFoundException('Session not found');
         }
-        
+
         const updated = await this.prisma.chatSession.update({
             where: { id: sessionID },
             data: {
@@ -107,7 +123,7 @@ export class ChatHistoryService {
                 updatedAt: new Date(),
             },
         });
-        
+
         return { success: true, session: updated };
     }
 
