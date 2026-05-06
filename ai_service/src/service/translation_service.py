@@ -39,38 +39,47 @@ class TranslationService:
                    cache_size=self._cache_max_size)
         
     
+    # Trong translation_service.py, sửa method detect_language
     def detect_language(self, text: str) -> Language:
-        """Phát hiện ngôn ngữ của văn bản"""
+        """Phát hiện ngôn ngữ của văn bản - CẢI THIỆN"""
         if not text:
             return Language.VIETNAMESE
         
-        text_lower = text.lower()
+        text_lower = text.lower().strip()
         
-        # Bộ dấu tiếng Việt
+        # Bộ ký tự tiếng Việt có dấu
         vietnamese_chars = set("áàảãạăắằẳẵặâấầẩẫậđéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ")
-        has_vietnamese_diacritics = any(c in text_lower for c in vietnamese_chars)
         
-        # Từ tiếng Việt phổ biến
-        viet_words = ["tôi", "bạn", "chào", "cảm ơn", "xin", "làm ơn", "việc", "lương", 
-                      "gì", "nào", "sao", "thế", "này", "kia", "đó", "ạ", "nhé", "nhỉ",
-                      "của", "với", "cho", "về", "mà", "thì", "là", "một", "những",
-                      "được", "không", "có", "sẽ", "đang", "rất", "hơn", "như"]
+        # Từ tiếng Việt phổ biến (không dấu)
+        viet_words = [
+            "tôi", "bạn", "chào", "cảm ơn", "xin", "làm ơn", "việc", "lương", 
+            "gì", "nào", "sao", "thế", "này", "kia", "đó", "ạ", "nhé", "nhỉ",
+            "của", "với", "cho", "về", "mà", "thì", "là", "một", "những",
+            "được", "không", "có", "sẽ", "đang", "rất", "hơn", "như", "các",
+            "nhưng", "hoặc", "khi", "nếu", "vì", "nên", "vẫn", "lại", "ra",
+            "vào", "lên", "xuống", "theo", "qua", "lại", "chỉ", "còn"
+        ]
+        
+        # Đếm số ký tự và từ tiếng Việt
+        has_vietnamese_diacritics = any(c in text_lower for c in vietnamese_chars)
         has_viet_words = any(word in text_lower for word in viet_words)
         
-        # Từ/cấu trúc tiếng Anh phổ biến
+        # Kiểm tra tiếng Anh
         eng_indicators = ["the", "and", "of", "to", "in", "for", "on", "with", "by", 
-                          "that", "is", "are", "was", "were", "be", "been", "being",
-                          "have", "has", "had", "having", "do", "does", "did", "doing",
-                          "a", "an", "this", "these", "those", "it", "they", "we", "you"]
+                        "that", "is", "are", "was", "were", "be", "been", "being",
+                        "have", "has", "had", "having", "do", "does", "did", "doing",
+                        "a", "an", "this", "these", "those", "it", "they", "we", "you",
+                        "what", "where", "when", "why", "how", "which", "who", "whom"]
         
-        # Đếm số từ tiếng Anh
         words = re.findall(r'\b[a-z]+\b', text_lower)
-        eng_word_count = sum(1 for w in words if w in eng_indicators or (len(w) > 2 and w not in viet_words))
+        eng_word_count = sum(1 for w in words if w in eng_indicators)
         
         # Quyết định ngôn ngữ
         if has_vietnamese_diacritics or has_viet_words:
+            logger.debug(f"Detected Vietnamese: diacritics={has_vietnamese_diacritics}, viet_words={has_viet_words}")
             return Language.VIETNAMESE
-        elif eng_word_count > len(words) * 0.3:  # Nếu hơn 30% từ là tiếng Anh
+        elif eng_word_count > len(words) * 0.3:  # Hơn 30% từ là tiếng Anh
+            logger.debug(f"Detected English: eng_words={eng_word_count}/{len(words)}")
             return Language.ENGLISH
         elif len(text) > 0 and text[0].isascii():
             # Mặc định với text ASCII

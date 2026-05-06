@@ -197,37 +197,44 @@ class Chatbot:
 
     async def _translate_if_needed(self, text: str, target_lang: Language = Language.VIETNAMESE) -> str:
         """Tự động phát hiện và dịch text sang ngôn ngữ đích nếu cần"""
-        detected = self.translation_service.detect_language(text)
-        
-        # Nếu đã đúng ngôn ngữ đích, không cần dịch
-        if detected == target_lang:
+        try:
+            detected = self.translation_service.detect_language(text)
+            logger.info(f"Detected language: {detected.value}, target: {target_lang.value}")
+            
+            # Nếu đã đúng ngôn ngữ đích, không cần dịch
+            if detected == target_lang:
+                return text
+            
+            # Nếu user đang nói tiếng Anh và target là tiếng Việt -> dịch
+            if detected == Language.ENGLISH and target_lang == Language.VIETNAMESE:
+                logger.info(f"Auto translating EN -> VI: {text[:50]}...")
+                translated = await self.translation_service.translate(text, Language.ENGLISH, Language.VIETNAMESE)
+                logger.info(f"Translated: {translated[:50]}...")
+                return translated
+            
             return text
-        
-        # Nếu user đang nói tiếng Anh và target là tiếng Việt -> dịch
-        if detected == Language.ENGLISH and target_lang == Language.VIETNAMESE:
-            logger.info(f"auto_translate_en_to_vi: {text[:50]}...")
-            return await self.translation_service.translate(text, Language.ENGLISH, Language.VIETNAMESE)
-        
-        # Nếu user đang nói tiếng Việt và target là tiếng Anh -> dịch (ít dùng)
-        if detected == Language.VIETNAMESE and target_lang == Language.ENGLISH:
-            logger.info(f"auto_translate_vi_to_en: {text[:50]}...")
-            return await self.translation_service.translate(text, Language.VIETNAMESE, Language.ENGLISH)
-        
-        return text
+        except Exception as e:
+            logger.error(f"Translation error: {str(e)}")
+            return text  # Fallback: trả về text gốc
 
 
     async def _translate_response_if_needed(self, response: str, original_question: str) -> str:
         """Dịch câu trả lời nếu câu hỏi bằng tiếng Anh"""
-        # Phát hiện ngôn ngữ của câu hỏi
-        detected = self.translation_service.detect_language(original_question)
-        
-        # Nếu câu hỏi bằng tiếng Anh, dịch câu trả lời sang tiếng Anh
-        if detected == Language.ENGLISH:
-            logger.info(f"translating_response_to_english")
-            return await self.translation_service.translate(response, Language.VIETNAMESE, Language.ENGLISH)
-        
-        # Mặc định trả về tiếng Việt
-        return response
+        try:
+            detected = self.translation_service.detect_language(original_question)
+            logger.info(f"Response translation check: question language={detected.value}")
+            
+            # Nếu câu hỏi bằng tiếng Anh, dịch câu trả lời sang tiếng Anh
+            if detected == Language.ENGLISH:
+                logger.info("Translating response to English")
+                translated = await self.translation_service.translate(response, Language.VIETNAMESE, Language.ENGLISH)
+                return translated
+            
+            # Mặc định trả về tiếng Việt
+            return response
+        except Exception as e:
+            logger.error(f"Response translation error: {str(e)}")
+            return response
 
     async def _handle_chat(self, user_id: str, message: str, stream: bool):
         try:
@@ -235,11 +242,19 @@ class Chatbot:
             
             # Phát hiện và dịch câu hỏi sang tiếng Việt để xử lý
             original_message = message
-            translated_message = await self._translate_if_needed(message, Language.VIETNAMESE)
+
+            translated_message = message
             
             # Nếu câu hỏi đã được dịch, log lại
-            if translated_message != message:
-                logger.info(f"translated_query: '{message[:50]}' -> '{translated_message[:50]}'")
+            try:
+                translated_message = await self._translate_if_needed(message, Language.VIETNAMESE)
+                if translated_message != message:
+                    logger.info(f"Translated: '{message[:50]}' -> '{translated_message[:50]}'")
+                else:
+                    logger.info(f"No translation needed, using original: '{message[:50]}'")
+            except Exception as e:
+                logger.error(f"Translation failed, using original: {str(e)}")
+                translated_message = message
             
             # Sử dụng translated_message để xử lý intent và logic
             msg_lower = translated_message.lower().strip()
