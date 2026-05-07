@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import './HomeScreen.css'
 import JobCard from '../../common/JobCard/JobCard'
 import { getToken } from '../../../utils/auth'
+import TrendDashboard from './TrendDashboard'
 
 const API = 'http://localhost:3000/api'
 
@@ -672,7 +673,7 @@ export default function HomeScreen() {
             )}
           </div>
 
-          <div className="hs-hero-right">
+          {/* <div className="hs-hero-right">
             <div className="hs-stat hs-stat-accent">
               <div className="hs-stat-ico">🎯</div>
               <div className="hs-stat-n">
@@ -685,17 +686,19 @@ export default function HomeScreen() {
                   ? 'Hết lượt đề xuất hôm nay'
                   : 'Việc phù hợp hôm nay'}
               </div>
-              {/* {!recQuota?.quotaExceeded && stats?.jobMatch?.delta && (
-                <div style={{ fontSize: 12, color: stats.jobMatch.delta.startsWith('+') ? '#4CAF50' : '#F44336' }}>
-                  {stats.jobMatch.delta} so với hôm qua
-                </div>
-              )} */}
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 
       <div className="hs-body">
+        <div style={{ marginBottom: 40 }}>
+          <TrendDashboard onIndustryClick={(indId) => {
+            setIndustryFilter(indId)
+            setPage(1)
+            setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+          }} />
+        </div>
         <div className="hs-cats-wrap" style={{ margin: '0 -32px', padding: '40px 32px 48px' }}>
           <div className="hs-cats-header">
             <div className="hs-cats-titles">

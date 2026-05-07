@@ -90,12 +90,12 @@ export default function AdminLayout() {
                 <span>{NAV.find(n => n.id === active)?.label}</span></>
             )}
           </div>
-          <div className="adm-topbar__right">
+          {/* <div className="adm-topbar__right">
             <div className="adm-user-wrap">
               <div className="adm-topbar__av">{initials}</div>
               <span className="adm-topbar__name">{displayName}</span>
             </div>
-          </div>
+          </div> */}
         </div>
         <div className="adm-content">
           <Outlet />
