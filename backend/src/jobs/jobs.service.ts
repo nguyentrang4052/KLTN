@@ -325,7 +325,10 @@ export class JobsService {
 
     let quota = activeSub?.quota ?? null;
 
-    if (quota && (quota.jobSuggestResetDate == null || quota.jobSuggestResetDate < today)) {
+    if (
+      quota &&
+      (quota.jobSuggestResetDate == null || quota.jobSuggestResetDate < today)
+    ) {
       quota = await this.prisma.userQuota.update({
         where: { id: quota.id },
         data: { jobSuggestUsedToday: 0, jobSuggestResetDate: today },
@@ -333,11 +336,15 @@ export class JobsService {
     }
 
     if (!quota) {
-      quota = await this.prisma.userQuota.findFirst({
-        where: { userID: user.userID, month },
-      }) ?? null;
+      quota =
+        (await this.prisma.userQuota.findFirst({
+          where: { userID: user.userID, month },
+        })) ?? null;
 
-      if (quota && (quota.jobSuggestResetDate == null || quota.jobSuggestResetDate < today)) {
+      if (
+        quota &&
+        (quota.jobSuggestResetDate == null || quota.jobSuggestResetDate < today)
+      ) {
         quota = await this.prisma.userQuota.update({
           where: { id: quota.id },
           data: { jobSuggestUsedToday: 0, jobSuggestResetDate: today },
@@ -346,7 +353,8 @@ export class JobsService {
     }
 
     const planLimits = activeSub?.plan?.limits;
-    const jobSuggestPerDay = quota?.jobSuggestPerDay ?? planLimits?.jobSuggestPerDay ?? 3;
+    const jobSuggestPerDay =
+      quota?.jobSuggestPerDay ?? planLimits?.jobSuggestPerDay ?? 3;
     const isUnlimited = jobSuggestPerDay >= UNLIMITED;
     const usedToday = quota?.jobSuggestUsedToday ?? 0;
     const quotaExceeded = !isUnlimited && usedToday >= jobSuggestPerDay;
@@ -379,13 +387,19 @@ export class JobsService {
         if (quota) {
           await this.prisma.userQuota.update({
             where: { id: quota.id },
-            data: { jobSuggestUsedToday: { increment: 1 }, jobSuggestResetDate: today },
+            data: {
+              jobSuggestUsedToday: { increment: 1 },
+              jobSuggestResetDate: today,
+            },
           });
           newUsedToday = currentUsed + 1;
         } else {
           await this.prisma.userQuota.upsert({
             where: { userID_month: { userID: user.userID, month } },
-            update: { jobSuggestUsedToday: { increment: 1 }, jobSuggestResetDate: today },
+            update: {
+              jobSuggestUsedToday: { increment: 1 },
+              jobSuggestResetDate: today,
+            },
             create: {
               userID: user.userID,
               month,
@@ -424,7 +438,9 @@ export class JobsService {
       quota: {
         limit: isUnlimited ? null : jobSuggestPerDay,
         usedToday: isUnlimited ? null : newUsedToday,
-        remaining: isUnlimited ? null : Math.max(0, jobSuggestPerDay - newUsedToday),
+        remaining: isUnlimited
+          ? null
+          : Math.max(0, jobSuggestPerDay - newUsedToday),
         isUnlimited,
         quotaExceeded,
         resetAt: 'Ngày mai',
@@ -459,7 +475,7 @@ export class JobsService {
     if (!user) return null;
 
     const now = new Date();
-    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    // const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const todayStart = new Date(
       now.getFullYear(),
       now.getMonth(),
@@ -467,14 +483,7 @@ export class JobsService {
     );
     const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
 
-    const [
-      jobMatchCount,
-      jobMatchYesterday,
-      // appliedThisMonth,
-      // totalApplied,
-      // responded,
-      // upcomingInterviews,
-    ] = await Promise.all([
+    const [jobMatchCount, jobMatchYesterday] = await Promise.all([
       this.prisma.jobRecommendation.count({
         where: {
           userID: user.userID,
@@ -492,32 +501,8 @@ export class JobsService {
           },
         },
       }),
-      // this.prisma.applyHistory.count({
-      //   where: { userID: user.userID, appliedAt: { gte: firstOfMonth } },
-      // }),
-      // this.prisma.applyHistory.count({
-      //   where: { userID: user.userID },
-      // }),
-      // this.prisma.applyHistory.count({
-      //   where: { userID: user.userID, status: { not: 'pending' } },
-      // }),
-      // this.prisma.applyHistory.findMany({
-      //   where: { userID: user.userID, status: 'interview' },
-      //   include: {
-      //     job: {
-      //       select: {
-      //         title: true,
-      //         company: { select: { companyName: true } },
-      //       },
-      //     },
-      //   },
-      //   take: 3,
-      //   orderBy: { appliedAt: 'desc' },
-      // }),
     ]);
 
-    // const replyRate =
-    //   totalApplied > 0 ? Math.round((responded / totalApplied) * 100) : 0;
     const delta = jobMatchCount - jobMatchYesterday;
 
     return {
@@ -526,22 +511,6 @@ export class JobsService {
         delta: delta >= 0 ? `+${delta}` : `${delta}`,
         label: 'so với hôm qua',
       },
-      applied: {
-        // count: appliedThisMonth,
-        // pending: appliedThisMonth - responded,
-        label: 'Đã nộp tháng này',
-      },
-      replyRate: {
-        // percent: replyRate,
-        label: 'Tỷ lệ phản hồi',
-      },
-      // interviews: {
-      //   count: upcomingInterviews.length,
-      //   next: upcomingInterviews[0]
-      //     ? `${upcomingInterviews[0].job.company.companyName}: sắp tới`
-      //     : null,
-      //   label: 'Phỏng vấn sắp tới',
-      // },
     };
   }
 
@@ -855,5 +824,179 @@ export class JobsService {
     }
 
     return result;
+  }
+
+  async getIndustryTrends() {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+    const [
+      industries,
+      jobCounts,
+      currentJobCounts,
+      previousJobCounts,
+      viewCounts,
+      saveCounts,
+      searchCounts,
+    ] = await Promise.all([
+      this.prisma.industry.findMany({
+        select: { id: true, name: true },
+      }),
+
+      this.prisma.job.groupBy({
+        by: ['industryID'],
+        where: { isActive: true, industryID: { not: null } },
+        _count: { jobID: true },
+      }),
+
+      this.prisma.job.groupBy({
+        by: ['industryID'],
+        where: {
+          isActive: true,
+          industryID: { not: null },
+          postedAt: { gte: thirtyDaysAgo },
+        },
+        _count: { jobID: true },
+      }),
+
+      this.prisma.job.groupBy({
+        by: ['industryID'],
+        where: {
+          isActive: true,
+          industryID: { not: null },
+          postedAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo },
+        },
+        _count: { jobID: true },
+      }),
+
+      this.prisma.userBehavior.groupBy({
+        by: ['jobID'],
+        where: {
+          action: 'view',
+          createdAt: { gte: thirtyDaysAgo },
+          job: { industryID: { not: null } },
+        },
+        _count: { id: true },
+      }).then(async (rows) => {
+        const jobIDs = rows.map(r => r.jobID);
+        const jobs = await this.prisma.job.findMany({
+          where: { jobID: { in: jobIDs }, industryID: { not: null } },
+          select: { jobID: true, industryID: true },
+        });
+        const jobMap = new Map(jobs.map(j => [j.jobID, j.industryID]));
+        const result = new Map<number, number>();
+        for (const row of rows) {
+          const indID = jobMap.get(row.jobID);
+          if (indID) result.set(indID, (result.get(indID) ?? 0) + row._count.id);
+        }
+        return result;
+      }),
+
+      this.prisma.savedJob.groupBy({
+        by: ['jobID'],
+        where: {
+          savedAt: { gte: thirtyDaysAgo },
+          job: { industryID: { not: null } },
+        },
+        _count: { id: true },
+      }).then(async (rows) => {
+        const jobIDs = rows.map(r => r.jobID);
+        const jobs = await this.prisma.job.findMany({
+          where: { jobID: { in: jobIDs }, industryID: { not: null } },
+          select: { jobID: true, industryID: true },
+        });
+        const jobMap = new Map(jobs.map(j => [j.jobID, j.industryID]));
+        const result = new Map<number, number>();
+        for (const row of rows) {
+          const indID = jobMap.get(row.jobID);
+          if (indID) result.set(indID, (result.get(indID) ?? 0) + row._count.id);
+        }
+        return result;
+      }),
+
+      this.prisma.searchHistory.groupBy({
+        by: ['keyword'],
+        where: { createdAt: { gte: thirtyDaysAgo } },
+        _count: { keyword: true },
+      }),
+    ]);
+
+    const totalMap = new Map(jobCounts.map(r => [r.industryID, r._count.jobID]));
+    const currentMap = new Map(currentJobCounts.map(r => [r.industryID, r._count.jobID]));
+    const previousMap = new Map(previousJobCounts.map(r => [r.industryID, r._count.jobID]));
+
+    const MAX_JOBS = 5000;
+    const MAX_VIEWS = 10000;
+    const MAX_SAVES = 1000;
+    const MAX_SEARCH = 500;
+
+    const rawResults = industries
+      .map(ind => {
+        const totalJobs = totalMap.get(ind.id) ?? 0;
+        if (totalJobs === 0) return null;
+
+        const currentJobs = currentMap.get(ind.id) ?? 0;
+        const previousJobs = previousMap.get(ind.id) ?? 0;
+        const views = viewCounts.get(ind.id) ?? 0;
+        const saves = saveCounts.get(ind.id) ?? 0;
+
+        const searchScore = searchCounts
+          .filter(s => s.keyword.toLowerCase().includes(ind.name.toLowerCase()))
+          .reduce((sum, s) => sum + s._count.keyword, 0);
+
+        const demand = Math.log(1 + totalJobs) / Math.log(1 + MAX_JOBS);
+        const growthRaw = previousJobs > 0
+          ? Math.max(-1, Math.min(1, (currentJobs - previousJobs) / previousJobs))
+          : currentJobs > 0 ? 1 : 0;
+        const growth = (growthRaw + 1) / 2;
+        const normalizedViews = Math.min(1, views / MAX_VIEWS);
+        const normalizedSaves = Math.min(1, saves / MAX_SAVES);
+        const normalizedSearch = Math.min(1, searchScore / MAX_SEARCH);
+
+        const rawScore =
+          0.30 * demand +
+          0.25 * normalizedSearch +
+          0.20 * normalizedSaves +
+          0.15 * normalizedViews +
+          0.10 * growth;
+
+        const growthPercent = previousJobs > 0
+          ? parseFloat(((currentJobs - previousJobs) / previousJobs * 100).toFixed(1))
+          : null;
+
+        return {
+          id: ind.id,
+          name: ind.name,
+          totalJobs,
+          currentJobs,
+          previousJobs,
+          views,
+          saves,
+          searchScore,
+          growthPercent,
+          rawScore,
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
+
+    const maxRaw = Math.max(...rawResults.map(r => r.rawScore));
+    const minRaw = Math.min(...rawResults.map(r => r.rawScore));
+
+    const results = rawResults
+      .map(({ rawScore, ...r }) => {
+        const score = maxRaw === minRaw ? 0.5
+          : parseFloat(((rawScore - minRaw) / (maxRaw - minRaw)).toFixed(3));
+
+        const status =
+          score > 0.75 ? 'hot' :
+            score > 0.50 ? 'rising' :
+              score > 0.25 ? 'stable' : 'declining';
+
+        return { ...r, score, status };
+      })
+      .sort((a, b) => b.score - a.score);
+
+    return results;
   }
 }

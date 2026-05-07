@@ -104,6 +104,11 @@ export class JobsController {
     return { ok: true };
   }
 
+  @Get('industry-trends')
+  getIndustryTrends() {
+    return this.jobsService.getIndustryTrends();
+  }
+
   @Get(':id')
   getJobById(@Param('id', ParseIntPipe) id: number) {
     return this.jobsService.getJobById(id);
