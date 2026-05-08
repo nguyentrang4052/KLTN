@@ -70,10 +70,10 @@ export class ProfileService {
       // cvs: user.cvs,
       plan: activeSub
         ? {
-            name: activeSub.plan.name,
-            displayName: activeSub.plan.displayName,
-            expiresAt: activeSub.expiresAt,
-          }
+          name: activeSub.plan.name,
+          displayName: activeSub.plan.displayName,
+          expiresAt: activeSub.expiresAt,
+        }
         : { name: 'free', displayName: 'Free', expiresAt: null },
     };
   }
@@ -184,17 +184,16 @@ export class ProfileService {
     applyCount: number;
     // recommendCount: number;
   }> {
-    const [viewCount, saveCount, applyCount] =
-      await Promise.all([
-        this.prisma.userBehavior.count({ where: { userID, action: 'view' } }),
-        this.prisma.savedJob.count({ where: { userID } }),
-        // this.prisma.applyHistory.count({ where: { userID } }),
-        this.prisma.jobRecommendation.count({
-          where: { userID, matchPercent: { gt: 49 } },
-        }),
-      ]);
+    const [viewCount, saveCount, applyCount] = await Promise.all([
+      this.prisma.userBehavior.count({ where: { userID, action: 'view' } }),
+      this.prisma.savedJob.count({ where: { userID } }),
+      // this.prisma.applyHistory.count({ where: { userID } }),
+      this.prisma.jobRecommendation.count({
+        where: { userID, matchPercent: { gt: 49 } },
+      }),
+    ]);
 
-    return { viewCount, saveCount, applyCount};
+    return { viewCount, saveCount, applyCount };
   }
 
   async updateAvatar(userID: number, file: Express.Multer.File) {

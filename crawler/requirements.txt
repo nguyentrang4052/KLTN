@@ -10,3 +10,4 @@ dotenv
 aiohttp
 playwright
 chromium
+requests

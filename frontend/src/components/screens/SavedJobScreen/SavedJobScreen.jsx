@@ -24,19 +24,23 @@ export default function SavedJobsScreen({ onNavigate }) {
   // const [selected, setSelected] = useState(new Set())
   // const [view, setView] = useState('grid')
 
-  // sync token
   useEffect(() => {
-    const sync = () => setToken(getToken())
+    const sync = () => {
+      const t = getToken()
+      if (!t) {
+        navigate('/login?returnUrl=/saved-jobs&msg=session_expired')
+        return
+      }
+      setToken(t)
+    }
     window.addEventListener('focus', sync)
     sync()
     return () => window.removeEventListener('focus', sync)
   }, [])
 
-  // 🔥 FETCH SAVED JOBS
   useEffect(() => {
     if (!token) {
-      setJobs([])
-      setSavedJobIds(new Set())
+      navigate('/login?returnUrl=/saved-jobs&msg=session_expired')
       return
     }
 

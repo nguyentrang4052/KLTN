@@ -121,6 +121,7 @@ export class CompaniesService {
 
   async getTopCompanies(limit = 5) {
     const now = new Date();
+
     const companies = await this.prisma.company.findMany({
       include: {
         _count: {
@@ -129,16 +130,22 @@ export class CompaniesService {
           },
         },
       },
-      orderBy: { jobs: { _count: 'desc' } },
-      take: limit,
+      where: {
+        jobs: {
+          some: { isActive: true, deadline: { gt: now } },
+        },
+      },
     });
 
-    return companies.map((c) => ({
-      companyID: c.companyID,
-      name: c.companyName,
-      logo: c.companyLogo,
-      jobCount: c._count.jobs,
-    }));
+    return companies
+      .map((c) => ({
+        companyID: c.companyID,
+        name: c.companyName,
+        logo: c.companyLogo,
+        jobCount: c._count.jobs,
+      }))
+      .sort((a, b) => b.jobCount - a.jobCount)
+      .slice(0, limit);
   }
 
   async getLocations() {
@@ -229,5 +236,35 @@ export class CompaniesService {
       name: c.companyName,
       logo: c.companyLogo,
     }));
+  }
+
+  async saveCompanySearchHistory(accountID: number, keyword: string) {
+    await this.prisma.searchHistory.deleteMany({
+      where: { accountID, keyword, type: 'company' },
+    });
+    await this.prisma.searchHistory.create({
+      data: { accountID, keyword, type: 'company' },
+    });
+    const all = await this.prisma.searchHistory.findMany({
+      where: { accountID, type: 'company' },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    });
+    if (all.length > 10) {
+      const toDelete = all.slice(10).map((r) => r.id);
+      await this.prisma.searchHistory.deleteMany({
+        where: { id: { in: toDelete } },
+      });
+    }
+  }
+
+  async getCompanySearchHistory(accountID: number) {
+    const rows = await this.prisma.searchHistory.findMany({
+      where: { accountID, type: 'company' },
+      orderBy: { createdAt: 'desc' },
+      take: 6,
+      select: { keyword: true },
+    });
+    return rows.map((r) => r.keyword);
   }
 }

@@ -142,11 +142,33 @@ export class SubscriptionService {
     if (!user) throw new NotFoundException('User not found');
 
     const today = new Date().toISOString().slice(0, 10);
+    const month = this.currentMonth();
     const UNLIMITED = 999;
     const remaining = (total: number, used: number) =>
       total >= UNLIMITED ? UNLIMITED : Math.max(0, total - used);
 
-    const { activeSub, quota } = await this.getActiveQuota(user.userID);
+    const { activeSub, quota: subQuota } = await this.getActiveQuota(user.userID);
+    let quota = subQuota;
+
+    if (quota && (quota.jobSuggestResetDate == null || quota.jobSuggestResetDate < today)) {
+      quota = await this.prisma.userQuota.update({
+        where: { id: quota.id },
+        data: { jobSuggestUsedToday: 0, jobSuggestResetDate: today },
+      });
+    }
+
+    if (!quota) {
+      quota = await this.prisma.userQuota.findFirst({
+        where: { userID: user.userID, month },
+      }) ?? null;
+
+      if (quota && (quota.jobSuggestResetDate == null || quota.jobSuggestResetDate < today)) {
+        quota = await this.prisma.userQuota.update({
+          where: { id: quota.id },
+          data: { jobSuggestUsedToday: 0, jobSuggestResetDate: today },
+        });
+      }
+    }
 
     if (!quota) {
       const limits = activeSub?.plan?.limits;
@@ -155,6 +177,7 @@ export class SubscriptionService {
       const cvMatchCheckCount = limits?.cvMatchCheckCount ?? 0;
 
       return {
+        month,
         jobSuggestPerDay,
         jobSuggestUsedToday: 0,
         cvAnalysisTotal: cvAnalysisPerMonth,
@@ -166,16 +189,8 @@ export class SubscriptionService {
       };
     }
 
-    if (quota.jobSuggestResetDate !== today) {
-      await this.prisma.userQuota.update({
-        where: { id: quota.id },
-        data: { jobSuggestUsedToday: 0, jobSuggestResetDate: today },
-      });
-      quota.jobSuggestUsedToday = 0;
-      quota.jobSuggestResetDate = today;
-    }
-
     return {
+      month: quota.month,
       jobSuggestPerDay: quota.jobSuggestPerDay,
       jobSuggestUsedToday: quota.jobSuggestUsedToday,
       cvAnalysisTotal: quota.cvAnalysisTotal,
@@ -568,7 +583,6 @@ export class SubscriptionService {
       select: { userID: true },
     });
     if (!user) throw new NotFoundException('User not found');
-
     const sub = await this.prisma.userSubscription.findFirst({
       where: {
         userID: user.userID,
@@ -699,6 +713,16 @@ export class SubscriptionService {
       orderBy: { startedAt: 'desc' },
     });
 
-    return { activeSub, quota: activeSub?.quota ?? null };
+    let quota = activeSub?.quota ?? null;
+
+    // tìm quota trực tiếp cho user free
+    if (!quota) {
+      const month = this.currentMonth();
+      quota = await this.prisma.userQuota.findFirst({
+        where: { userID, month },
+      }) ?? null;
+    }
+
+    return { activeSub, quota };
   }
 }

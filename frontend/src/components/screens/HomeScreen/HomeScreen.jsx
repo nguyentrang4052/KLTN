@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import './HomeScreen.css'
 import JobCard from '../../common/JobCard/JobCard'
 import { getToken } from '../../../utils/auth'
+import TrendDashboard from './TrendDashboard'
 
 const API = 'http://localhost:3000/api'
 
@@ -166,7 +167,6 @@ export default function HomeScreen() {
     setSearchParams(newParams, { replace: true })
   }, [setSearchParams])
 
-  // Chỉ sync URL khi sort thay đổi (KHÔNG gọi setPage)
   useEffect(() => {
     updateURLParams({
       keyword: keyword || null,
@@ -178,7 +178,6 @@ export default function HomeScreen() {
     })
   }, [keyword, page, sort, industryFilter, activePlatform, locationFilter, updateURLParams])
 
-  // Chỉ sync URL khi industry thay đổi (KHÔNG gọi setPage)
   useEffect(() => {
     if (location.state?.scrollY) {
       const timer = setTimeout(() => {
@@ -221,7 +220,7 @@ export default function HomeScreen() {
       .finally(() => setLoadingIndustries(false))
   }, [activePlatform])
 
-  // Handler chuyển trang - chỉ set state, không gọi updateURLParams ở đây
+
   const handlePageChange = useCallback((newPage) => {
     if (newPage >= 1 && newPage <= meta.totalPages && newPage !== page) {
       setPage(newPage)
@@ -289,7 +288,7 @@ export default function HomeScreen() {
         .finally(() => setLoadingRecs(false))
     }
     fetchRecs()
-    const interval = setInterval(fetchRecs, 60 * 60 * 1000)
+    const interval = setInterval(fetchRecs, 30 * 60 * 1000)
     return () => clearInterval(interval)
   }, [token])
 
@@ -365,13 +364,13 @@ export default function HomeScreen() {
       alert('Lỗi: Không tìm thấy ID công việc.')
       return
     }
-    trackBehavior(job.jobID, 'click')
+    trackBehavior(job.jobID, 'view')
     navigate(`/home/job/${job.jobID}`, {
       state: { scrollY: currentScrollY, fromPath: location.pathname + location.search }
     })
   }
 
-  const handleSearch = async() => {
+  const handleSearch = async () => {
     setPage(1)
     pageRef.current = 1
     updateURLParams({
@@ -508,7 +507,6 @@ export default function HomeScreen() {
   const catTotalPages = Math.ceil(industries.length / CAT_PAGE_SIZE)
   const pagedIndustries = industries.slice(catPage * CAT_PAGE_SIZE, (catPage + 1) * CAT_PAGE_SIZE)
 
-  // Ô trống → hiện lịch sử | Đang gõ → hiện suggestions
   const showSearchDropdown = showDropdown && (
     (keyword.trim() && suggestions.length > 0) ||
     (!keyword.trim() && searchHistory.length > 0)
@@ -566,7 +564,7 @@ export default function HomeScreen() {
                     width: Math.max(searchPos.width, 320),
                     zIndex: 9997,
                   }}>
-                    {/* Lịch sử — chỉ khi ô trống */}
+
                     {!keyword.trim() && searchHistory.length > 0 && (
                       <>
                         <div className="hs-sd-section-hd">
@@ -675,22 +673,32 @@ export default function HomeScreen() {
             )}
           </div>
 
-          <div className="hs-hero-right">
+          {/* <div className="hs-hero-right">
             <div className="hs-stat hs-stat-accent">
               <div className="hs-stat-ico">🎯</div>
-              <div className="hs-stat-n">{loadingStats ? '…' : (stats?.jobMatch?.count ?? '—')}</div>
-              <div className="hs-stat-l">Việc phù hợp hôm nay</div>
-              {/* {stats?.jobMatch?.delta && (
-                <div style={{ fontSize: 12, color: stats.jobMatch.delta.startsWith('+') ? '#4CAF50' : '#F44336' }}>
-                  {stats.jobMatch.delta} so với hôm qua
-                </div>
-              )} */}
+              <div className="hs-stat-n">
+                {loadingStats ? '…'
+                  : recQuota?.quotaExceeded ? '—'
+                    : (stats?.jobMatch?.count ?? '—')}
+              </div>
+              <div className="hs-stat-l">
+                {recQuota?.quotaExceeded
+                  ? 'Hết lượt đề xuất hôm nay'
+                  : 'Việc phù hợp hôm nay'}
+              </div>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 
       <div className="hs-body">
+        <div style={{ marginBottom: 40 }}>
+          <TrendDashboard onIndustryClick={(indId) => {
+            setIndustryFilter(indId)
+            setPage(1)
+            setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+          }} />
+        </div>
         <div className="hs-cats-wrap" style={{ margin: '0 -32px', padding: '40px 32px 48px' }}>
           <div className="hs-cats-header">
             <div className="hs-cats-titles">
@@ -824,7 +832,7 @@ export default function HomeScreen() {
                 <span style={{ fontWeight: 600, color: recQuota.quotaExceeded ? '#C0412A' : '#1565C0' }}>
                   💡 Lượt đề xuất hôm nay: {recQuota.usedToday}/{recQuota.limit}
                   {recQuota.quotaExceeded
-                    ? ' · Đã hết lượt — đang hiển thị preview'
+                    ? ' · Đã hết lượt'
                     : ` · Còn ${recQuota.remaining} lượt`}
                 </span>
                 {recQuota.quotaExceeded && (
@@ -841,7 +849,7 @@ export default function HomeScreen() {
             {loadingRecs ? (
               <div className="hs-loading">⟳ Đang tải việc làm...</div>
             ) : recommendations.length === 0 ? (
-              <div className="hs-empty">Chưa có gợi ý — hãy cập nhật kỹ năng trong hồ sơ</div>
+              <div className="hs-empty">Chưa có gợi ý — hãy cập nhật hồ sơ</div>
             ) : (
               <>
                 <div className="hs-grid">

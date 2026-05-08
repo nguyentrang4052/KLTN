@@ -118,7 +118,7 @@ export class MailService {
                             ">${job.sourcePlatform ?? ''}</span>
                           </td>
                           <td>
-                            <a href="${job.sourceLink ?? '#'}" style="
+                            <a href="${this.config.get('FRONTEND_URL')}/jobs?keyword=${encodeURIComponent(job.title ?? '')}" style="
                               display: inline-block;
                               padding: 6px 16px; border-radius: 7px;
                               background: rgb(35,42,162); color: #fff;
@@ -200,7 +200,7 @@ export class MailService {
               <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 8px;">
                 <tr>
                   <td align="center">
-                    <a href="${this.config.get('FRONTEND_URL') ?? '#'}/jobs" style="
+                    <a href="${this.config.get('FRONTEND_URL')}/jobs?keyword=${encodeURIComponent(keyword)}" style="
                       display: inline-block;
                       padding: 12px 28px; border-radius: 10px;
                      background: #232AA2;
@@ -500,13 +500,6 @@ export class MailService {
                   ${urgency.icon} ${urgency.label}
                 </span>
               </td>
-              ${job.sourceLink
-            ? `
-              <td align="right" valign="top">
-                <a href="${job.sourceLink}" style="display:inline-block;padding:7px 14px;border-radius:7px;background:#232AA2;color:#fff;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap;">Xem →</a>
-              </td>`
-            : ''
-          }
             </tr>
           </table>
         </td></tr>
@@ -545,7 +538,7 @@ export class MailService {
 
           <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:8px;">
             <tr><td align="center">
-              <a href="${this.config.get('FRONTEND_URL') ?? '#'}/home/saved" style="
+              <a href="${this.config.get('FRONTEND_URL') ?? '#'}/saved-jobs" style="
                 display:inline-block;padding:12px 28px;border-radius:10px;
                 background:#232AA2;color:#fff;font-size:14px;font-weight:700;
                 text-decoration:none;">Xem việc làm đã lưu →</a>

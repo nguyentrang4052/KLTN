@@ -1,6 +1,6 @@
 import { Injectable, forwardRef, Inject } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { NotificationGateway } from './notification.gateway';
+import { NotificationGateway } from '../websocket-gateway/notification.gateway';
 import { CreateNotificationDto } from '../dto/notification.dto';
 
 @Injectable()
@@ -36,20 +36,32 @@ export class NotificationService {
   }
 
   async getByUser(userID: number, onlyUnread = false) {
+    const twoMonthsAgo = new Date();
+    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+
     return this.prisma.notification.findMany({
       where: {
         userID,
         deletedAt: null,
+        createdAt: { gte: twoMonthsAgo }, // chỉ lấy 2 tháng gần nhất
         ...(onlyUnread ? { isRead: false } : {}),
       },
       orderBy: { createdAt: 'desc' },
-      take: 50,
+      take: 200,
     });
   }
 
   async countUnread(userID: number) {
+    const twoMonthsAgo = new Date();
+    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+
     return this.prisma.notification.count({
-      where: { userID, isRead: false, deletedAt: null },
+      where: {
+        userID,
+        isRead: false,
+        deletedAt: null,
+        createdAt: { gte: twoMonthsAgo },
+      },
     });
   }
 

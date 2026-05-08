@@ -7,6 +7,7 @@ from cleaner import clean_job
 from crawlers.topcv import TopCVCrawler
 from crawlers.careerviet import CareerVietCrawler
 from crawlers.careerlink import CareerLinkCrawler
+import requests
 
 
 PLATFORM_NAMES = {
@@ -47,6 +48,7 @@ async def run_crawl(query: str, quick_mode: bool = False):
                     timeout=PLATFORM_TIMEOUT,
                 )
             print(f"[{name.upper()}] ✅ Hoàn thành {mode_str}: {count} jobs")
+            notify_new_jobs(count)
             return count
         except asyncio.TimeoutError:
             msg = f"{name}: Timeout sau {PLATFORM_TIMEOUT}s"
@@ -345,3 +347,17 @@ async def trigger_fast_search(keyword: str):
     """Crawl FAST mode cho query search"""
     from crawler_services import run_crawl
     await run_crawl(query=keyword, quick_mode=True)
+
+
+def notify_new_jobs(count: int):
+    if count <= 0:
+        return
+    try:
+        requests.post(
+            "http://localhost:3000/api/jobs/internal/broadcast-new-jobs",
+            json={"count": count, "secret": os.getenv("INTERNAL_SECRET", "")},
+            timeout=3,
+        )
+        print(f"[ORCHESTRATOR] 📡 Notified backend: {count} new jobs")
+    except Exception as e:
+        print(f"[ORCHESTRATOR] ⚠️ Notify failed: {e}")

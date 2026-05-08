@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom'
 import { getToken } from '../../../utils/auth';
 import './JobSearchScreen.css';
+import { useJobsSocket } from '../../../hook/useJobsSocket';
 
 const API = 'http://localhost:3000/api';
 
@@ -76,7 +77,6 @@ function JobSearchScreen() {
   const [token, setToken] = useState(() => getToken());
   const [keyword, setKeyword] = useState('');
   const [sort, setSort] = useState('newest');
-  const [currentPage, setCurrentPage] = useState(1);
   const [activeFilters, setActiveFilters] = useState({
     jobType: [], experience: [], industry: [], locations: [], source: [],
   });
@@ -121,7 +121,18 @@ function JobSearchScreen() {
   const [myAlerts, setMyAlerts] = useState([]);
   const [showMyAlerts, setShowMyAlerts] = useState(false);
 
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const currentPage = parseInt(searchParams.get('page')) || 1;
+
+  // const isFirstPage = useRef(true);
+
+  const goToPage = useCallback((page, replace = false) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('page', String(page));
+      return next;
+    }, { replace });
+  }, [setSearchParams]);
 
   const [suggestions, setSuggestions] = useState([])
   const [searchHistory, setSearchHistory] = useState([])
@@ -131,11 +142,32 @@ function JobSearchScreen() {
   const suggestDebounceRef = useRef(null)
   const historyDebounceRef = useRef(null)
 
+  const [pendingCount, setPendingCount] = useState(0);
+  const [bgJobs, setBgJobs] = useState([]);
+  const [bgMeta, setBgMeta] = useState(null);
+
+  const loadStaticRef = useRef(null);
+
+  useJobsSocket(useCallback(async (count) => {
+    if (sort === 'match' && token) return;
+    try {
+      const params = new URLSearchParams({ page: '1', limit: '10', sort });
+      if (keyword) params.set('keyword', keyword);
+      if (activeFilters.source.length > 0) params.set('source', activeFilters.source[0]);
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await fetch(`${API}/jobs?${params}`, { headers });
+      const data = await res.json();
+      setBgJobs(data.data ?? []);
+      setBgMeta(data.meta ?? null);
+      setPendingCount(count);
+    } catch { }
+  }, [sort, token, keyword, activeFilters]));
+
+
   useEffect(() => {
-    const kw = searchParams.get('keyword')
-    if (kw) {
+    const kw = searchParams.get('keyword') ?? ''
+    if (kw !== keyword) {
       setKeyword(kw)
-      setCurrentPage(1)
     }
   }, [searchParams])
 
@@ -204,16 +236,12 @@ function JobSearchScreen() {
         .catch(console.error)
         .finally(() => setLoadingFilters(false));
 
+    loadStaticRef.current = loadStatic;
     loadStatic();
     const interval = setInterval(loadStatic, 30_000);
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    if (filterOptions.sources.length > 0 && activeFilters.source.length === 0) {
-      setActiveFilters(prev => ({ ...prev, source: [filterOptions.sources[0].value] }));
-    }
-  }, [filterOptions.sources]);
 
   useEffect(() => {
     setLoadingDynamic(true);
@@ -233,7 +261,11 @@ function JobSearchScreen() {
     setLoadingRecs(true);
     fetch(`${API}/jobs/recommendations`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
-      .then(data => { setRecommendations(Array.isArray(data) ? data : []); setRecPage(1); })
+      .then(res => {
+        const list = Array.isArray(res) ? res : (res.data ?? []);
+        setRecommendations(list);
+        setRecPage(1);
+      })
       .catch(console.error)
       .finally(() => setLoadingRecs(false));
   }, [sort, token]);
@@ -254,7 +286,13 @@ function JobSearchScreen() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const res = await fetch(`${API}/jobs?${params}`, { headers });
       const data = await res.json();
-      setJobs(data.data ?? []);
+      setJobs(prev => {
+        const newData = data.data ?? [];
+        if (JSON.stringify(prev.map(j => j.jobID)) === JSON.stringify(newData.map(j => j.jobID))) {
+          return prev; // Không update nếu giống nhau
+        }
+        return newData;
+      });
       setMeta(data.meta ?? { total: 0, totalPages: 1 });
     } catch (err) {
       console.error(err);
@@ -265,12 +303,23 @@ function JobSearchScreen() {
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (sort !== 'match' || !token) fetchJobs();
-    }, 20_000);
-    return () => clearInterval(interval);
-  }, [fetchJobs, sort, token]);
+  const applyPendingJobs = () => {
+    setJobs(bgJobs);
+    setMeta(bgMeta);
+    setBgJobs([]);
+    setBgMeta(null);
+    setPendingCount(0);
+    loadStaticRef.current?.();
+    const source = activeFilters.source[0] ?? '';
+    const url = source
+      ? `${API}/jobs/filter-by-source?source=${encodeURIComponent(source)}`
+      : `${API}/jobs/filter-by-source`;
+    fetch(url)
+      .then(r => r.json())
+      .then(data => setDynamicFilters({ industries: data?.industries ?? [] }))
+      .catch(console.error);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const displayJobs = sort === 'match' && token ? recommendations : jobs;
   const displayLoading = sort === 'match' && token ? loadingRecs : loadingJobs;
@@ -350,9 +399,9 @@ function JobSearchScreen() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`, // ← thêm token
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ keyword: alertKeyword.trim() }), // ← bỏ email
+        body: JSON.stringify({ keyword: alertKeyword.trim() }),
       });
       const data = await res.json();
       setAlertMsg(data.message ?? 'Đăng ký thành công!');
@@ -389,7 +438,7 @@ function JobSearchScreen() {
         : [...current, value];
       return { ...prev, [category]: updated };
     });
-    setCurrentPage(1);
+    goToPage(1, true)
   };
 
   const toggleJobType = (value) => {
@@ -397,7 +446,7 @@ function JobSearchScreen() {
       ...prev,
       jobType: prev.jobType.includes(value) ? [] : [value],
     }));
-    setCurrentPage(1);
+    goToPage(1, true)
   };
 
   const toggleExperience = (value) => {
@@ -405,7 +454,7 @@ function JobSearchScreen() {
       ...prev,
       experience: prev.experience.includes(value) ? [] : [value],
     }));
-    setCurrentPage(1);
+    goToPage(1, true)
   };
 
   const toggleSource = (value) => {
@@ -415,16 +464,16 @@ function JobSearchScreen() {
       jobType: [],
       industry: [],
     }));
-    setCurrentPage(1);
+    goToPage(1, true)
   };
 
   const clearFilters = () => {
-    const firstSource = filterOptions.sources[0]?.value ?? '';
+    // const firstSource = filterOptions.sources[0]?.value ?? '';
     setActiveFilters({
       jobType: [], experience: [], industry: [], locations: [],
-      source: firstSource ? [firstSource] : [],
+      source: [],
     });
-    setSalaryMin(0); setSalaryMax(0); setSalaryRange(100); setCurrentPage(1);
+    setSalaryMin(0); setSalaryMax(0); setSalaryRange(100); goToPage(1, true);
   };
 
   const showToast = (message) => {
@@ -476,7 +525,7 @@ function JobSearchScreen() {
     const total = meta.totalPages;
     const cur = currentPage;
     const addBtn = (n) => pages.push(
-      <button key={n} className={`pg-btn ${cur === n ? 'on' : ''}`} onClick={() => setCurrentPage(n)}>{n}</button>
+      <button key={n} className={`pg-btn ${cur === n ? 'on' : ''}`} onClick={() => goToPage(n)}>{n}</button>
     );
     const addDots = (k) => pages.push(
       <span key={k} style={{ display: 'flex', alignItems: 'center', padding: '0 6px', color: 'var(--ink4)' }}>…</span>
@@ -567,6 +616,7 @@ function JobSearchScreen() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+
   const handleKeywordChange = (e) => {
     const val = e.target.value
     setKeyword(val)
@@ -613,7 +663,7 @@ function JobSearchScreen() {
   const handleQuickSearch = (kw) => {
     const trimmed = kw.trim()
     setKeyword(trimmed)
-    setCurrentPage(1)
+    goToPage(1, true)
     setSuggestions([])
     setShowDropdown(false)
   }
@@ -718,7 +768,7 @@ function JobSearchScreen() {
                 {SALARY_OPTIONS.map(pill => (
                   <span key={pill.label}
                     className={`spill ${salaryMin === pill.min && salaryMax === pill.max ? 'on' : ''}`}
-                    onClick={() => { setSalaryMin(pill.min); setSalaryMax(pill.max); setSalaryRange(pill.max || 100); setCurrentPage(1); }}>
+                    onClick={() => { setSalaryMin(pill.min); setSalaryMax(pill.max); setSalaryRange(pill.max || 100); goToPage(1, true); }}>
                     {pill.label}
                   </span>
                 ))}
@@ -785,7 +835,7 @@ function JobSearchScreen() {
                 onChange={handleKeywordChange}
                 onFocus={handleSearchFocus}
                 onKeyDown={e => {
-                  if (e.key === 'Enter') { setShowDropdown(false); setCurrentPage(1); saveHistory(keyword) }
+                  if (e.key === 'Enter') { setShowDropdown(false); goToPage(1, true); saveHistory(keyword) }
                   if (e.key === 'Escape') setShowDropdown(false)
                 }}
               />
@@ -797,7 +847,7 @@ function JobSearchScreen() {
                 }} onClick={() => { setKeyword(''); setSuggestions([]); setShowDropdown(false) }}>×</button>
               )}
             </div>
-            <button className="search-btn" onClick={() => { setShowDropdown(false); setCurrentPage(1); saveHistory(keyword) }}>
+            <button className="search-btn" onClick={() => { setShowDropdown(false); goToPage(1, true); saveHistory(keyword) }}>
               Tìm kiếm
             </button>
           </div>
@@ -905,7 +955,7 @@ function JobSearchScreen() {
             <div className="sort-row">
               <span className="sort-label">Sắp xếp:</span>
               <select className="sort-sel" value={sort}
-                onChange={e => { setSort(e.target.value); setCurrentPage(1); }}>
+                onChange={e => { setSort(e.target.value); goToPage(1, true); }}>
                 {token && <option value="match">Phù hợp nhất</option>}
                 <option value="newest">Mới nhất</option>
                 <option value="salary">Lương cao nhất</option>
@@ -925,87 +975,101 @@ function JobSearchScreen() {
                 : 'Không tìm thấy việc làm phù hợp'}
             </div>
           ) : (
-            <div className="jobs-list">
-              {(sort === 'match' && token ? pagedRecs : displayJobs).map((job, idx) => (
-                <div key={job.jobID} className="job-card fade-in"
-                  style={{ animationDelay: `${idx * 0.04}s`, position: 'relative' }}
-                  onClick={() => openDetail(job.jobID)}>
-
-                  {job.matchPercent != null && (
-                    <div style={{
-                      position: 'absolute', top: '10px', right: '14px',
-                      padding: '3px 9px', borderRadius: '5px', fontSize: '11px', fontWeight: 800,
-                      background: job.matchPercent >= 80 ? 'rgba(46,96,64,.12)' : 'rgba(212,130,10,.12)',
-                      color: job.matchPercent >= 80 ? 'var(--sage)' : 'var(--amber)',
-                      border: `1px solid ${job.matchPercent >= 80 ? 'rgba(46,96,64,.25)' : 'rgba(212,130,10,.25)'}`,
-                    }}>
-                      🎯 {Math.round(job.matchPercent)}% phù hợp
-                    </div>
-                  )}
-
-                  <div className="jc-top">
-                    <div className="co-logo" style={{ background: 'linear-gradient(135deg,#1565C0,#1E88E5)' }}>
-                      {job.companyLogo
-                        ? <img src={job.companyLogo} alt={job.companyName} />
-                        : <span>{getLogoLetter(job.companyName)}</span>}
-                    </div>
-                    <div className="jc-info">
-                      <div className="jc-title">{job.title}</div>
-                      <div className="jc-company"
-                        onClick={(e) => openCompanyDetail(job.companyID, e)}
-                        style={{ cursor: 'pointer', textDecorationLine: 'underline', textDecorationStyle: 'dotted' }}>
-                        {job.companyName} <span className="verified">✓</span>
-                      </div>
-                      <div className="jc-meta">
-                        {job.shortLocation && <span className="jc-meta-item">📍 {job.shortLocation}</span>}
-                        {job.jobType && <span className="jc-meta-item">⏰ {job.jobType}</span>}
-                        {job.experienceYear && <span className="jc-meta-item">🎯 {job.experienceYear}</span>}
-                      </div>
-                    </div>
-                    <div className="jc-right" style={{ paddingTop: job.matchPercent != null ? '24px' : '0' }}>
-                      <div className="jc-salary">{job.salary ?? 'Thỏa thuận'}</div>
-                      <div className="jc-posted">{formatPostedAt(job.postedAt)}</div>
-                      {job.deadline && (
-                        <div className="jc-deadline"
-                          style={formatDeadline(job.deadline)?.includes('hết') ? { color: 'var(--rust)' } : {}}>
-                          ⏰ {formatDeadline(job.deadline)}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="jc-bottom">
-                    <div className="jc-tags">
-                      {(job.skills ?? []).map(tag => (
-                        <span key={tag} className="jtag">{tag}</span>
-                      ))}
-                      {job.sourcePlatform && (
-                        <span className={`source-chip ${getSourceClass(job.sourcePlatform)}`}>
-                          {job.sourcePlatform}
-                        </span>
-                      )}
-                    </div>
-                    <div className="jc-actions">
-                      <button
-                        className={`jc-save ${savedJobIds.has(job.jobID) ? 'saved' : ''}`}
-                        onClick={(e) => handleSave(job.jobID, e)}
-                        style={{
-                          width: savedJobIds.has(job.jobID) ? 'auto' : '34px',
-                          padding: savedJobIds.has(job.jobID) ? '0 10px' : '0',
-                          gap: '4px',
-                          fontSize: savedJobIds.has(job.jobID) ? '12px' : '15px',
-                        }}>
-                        {savedJobIds.has(job.jobID) ? '🔖 Đã lưu' : '🔖'}
-                      </button>
-                      <button className="jc-apply"
-                        onClick={(e) => { e.stopPropagation(); handleApply(e, job.jobID); }}>
-                        ⚡ Apply ngay
-                      </button>
-                    </div>
-                  </div>
+            <>
+              {pendingCount > 0 && sort !== 'match' && (
+                <div onClick={applyPendingJobs} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  gap: '8px', padding: '10px 16px', marginBottom: '12px',
+                  background: 'rgba(35,42,162,0.07)',
+                  border: '1.5px solid rgba(35,42,162,0.25)',
+                  borderRadius: '10px', cursor: 'pointer',
+                  fontSize: '13px', fontWeight: 700, color: 'rgb(35,42,162)',
+                }}>
+                  🆕 Có {pendingCount} việc làm mới — Nhấn để cập nhật
                 </div>
-              ))}
-            </div>
+              )}
+              <div className="jobs-list">
+                {(sort === 'match' && token ? pagedRecs : displayJobs).map((job, idx) => (
+                  <div key={job.jobID} className="job-card fade-in"
+                    style={{ animationDelay: `${idx * 0.04}s`, position: 'relative' }}
+                    onClick={() => openDetail(job.jobID)}>
+
+                    {job.matchPercent != null && (
+                      <div style={{
+                        position: 'absolute', top: '10px', right: '14px',
+                        padding: '3px 9px', borderRadius: '5px', fontSize: '11px', fontWeight: 800,
+                        background: job.matchPercent >= 80 ? 'rgba(46,96,64,.12)' : 'rgba(212,130,10,.12)',
+                        color: job.matchPercent >= 80 ? 'var(--sage)' : 'var(--amber)',
+                        border: `1px solid ${job.matchPercent >= 80 ? 'rgba(46,96,64,.25)' : 'rgba(212,130,10,.25)'}`,
+                      }}>
+                        🎯 {Math.round(job.matchPercent)}% phù hợp
+                      </div>
+                    )}
+
+                    <div className="jc-top">
+                      <div className="co-logo" style={{ background: 'linear-gradient(135deg,#1565C0,#1E88E5)' }}>
+                        {job.companyLogo
+                          ? <img src={job.companyLogo} alt={job.companyName} />
+                          : <span>{getLogoLetter(job.companyName)}</span>}
+                      </div>
+                      <div className="jc-info">
+                        <div className="jc-title">{job.title}</div>
+                        <div className="jc-company"
+                          onClick={(e) => openCompanyDetail(job.companyID, e)}
+                          style={{ cursor: 'pointer', textDecorationLine: 'underline', textDecorationStyle: 'dotted' }}>
+                          {job.companyName} <span className="verified">✓</span>
+                        </div>
+                        <div className="jc-meta">
+                          {job.shortLocation && <span className="jc-meta-item">📍 {job.shortLocation}</span>}
+                          {job.jobType && <span className="jc-meta-item">⏰ {job.jobType}</span>}
+                          {job.experienceYear && <span className="jc-meta-item">🎯 {job.experienceYear}</span>}
+                        </div>
+                      </div>
+                      <div className="jc-right" style={{ paddingTop: job.matchPercent != null ? '24px' : '0' }}>
+                        <div className="jc-salary">{job.salary ?? 'Thỏa thuận'}</div>
+                        <div className="jc-posted">{formatPostedAt(job.postedAt)}</div>
+                        {job.deadline && (
+                          <div className="jc-deadline"
+                            style={formatDeadline(job.deadline)?.includes('hết') ? { color: 'var(--rust)' } : {}}>
+                            ⏰ {formatDeadline(job.deadline)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="jc-bottom">
+                      <div className="jc-tags">
+                        {(job.skills ?? []).map(tag => (
+                          <span key={tag} className="jtag">{tag}</span>
+                        ))}
+                        {job.sourcePlatform && (
+                          <span className={`source-chip ${getSourceClass(job.sourcePlatform)}`}>
+                            {job.sourcePlatform}
+                          </span>
+                        )}
+                      </div>
+                      <div className="jc-actions">
+                        <button
+                          className={`jc-save ${savedJobIds.has(job.jobID) ? 'saved' : ''}`}
+                          onClick={(e) => handleSave(job.jobID, e)}
+                          style={{
+                            width: savedJobIds.has(job.jobID) ? 'auto' : '34px',
+                            padding: savedJobIds.has(job.jobID) ? '0 10px' : '0',
+                            gap: '4px',
+                            fontSize: savedJobIds.has(job.jobID) ? '12px' : '15px',
+                          }}>
+                          {savedJobIds.has(job.jobID) ? '🔖 Đã lưu' : '🔖'}
+                        </button>
+                        <button className="jc-apply"
+                          onClick={(e) => { e.stopPropagation(); handleApply(e, job.jobID); }}>
+                          ⚡ Apply ngay
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
 
           {sort === 'match' && token && recTotalPages > 1 && (
@@ -1018,9 +1082,9 @@ function JobSearchScreen() {
 
           {meta.totalPages > 1 && sort !== 'match' && (
             <div className="pagination">
-              <button className="pg-btn" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>‹</button>
+              <button className="pg-btn" disabled={currentPage === 1} onClick={() => goToPage(currentPage - 1)}>‹</button>
               {renderPages()}
-              <button className="pg-btn" disabled={currentPage === meta.totalPages} onClick={() => setCurrentPage(p => p + 1)}>›</button>
+              <button className="pg-btn" disabled={currentPage === meta.totalPages} onClick={() => goToPage(currentPage + 1)}>›</button>
             </div>
           )}
         </main>
@@ -1035,7 +1099,7 @@ function JobSearchScreen() {
           <div className="kw-grid">
             {trendingKeywords.map(kw => (
               <span key={kw.name} className="kw-pill"
-                onClick={() => { setKeyword(kw.name); setSort('newest'); setCurrentPage(1); }}>
+                onClick={() => { setKeyword(kw.name); setSort('newest'); goToPage(1, true); }}>
                 {kw.name}
               </span>
             ))}

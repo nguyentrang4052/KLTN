@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import './CompaniesScreen.css'
 import { createPortal } from 'react-dom'
 import { getToken } from '../../../utils/auth'
+import { useJobsSocket } from '../../../hook/useJobsSocket'
 
 const API = 'http://localhost:3000/api'
 
@@ -99,20 +100,30 @@ export default function CompaniesScreen() {
   const [selectedLocations, setSelectedLocations] = useState([])
   const [checkedSize, setCheckedSize] = useState({})
   const [sort, setSort] = useState('jobs')
-  const [page, setPage] = useState(1)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const page = parseInt(searchParams.get('page')) || 1
   const [listView, setListView] = useState(false)
   const [loadingCompanies, setLoadingCompanies] = useState(false)
 
   const [suggestions, setSuggestions] = useState([])
-  const [recentSearches, setRecentSearches] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('company_search_history') || '[]') }
-    catch { return [] }
-  })
+  // const [recentSearches, setRecentSearches] = useState(() => {
+  //   try { return JSON.parse(localStorage.getItem('company_search_history') || '[]') }
+  //   catch { return [] }
+  // })
+  const [recentSearches, setRecentSearches] = useState([])
   const [showDropdown, setShowDropdown] = useState(false)
   const searchInputRef = useRef(null)
   const [searchPos, setSearchPos] = useState({ top: 0, left: 0, width: 0 })
   const suggestDebounceRef = useRef(null)
   const token = getToken()
+
+  const goToPage = useCallback((p, replace = false) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      next.set('page', String(p))
+      return next
+    }, { replace })
+  }, [setSearchParams])
 
   useEffect(() => {
     Promise.all([
@@ -149,7 +160,7 @@ export default function CompaniesScreen() {
   const isFirstRender = useRef(true)
   useEffect(() => {
     if (isFirstRender.current) { isFirstRender.current = false; return }
-    setPage(1)
+    goToPage(1, true)
   }, [selectedLocations, checkedSize, keyword, sort])
 
   useEffect(() => {
@@ -201,7 +212,7 @@ export default function CompaniesScreen() {
     const cur = page
     const addBtn = (n) => pages.push(
       <button key={n} className={`cs-pg-btn${cur === n ? ' on' : ''}`}
-        onClick={() => setPage(n)}>{n}</button>
+        onClick={() => goToPage(n)}>{n}</button>
     )
     const addDots = (k) => pages.push(
       <button key={k} className="cs-pg-btn" disabled>…</button>
@@ -220,14 +231,48 @@ export default function CompaniesScreen() {
     return pages
   }
 
-  const saveRecentSearch = (kw) => {
+  useEffect(() => {
+    if (token) {
+      fetch(`${API}/companies/search-history`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(r => r.json())
+        .then(data => setRecentSearches(Array.isArray(data) ? data : []))
+        .catch(() => {
+          try { setRecentSearches(JSON.parse(localStorage.getItem('company_search_history') || '[]')) }
+          catch { }
+        })
+    } else {
+      try { setRecentSearches(JSON.parse(localStorage.getItem('company_search_history') || '[]')) }
+      catch { }
+    }
+  }, [token])
+
+  const saveRecentSearch = async (kw) => {
     if (!kw?.trim()) return
-    setRecentSearches(prev => {
-      const filtered = prev.filter(k => k !== kw.trim())
-      const updated = [kw.trim(), ...filtered].slice(0, 6)
-      localStorage.setItem('company_search_history', JSON.stringify(updated))
-      return updated
-    })
+    if (token) {
+      try {
+        await fetch(`${API}/companies/search-history`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ keyword: kw.trim() }),
+        })
+        setRecentSearches(prev => {
+          const filtered = prev.filter(k => k !== kw.trim())
+          return [kw.trim(), ...filtered].slice(0, 6)
+        })
+      } catch { }
+    } else {
+      setRecentSearches(prev => {
+        const filtered = prev.filter(k => k !== kw.trim())
+        const updated = [kw.trim(), ...filtered].slice(0, 6)
+        localStorage.setItem('company_search_history', JSON.stringify(updated))
+        return updated
+      })
+    }
   }
 
   useEffect(() => {
@@ -267,7 +312,7 @@ export default function CompaniesScreen() {
   }
 
   const handleSearch = () => {
-    setPage(1)
+    goToPage(1, true)
     saveRecentSearch(keyword)
     setShowDropdown(false)
     fetchCompanies()
@@ -275,7 +320,7 @@ export default function CompaniesScreen() {
 
   const handleQuickSearch = (kw) => {
     setKeyword(kw)
-    setPage(1)
+    goToPage(1, true)
     saveRecentSearch(kw)
     setSuggestions([])
     setShowDropdown(false)
@@ -285,6 +330,17 @@ export default function CompaniesScreen() {
     (keyword.trim() && suggestions.length > 0) ||
     (!keyword.trim() && recentSearches.length > 0)
   )
+
+  useJobsSocket(useCallback(() => {
+    fetch(`${API}/companies/top`)
+      .then(r => r.json())
+      .then(data => setTopCompanies(Array.isArray(data) ? data : []))
+      .catch(console.error)
+
+    fetchCompanies()
+  }, [fetchCompanies]))
+
+
 
   return (
     <div className="cs-screen">
@@ -345,7 +401,7 @@ export default function CompaniesScreen() {
                 <button style={{
                   position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
                   background: 'none', border: 'none', cursor: 'pointer',
-                  color: 'rgba(255,255,255,.5)', fontSize: 18, lineHeight: 1, padding: '0 4px',
+                  color: '#9A8D80', fontSize: 18, lineHeight: 1, padding: '0 4px',
                 }} onClick={() => { setKeyword(''); setSuggestions([]); setShowDropdown(false) }}>×</button>
               )}
             </div>
@@ -545,9 +601,9 @@ export default function CompaniesScreen() {
 
           {meta.totalPages > 1 && (
             <div className="cs-pagination">
-              <button className="cs-pg-btn" disabled={page === 1} onClick={() => setPage(p => p - 1)}>‹</button>
+              <button className="cs-pg-btn" disabled={page === 1} onClick={() => goToPage(page - 1)}>‹</button>
               {renderPages()}
-              <button className="cs-pg-btn" disabled={page === meta.totalPages} onClick={() => setPage(p => p + 1)}>›</button>
+              <button className="cs-pg-btn" disabled={page === meta.totalPages} onClick={() => goToPage(page + 1)}>›</button>
             </div>
           )}
         </main>

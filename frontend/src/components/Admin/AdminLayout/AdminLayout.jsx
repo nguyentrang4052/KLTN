@@ -8,14 +8,13 @@ const NAV = [
   { id: 'users', icon: '◉', label: 'Người dùng', path: '/admin/users' },
   { id: 'categories', icon: '◫', label: 'Danh mục dữ liệu', path: '/admin/categories' },
   { id: 'packages', icon: '◪', label: 'Gói dịch vụ', path: '/admin/packages' },
-  { id: 'refunds', icon: '💸', label: 'Xử lý hoàn tiền', path: '/admin/refunds' },
+  { id: 'refunds', icon: '↩', label: 'Xử lý hoàn tiền', path: '/admin/refunds' },
 ]
 
 export default function AdminLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const [collapsed, setCollapsed] = useState(false)
-  const [userMenu, setUserMenu] = useState(false)
 
   const user = getUser()
   const displayName = user?.fullName || 'Quản trị viên'
@@ -61,6 +60,25 @@ export default function AdminLayout() {
           ))}
         </nav>
 
+        <div className="adm-side__bottom">
+          {!collapsed && (
+            <div className="adm-side__user-info">
+              <div className="adm-side__user-av">{initials}</div>
+              <div className="adm-side__user-text">
+                <div className="adm-side__user-name">{displayName}</div>
+                <div className="adm-side__user-role">Quản trị viên</div>
+              </div>
+            </div>
+          )}
+          <button
+            className="adm-side__logout"
+            onClick={handleLogout}
+            title={collapsed ? 'Đăng xuất' : ''}
+          >
+            <span className="adm-side__logout-ico">↪</span>
+            {!collapsed && <span>Đăng xuất</span>}
+          </button>
+        </div>
       </aside>
 
       <main className="adm-main">
@@ -72,40 +90,13 @@ export default function AdminLayout() {
                 <span>{NAV.find(n => n.id === active)?.label}</span></>
             )}
           </div>
-
-          <div className="adm-topbar__right">
+          {/* <div className="adm-topbar__right">
             <div className="adm-user-wrap">
-              <button
-                className={`adm-user-btn${userMenu ? ' open' : ''}`}
-                onClick={() => setUserMenu(v => !v)}
-              >
-                <div className="adm-topbar__av">{initials}</div>
-                <span className="adm-topbar__name">{displayName}</span>
-                <span className="adm-user-caret">▾</span>
-              </button>
-
-              {userMenu && (
-                <>
-                  <div className="adm-user-overlay" onClick={() => setUserMenu(false)} />
-                  <div className="adm-user-dd">
-                    <div className="adm-user-dd__hero">
-                      <div className="adm-user-dd__av">{initials}</div>
-                      <div>
-                        <div className="adm-user-dd__name">{displayName}</div>
-                        <div className="adm-user-dd__role">Quản trị viên hệ thống</div>
-                      </div>
-                    </div>
-                    <div className="adm-user-dd__divider" />
-                    <button className="adm-user-dd__item adm-user-dd__item--logout" onClick={handleLogout}>
-                      <span>🚪</span> Đăng xuất
-                    </button>
-                  </div>
-                </>
-              )}
+              <div className="adm-topbar__av">{initials}</div>
+              <span className="adm-topbar__name">{displayName}</span>
             </div>
-          </div>
+          </div> */}
         </div>
-
         <div className="adm-content">
           <Outlet />
         </div>
