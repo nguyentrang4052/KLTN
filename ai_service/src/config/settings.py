@@ -48,7 +48,7 @@ class Settings(BaseSettings):
 
     # ===== CONFIG =====
     model_config = SettingsConfigDict(
-    env_file=str(BASE_DIR.parent / "backend" / ".env"), 
+    env_file=BASE_DIR / ".env",  
     case_sensitive=False,
     extra="ignore"
 )

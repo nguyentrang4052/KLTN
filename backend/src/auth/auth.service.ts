@@ -228,10 +228,7 @@ export class AuthService {
       include: {
         user: {
           include: {
-            profiles: {
-              orderBy: { createdAt: 'desc' },
-              take: 1,
-            },
+            profiles: true
           },
         },
       },
@@ -239,7 +236,7 @@ export class AuthService {
 
     if (!account) throw new NotFoundException('Tài khoản không tồn tại.');
 
-    const latestProfile = account.user?.profiles?.[0];
+    const latestProfile = account.user?.profiles ?? null;
 
     const sub = await this.prisma.userSubscription.findFirst({
       where: {

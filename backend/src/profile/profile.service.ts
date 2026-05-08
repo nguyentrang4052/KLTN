@@ -23,8 +23,6 @@ export class ProfileService {
       include: {
         account: { select: { email: true, provider: true, createdAt: true } },
         profiles: {
-          orderBy: { updatedAt: 'desc' as const },
-          take: 1,
           include: { industry: true },
         },
         skills: { include: { skill: { include: { industry: true } } } },
@@ -40,7 +38,7 @@ export class ProfileService {
 
     if (!user) throw new NotFoundException('User not found');
 
-    const profile = user.profiles[0] ?? null;
+    const profile = user.profiles ?? null;
     const activeSub = user.subscriptions[0] ?? null;
 
     return {
@@ -107,9 +105,8 @@ export class ProfileService {
       industryID: dto.industryId ?? null,
     };
 
-    const existing = await this.prisma.userProfile.findFirst({
+    const existing = await this.prisma.userProfile.findUnique({
       where: { userID },
-      orderBy: { updatedAt: 'desc' as const },
     });
 
     if (existing) {
@@ -248,10 +245,9 @@ export class ProfileService {
       //   orderBy: { appliedAt: 'desc' },
       //   take: 50,
       // }),
-      this.prisma.userProfile.findFirst({
+      this.prisma.userProfile.findUnique({
         where: { userID },
-        include: { industry: true },
-        orderBy: { updatedAt: 'desc' },
+        include: { industry: true }
       }),
     ]);
 

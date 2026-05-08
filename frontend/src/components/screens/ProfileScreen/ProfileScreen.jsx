@@ -1072,30 +1072,6 @@ function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
                       )}
                     </div>
                   </div>
-
-                  <div className="card profile-card">
-                    <div className="profile-section-title">Tùy chỉnh AI đề xuất</div>
-                    {AI_PREFERENCES.map((pref, idx) => (
-                      <div key={idx} className="pref-row">
-                        <span className="pref-k">{pref.key}</span>
-                        <span className="pref-v">{pref.value}</span>
-                      </div>
-                    ))}
-                    {AI_TOGGLES.map((toggle, idx) => (
-                      <div key={idx} className="pref-row">
-                        <span className="pref-k">{toggle.key}</span>
-                        <div className="toggle-wrap">
-                          <div className={`toggle ${toggle.active ? 'on' : 'off'}`}>
-                            <div className="toggle-dot" />
-                          </div>
-                          <span className={`toggle-label ${toggle.active ? 'on' : 'off'}`}>
-                            {toggle.active ? 'Bật' : 'Tắt'}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
                 </div>
 
                 <div className="p-right">

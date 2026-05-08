@@ -146,9 +146,9 @@ export default function AdminPackages() {
             {packages.length} gói đang hoạt động · {packages.reduce((a, p) => a + (p.users ?? 0), 0).toLocaleString()} người dùng
           </p>
         </div>
-        <button className="adm-add-btn" onClick={() => { setForm({ ...EMPTY_FORM }); setModal('create') }}>
+        {/* <button className="adm-add-btn" onClick={() => { setForm({ ...EMPTY_FORM }); setModal('create') }}>
           + Tạo gói mới
-        </button>
+        </button> */}
       </div>
 
       <div className="adm-pkgs__cards">

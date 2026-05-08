@@ -212,7 +212,7 @@ export default function AdminDashboard() {
     <div className="adm-db">
       <div className="adm-db__header">
         <h1 className="adm-db__title">Tổng quan hệ thống</h1>
-        <p className="adm-db__sub">Cập nhật lần cuối: {new Date().toLocaleString('vi-VN')}</p>
+        {/* <p className="adm-db__sub">Cập nhật lần cuối: {new Date().toLocaleString('vi-VN')}</p> */}
       </div>
 
       <div className="adm-db__stats">
