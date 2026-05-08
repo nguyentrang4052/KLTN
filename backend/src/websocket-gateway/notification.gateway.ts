@@ -22,7 +22,7 @@ export class NotificationGateway
 
   private userSockets = new Map<number, Set<string>>();
 
-  constructor(private jwtService: JwtService) { }
+  constructor(private jwtService: JwtService) {}
 
   async handleConnection(socket: Socket) {
     try {
@@ -76,5 +76,9 @@ export class NotificationGateway
   @SubscribeMessage('ping')
   handlePing(socket: Socket) {
     socket.emit('pong');
+  }
+
+  getActiveAccountIDs(): Set<number> {
+    return new Set(this.userSockets.keys());
   }
 }

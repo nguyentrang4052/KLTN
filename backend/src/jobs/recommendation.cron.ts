@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AIRecommendationService } from './ai-job-recommendation.service';
+import { ActiveUsersGateway } from '../websocket-gateway/active-users.gateway';
+import { JobsService } from './jobs.service';
 
 @Injectable()
 export class RecommendationCron {
@@ -10,39 +12,31 @@ export class RecommendationCron {
   constructor(
     private prisma: PrismaService,
     private aiRecommendation: AIRecommendationService,
-  ) {}
+    private activeUsersGateway: ActiveUsersGateway,
+    private jobsService: JobsService,
+  ) { }
 
-  @Cron(CronExpression.EVERY_HOUR)
+  // @Cron(CronExpression.EVERY_HOUR)
   // @Cron('* * * * *')
+  @Cron('0 */30 * * * *')
   async recomputeStaleRecommendations() {
-    this.logger.log('Cron: checking stale recommendations...');
+    const activeAccountIDs = this.activeUsersGateway.getActiveAccountIDs();
+    if (activeAccountIDs.size === 0) return;
 
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-
-    const staleUsers = await this.prisma.jobRecommendation.groupBy({
-      by: ['userID'],
-      having: {
-        createdAt: { _max: { lt: oneHourAgo } },
-      },
-    });
-
-    this.logger.log(
-      `Found ${staleUsers.length} users with stale recommendations`,
-    );
-
-    for (const { userID } of staleUsers) {
-      const account = await this.prisma.user.findUnique({
-        where: { userID },
-        select: { accountID: true },
-      });
-      if (!account) continue;
-
+    for (const accountID of activeAccountIDs) {
       try {
-        await this.aiRecommendation.computeAndSaveRecommendations(
-          account.accountID,
-        );
+        const hasChanged =
+          await this.aiRecommendation.computeAndSaveRecommendations(accountID);
+
+        if (hasChanged) {
+          await this.jobsService.incrementRecommendationQuota(accountID);
+
+          this.logger.log(
+            `Recommendation changed → quota incremented for accountID=${accountID}`,
+          );
+        }
       } catch (err) {
-        this.logger.error(`Failed recompute for userID=${userID}`, err);
+        this.logger.error(`Failed recompute for accountID=${accountID}`, err);
       }
     }
   }

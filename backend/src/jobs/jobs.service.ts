@@ -460,11 +460,49 @@ export class JobsService {
       data: { userID: user.userID, jobID, action },
     });
 
-    if (action === 'save') {
-      await this.prisma.jobRecommendation.deleteMany({
-        where: { userID: user.userID },
-      });
-    }
+    // if (action === 'save') {
+    //   await this.prisma.jobRecommendation.deleteMany({
+    //     where: { userID: user.userID },
+    //   });
+    // }
+  }
+
+  async incrementRecommendationQuota(accountID: number) {
+    const user = await this.prisma.user.findFirst({
+      where: { accountID },
+      select: { userID: true },
+    });
+
+    if (!user) return;
+
+    const today = new Date().toISOString().slice(0, 10);
+    const month = new Date().toISOString().slice(0, 7);
+
+    await this.prisma.userQuota.upsert({
+      where: {
+        userID_month: {
+          userID: user.userID,
+          month,
+        },
+      },
+      update: {
+        jobSuggestUsedToday: {
+          increment: 1,
+        },
+        jobSuggestResetDate: today,
+      },
+      create: {
+        userID: user.userID,
+        month,
+        jobSuggestPerDay: 3,
+        jobSuggestUsedToday: 1,
+        jobSuggestResetDate: today,
+        cvAnalysisTotal: 0,
+        cvMatchCheckTotal: 0,
+        cvAnalysisUsed: 0,
+        cvMatchCheckUsed: 0,
+      },
+    });
   }
 
   async getUserStats(accountID: number) {

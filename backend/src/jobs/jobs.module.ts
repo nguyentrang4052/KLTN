@@ -7,15 +7,29 @@ import { GeminiModule } from '../gemini/gemini.module';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
 import { JobsGateway } from '../websocket-gateway/jobs.gateway';
+import { ActiveUsersGateway } from '../websocket-gateway/active-users.gateway';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 
 @Module({
-  imports: [PrismaModule, ConfigModule, GeminiModule],
+  imports: [
+    PrismaModule,
+    ConfigModule,
+    GeminiModule,
+    JwtModule.registerAsync({
+      useFactory: (config: ConfigService) => ({
+        secret: config.get('JWT_SECRET'),
+      }),
+      inject: [ConfigService],
+    }),
+  ],
   controllers: [JobsController],
   providers: [
     JobsService,
     AIRecommendationService,
     RecommendationCron,
     JobsGateway,
+    ActiveUsersGateway,
   ],
   exports: [JobsService, AIRecommendationService, JobsGateway],
 })

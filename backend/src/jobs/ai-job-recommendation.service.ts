@@ -40,9 +40,6 @@ interface AIScoreResult {
   reason: string;
 }
 
-// Thứ tự cấp bậc để so sánh career level
-const CAREER_LEVELS = ['intern', 'fresher', 'junior', 'middle', 'senior', 'lead', 'manager'];
-
 @Injectable()
 export class AIRecommendationService {
   private readonly logger = new Logger(AIRecommendationService.name);
@@ -51,31 +48,56 @@ export class AIRecommendationService {
   constructor(
     private prisma: PrismaService,
     private gemini: GeminiService,
-  ) { }
+  ) {}
 
   async computeAndSaveRecommendations(accountID: number): Promise<boolean> {
+    this.logger.log(`Computing for accountID=${accountID}`);
     const user = await this.prisma.user.findFirst({
       where: { accountID },
       select: { userID: true },
     });
-    if (!user) return false;
+    if (!user) {
+      this.logger.log(`No user found for accountID=${accountID}`);
+      return false;
+    }
 
     const userID = user.userID;
+    this.logger.log(`userID=${userID}`);
+
+    const today = new Date().toISOString().slice(0, 10);
+    const month = new Date().toISOString().slice(0, 7);
+
+    const quota = await this.prisma.userQuota.findFirst({
+      where: {
+        userID,
+        month,
+      },
+    });
+
+    if (
+      quota &&
+      quota.jobSuggestResetDate === today &&
+      quota.jobSuggestUsedToday >= quota.jobSuggestPerDay
+    ) {
+      this.logger.log(`Skip recompute — quota exceeded userID=${userID}`);
+      return false;
+    }
 
     if (this.computingLocks.has(userID)) {
       this.logger.log(`Skipping — already computing for userID=${userID}`);
       return false;
     }
 
+    const FRESH_MS = 30 * 60 * 1000;
+    const freshThreshold = new Date(Date.now() - FRESH_MS);
     const latest = await this.prisma.jobRecommendation.findFirst({
       where: { userID },
       orderBy: { updatedAt: 'desc' },
       select: { updatedAt: true },
     });
 
-    const ONE_HOUR_AGO = new Date(Date.now() - 60 * 60 * 1000);
-
-    if (latest && latest.updatedAt > ONE_HOUR_AGO) {
+    this.logger.log(`latest=${latest?.updatedAt}, threshold=${freshThreshold}`);
+    if (latest && latest.updatedAt > freshThreshold) {
       this.logger.log(`Skipping recompute — data is fresh (userID=${userID})`);
       return false;
     }
@@ -83,36 +105,77 @@ export class AIRecommendationService {
     this.computingLocks.add(userID);
     try {
       const userContext = await this.buildUserContext(userID);
+      this.logger.log(`hasContext check: skills=${userContext.skills.length}, jobTitle=${userContext.profile.jobTitle}`);
       const hasContext =
         userContext.skills.length > 0 ||
         userContext.profile.jobTitle ||
         userContext.behaviors.recentViewedTitles.length > 0 ||
         userContext.cvSummary;
 
+      this.logger.log(`hasContext=${hasContext}`);
+
       if (!hasContext) {
+        this.logger.log(`No context, deleting recs for userID=${userID}`);
         await this.prisma.jobRecommendation.deleteMany({ where: { userID } });
         return false;
       }
 
       const candidates = await this.fetchCandidateJobs(userID, userContext);
+      this.logger.log(`candidates=${candidates.length}`);
       if (candidates.length === 0) {
         await this.prisma.jobRecommendation.deleteMany({ where: { userID } });
         return false;
       }
 
       const scores = await this.scoreJobs(userContext, candidates);
+      this.logger.log(`scores=${scores.length}`);
+      if (scores.length === 0) {
+        await this.prisma.jobRecommendation.deleteMany({ where: { userID } });
+        return false;
+      }
+
+      // So sánh với recs hiện tại trước khi save
+      const existingRecs = await this.prisma.jobRecommendation.findMany({
+        where: { userID },
+        select: {
+          jobID: true,
+          matchPercent: true,
+          reason: true,
+        },
+      });
+
+      // Chỉ tính changed khi có job mới
+      const existingMap = new Map(existingRecs.map((r) => [r.jobID, r]));
+
+      const hasChanged =
+        existingRecs.length !== scores.length ||
+        scores.some((s) => {
+          const old = existingMap.get(s.jobID);
+
+          if (!old) return true;
+
+          return old.matchPercent !== s.matchPercent;
+        });
+      this.logger.log(
+        `hasChanged=${hasChanged} (existing=${existingRecs.length}, new=${scores.length})`,
+      );
+
+      if (!hasChanged) {
+        this.logger.log(`No new recommendations for userID=${userID}`);
+        return false;
+      }
+
       await this.saveRecommendations(userID, scores);
-      return scores.length > 0;
+      return true;
     } finally {
       this.computingLocks.delete(userID);
     }
   }
 
-  //  matchPercent = skillScore    × 0.40
-  //              + careerScore   × 0.20
-  //              + industryScore × 0.15
-  //              + salaryScore   × 0.15
-  //              + behaviorScore × 0.10
+  //  matchPercent = skillScore    × 0.5
+  //              + industryScore × 0.2
+  //              + salaryScore   × 0.2
+  //              + behaviorScore × 0.1
 
   private computeMatchScore(ctx: UserContext, job: JobCandidate): number {
     // Skill score
@@ -122,20 +185,6 @@ export class AIRecommendationService {
     const skillScore = jobSkills.length
       ? (matchedSkills / jobSkills.length) * 100
       : 50; // Không có skill tag, trung lập
-
-    // Career level score
-    //    Khớp đúng = 100, lệch 1 bậc = 60, lệch 2+ = 20, không xác định = 50
-    const userLvlRaw = ctx.profile.careerLevel?.toLowerCase() ?? '';
-    const jobLvlRaw = job.experienceYear?.toLowerCase() ?? '';
-    const userLvlIdx = CAREER_LEVELS.findIndex((l) => userLvlRaw.includes(l));
-    const jobLvlIdx = CAREER_LEVELS.findIndex((l) => jobLvlRaw.includes(l));
-    let careerScore: number;
-    if (userLvlIdx === -1 || jobLvlIdx === -1) {
-      careerScore = 50;
-    } else {
-      const diff = Math.abs(userLvlIdx - jobLvlIdx);
-      careerScore = diff === 0 ? 100 : diff === 1 ? 60 : 20;
-    }
 
     // Industry score
     //    Khớp ngành trong profile = 100, thấy trong lịch sử xem = 70, không khớp = 0
@@ -162,30 +211,35 @@ export class AIRecommendationService {
     // Behavior score
     // Job đã lưu = 100, job đã xem (title tương tự) = 70, không có = 0
     const titleLower = (job.title ?? '').toLowerCase();
-    const isSaved = ctx.behaviors.savedJobTitles.some((t) =>
+    const isSaved = ctx.behaviors.savedJobTitles.some(
+      (t) =>
         titleLower.includes(t.toLowerCase()) ||
         t.toLowerCase().includes(titleLower),
     );
-    const isViewed = ctx.behaviors.recentViewedTitles.some((t) =>
+    const isViewed = ctx.behaviors.recentViewedTitles.some(
+      (t) =>
         titleLower.includes(t.toLowerCase()) ||
         t.toLowerCase().includes(titleLower),
     );
     const behaviorScore = isSaved ? 100 : isViewed ? 70 : 0;
 
     const total =
-      skillScore * 0.40 +
-      careerScore * 0.20 +
-      industryScore * 0.15 +
-      salaryScore * 0.15 +
-      behaviorScore * 0.10;
+      skillScore * 0.5 +
+      industryScore * 0.2 +
+      salaryScore * 0.2 +
+      behaviorScore * 0.1;
 
     return Math.round(Math.min(100, Math.max(0, total)));
   }
 
   private parseSalaryToNumber(salary: string | null): number | null {
     if (!salary) return null;
-    const digits = salary.replace(/[^\d]/g, '');
-    const num = parseInt(digits, 10);
+
+    const match = salary.match(/\d+/);
+    if (!match) return null;
+
+    const num = parseInt(match[0], 10);
+
     return isNaN(num) || num === 0 ? null : num;
   }
 
@@ -295,22 +349,6 @@ ${jobsBlock}
       ctx.behaviors.recentViewedIndustries.includes(job.industryName ?? '')
     ) {
       parts.push(`ngành bạn quan tâm`);
-    }
-
-    if (ctx.profile.careerLevel && job.experienceYear) {
-      const userLvlIdx = CAREER_LEVELS.findIndex((l) =>
-        ctx.profile.careerLevel!.toLowerCase().includes(l),
-      );
-      const jobLvlIdx = CAREER_LEVELS.findIndex((l) =>
-        job.experienceYear!.toLowerCase().includes(l),
-      );
-      if (
-        userLvlIdx !== -1 &&
-        jobLvlIdx !== -1 &&
-        Math.abs(userLvlIdx - jobLvlIdx) <= 1
-      ) {
-        parts.push(`phù hợp cấp bậc ${job.experienceYear}`);
-      }
     }
 
     const expectedNum = this.parseSalaryToNumber(ctx.profile.expectedSalary);
@@ -457,13 +495,13 @@ ${jobsBlock}
       orConditions.length > 0
         ? {
           isActive: true,
-            deadline: { gt: new Date() },
-            OR: orConditions,
-          }
+          deadline: { gt: new Date() },
+          OR: orConditions,
+        }
         : {
-            isActive: true,
-            deadline: { gt: new Date() },
-          };
+          isActive: true,
+          deadline: { gt: new Date() },
+        };
 
     const jobs = await this.prisma.job.findMany({
       where,

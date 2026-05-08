@@ -47,9 +47,7 @@ export class JobsController {
   @Get('recommendations')
   @UseGuards(JwtAuthGuard)
   async getRecommendations(@GetUser() user: JwtUser) {
-    const wasRecomputed =
-      await this.aiRecommendation.computeAndSaveRecommendations(user.sub);
-    return this.jobsService.getRecommendations(user.sub, wasRecomputed);
+    return this.jobsService.getRecommendations(user.sub, false);
   }
 
   @Get('saved')

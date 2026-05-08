@@ -288,7 +288,7 @@ export default function HomeScreen() {
         .finally(() => setLoadingRecs(false))
     }
     fetchRecs()
-    const interval = setInterval(fetchRecs, 60 * 60 * 1000)
+    const interval = setInterval(fetchRecs, 30 * 60 * 1000)
     return () => clearInterval(interval)
   }, [token])
 
