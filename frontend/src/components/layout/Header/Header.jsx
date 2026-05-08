@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './Header.css'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { getToken, getUser, fetchMe, logoutRequest } from '../../../utils/auth'
+
 
 const BASE_URL = 'http://localhost:3000'
 const API = 'http://localhost:3000/api'
@@ -37,6 +38,7 @@ export default function Header({ notifCount = 0 }) {
   const location = useLocation()
   const navigate = useNavigate()
   const token = getToken()
+  const dropdownRef = useRef(null)
 
   const planName = user?.plan?.name ?? 'free'
   const planDisplay = user?.plan?.displayName ?? 'Free'
@@ -132,23 +134,6 @@ export default function Header({ notifCount = 0 }) {
       })
   }, [])
 
-
-  // useEffect(() => {
-  //   if (!token) return
-
-  //   const loadPref = async () => {
-  //     const res = await fetch(`${API}/notifications/email-preference`, {
-  //       headers: { Authorization: `Bearer ${token}` },
-  //     })
-
-  //     if (res.ok) {
-  //       const data = await res.json()
-  //       setEmailNotifEnabled(data.emailNotificationsEnabled)
-  //     }
-  //   }
-
-  //   loadPref()
-  // }, [token])
 
   const toggleEmail = async () => {
     if (!token || isLoadingEmailPref) return
@@ -288,6 +273,22 @@ export default function Header({ notifCount = 0 }) {
     return '#E0F2FE';
   };
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDdOpen(false)
+      }
+    }
+
+    if (ddOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [ddOpen])
+
   return (
     <header className="app-header">
       <div className="app-header__inner">
@@ -311,7 +312,7 @@ export default function Header({ notifCount = 0 }) {
         <div className="app-header__right">
           {user && (  // hoặc check token
             <>
-              
+
               <button
                 className={`app-header__icon-btn${location.pathname === '/notifications' ? ' active' : ''}`}
                 title="Thông báo"
@@ -327,7 +328,7 @@ export default function Header({ notifCount = 0 }) {
 
               <div className="app-header__divider" />
 
-              <div className="app-header__avatar-wrap">
+              <div className="app-header__avatar-wrap" ref={dropdownRef}>
                 <button
                   className={`app-header__avatar-btn${ddOpen ? ' open' : ''}`}
                   onClick={() => setDdOpen(o => !o)}
@@ -354,7 +355,7 @@ export default function Header({ notifCount = 0 }) {
 
                 {ddOpen && (
                   <>
-                    <div className="app-header__dd-overlay" onClick={() => setDdOpen(false)} />
+                    <div className="app-header__dd-overlay" />
                     <div className="app-header__dropdown">
 
                       <div className="app-header__dd-hero">
@@ -367,9 +368,6 @@ export default function Header({ notifCount = 0 }) {
                           <div className="app-header__dd-name">
                             {user?.fullName ?? 'Người dùng'}
                           </div>
-                          {/* <div className="app-header__dd-email">
-                        {user?.email ?? ''}
-                      </div> */}
                           <div className="app-header__dd-badge">⚡ {planDisplay}</div>
                         </div>
                       </div>

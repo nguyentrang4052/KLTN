@@ -40,18 +40,18 @@ const FOOTER_LINKS = {
   "Công cụ": [
     { label: "CV Builder AI", href: "/cv-templates" },
     { label: "AI Match Score", href: "/login" },
-    { label: "Salary Insights", href: "/salary" },
+    // { label: "Salary Insights", href: "/salary" },
     // { label: "Interview Prep AI", href: "/interview-prep" },
   ],
   "Giới thiệu": [
     { label: "Về GZCONNECT", href: "/about" },
-    { label: "Blog & Tin tức", href: "/blog" },
+    // { label: "Blog & Tin tức", href: "/blog" },
     { label: "Liên hệ", href: "/contact" },
   ],
   "Hỗ trợ": [
-    { label: "Câu hỏi thường gặp", href: "/faq" },
+    // { label: "Câu hỏi thường gặp", href: "/faq" },
     { label: "Chính sách bảo mật", href: "/privacy" },
-    { label: "Điều khoản sử dụng", href: "/terms" },
+    { label: "Điều khoản sử dụng", href: "/term" },
   ],
 };
 

@@ -34,7 +34,7 @@ model User {
   savedJobs          SavedJob[]
   account            Account             @relation(fields: [accountID], references: [accountID])
   behaviors          UserBehavior[]
-  profiles           UserProfile[]
+  profiles           UserProfile?
   skills             UserSkill[]
   subscriptions UserSubscription[]
   payments      Payment[]

@@ -32,20 +32,28 @@ export class CVAnalysisRepository {
         });
     }
 
-    async mapToUserProfile(cvAnalysisId: number, userId: number) {
-        const cv = await this.prisma.cVAnalysis.findUnique({ where: { id: cvAnalysisId } });
-        if (!cv) throw new Error('CV Analysis not found');
+    // cv-analysis.repository.ts
+    async mapToUserProfile(cvBuilderId: number, userId: number) {
+        // Query đúng bảng CVBuilder thay vì CVAnalysis
+        const cv = await this.prisma.cVBuilder.findUnique({
+            where: { id: cvBuilderId }
+        });
 
-        const result = cv.result as CVAnalysisResultDto;
-        const info = result.personalInfo || {} as any;
+        if (!cv) throw new Error('CV Builder not found');
+
+        // Parse data từ trường Json
+        const cvData = cv.data as any || {};
+        const result = cvData.cvData || cvData || {};
+
+        const info = result.personalInfo || {};
         const exps = result.experiences || [];
 
-        // ── Career fields ──────────────────────────────────────────────────
+        // ── Career fields ──
         const jobTitle = exps[0]?.position || null;
         const experienceYear = this.calculateExperienceYears(exps);
         const careerLevel = this.calculateCareerLevel(exps);
 
-        // ── Personal fields: chỉ ghi đè nếu có data ───────────────────────
+        // ── Personal fields: chỉ ghi đè nếu có data ──
         const userUpdate: Record<string, any> = {};
         if (info.fullName) userUpdate.fullName = info.fullName;
         if (info.phone) userUpdate.phone = info.phone;
@@ -58,19 +66,18 @@ export class CVAnalysisRepository {
             });
         }
 
-        // ── Upsert UserProfile ─────────────────────────────────────────────
+        // ── Upsert UserProfile ──
         const profile = await this.prisma.userProfile.upsert({
             where: { userID: userId },
             update: { jobTitle, experienceYear, careerLevel },
             create: { userID: userId, jobTitle, experienceYear, careerLevel },
         });
 
-        // ── Sync skills ────────────────────────────────────────────────────
+        // ── Sync skills ──
         if (result.skills?.length) {
             await this.syncUserSkills(userId, result.skills);
         }
 
-        // Trả về gộp User + UserProfile
         const user = await this.prisma.user.findUnique({ where: { userID: userId } });
         return {
             fullName: user?.fullName ?? null,

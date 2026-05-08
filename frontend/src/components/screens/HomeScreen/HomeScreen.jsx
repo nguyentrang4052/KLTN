@@ -849,7 +849,7 @@ export default function HomeScreen() {
             {loadingRecs ? (
               <div className="hs-loading">⟳ Đang tải việc làm...</div>
             ) : recommendations.length === 0 ? (
-              <div className="hs-empty">Chưa có gợi ý — hãy cập nhật hồ sơ</div>
+              <div className="hs-empty">Chưa có gợi ý</div>
             ) : (
               <>
                 <div className="hs-grid">

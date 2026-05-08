@@ -86,29 +86,20 @@ export class CvAnalyzerController {
 
 
   // ─── Map CV đã phân tích → profile (CẢI THIỆN: trả đủ field) ───────────
-  @Post('map-to-profile/:cvAnalysisId')
+  @Post('map-to-profile/:cvBuilderId')
   @UseGuards(JwtAuthGuard)
   async mapToProfile(
     @Request() req,
-    @Param('cvAnalysisId') cvAnalysisId: string,
+    @Param('cvBuilderId') cvBuilderId: number,
   ) {
     const mapped = await this.cvAnalyzerService.mapCVToProfile(
-      parseInt(cvAnalysisId),
+      cvBuilderId,
       req.user.sub,
     );
     return {
       success: true,
-      message: 'Profile updated from CV',
-      data: {
-        // Personal
-        fullName: mapped.fullName,
-        phone: mapped.phone,
-        address: mapped.address,
-        // Career
-        jobTitle: mapped.jobTitle,
-        experienceYear: mapped.experienceYear,
-        careerLevel: mapped.careerLevel,
-      },
+      message: 'Profile updated from CV Builder',
+      data: mapped,
     };
   }
 

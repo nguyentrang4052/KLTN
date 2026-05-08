@@ -45,6 +45,11 @@ import { CVStoreProvider } from './store/cvStore'
 import TemplatePickerScreen from './components/screens/TemplatePickerScreen/TemplatePickerScreen'
 import MyCVScreen from './components/screens/MyCVScreen/MyCVScreen'
 
+import BlogScreen from './components/screens/BlogScreen/BlogScreen'
+import ContactScreen from './components/screens/ContactScreen/ContactScreen'
+import PrivacyScreen from './components/screens/PrivacyScreen/PrivacyScreen'
+import  TermScreen from './components/screens/TermScreen/TermScreen'
+
 
 function isTokenExpired(token) {
   try {
@@ -306,7 +311,7 @@ function App() {
             <ProtectedRoute><DashboardScreen /></ProtectedRoute>
           } />
           <Route path="/profile" element={
-            <ProtectedRoute><ProfileScreen/></ProtectedRoute>
+            <ProtectedRoute><ProfileScreen /></ProtectedRoute>
           } />
 
           <Route path="/settings" element={
@@ -365,6 +370,10 @@ function App() {
             </ProtectedRoute>
           } />
 
+          <Route path="/term" element={<TermScreen/>}/>
+          <Route path="/privacy" element={<PrivacyScreen/>}/>
+          <Route path="/contact" element={<ContactScreen/>}/>
+          <Route path="/blog" element={<BlogScreen/>}/>
 
           <Route path="/admin" element={
             <AdminRoute>

@@ -97,7 +97,7 @@ export default function TrendDashboard({ onIndustryClick }) {
                         backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
                         backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center',
                     }}>
-                    <option value="score">Score</option>
+                    <option value="score">Điểm</option>
                     <option value="jobs">Số việc làm</option>
                     <option value="saves">Lượt lưu</option>
                 </select>
@@ -167,7 +167,7 @@ export default function TrendDashboard({ onIndustryClick }) {
                         </span>
                     ))}
                     <span style={{ fontSize: 11, color: '#9A8D80', marginLeft: 'auto' }}>
-                        Thanh dài = score cao hơn · Hover để xem chi tiết
+                        Thanh dài = Điểm cao hơn · Hover để xem chi tiết
                     </span>
                 </div>
 
@@ -283,7 +283,7 @@ export default function TrendDashboard({ onIndustryClick }) {
                         {STATUS_META[hovered.status].icon} {hovered.name}
                     </div>
                     {[
-                        ['Score tổng hợp', hovered.score.toFixed(3)],
+                        ['Điểm tổng hợp', hovered.score.toFixed(3)],
                         ['Tổng việc làm', hovered.totalJobs.toLocaleString()],
                         ['Việc mới 30 ngày', hovered.currentJobs.toLocaleString()],
                         ['Lượt lưu', hovered.saves.toLocaleString()],
