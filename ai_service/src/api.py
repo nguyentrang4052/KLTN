@@ -107,27 +107,37 @@ async def chat(
                 yield f"data: {json.dumps({'done': True})}\n\n"
             return StreamingResponse(event_stream(), media_type="text/event-stream")
 
-        return JSONResponse(
-            content={
-                "type": result.get("type", "text"),
-                "response": result.get("message") or result.get("content", ""),
-                "data": {
-                    "analysis": result.get("analysis"),
-                    "job_matches": result.get("job_matches"),
-                },
-                "cached": result.get("cached", False),
-                "success": True,
-            }
-        )
+        # 🔥 QUAN TRỌNG: Xây dựng response dựa trên type từ result
+        response_content = {
+            "success": True,
+            "cached": result.get("cached", False),
+        }
+        
+        # Nếu là job_list, ưu tiên trả về jobs array
+        if result.get("type") == "job_list":
+            response_content["type"] = "job_list"
+            response_content["jobs"] = result.get("jobs", [])
+            response_content["content"] = result.get("content", result.get("message", ""))
+        else:
+            # type = text, cv_analysis_complete, error...
+            response_content["type"] = result.get("type", "text")
+            response_content["response"] = result.get("message") or result.get("content", "")
+            
+            # Thêm analysis và job_matches nếu có
+            if result.get("analysis"):
+                response_content["analysis"] = result.get("analysis")
+            if result.get("job_matches"):
+                response_content["job_matches"] = result.get("job_matches")
+        
+        return JSONResponse(content=response_content)
         
     except asyncio.TimeoutError:
         logger.error("chat_timeout", user_id=user_id)
-        raise HTTPException(status_code=504, detail="Xử lý quá thờii gian (60s)")
+        raise HTTPException(status_code=504, detail="Xử lý quá thời gian (60s)")
     except HTTPException:
         raise
     except Exception as e:
         logger.error("chat_unexpected_error", error=str(e), error_type=type(e).__name__)
-        # Đảm bảo detail không rỗng
         detail = str(e) if str(e) else "Lỗi không xác định từ server"
         raise HTTPException(status_code=500, detail=detail)
 

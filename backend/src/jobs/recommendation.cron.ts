@@ -17,8 +17,8 @@ export class RecommendationCron {
   ) { }
 
   // @Cron(CronExpression.EVERY_HOUR)
-  @Cron('* * * * *')
-  // @Cron('0 */30 * * * *')
+  // @Cron('* * * * *')
+  @Cron('0 */60 * * * *')
   async recomputeStaleRecommendations() {
     const activeAccountIDs = this.activeUsersGateway.getActiveAccountIDs();
     if (activeAccountIDs.size === 0) return;

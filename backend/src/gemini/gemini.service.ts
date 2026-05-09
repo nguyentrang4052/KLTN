@@ -15,6 +15,68 @@ export class GeminiService {
         this.genAI = new GoogleGenerativeAI(apiKey);
     }
 
+    private hasVietnameseDiacritics(text: string): boolean {
+        const vietnameseChars = /[àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i;
+        return vietnameseChars.test(text);
+    }
+
+    // Detect CV language by scanning all string values
+    private detectCvLanguage(cvData: any): 'vi' | 'en' {
+        const stack = [cvData];
+        while (stack.length) {
+            const item = stack.pop();
+            if (typeof item === 'string') {
+                if (this.hasVietnameseDiacritics(item)) return 'vi';
+            } else if (item && typeof item === 'object') {
+                for (const val of Object.values(item)) {
+                    stack.push(val);
+                }
+            }
+        }
+        return 'en'; // default
+    }
+
+    private removeVietnameseDiacritics(str: string): string {
+        const map: Record<string, string> = {
+            'à': 'a', 'á': 'a', 'ả': 'a', 'ã': 'a', 'ạ': 'a',
+            'â': 'a', 'ầ': 'a', 'ấ': 'a', 'ẩ': 'a', 'ẫ': 'a', 'ậ': 'a',
+            'ă': 'a', 'ằ': 'a', 'ắ': 'a', 'ẳ': 'a', 'ẵ': 'a', 'ặ': 'a',
+            'è': 'e', 'é': 'e', 'ẻ': 'e', 'ẽ': 'e', 'ẹ': 'e',
+            'ê': 'e', 'ề': 'e', 'ế': 'e', 'ể': 'e', 'ễ': 'e', 'ệ': 'e',
+            'ì': 'i', 'í': 'i', 'ỉ': 'i', 'ĩ': 'i', 'ị': 'i',
+            'ò': 'o', 'ó': 'o', 'ỏ': 'o', 'õ': 'o', 'ọ': 'o',
+            'ô': 'o', 'ồ': 'o', 'ố': 'o', 'ổ': 'o', 'ỗ': 'o', 'ộ': 'o',
+            'ơ': 'o', 'ờ': 'o', 'ớ': 'o', 'ở': 'o', 'ỡ': 'o', 'ợ': 'o',
+            'ù': 'u', 'ú': 'u', 'ủ': 'u', 'ũ': 'u', 'ụ': 'u',
+            'ư': 'u', 'ừ': 'u', 'ứ': 'u', 'ử': 'u', 'ữ': 'u', 'ự': 'u',
+            'ỳ': 'y', 'ý': 'y', 'ỷ': 'y', 'ỹ': 'y', 'ỵ': 'y',
+            'đ': 'd', 'Đ': 'D'
+        };
+        return str.replace(/[^A-Za-z0-9\s]/g, ch => map[ch] || ch);
+    }
+
+    private removeDiacriticsFromNames(cvData: any, targetLang: 'en' | 'vi', sourceLang: 'vi' | 'en'): any {
+        if (targetLang !== 'en' || sourceLang !== 'vi') return cvData;
+
+        const nameFields = ['fullName', 'company', 'institution', 'issuer', 'organization'];
+        const clone = JSON.parse(JSON.stringify(cvData));
+
+        const processObject = (obj: any) => {
+            if (!obj || typeof obj !== 'object') return;
+            for (const key of Object.keys(obj)) {
+                if (nameFields.includes(key) && typeof obj[key] === 'string') {
+                    obj[key] = this.removeVietnameseDiacritics(obj[key]);
+                } else if (Array.isArray(obj[key])) {
+                    obj[key].forEach((item: any) => processObject(item));
+                } else if (typeof obj[key] === 'object') {
+                    processObject(obj[key]);
+                }
+            }
+        };
+        processObject(clone);
+        return clone;
+    }
+
     async analyzeCV(cvText: string, retryCount = 0): Promise<any> {
         try {
             this.logger.log(`Analyzing CV (${cvText.length} chars), attempt ${retryCount + 1}`);
@@ -433,53 +495,55 @@ ${cvText}`;
 
 
     async translateCV(cvData: any, targetLang: 'en' | 'vi', sectionTitles?: Record<string, string>): Promise<{ cvData: any; sectionTitles?: Record<string, string> }> {
-        // Loại bỏ avatar
+        const sourceLang = this.detectCvLanguage(cvData);          // tự động phát hiện
         const cleanedData = this.removeAvatarField(cvData);
 
-        // Chuẩn bị object để dịch: gộp cvData và sectionTitles thành một object duy nhất
         const fullData: any = { ...cleanedData };
-        if (sectionTitles) {
-            fullData._sectionTitles = sectionTitles;
-        }
+        if (sectionTitles) fullData._sectionTitles = sectionTitles;
 
-        const prompt = `Dịch CV từ tiếng Việt sang ${targetLang === 'en' ? 'tiếng Anh' : 'tiếng Việt'}. 
-    Yêu cầu: 
-    - Giữ nguyên cấu trúc JSON.
-    - Dịch tất cả các trường văn bản (summary, position, company, description, degree, institution, category, items, portfolio, ...).
-    - Đặc biệt dịch object "_sectionTitles" (chứa tiêu đề các phần như "Mục tiêu nghề nghiệp" -> "Career Objective", "Kinh nghiệm làm việc" -> "Work Experience", ...).
-    - Không dịch email, số điện thoại, link, tên riêng, avatar.
-    - Trả về JSON hợp lệ, không giải thích thêm.
-    - Sử dụng dấu ngoặc kép, escape ký tự đặc biệt.
-    
-    Dữ liệu cần dịch:
-    ${JSON.stringify(fullData, null, 2)}
-    
-    Kết quả (chỉ JSON):`;
+        const langName = (lang: string) => lang === 'en' ? 'English' : 'Vietnamese';
+        const prompt = `Dịch CV từ ${langName(sourceLang)} sang ${langName(targetLang)}.
+
+        Yêu cầu:
+        - Giữ nguyên cấu trúc JSON.
+        - Dịch tất cả các trường văn bản (summary, position, company, description, degree, institution, category, items, portfolio, ...).
+        - Đặc biệt dịch object "_sectionTitles" (tiêu đề các phần).
+        - Không dịch: email, số điện thoại, link, avatar.
+        - Nếu dịch từ Tiếng Việt sang Tiếng Anh: hãy loại bỏ dấu tiếng Việt ở tên riêng (người, công ty, trường học, tổ chức, ...). Ví dụ: "Nguyễn Văn A" -> "Nguyen Van A".
+        - Nếu dịch từ Tiếng Anh sang Tiếng Việt: giữ nguyên tên riêng (không thêm dấu).
+        - Trả về JSON hợp lệ, không giải thích thêm.
+
+Dữ liệu cần dịch:
+${JSON.stringify(fullData, null, 2)}
+
+Kết quả (chỉ JSON):`;
 
         const response = await this.generateContent(prompt);
         let translated = this.extractJsonFromResponse(response);
         if (!translated || Object.keys(translated).length === 0) {
-            return { cvData: cvData, sectionTitles: sectionTitles };
+            return { cvData, sectionTitles };
         }
 
-        // Tách riêng phần sectionTitles đã dịch
-        let translatedSectionTitles: Record<string, string> | undefined = undefined;
+        // Xử lý bỏ dấu tên riêng nếu vi -> en
+        if (sourceLang === 'vi' && targetLang === 'en') {
+            translated = this.removeDiacriticsFromNames(translated, targetLang, sourceLang);
+        }
+
+        let translatedSectionTitles: Record<string, string> | undefined;
         if (translated._sectionTitles && typeof translated._sectionTitles === 'object') {
             translatedSectionTitles = translated._sectionTitles;
             delete translated._sectionTitles;
         }
 
-        // Khôi phục avatar
         const restoredCvData = this.restoreAvatarField(cvData, translated);
         const mergedCvData = this.mergeMissingFields(cvData, restoredCvData);
-
-        // Merge sectionTitles (an toàn)
         let mergedSectionTitles = sectionTitles ? { ...sectionTitles } : {};
-        if (translatedSectionTitles && typeof translatedSectionTitles === 'object') {
+        if (translatedSectionTitles) {
             mergedSectionTitles = { ...mergedSectionTitles, ...translatedSectionTitles };
         }
         return { cvData: mergedCvData, sectionTitles: mergedSectionTitles };
     }
+    
     // Loại bỏ trường avatar khỏi data
     private removeAvatarField(data: any): any {
         const cleaned = JSON.parse(JSON.stringify(data));
@@ -584,20 +648,33 @@ ${cvText}`;
      * Gợi ý cải thiện CV dựa trên prompt của user
      */
     async suggestCVImprovements(cvData: any, userPrompt: string, section?: string): Promise<any> {
+        const cvLanguage = this.detectCvLanguage(cvData);   // 'vi' hoặc 'en'
+
         let sectionInstruction = '';
         if (section) {
-            sectionInstruction = `Chỉ tập trung cải thiện phần "${section}" của CV. Giữ nguyên các phần khác.`;
+            sectionInstruction = cvLanguage === 'vi'
+                ? `Chỉ tập trung cải thiện phần "${section}" của CV. Giữ nguyên các phần khác.`
+                : `Focus only on improving the section "${section}". Keep other parts unchanged.`;
         } else {
-            sectionInstruction = `Đề xuất cải thiện tổng thể cho CV, bao gồm Summary, Skills, Experiences (bullet points), Education (nếu cần).`;
+            sectionInstruction = cvLanguage === 'vi'
+                ? `Đề xuất cải thiện tổng thể cho CV, bao gồm Summary, Skills, Experiences (bullet points), Education (nếu cần).`
+                : `Suggest overall improvements for the CV, including Summary, Skills, Experiences (bullet points), Education (if needed).`;
         }
 
-        const prompt = `
-Bạn là chuyên gia tư vấn viết CV. Dựa trên yêu cầu của người dùng và nội dung CV hiện tại, hãy đưa ra các đề xuất chỉnh sửa.
+        const languageInstruction = cvLanguage === 'vi'
+            ? `QUAN TRỌNG: CV hiện tại bằng TIẾNG VIỆT. Bạn PHẢI trả lời bằng TIẾNG VIỆT, giữ nguyên dấu tiếng Việt. Tất cả các đề xuất (summary, skills, experiences, ...) đều phải viết bằng TIẾNG VIỆT.`
+            : `IMPORTANT: The current CV is in ENGLISH. You MUST answer in ENGLISH. All suggestions (summary, skills, experiences, ...) must be written in ENGLISH.`;
+
+        const prompt = cvLanguage === 'vi'
+            ? `
+Bạn là chuyên gia tư vấn viết CV chuyên nghiệp. Dựa trên yêu cầu của người dùng và nội dung CV hiện tại, hãy đưa ra các đề xuất chỉnh sửa.
 
 Yêu cầu của người dùng:
 ${userPrompt}
 
 ${sectionInstruction}
+
+${languageInstruction}
 
 CV hiện tại:
 ${JSON.stringify(cvData, null, 2)}
@@ -617,10 +694,49 @@ Hãy trả về JSON theo cấu trúc sau (chỉ chứa các trường cần tha
     }
   ],
   "education": [ ... ],
+  "certifications": [ ... ],
+  "awards": [ ... ],
+  "activities": [ ... ],
   "suggestions": "Lời khuyên bổ sung (string)"
 }
 
 Chỉ trả về JSON, không markdown, không giải thích thêm.
+`
+            : `
+You are a professional CV writing consultant. Based on the user's request and the current CV content, provide improvement suggestions.
+
+User request:
+${userPrompt}
+
+${sectionInstruction}
+
+${languageInstruction}
+
+Current CV:
+${JSON.stringify(cvData, null, 2)}
+
+Return JSON with the following structure (only fields that need changes):
+{
+  "summary": "new professional summary",
+  "skills": [
+    { "category": "Technical Skills", "items": "React, Node.js, ..." }
+  ],
+  "experiences": [
+    {
+      "company": "Company name",
+      "position": "Job title",
+      "duration": "Time period",
+      "description": "Improved description with bullet points and metrics"
+    }
+  ],
+  "education": [ ... ],
+  "certifications": [ ... ],
+  "awards": [ ... ],
+  "activities": [ ... ],
+  "suggestions": "Additional advice (string)"
+}
+
+Return ONLY valid JSON, no markdown, no explanation.
 `;
 
         const response = await this.generateContent(prompt);

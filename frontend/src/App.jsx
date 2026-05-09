@@ -211,11 +211,6 @@ function App() {
   const hideHeader =
     HIDE_HEADER_ROUTES.includes(location.pathname) ||
     location.pathname.startsWith('/admin')
-  // location.pathname.startsWith('/jobs/companies/') ||
-  // location.pathname.startsWith('/home/companies/')
-  // location.pathname.startsWith('/companies/')
-  // location.pathname.startsWith('/home/job/') ||
-  // location.pathname.startsWith('/jobs/job/')
 
   const [screen, setScreen] = useState('myCV')
   const navigate = useNavigate()

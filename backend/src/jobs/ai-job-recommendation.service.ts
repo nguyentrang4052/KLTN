@@ -88,7 +88,7 @@ export class AIRecommendationService {
       return false;
     }
 
-    const FRESH_MS = 1 * 60 * 1000;
+    const FRESH_MS = 60 * 60 * 1000;
     const freshThreshold = new Date(Date.now() - FRESH_MS);
     const latest = await this.prisma.jobRecommendation.findFirst({
       where: { userID },

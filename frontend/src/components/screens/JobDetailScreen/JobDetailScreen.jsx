@@ -41,41 +41,53 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
     navigate(-1)
   }
 
+  // Sửa từ dòng 48-57
   useEffect(() => {
     if (!id) return
     setLoading(true)
     fetch(`${API}/jobs/${id}`)
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
       .then(data => {
         setJob(data)
       })
-      .catch(console.error)
+      .catch(err => {
+        console.error('Fetch job detail error:', err)
+        setJob(null)
+      })
       .finally(() => setLoading(false))
   }, [id])
-
 
   useEffect(() => {
     if (!token || !id) return
     fetch(`${API}/jobs/saved`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
+      .then(r => r.ok ? r.json() : [])
       .then(data => {
         const list = Array.isArray(data) ? data : (data?.data ?? [])
         const ids = new Set(list.map(s => s.job?.jobID ?? s.jobID))
         setSaved(ids.has(Number(id)))
       })
-      .catch(console.error)
+      .catch(err => console.error('Fetch saved error:', err))
   }, [token, id])
 
+  // useEffect(() => {
+  //   if (!token || !id) return
+  //   fetch(`${API}/jobs/${id}/match`, {
+  //     headers: { Authorization: `Bearer ${token}` }
+  //   })
+  //     .then(r => {
+  //       if (!r.ok) throw new Error(`HTTP ${r.status}`)
+  //       return r.json()
+  //     })
+  //     .then(data => setMatchInfo(data))
+  //     .catch(err => {
+  //       console.error('Fetch match error:', err)
+  //       setMatchInfo(null) // Không hiển thị phần match info
+  //     })
+  // }, [token, id])
 
-  useEffect(() => {
-    if (!token || !id) return
-    fetch(`${API}/jobs/${id}/match`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(r => r.json())
-      .then(data => setMatchInfo(data))
-      .catch(console.error)
-  }, [token, id])
 
 
   const handleSave = async () => {
@@ -350,7 +362,7 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
               </div>
                */}
 
-              {matchInfo ? (
+              {matchInfo && matchInfo.matchPercent ? (
                 <div className="ai-box">
                   <div className="ai-box-header">
                     <div className="ai-box-title">🤖 Phân tích AI — Mức độ phù hợp</div>

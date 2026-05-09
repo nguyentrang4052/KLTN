@@ -8,10 +8,11 @@ import { Readable } from 'stream';
 
 export interface ChatResult {
     response?: string;
-    type: 'text' | 'stream' | 'error';
+    type: 'text' | 'stream' | 'error' | 'job_list' | 'cv_analysis_complete';
     cached?: boolean;
     analysis?: any;
     job_matches?: any[];
+    jobs?: any[];
     error?: boolean;
     success?: boolean;
     data?: Readable; // ← stream data
@@ -163,7 +164,6 @@ export class ChatbotService {
                 }),
             );
 
-            // Nếu stream, response.data là Readable stream
             if (stream) {
                 return {
                     type: 'stream',
@@ -185,8 +185,32 @@ export class ChatbotService {
                 };
             }
 
+            // 🔥 QUAN TRỌNG: Kiểm tra type từ Python và chuyển tiếp đầy đủ dữ liệu
+            if (pythonData.type === 'job_list' && pythonData.jobs && pythonData.jobs.length > 0) {
+                return {
+                    type: 'job_list',  // ← Giữ nguyên type
+                    response: pythonData.content || pythonData.response || '',
+                    jobs: pythonData.jobs,  // ← Chuyển tiếp jobs array
+                    cached: pythonData.cached || false,
+                    success: true,
+                };
+            }
+
+            // Xử lý cv_analysis_complete
+            if (pythonData.type === 'cv_analysis_complete') {
+                return {
+                    type: 'cv_analysis_complete',
+                    response: pythonData.message || pythonData.content || '',
+                    analysis: pythonData.analysis,
+                    job_matches: pythonData.job_matches || [],
+                    cached: pythonData.cached || false,
+                    success: true,
+                };
+            }
+
+            // Fallback cho text thông thường
             return {
-                type: 'text',
+                type: pythonData.type === 'error' ? 'error' : 'text',
                 response: pythonData?.response || pythonData?.message || pythonData?.content || '',
                 cached: pythonData?.cached || false,
                 analysis: pythonData?.data?.analysis || pythonData?.analysis,
@@ -196,9 +220,9 @@ export class ChatbotService {
 
         } catch (error: any) {
             this.logger.error(`Chat error: ${error?.message}`);
-            
+
             if (error instanceof AxiosError && error.response) {
-                const axiosMsg = 
+                const axiosMsg =
                     error.response.data?.detail ||
                     error.response.data?.message ||
                     error.message ||
@@ -220,26 +244,25 @@ export class ChatbotService {
         }
     }
 
-
     async healthCheck() {
-    try {
-        const response = await firstValueFrom(
-            this.httpService.get(`${this.pythonServiceUrl}/api/health`, {
-                timeout: this.HEALTH_TIMEOUT,
-            }),
-        );
-        return {
-            status: 'ok',
-            pythonService: response.data,
-            timestamp: new Date().toISOString(),
-        };
-    } catch (error: any) {
-        this.logger.error(`Health check failed: ${error.message}`);
-        return {
-            status: 'degraded',
-            pythonService: { status: 'down', error: error.message },
-            timestamp: new Date().toISOString(),
-        };
+        try {
+            const response = await firstValueFrom(
+                this.httpService.get(`${this.pythonServiceUrl}/api/health`, {
+                    timeout: this.HEALTH_TIMEOUT,
+                }),
+            );
+            return {
+                status: 'ok',
+                pythonService: response.data,
+                timestamp: new Date().toISOString(),
+            };
+        } catch (error: any) {
+            this.logger.error(`Health check failed: ${error.message}`);
+            return {
+                status: 'degraded',
+                pythonService: { status: 'down', error: error.message },
+                timestamp: new Date().toISOString(),
+            };
+        }
     }
-}
 }
