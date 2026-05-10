@@ -8,6 +8,7 @@ import { Readable } from 'stream';
 
 export interface ChatResult {
     response?: string;
+    content?: string;
     type: 'text' | 'stream' | 'error' | 'job_list' | 'cv_analysis_complete';
     cached?: boolean;
     analysis?: any;
@@ -186,11 +187,11 @@ export class ChatbotService {
             }
 
             // 🔥 QUAN TRỌNG: Kiểm tra type từ Python và chuyển tiếp đầy đủ dữ liệu
-            if (pythonData.type === 'job_list' && pythonData.jobs && pythonData.jobs.length > 0) {
+            if(pythonData.type === 'job_list') {
                 return {
-                    type: 'job_list',  // ← Giữ nguyên type
-                    response: pythonData.content || pythonData.response || '',
-                    jobs: pythonData.jobs,  // ← Chuyển tiếp jobs array
+                    type: 'job_list',
+                    content: pythonData.content ?? '',
+                    jobs: pythonData.jobs ?? [],
                     cached: pythonData.cached || false,
                     success: true,
                 };

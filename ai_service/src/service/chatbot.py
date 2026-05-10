@@ -122,7 +122,7 @@ class Chatbot:
             logger.info("step3_job_matching_start")
             job_matches = []
             try:
-                job_matches = await self.job_matcher.match_jobs_for_cv(
+                job_matches = await self.job_matcher._match_jobs_for_cv_with_formula(
                     analysis, limit=10
                 )
                 logger.info(f"job_matches_found: {len(job_matches)}")
@@ -389,55 +389,121 @@ class Chatbot:
                 jobs = await self._search_jobs_from_db(search_criteria, limit=8)
 
                 if jobs:
-                    has_cv = self.session_manager.has_cv(user_id)
-                    cv_skills = set(self.session_manager.get_cv_skills(user_id)) if has_cv else set()
-                    
-                    # Format jobs để gửi về frontend dưới dạng JobMatchCard
+                    has_cv      = self.session_manager.has_cv(user_id)
+                    cv_analysis = self.session_manager.get_cv_analysis(user_id) if has_cv else None
+                    cv_skills   = set(s.lower() for s in (cv_analysis.extracted_skills or [])) if cv_analysis else set()
+                    cv_desired  = [t.lower() for t in (cv_analysis.suitable_job_titles or [])] if cv_analysis else []
+
                     formatted_jobs = []
                     for job in jobs:
-                        job_skills = set(job.get('skills', []))
-                        
-                        # Tính match score dựa trên CV nếu có
-                        if has_cv and job_skills:
-                            overlap = len(cv_skills & job_skills)
-                            match_score = int((overlap / len(job_skills)) * 100) if job_skills else 50
+                        job_skills = set(s.lower() for s in (job.get('skills') or []))
+
+                        if cv_analysis:
+                            # Skills 60%
+                            if job_skills:
+                                overlap      = cv_skills & job_skills
+                                skills_score = min(100, int(len(overlap) / len(job_skills) * 100))
+                            else:
+                                overlap      = set()
+                                skills_score = 50
+
+                            # Certifications 10%
+                            cert_score = 80
+
+                            # Position 20%
+                            job_title_lower = (job.get('title') or '').lower()
+                            pos_matched = any(
+                                w in job_title_lower
+                                for desired in cv_desired
+                                for w in desired.split() if len(w) > 2
+                            )
+                            position_score = 100 if pos_matched else 40
+
+                            # Other 10% — kinh nghiệm
+                            cv_exp   = cv_analysis.experience_years or 0
+                            exp_nums = re.findall(r'\d+', job.get('experience_year') or '')
+                            job_exp  = int(exp_nums[0]) if exp_nums else 0
+                            if job_exp > 0:
+                                other_score = 100 if cv_exp >= job_exp else max(20, int(cv_exp / job_exp * 100))
+                            else:
+                                other_score = 80
+
+                            match_score = min(100, max(0, int(
+                                skills_score   * 0.60 +
+                                cert_score     * 0.10 +
+                                position_score * 0.20 +
+                                other_score    * 0.10
+                            )))
+
+                            skill_overlap = list(overlap)[:5]
+                            skill_gap     = list(job_skills - cv_skills)[:5]
+
+                            match_reasons = []
+                            if skill_overlap:
+                                match_reasons.append(f"✅ Kỹ năng phù hợp: {', '.join(skill_overlap[:3])}")
+                            if pos_matched:
+                                match_reasons.append("✅ Khớp vị trí ứng tuyển của bạn")
+                            if not match_reasons:
+                                kws = search_criteria.get('title_keywords', [])
+                                match_reasons.append(f"Phù hợp với từ khóa: {', '.join(kws[:2])}" if kws else "Phù hợp với tìm kiếm")
+
                         else:
-                            match_score = 50
-                        
-                        # Xác định recommendation
+                            # Không có CV
+                            overlap       = set()
+                            match_score   = 0
+                            skill_overlap = []
+                            skill_gap     = list(job_skills)[:5]
+                            kws           = search_criteria.get('title_keywords', [])
+                            match_reasons = [
+                                f"Phù hợp với từ khóa: {', '.join(kws[:2])}" if kws else "Phù hợp với tìm kiếm",
+                                "📎 Upload CV để xem mức độ phù hợp chính xác",
+                            ]
+
                         if match_score >= 80:
                             recommendation = "Rất phù hợp"
                         elif match_score >= 65:
                             recommendation = "Phù hợp"
                         elif match_score >= 50:
                             recommendation = "Có thể thử"
-                        else:
+                        elif match_score > 0:
                             recommendation = "Cần cải thiện"
-                        
+                        else:
+                            recommendation = "📎 Upload CV để xem mức độ phù hợp"
+
                         formatted_jobs.append({
-                            "job_id": str(job.get('id')),
-                            "job_title": job.get('title', 'N/A'),
-                            "company": job.get('company', 'N/A'),
-                            "location": job.get('location', 'N/A'),
-                            "salary": job.get('salary', 'Thương lượng'),
-                            "match_score": match_score,
-                            "match_reasons": [f"Phù hợp với từ khóa tìm kiếm: {', '.join(search_criteria.get('title_keywords', [])[:2])}"],
-                            "recommendation": recommendation,
-                            "skill_overlap": list(cv_skills & job_skills) if has_cv else [],
-                            "skill_gap": list(job_skills - cv_skills) if has_cv else []
+                            "job_id":        str(job.get('id')),
+                            "job_title":     job.get('title', 'N/A'),
+                            "company":       job.get('company', 'N/A'),
+                            "company_id":    job.get('company_id'),
+                            "location":      job.get('location', 'N/A'),
+                            "salary":        job.get('salary', 'Thương lượng'),
+                            "match_score":   match_score,
+                            "match_reasons": match_reasons,
+                            "recommendation":recommendation,
+                            "skill_overlap": skill_overlap,
+                            "skill_gap":     skill_gap,
                         })
+
+                    # Sort giảm dần theo match_score
+                    formatted_jobs.sort(key=lambda x: x['match_score'], reverse=True)
                     
+                    # Filter >= 50 chỉ khi có CV VÀ còn ít nhất 1 job sau filter
+                    if cv_analysis:
+                        filtered = [j for j in formatted_jobs if j['match_score'] >= 50]
+                        if filtered:
+                            formatted_jobs = filtered
+                        # Nếu filter xong rỗng → giữ nguyên tất cả, thêm note vào match_reasons
+                        else:
+                            for j in formatted_jobs:
+                                j['match_reasons'].append("⚠️ Độ phù hợp thấp — hãy cập nhật CV để tăng cơ hội")
+
                     self.session_manager.set_search_result_jobs(user_id, jobs)
-                    
-                    # Tạo text response (dạng markdown đẹp) cho phần text
-                    text_response = self._format_job_list_response_text(jobs, search_criteria)
-                    
-                    # TRẢ VỀ JSON CHO FRONTEND - QUAN TRỌNG: type="job_list" và kèm jobs array
+
                     return {
-                        "type": "job_list",  # Frontend sẽ nhận diện type này
-                        "content": text_response,
-                        "jobs": formatted_jobs,
-                        "cached": False,
+                        "type":    "job_list",
+                        "content": "",
+                        "jobs":    formatted_jobs,
+                        "cached":  False,
                     }
                 else:
                     response_text = f"Tôi chưa tìm thấy job phù hợp với '{message[:100]}'. Bạn có thể thử với từ khóa khác hoặc upload CV để tôi gợi ý job phù hợp hơn!"
@@ -666,7 +732,7 @@ class Chatbot:
             search_criteria = await self._extract_search_criteria(message)
 
             # Tìm kiếm job từ database
-            jobs = await self._search_jobs_from_db(search_criteria, limit=8)
+            jobs = await self._search_jobs_from_db(search_criteria, limit=10)
 
             if jobs:
                 return self._format_job_list_response_text(jobs, search_criteria)
@@ -861,7 +927,7 @@ class Chatbot:
         return criteria
 
     async def _search_jobs_from_db(
-        self, criteria: Dict[str, Any], limit: int = 8
+        self, criteria: Dict[str, Any], limit: int = 10
     ) -> List[Dict]:
         """Tìm kiếm job từ database theo tiêu chí"""
 
@@ -998,7 +1064,7 @@ class Chatbot:
 
         response = f"{title}\n\n"
 
-        for i, job in enumerate(jobs[:8], 1):
+        for i, job in enumerate(jobs[:10], 1):
             response += f"{i}. **{job.get('title', 'N/A')}** tại **{job.get('company', 'N/A')}**\n"
             response += f"   📍 {job.get('location', 'N/A')} | 💰 {job.get('salary', 'Thương lượng')}\n"
 
@@ -1010,11 +1076,6 @@ class Chatbot:
                 response += f"   📅 Yêu cầu KN: {job.get('experience_year')}\n"
 
             response += "\n"
-
-        response += "---\n"
-        response += "💬 **Bạn muốn:**\n"
-        response += '• Xem chi tiết một job: `"Xem job số 1"`\n'
-        response += '• Hỏi về mức độ phù hợp: `"Tôi có phù hợp với job này không?"`\n'
 
         return response
 
@@ -1732,104 +1793,283 @@ class Chatbot:
     async def _compare_cv_with_job_requirements(
         self, cv_analysis: CVAnalysis, job: Dict
     ) -> Dict[str, Any]:
-        """So sánh CV với requirements của job"""
+        """
+        So sánh CV với requirements của job theo công thức:
+        match_score = skills*60% + certifications*10% + position*20% + other*10%
+        """
+        requirements_text = (job.get("requirements") or "").lower()
+        description_text  = (job.get("description")  or "").lower()
+        combined_text = requirements_text + " " + description_text
 
-        cv_skills = set([s.lower() for s in (cv_analysis.extracted_skills or [])])
-        job_skills = set([s.lower() for s in (job.get("skills", []))])
+        # ── 1. SKILLS SCORE (60%) ──────────────────────────────────────────────
+        cv_skills  = set(s.lower().strip() for s in (cv_analysis.extracted_skills or []))
+        job_skills = set(s.lower().strip() for s in (job.get("skills") or []))
 
-        # Phân tích requirements text
-        requirements = job.get("requirements", "").lower()
+        # Bổ sung skill từ requirements text nếu job_skills trống
+        if not job_skills:
+            skill_keywords = [
+                "python","java","javascript","typescript","react","vue","angular",
+                "node","sql","mysql","postgresql","mongodb","redis","docker",
+                "kubernetes","aws","azure","gcp","git","linux","nginx","spring",
+                "django","fastapi","php","laravel","swift","kotlin","flutter",
+                "excel","powerpoint","word","photoshop","illustrator","figma",
+            ]
+            job_skills = {kw for kw in skill_keywords if kw in combined_text}
 
-        # Tìm các yêu cầu đặc biệt từ requirement text
-        special_requirements = []
-        requirement_keywords = {
-            "tiếng anh": ["tiếng anh", "english", "toeic", "ielts"],
-            "kinh nghiệm": ["kinh nghiệm", "experience"],
-            "bằng cấp": ["bằng cấp", "degree", "bachelor", "cử nhân"],
-            "giao tiếp": ["giao tiếp", "communication"],
-            "teamwork": ["teamwork", "team work", "làm việc nhóm"],
-            "chịu áp lực": ["áp lực", "pressure", "deadline"],
+        if job_skills:
+            overlap    = cv_skills & job_skills
+            skill_ratio = len(overlap) / len(job_skills)
+            skills_score = min(100, int(skill_ratio * 100))
+        else:
+            overlap      = set()
+            skills_score = 50  # không có data → trung bình
+
+        skill_gap = list(job_skills - cv_skills)
+
+        # ── 2. CERTIFICATIONS SCORE (10%) ──────────────────────────────────────
+        cert_keywords = {
+            "toeic": ["toeic", "toefl", "ielts", "tiếng anh", "english"],
+            "aws":   ["aws certified", "aws certificate", "amazon web services cert"],
+            "pmp":   ["pmp", "project management professional"],
+            "cpa":   ["cpa", "kế toán công chứng", "certified public accountant"],
+            "cissp": ["cissp", "security+", "ceh"],
+            "ccna":  ["ccna", "ccnp", "cisco"],
+            "gcp":   ["google cloud certified", "gcp certified"],
+            "azure": ["azure certified", "microsoft certified"],
+            "agile": ["agile", "scrum", "scrum master"],
+            "itil":  ["itil"],
         }
 
-        found_requirements = []
-        for req_name, keywords in requirement_keywords.items():
-            if any(kw in requirements for kw in keywords):
-                found_requirements.append(req_name)
+        cv_text_lower = " ".join([
+            " ".join(cv_analysis.extracted_skills or []),
+            " ".join(cv_analysis.strengths or []),
+            (cv_analysis.summary or ""),
+            (cv_analysis.career_trajectory or ""),
+        ]).lower()
 
-        # Tính match score
-        if job_skills:
-            overlap = cv_skills & job_skills
-            skill_ratio = len(overlap) / len(job_skills)
-            skills_score = int(skill_ratio * 100)
+        # Chứng chỉ job yêu cầu
+        required_certs = []
+        for cert_name, kws in cert_keywords.items():
+            if any(kw in combined_text for kw in kws):
+                required_certs.append(cert_name)
+
+        # Chứng chỉ CV có
+        cv_certs = []
+        for cert_name, kws in cert_keywords.items():
+            if any(kw in cv_text_lower for kw in kws):
+                cv_certs.append(cert_name)
+
+        if required_certs:
+            matched_certs = set(required_certs) & set(cv_certs)
+            cert_score = min(100, int((len(matched_certs) / len(required_certs)) * 100))
         else:
-            skills_score = 50
-            overlap = set()
+            cert_score = 80  # không yêu cầu cert → cao mặc định
 
-        # Tính điểm kinh nghiệm
-        cv_exp = cv_analysis.experience_years or 0
-        job_exp_str = job.get("experience_year", "")
-        import re
+        cert_gap = list(set(required_certs) - set(cv_certs))
 
-        numbers = re.findall(r"\d+", job_exp_str)
-        job_exp = int(numbers[0]) if numbers else 0
+        # ── 3. POSITION SCORE (20%) ────────────────────────────────────────────
+        job_title_lower = (job.get("title") or "").lower()
+        cv_desired_positions = [t.lower() for t in (cv_analysis.suitable_job_titles or [])]
+
+        position_score = 0
+        position_matched = False
+
+        if cv_desired_positions:
+            for desired in cv_desired_positions:
+                # Match trực tiếp
+                desired_words = desired.split()
+                if any(w in job_title_lower for w in desired_words if len(w) > 2):
+                    position_score = 100
+                    position_matched = True
+                    break
+                # Match ngược
+                job_words = job_title_lower.split()
+                if any(w in desired for w in job_words if len(w) > 2):
+                    position_score = 80
+                    position_matched = True
+                    break
+            if not position_matched:
+                position_score = 20  # có CV nhưng vị trí khác hẳn
+        else:
+            position_score = 50  # không có desired position → trung bình
+
+        # ── 4. OTHER SCORE (10%) ───────────────────────────────────────────────
+        # Gồm: kinh nghiệm, soft skills, bằng cấp mention trong requirements
+        other_scores = []
+
+        # 4a. Experience
+        cv_exp  = cv_analysis.experience_years or 0
+        exp_str = (job.get("experience_year") or "")
+        exp_nums = re.findall(r"\d+", exp_str)
+        job_exp  = int(exp_nums[0]) if exp_nums else 0
 
         if job_exp > 0:
             if cv_exp >= job_exp:
                 exp_score = 100
-                exp_message = (
-                    f"✅ Bạn có {cv_exp} năm kinh nghiệm, đáp ứng yêu cầu {job_exp} năm"
-                )
+                exp_message = f"✅ Bạn có {cv_exp} năm kinh nghiệm, đáp ứng yêu cầu {job_exp} năm"
             elif cv_exp >= job_exp * 0.7:
                 exp_score = 70
                 exp_message = f"⚠️ Bạn có {cv_exp} năm kinh nghiệm (gần đạt yêu cầu {job_exp} năm)"
             else:
-                exp_score = max(30, int((cv_exp / job_exp) * 100))
-                exp_message = f"❌ Bạn có {cv_exp} năm kinh nghiệm (thiếu {job_exp - cv_exp} năm so với yêu cầu)"
+                exp_score = max(20, int((cv_exp / job_exp) * 100))
+                exp_message = f"❌ Bạn có {cv_exp} năm kinh nghiệm (thiếu {job_exp - cv_exp} năm)"
         else:
-            exp_score = 80
+            exp_score  = 80
             exp_message = "✅ Không yêu cầu kinh nghiệm cụ thể"
+        other_scores.append(exp_score)
 
-        # Tính điểm tổng
-        total_score = int(skills_score * 0.7 + exp_score * 0.3)
+        # 4b. Soft skills / degree mention
+        soft_found = 0
+        soft_keywords = ["giao tiếp","communication","teamwork","làm việc nhóm",
+                        "áp lực","leadership","sáng tạo","tư duy","phân tích"]
+        for kw in soft_keywords:
+            if kw in combined_text:
+                soft_found += 1
+        soft_score = min(100, 60 + soft_found * 5)
+        other_scores.append(soft_score)
 
-        # Tạo match reasons
-        match_reasons = []
-        if overlap:
-            match_reasons.append(f"✅ Kỹ năng phù hợp: {', '.join(list(overlap)[:3])}")
-        if exp_score >= 70:
-            match_reasons.append(exp_message)
+        other_score = int(statistics.mean(other_scores))
 
-        if not match_reasons:
-            match_reasons.append("📌 Bạn cần bổ sung thêm kỹ năng để phù hợp hơn")
+        # ── 5. TỔNG HỢP ────────────────────────────────────────────────────────
+        total_score = int(
+            skills_score  * 0.60 +
+            cert_score    * 0.10 +
+            position_score * 0.20 +
+            other_score   * 0.10
+        )
+        total_score = max(0, min(100, total_score))
 
-        # Xác định xem có thể apply không
-        if total_score >= 75:
-            can_apply = True
-            recommendation = "CÓ THỂ APPLY"
-            advice = "Bạn nên apply ngay vì hồ sơ khá phù hợp!"
-        elif total_score >= 55:
-            can_apply = True
-            recommendation = "CÓ THỂ THỬ"
-            advice = "Bạn có thể apply, nhưng nên bổ sung thêm một số kỹ năng để tăng cơ hội."
-        else:
-            can_apply = False
-            recommendation = "NÊN CHỜ"
-            advice = "Bạn nên phát triển thêm kỹ năng trước khi apply."
-
-        return {
-            "total_score": total_score,
-            "skills_score": skills_score,
-            "exp_score": exp_score,
-            "exp_message": exp_message,
-            "skill_overlap": list(overlap),
-            "skill_gap": list(job_skills - cv_skills),
-            "special_requirements": found_requirements,
-            "match_reasons": match_reasons,
-            "can_apply": can_apply,
-            "recommendation": recommendation,
-            "advice": advice,
+        # ── 6. BREAKDOWN & REASONS ─────────────────────────────────────────────
+        score_breakdown = {
+            "skills":        {"score": skills_score,   "weight": "60%"},
+            "certifications":{"score": cert_score,     "weight": "10%"},
+            "position":      {"score": position_score, "weight": "20%"},
+            "other":         {"score": other_score,    "weight": "10%"},
         }
 
+        match_reasons = []
+        if overlap:
+            match_reasons.append(f"✅ Kỹ năng phù hợp: {', '.join(list(overlap)[:4])}")
+        if position_matched:
+            match_reasons.append(f"✅ Vị trí ứng tuyển khớp với mục tiêu của bạn")
+        if matched_certs if required_certs else False:
+            match_reasons.append(f"✅ Chứng chỉ phù hợp: {', '.join(list(matched_certs))}")
+        if exp_score >= 70:
+            match_reasons.append(exp_message)
+        if not match_reasons:
+            match_reasons.append("📌 Cần bổ sung thêm kỹ năng và kinh nghiệm để phù hợp hơn")
+
+        # Recommendation
+        if total_score >= 80:
+            recommendation = "🟢 RẤT PHÙ HỢP - Nên apply ngay!"
+            can_apply = True
+        elif total_score >= 65:
+            recommendation = "🟡 PHÙ HỢP - Có thể apply sau khi bổ sung nhẹ"
+            can_apply = True
+        elif total_score >= 50:
+            recommendation = "🟠 CÓ THỂ THỬ - Cần bổ sung một số kỹ năng"
+            can_apply = True
+        else:
+            recommendation = "🔴 CẦN CẢI THIỆN - Nên học thêm trước khi apply"
+            can_apply = False
+
+        return {
+            "total_score":      total_score,
+            "skills_score":     skills_score,
+            "cert_score":       cert_score,
+            "position_score":   position_score,
+            "other_score":      other_score,
+            "exp_score":        exp_score,
+            "exp_message":      exp_message,
+            "skill_overlap":    list(overlap),
+            "skill_gap":        skill_gap,
+            "cert_gap":         cert_gap,
+            "score_breakdown":  score_breakdown,
+            "match_reasons":    match_reasons,
+            "can_apply":        can_apply,
+            "recommendation":   recommendation,
+            "advice":           recommendation,
+            "position_matched": position_matched,
+            "llm_assessment":   None,
+        }
+    
+
+    async def _match_jobs_for_cv_with_formula(
+        self, user_id: str, cv_analysis: CVAnalysis, limit: int = 10
+    ) -> List[Dict]:
+        """
+        Search jobs theo công thức:
+        1. Ưu tiên: tìm theo vị trí ứng tuyển (suitable_job_titles)
+        2. Fallback: tìm theo skills nếu không có vị trí
+        3. Bổ sung thêm jobs skill-match từ vị trí khác
+        Tính match_score cho từng job rồi sort.
+        """
+        job_da = JobDataAccess()
+        all_jobs: List[Dict] = []
+        seen_ids: set = set()
+
+        has_position = bool(cv_analysis.suitable_job_titles)
+
+        # ── Bước 1: Tìm theo vị trí ứng tuyển ──────────────────────────────
+        if has_position:
+            for title in cv_analysis.suitable_job_titles[:3]:
+                jobs = await job_da.search_jobs_by_keywords(
+                    keywords=[title], limit=limit
+                )
+                for job in jobs:
+                    jid = str(job.get("id", ""))
+                    if jid and jid not in seen_ids:
+                        seen_ids.add(jid)
+                        all_jobs.append(job)
+
+        # ── Bước 2: Bổ sung jobs skill-match (khác vị trí) ─────────────────
+        cv_skills = cv_analysis.extracted_skills or []
+        if cv_skills:
+            try:
+                skill_jobs = await job_da.search_by_skills(cv_skills, limit=limit)
+                for job in skill_jobs:
+                    jid = str(job.get("id", ""))
+                    if jid and jid not in seen_ids:
+                        seen_ids.add(jid)
+                        all_jobs.append(job)
+            except Exception as e:
+                logger.error(f"skill search error: {str(e)}")
+
+        # ── Bước 3: Tính match_score cho từng job ───────────────────────────
+        scored_jobs = []
+        for job in all_jobs:
+            comparison = await self._compare_cv_with_job_requirements(cv_analysis, job)
+            score = comparison["total_score"]
+
+            # Note nếu không có CV đầy đủ
+            note = None
+            if not has_position and comparison["position_score"] == 50:
+                note = "📎 Upload CV để xem mức độ phù hợp vị trí ứng tuyển chính xác hơn"
+
+            scored_jobs.append({
+                "job_id":        str(job.get("id", "")),
+                "job_title":     job.get("title", "N/A"),
+                "company":       job.get("company", "N/A"),
+                "company_id":    job.get("company_id"),
+                "location":      job.get("location", "N/A"),
+                "salary":        job.get("salary", "Thương lượng"),
+                "skills":        job.get("skills", []),
+                "match_score":   score,
+                "match_reasons": comparison["match_reasons"],
+                "skill_overlap": comparison["skill_overlap"],
+                "skill_gap":     comparison["skill_gap"],
+                "cert_gap":      comparison["cert_gap"],
+                "recommendation":comparison["recommendation"],
+                "score_breakdown":comparison["score_breakdown"],
+                "position_matched": comparison["position_matched"],
+                "note":          note,
+            })
+
+        # Sort theo match_score giảm dần
+        scored_jobs.sort(key=lambda x: x["match_score"], reverse=True)
+        return scored_jobs[:limit]
+    
+    
     def _format_job_detail_response(self, job: Dict, comparison: Optional[Dict]) -> str:
         """Format response chi tiết về job"""
 
@@ -1868,16 +2108,32 @@ class Chatbot:
             bar = "█" * bar_length + "░" * (10 - bar_length)
 
             response += f"""
-    ---
-    ## 📊 **ĐÁNH GIÁ MỨC ĐỘ PHÙ HỢP CỦA BẠN**
+                ---
+                📊 **ĐÁNH GIÁ MỨC ĐỘ PHÙ HỢP CỦA BẠN**
 
-    ### 🎯 Điểm phù hợp: `{bar}` **{score}%**
+                🎯 Điểm phù hợp: `{bar}` **{score}%**
 
-    {comparison.get('advice', '')}
+                {comparison.get('advice', '')} 
+            """
 
-    ---
-    ### ✅ **Kỹ năng bạn đã có ({len(comparison.get('skill_overlap', []))} kỹ năng):**
-    """
+            breakdown = comparison.get("score_breakdown", {})
+            if breakdown:
+                response += "\n📊 **Chi tiết điểm:**\n"
+                labels = {
+                    "skills":         "💻 Kỹ năng        (60%)",
+                    "certifications": "📜 Chứng chỉ      (10%)",
+                    "position":       "🎯 Vị trí ứng tuyển (20%)",
+                    "other":          "➕ Khác            (10%)",
+                }
+                for key, label in labels.items():
+                    s = breakdown.get(key, {}).get("score", 0)
+                    bar = "█" * int(s/10) + "░" * (10 - int(s/10))
+                    response += f"  • {label}: `{bar}` {s}%\n"
+            response += f"""
+
+                ---
+                ✅ **Kỹ năng bạn đã có ({len(comparison.get('skill_overlap', []))} kỹ năng):**
+                """
             if comparison.get("skill_overlap"):
                 for skill in comparison.get("skill_overlap", [])[:10]:
                     response += f"  • {skill}\n"
@@ -2046,9 +2302,12 @@ class Chatbot:
         salary_stats = self._calculate_salary_stats(jobs, position)
 
         # Lấy top công ty lương cao nhất (kèm thông tin chi tiết từ DB)
-        companies = await self._get_top_salary_companies_with_details(jobs, position, limit=8)
+        companies = await self._get_top_salary_companies_with_details(jobs, position, limit=10)
 
-        return self._format_salary_as_company_list(position, salary_stats, companies)
+        cv_analysis = self.session_manager.get_cv_analysis(user_id)
+        return self._format_salary_as_company_list(
+            position, salary_stats, companies, cv_analysis
+        )
 
     async def _get_top_salary_companies_with_details(
         self, jobs: List[Dict], position: str, limit: int = 10
@@ -2122,33 +2381,35 @@ class Chatbot:
                 return f"{int(salary_values[0])} triệu"
             return "Thương lượng"
 
-    def _format_salary_as_company_list(self, position: str, stats: Dict, companies: List[Dict]) -> Dict:
+    def _format_salary_as_company_list(
+        self, position: str, stats: Dict, companies: List[Dict],
+        cv_analysis=None  # ← thêm param
+    ) -> Dict:
         """Format: text thống kê lương theo level + company cards"""
         overall = stats.get('overall', {})
-        count = overall.get('count', 0)
-        avg = int(overall.get('avg', 0))
-        min_s = int(overall.get('min', 0))
-        max_s = int(overall.get('max', 0))
+        count   = overall.get('count', 0)
+        avg     = int(overall.get('avg', 0))
+        min_s   = int(overall.get('min', 0))
+        max_s   = int(overall.get('max', 0))
 
-        # ── Phần text: tổng quan + breakdown theo level ──
-        text_response = f"## 💰 Thông tin lương cho vị trí **{position}**\n\n"
-        text_response += f"### 📊 Tổng quan (dựa trên {count} tin tuyển dụng)\n"
+        text_response  = f"💰 Thông tin lương cho vị trí **{position}**\n"
+        text_response += f"📊 Tổng quan (dựa trên {count} tin tuyển dụng)\n"
         text_response += f"- **Mức lương trung bình:** {avg:,} triệu/tháng\n"
-        text_response += f"- **Khoảng lương phổ biến:** {min_s:,} – {max_s:,} triệu/tháng\n\n"
+        text_response += f"- **Khoảng lương phổ biến:** {min_s:,} – {max_s:,} triệu/tháng\n"
 
-        levels = stats.get('by_level', {})
+        levels     = stats.get('by_level', {})
         level_order = ["Intern", "Fresher", "Junior", "Mid", "Senior", "Lead", "Manager"]
         has_level_data = any(lv in levels for lv in level_order)
 
         if has_level_data:
-            text_response += "### 📈 Mức lương theo cấp bậc:\n"
+            text_response += "📈 Mức lương theo cấp bậc:\n"
             for lv in level_order:
                 if lv not in levels:
                     continue
-                d = levels[lv]
-                lv_avg = int(d.get('avg', 0))
-                lv_min = int(d.get('min', 0))
-                lv_max = int(d.get('max', 0))
+                d       = levels[lv]
+                lv_avg  = int(d.get('avg', 0))
+                lv_min  = int(d.get('min', 0))
+                lv_max  = int(d.get('max', 0))
                 lv_count = d.get('count', 0)
                 text_response += (
                     f"- **{lv}:** {lv_min:,} – {lv_max:,} triệu/tháng "
@@ -2156,47 +2417,102 @@ class Chatbot:
                 )
             text_response += "\n"
 
-        text_response += "### 🏢 Công ty đang trả lương cao nhất cho vị trí này:\n"
+        # ── CV skills để tính match ──────────────────────────────────────────
+        cv_skills = set()
+        cv_desired = []
+        has_cv = cv_analysis is not None
+        if has_cv:
+            cv_skills  = set(s.lower() for s in (cv_analysis.extracted_skills or []))
+            cv_desired = [t.lower() for t in (cv_analysis.suitable_job_titles or [])]
 
-        # ── Company cards ──
+        # ── Company cards ────────────────────────────────────────────────────
         formatted_companies = []
-        for i, comp in enumerate(companies[:8], 1):
-            match_score = (
-                int((comp['max_salary'] / (overall.get('max', 1) or 1)) * 100)
-                if overall.get('max') else 50
-            )
-            match_score = min(match_score, 100)  # cap 100%
+        for i, comp in enumerate(companies[:10], 1):
+
+            if has_cv:
+                # ── Tính theo công thức 60/10/20/10 ──
+                job_skills = set(s.lower() for s in (comp.get('skills') or []))
+
+                # Skills 60%
+                if job_skills:
+                    overlap      = cv_skills & job_skills
+                    skills_score = min(100, int(len(overlap) / len(job_skills) * 100))
+                else:
+                    overlap      = set()
+                    skills_score = 50
+
+                # Certifications 10% — đơn giản: không parse sâu ở đây → dùng 80 nếu có CV
+                cert_score = 80
+
+                # Position 20%
+                position_lower = position.lower()
+                position_words = position_lower.split()
+                pos_matched = any(
+                    w in (comp.get('company_name', '') + ' ' + position_lower)
+                    for desired in cv_desired
+                    for w in desired.split() if len(w) > 2
+                ) or any(w in position_lower for desired in cv_desired for w in desired.split() if len(w) > 2)
+                position_score = 100 if pos_matched else 60  # salary query → vị trí đã khớp keyword
+
+                # Other 10% — dùng salary rank như tín hiệu market value
+                salary_rank_score = max(20, 100 - (i - 1) * 10)  # Top1=100, Top2=90,...
+
+                match_score = int(
+                    skills_score   * 0.60 +
+                    cert_score     * 0.10 +
+                    position_score * 0.20 +
+                    salary_rank_score * 0.10
+                )
+                match_score = min(100, max(0, match_score))
+
+                skill_overlap = list(overlap)[:5]
+                skill_gap     = list(job_skills - cv_skills)[:5]
+
+                match_reasons = [f"💰 Top {i} lương cao nhất cho vị trí {position}"]
+                if skill_overlap:
+                    match_reasons.append(f"✅ Kỹ năng phù hợp: {', '.join(skill_overlap[:3])}")
+
+                recommendation = (
+                    "Rất phù hợp" if match_score >= 75
+                    else "Phù hợp" if match_score >= 55
+                    else "Có thể thử"
+                )
+
+            else:
+                # ── Không có CV: dùng salary rank, note upload CV ──
+                match_score    = ""
+                skill_overlap  = []
+                skill_gap      = []
+                match_reasons  = [
+                    f"💰 Top {i} lương cao nhất cho vị trí {position}",
+                    "📎 Upload CV để xem mức độ phù hợp theo kỹ năng & vị trí ứng tuyển",
+                ]
+                recommendation = "Chưa có CV"
 
             formatted_companies.append({
-                "job_id": comp.get('company_id') or f"company_{i}",
-                "job_title": f"🏢 {comp['company_name']}",
-                "company": comp['company_name'],
-                "location": comp.get('company_address', 'Đang cập nhật'),
-                "salary": comp['salary_display'],
-                "match_score": match_score,
-                "match_reasons": [f"Top {i} lương cao nhất cho vị trí {position}"],
-                "recommendation": "Rất phù hợp" if i <= 3 else "Phù hợp",
-                "skill_overlap": [],
-                "skill_gap": [],
+                "job_id":        comp.get('company_id') or f"company_{i}",
+                "job_title":     f"🏢 {comp['company_name']}",
+                "company":       comp['company_name'],
+                "location":      comp.get('company_address', 'Đang cập nhật'),
+                "salary":        comp['salary_display'],
+                "match_score":   match_score,
+                "match_reasons": match_reasons,
+                "recommendation":recommendation,
+                "skill_overlap": skill_overlap,
+                "skill_gap":     skill_gap,
                 "is_company_card": True,
-                "company_id": comp.get('company_id'),
-                "job_count": comp.get('job_count', 1),
-                "company_size": comp.get('company_size'),
-                "company_logo": comp.get('company_logo'),
+                "company_id":    comp.get('company_id'),
+                "job_count":     comp.get('job_count', 1),
+                "company_size":  comp.get('company_size'),
+                "company_logo":  comp.get('company_logo'),
             })
-
-        text_response += "\n---\n"
-        text_response += "💬 **Bạn có thể:**\n"
-        text_response += f"• Tìm việc ngay: _\"Tìm việc {position}\"\n_"
-        text_response += f"• Hỏi kỹ năng cần có: _\"Kỹ năng cần có cho {position}\"\n_"
-
         return {
-            "type": "job_list",
+            "type":    "job_list",
             "content": text_response,
-            "jobs": formatted_companies,
-            "cached": False,
+            "jobs":    formatted_companies,
+            "cached":  False,
         }
-
+    
     def _calculate_salary_stats(self, jobs: List[Dict], position: str) -> Dict:
         salaries_by_level = {
             "Intern": [], "Fresher": [], "Junior": [],

@@ -200,7 +200,7 @@ function CompanyCard({ company, onSelect }) {
     };
 
     // Tính phần trăm match để hiển thị thanh progress
-    const matchPercent = company.match_score || 0;
+    const matchPercent = company.match_score;
     const barColor = matchPercent >= 80 ? '#10b981' : matchPercent >= 60 ? '#f59e0b' : '#6b7280';
 
     return (
@@ -245,18 +245,20 @@ function CompanyCard({ company, onSelect }) {
             </div>
 
             {/* Thanh match score */}
-            <div className="ai-company-match-bar">
-                <div className="ai-company-match-label">
-                    <span>🎯 Mức độ phù hợp</span>
-                    <span className="ai-company-match-percent">{matchPercent}%</span>
+            {matchPercent && (
+                <div className="ai-company-match-bar">
+                    <div className="ai-company-match-label">
+                        <span>🎯 Mức độ phù hợp</span>
+                        <span className="ai-company-match-percent">{matchPercent}%</span>
+                    </div>
+                    <div className="ai-company-match-progress-bg">
+                        <div
+                            className="ai-company-match-progress-fill"
+                            style={{ width: `${matchPercent}%`, backgroundColor: barColor }}
+                        />
+                    </div>
                 </div>
-                <div className="ai-company-match-progress-bg">
-                    <div
-                        className="ai-company-match-progress-fill"
-                        style={{ width: `${matchPercent}%`, backgroundColor: barColor }}
-                    />
-                </div>
-            </div>
+            )}
 
             {company.match_reasons && company.match_reasons.length > 0 && (
                 <div className="ai-company-reasons">
@@ -313,7 +315,7 @@ function JobMatchCard({ job, onSelect }) {
                 </div>
             </div>
             <div className="ai-job-co">🏢 {job.company}</div>
-            <div className="ai-job-location">📍 {job.location || 'N/A'}</div>
+            <div className="ai-job-location">📍 {job.location || 'Chưa có thông tin'}</div>
             <div className="ai-job-salary">💰 {job.salary}</div>
 
             {job.match_reasons?.length > 0 && (
@@ -1335,43 +1337,32 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                                         </>
                                     )}
 
-                                    {msg.type === 'job_list' && msg.jobs && msg.jobs.length > 0 && (
-                                        <div className="ai-jobs-section" key={`job-list-${msg.id}`}>
-
-                                            {msg.content && <MdText text={msg.content} />}
-
-                                            <div className="ai-jobs-title">
-                                                {msg.jobs.every(item => item.is_company_card)
-                                                    ? `🏢 ${msg.jobs.length} công ty có mức lương cao nhất`
-                                                    : msg.jobs.some(item => item.is_company_card)
-                                                        ? `📋 ${msg.jobs.length} kết quả phù hợp`
+                                    {msg.type === 'job_list' && (
+                                        msg.jobs && msg.jobs.length > 0 ? (
+                                            <div className="ai-jobs-section">
+                                                {msg.content && msg.jobs.some(item => item.is_company_card) && (
+                                                    <MdText text={msg.content} />
+                                                )}
+                                                <div className="ai-jobs-title">
+                                                    {msg.jobs.every(item => item.is_company_card)
+                                                        ? `🏢 ${msg.jobs.length} công ty có mức lương cao nhất`
                                                         : `💼 ${msg.jobs.length} công việc phù hợp`
-                                                }
-                                            </div>
-                                            <div className="ai-jobs-list">
-                                                {msg.jobs.map((item, idx) => {
-                                                    // Nếu là company card (từ câu hỏi lương)
-                                                    if (item.is_company_card) {
-                                                        return (
-                                                            <CompanyCard
-                                                                key={`${item.job_id}-${idx}`}
-                                                                company={item}
-                                                                onSelect={handleJobClick}
-                                                            />
-                                                        );
                                                     }
-                                                    // Nếu là job card bình thường
-                                                    return (
-                                                        <JobMatchCard
-                                                            key={`${item.job_id}-${idx}`}
-                                                            job={item}
-                                                            onSelect={handleJobClick}
-                                                        />
-                                                    );
-                                                })}
+                                                </div>
+                                                <div className="ai-jobs-list">
+                                                    {msg.jobs.map((item, idx) =>
+                                                        item.is_company_card
+                                                            ? <CompanyCard key={`${item.job_id}-${idx}`} company={item} onSelect={handleJobClick} />
+                                                            : <JobMatchCard key={`${item.job_id}-${idx}`} job={item} onSelect={handleJobClick} />
+                                                    )}
+                                                </div>
                                             </div>
-                                            
-                                        </div>
+                                        ) : (
+                                            // jobs rỗng — không có job nào >= 50%
+                                            <div className="ai-bubble-text">
+                                                🔍 Không tìm thấy công việc phù hợp (độ phù hợp &lt; 50%). Hãy thử từ khóa khác hoặc cập nhật CV để tăng độ phù hợp.
+                                            </div>
+                                        )
                                     )}
 
                                     {msg.type === 'jobs' && (
