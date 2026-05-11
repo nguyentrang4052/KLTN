@@ -64,10 +64,10 @@ export class AIRecommendationService {
     const userID = user.userID;
 
     const today = new Date().toISOString().slice(0, 10);
-    const month = new Date().toISOString().slice(0, 7);
 
     const quota = await this.prisma.userQuota.findFirst({
-      where: { userID, month },
+      where: { userID },
+      orderBy: { id: 'desc' },
     });
 
     if (

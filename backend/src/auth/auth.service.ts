@@ -150,19 +150,17 @@ export class AuthService {
       include: { limits: true },
     });
 
-    const month = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 7);
     const today = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
     await this.prisma.userQuota.create({
       data: {
         userID,
-        month,
         subscriptionID: null,
         jobSuggestPerDay: freePlan?.limits?.jobSuggestPerDay ?? 3,
         jobSuggestUsedToday: 0,
         jobSuggestResetDate: today,
-        cvAnalysisTotal: freePlan?.limits?.cvAnalysisPerMonth ?? 0,
-        cvMatchCheckTotal: freePlan?.limits?.cvMatchCheckCount ?? 0,
+        cvAnalysisTotal: 10,
+        cvMatchCheckTotal: 20,
         cvAnalysisUsed: 0,
         cvMatchCheckUsed: 0,
       },
