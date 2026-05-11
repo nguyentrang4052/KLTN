@@ -41,7 +41,7 @@ export default function Header({ notifCount = 0 }) {
   const dropdownRef = useRef(null)
 
   const planName = user?.plan?.name ?? 'free'
-  const planDisplay = user?.plan?.displayName ?? 'Free'
+  const planDisplay = user?.plan?.displayName ?? 'free'
 
   const PLAN_DOT_COLOR = {
     free: '#9A8D80',

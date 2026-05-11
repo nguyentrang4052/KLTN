@@ -7,23 +7,6 @@ import Badge from '../../common/Badge/Badge'
 import { getToken } from '../../../utils/auth'
 
 const API = 'http://localhost:3000/api'
-
-
-const AI_INSIGHTS = [
-  { icon: '👁', text: 'Bạn thường xem kỹ JD có "React", "TypeScript" và lương >25tr', source: 'Từ 47 lần xem' },
-  { icon: '🔖', text: '80% tin bạn lưu là Hybrid hoặc Remote', source: 'Từ 23 lần lưu' },
-  { icon: '⚡', text: 'Bạn apply trong 24h đầu khi lương >30tr', source: 'Từ 14 lần apply' },
-  { icon: '🏢', text: 'Ưu tiên Fintech và E-commerce hơn 60%', source: 'Phân tích toàn lịch sử' },
-]
-const AI_PREFERENCES = [
-  { key: 'Ngành ưu tiên', value: 'Fintech, E-commerce, SaaS' },
-  { key: 'Quy mô công ty', value: '100 – 1,000 người' },
-  { key: 'Ngôn ngữ làm việc', value: 'Việt / English' },
-]
-const AI_TOGGLES = [
-  { key: 'Thông báo việc mới', active: true },
-  { key: 'Auto apply khi match >90%', active: false },
-]
 const CONNECTED_ACCOUNTS = [
   { name: 'TopCV', code: 'T', color: '#00B14F', connected: true },
   { name: 'CareerLink', code: 'C', color: '#D0392A', connected: true },
@@ -46,16 +29,7 @@ function ImportCVModal({ onClose, onImport, authHeaders }) {
     fetch(`${API}/cv-builder/list`, { headers: authHeaders })
       .then(r => r.ok ? r.json() : [])
       .then(data => {
-        const normalized = (Array.isArray(data) ? data : []).map(cv => ({
-          id: cv.id,
-          name: cv.name || 'Không tên',
-          templateId: cv.templateId,
-          data: cv.data || {},
-          createdAt: cv.createdAt,
-          updatedAt: cv.updatedAt,
-          type: 'local',
-        }))
-        setLocalCVs(normalized)
+        setLocalCVs(data.map(cv => ({ ...cv, type: 'local' })));
       })
       .catch(() => { })
       .finally(() => setLoadingLocal(false));
@@ -366,7 +340,7 @@ function AnalyzedCVPreview({ cv, authHeaders }) {
 // ─── Preview CV tự tạo (dùng dữ liệu từ API) ────────────────────────────────
 function LocalCVPreview({ cv }) {
   // Dữ liệu CV được lưu trong cv.data.cvData (backend trả về)
-  const cvData = cv.data?.cvData || cv.data || {};
+  const cvData = cv.data?.cvData || {};
   const info = cvData.personalInfo || {};
   const experiences = cvData.experiences || [];
   const education = cvData.education || [];
@@ -480,12 +454,28 @@ function PreviewSection({ label, children }) {
 }
 
 function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
-  const [cvList, setCvList] = useState(cvListProp)
-
+  const [cvList, setCvList] = useState(() => {
+    try {
+      const key = profile?.userID ? `cv_builder_state_${profile.userID}` : 'cv_builder_state'
+      const raw = localStorage.getItem(key)
+      const state = raw ? JSON.parse(raw) : {}
+      const list = state._cvList
+      return Array.isArray(list) && list.length > 0 ? list : cvListProp
+    } catch { return cvListProp }
+  })
   useEffect(() => {
-    setCvList(cvListProp)
-  }, [cvListProp])
-
+    const sync = () => {
+      try {
+        const key = profile?.userID ? `cv_builder_state_${profile.userID}` : 'cv_builder_state'
+        const raw = localStorage.getItem(key)
+        const state = raw ? JSON.parse(raw) : {}
+        if (Array.isArray(state._cvList)) setCvList(state._cvList)
+      } catch { }
+    }
+    window.addEventListener('storage', sync)
+    window.addEventListener('focus', sync)
+    return () => { window.removeEventListener('storage', sync); window.removeEventListener('focus', sync) }
+  }, [])
   const navigate = useNavigate()
   const token = getToken()
   const authRef = useRef({
@@ -502,6 +492,8 @@ function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
+  const [aiData, setAiData] = useState({ insights: [], preferences: [] })
+
 
   // ── Import CV modal state ──
   const [showImportModal, setShowImportModal] = useState(false)
@@ -546,6 +538,14 @@ function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
       if (syncForm) setLoading(false)
     }
   }, [token])
+
+  useEffect(() => {
+    if (!profile?.userID) return
+    fetch(`${API}/profile/${profile.userID}/insights`, { headers: authRef.current })
+      .then(r => r.json())
+      .then(data => setAiData(data))
+      .catch(console.error)
+  }, [profile?.userID])
 
   const fetchStats = useCallback(async (userID) => {
     try {
@@ -721,7 +721,7 @@ function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
     if (!profile?.userID) return
 
     try {
-      if (type === 'local') {
+      if (type === 'analyzed') {
         const res = await fetch(`${API}/cv-analyzer/map-to-profile/${cv.id}`, {
           method: 'POST',
           headers: authRef.current,
@@ -745,7 +745,8 @@ function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
         setTimeout(() => window.location.reload(), 1200)
         return
       } else {
-        const cvData = cv?.data?.cvData || {}
+        // CV local: data nằm trong cv_builder_state[cv.id].data
+        const cvData = getCVData(cv.id)
         const personalInfo = cvData.personalInfo || {}
         const experiences = Array.isArray(cvData.experiences) ? cvData.experiences : []
 
@@ -904,9 +905,7 @@ function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
                       <div style={{ display: 'flex' }}>
                         {[
                           { label: 'Đã xem', value: stats.viewCount, icon: '👁' },
-                          { label: 'Đã lưu', value: stats.saveCount, icon: '🔖' },
-                          // { label: 'Đã apply', value: stats.applyCount, icon: '⚡' },
-                          // { label: 'Đề xuất', value: stats.recommendCount, icon: '🎯' },
+                          { label: 'Đã lưu', value: stats.saveCount, icon: '🔖' }
                         ].map((s, i) => (
                           <div key={i} style={{
                             flex: 1, textAlign: 'center',
@@ -920,6 +919,7 @@ function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
                         ))}
                       </div>
                     </div>
+
                   )}
 
                   <div className="card profile-card">
@@ -1072,23 +1072,43 @@ function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
                       )}
                     </div>
                   </div>
+
                 </div>
 
                 <div className="p-right">
 
                   <div className="card profile-card">
-                    <div className="profile-section-title">🧠 AI đã học gì từ bạn</div>
-                    {AI_INSIGHTS.map((insight, idx) => (
-                      <div key={idx} className="act-item">
-                        <div className="act-icon">{insight.icon}</div>
-                        <div className="act-content">
-                          <div className="act-text">{insight.text}</div>
-                          <div className="act-time">{insight.source}</div>
-                        </div>
+                    <div className="profile-section-title">🧠 Hoạt động của bạn </div>
+                    {aiData.insights.length === 0 ? (
+                      <div style={{ fontSize: 13, color: 'var(--ink4)', padding: '8px 0' }}>
+                        Chưa đủ dữ liệu — hãy xem thêm việc làm để AI phân tích hành vi của bạn.
                       </div>
-                    ))}
-                  </div>
+                    ) : (
+                      aiData.insights.map((insight, idx) => (
+                        <div key={idx} className="act-item">
+                          <div className="act-icon">{insight.icon}</div>
+                          <div className="act-content">
+                            <div className="act-text">{insight.text}</div>
+                            <div className="act-time">{insight.source}</div>
+                          </div>
+                        </div>
+                      ))
+                    )}
 
+                    {aiData.preferences.length > 0 && (
+                      <>
+                        <div className="profile-section-title" style={{ marginTop: 16 }}>
+                          Sở thích nghề nghiệp
+                        </div>
+                        {aiData.preferences.map((pref, idx) => (
+                          <div key={idx} className="pref-row">
+                            <span className="pref-k">{pref.key}</span>
+                            <span className="pref-v">{pref.value}</span>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
                   {profile && (
                     <div className="card profile-card">
                       <div className="profile-section-title">ℹ️ Tài khoản</div>

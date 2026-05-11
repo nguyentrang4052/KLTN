@@ -594,8 +594,11 @@ export default function AIAssistantScreen({ onNavigate }) {
 
                 const response = await fetchWithTimeout(`${API_BASE_URL}/chatbot/upload-cv`, {
                     method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${getToken()}`,
+                    },
                     body: formData,
-                });
+                }, 600000); // timeout 10 phút, khớp với backend
 
                 const contentType = response.headers.get('content-type');
                 if (!contentType || !contentType.includes('application/json')) {
@@ -868,7 +871,7 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                             <div className="ai-header-name">GZConnect AI Assistant</div>
                             <div className="ai-header-status">
                                 <span className="ai-status-dot" />
-                                {typing ? 'Đang trả lờii...' : 'Sẵn sàng'}
+                                {typing ? 'Đang trả lời...' : 'Sẵn sàng'}
                             </div>
                         </div>
                     </div>
