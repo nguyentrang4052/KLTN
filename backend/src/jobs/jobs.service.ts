@@ -1106,13 +1106,24 @@ export class JobsService {
       userSkillRows.map((s) => s.skill.name.toLowerCase()),
     );
 
+    const profile = await this.prisma.userProfile.findFirst({
+      where: { userID: user.userID },
+      include: { industry: { select: { name: true } } },
+    });
+
     const job = await this.prisma.job.findUnique({
       where: { jobID },
       include: {
         skills: { include: { skill: { select: { name: true } } } },
+        industry: { select: { name: true } },
       },
     });
     if (!job) return null;
+
+    const rec = await this.prisma.jobRecommendation.findUnique({
+      where: { userID_jobID: { userID: user.userID, jobID } },
+      select: { matchPercent: true, reason: true },
+    });
 
     const jobSkills = job.skills.map((s) => s.skill.name);
     const skillOverlap = jobSkills.filter((s) =>
@@ -1120,16 +1131,47 @@ export class JobsService {
     );
     const skillGap = jobSkills.filter((s) => !userSkills.has(s.toLowerCase()));
 
-    const rec = await this.prisma.jobRecommendation.findUnique({
-      where: { userID_jobID: { userID: user.userID, jobID } },
-      select: { matchPercent: true, reason: true },
-    });
+    const industryMatch = !!(
+      profile?.industry?.name &&
+      job.industry?.name &&
+      profile.industry.name.toLowerCase() === job.industry.name.toLowerCase()
+    );
+
+    const expMatch = !!(
+      profile?.experienceYear &&
+      job.experienceYear &&
+      profile.experienceYear.toLowerCase() === job.experienceYear.toLowerCase()
+    );
+
+    const parseSalary = (s: string | null) => {
+      if (!s) return null;
+      const nums = s.replace(/,/g, '').match(/\d+(\.\d+)?/g);
+      if (!nums) return null;
+      return Math.max(...nums.map(Number).filter(n => n > 0));
+    };
+
+    const userExpectedSalaryNum = parseSalary(profile?.expectedSalary ?? null);
+    const jobSalaryNum = parseSalary(job.salary ?? null);
+
+    let salaryStatus: 'match' | 'low' | 'unknown' = 'unknown';
+    if (userExpectedSalaryNum && jobSalaryNum) {
+      salaryStatus =
+        jobSalaryNum >= userExpectedSalaryNum * 0.8 ? 'match' : 'low';
+    }
 
     return {
       matchPercent: rec?.matchPercent ?? null,
       reason: rec?.reason ?? null,
       skillOverlap,
       skillGap,
+      industryMatch,
+      industryName: job.industry?.name ?? null,
+      expMatch,
+      userExp: profile?.experienceYear ?? null,
+      jobExp: job.experienceYear ?? null,
+      salaryStatus,
+      expectedSalary: profile?.expectedSalary ?? null,
+      jobSalary: job.salary ?? null,
     };
   }
 }

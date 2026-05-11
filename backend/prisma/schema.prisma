@@ -242,8 +242,7 @@ model Payment {
 model UserQuota {
   id                  Int      @id @default(autoincrement())
   userID              Int
-  subscriptionID      Int?     @unique  
-  month               String         
+  subscriptionID      Int?     @unique        
 
   jobSuggestPerDay    Int      @default(3)
   jobSuggestUsedToday Int      @default(0)
@@ -258,7 +257,7 @@ model UserQuota {
   user                User     @relation(fields: [userID], references: [userID])
   subscription        UserSubscription? @relation(fields: [subscriptionID], references: [id])
 
-  @@unique([userID, month])
+  @@unique([userID, subscriptionID])
 }
 
 model RefundRequest {

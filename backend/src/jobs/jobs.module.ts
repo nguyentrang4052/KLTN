@@ -10,12 +10,14 @@ import { JobsGateway } from '../websocket-gateway/jobs.gateway';
 import { ActiveUsersGateway } from '../websocket-gateway/active-users.gateway';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { SubscriptionModule } from '../subscription/subscription.module';
 
 @Module({
   imports: [
     PrismaModule,
     ConfigModule,
     GeminiModule,
+    SubscriptionModule,
     JwtModule.registerAsync({
       useFactory: (config: ConfigService) => ({
         secret: config.get('JWT_SECRET'),
