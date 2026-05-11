@@ -16,9 +16,9 @@ import { PayOS } from '@payos/node';
 import { NotificationService } from 'src/notification/notification.service';
 
 const PLANS_CONFIG = {
-  free: { displayName: 'Free', monthlyPrice: 0, yearlyPrice: 0 },
-  pro: { displayName: 'Pro', monthlyPrice: 10000, yearlyPrice: 96000 },
-  elite: { displayName: 'Elite', monthlyPrice: 10000, yearlyPrice: 96000 },
+  free: { displayName: 'free', monthlyPrice: 0, yearlyPrice: 0 },
+  pro: { displayName: 'pro', monthlyPrice: 10000, yearlyPrice: 96000 },
+  elite: { displayName: 'elite', monthlyPrice: 10000, yearlyPrice: 96000 },
 };
 
 @Injectable()
@@ -39,7 +39,7 @@ export class SubscriptionService {
   }
 
   private currentMonth(): string {
-    return new Date().toISOString().slice(0, 7);
+    return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 7);
   }
 
   private async grantQuota(
@@ -111,6 +111,7 @@ export class SubscriptionService {
   }
 
   private async revokeQuota(userID: number, tx?: any): Promise<void> {
+    const freeLimits = await this.getFreePlanLimits();
     const db = tx ?? this.prisma;
 
     const existing = await db.userQuota.findFirst({
@@ -127,7 +128,7 @@ export class SubscriptionService {
     await db.userQuota.update({
       where: { id: existing.id },
       data: {
-        jobSuggestPerDay: 3,
+        jobSuggestPerDay: freeLimits.jobSuggestPerDay,
         cvAnalysisTotal: existing.cvAnalysisUsed,
         cvMatchCheckTotal: existing.cvMatchCheckUsed,
       },
@@ -169,23 +170,19 @@ export class SubscriptionService {
         });
       }
     }
-
     if (!quota) {
-      const limits = activeSub?.plan?.limits;
-      const jobSuggestPerDay = limits?.jobSuggestPerDay ?? 3;
-      const cvAnalysisPerMonth = limits?.cvAnalysisPerMonth ?? 0;
-      const cvMatchCheckCount = limits?.cvMatchCheckCount ?? 0;
+      const limits = activeSub?.plan?.limits ?? await this.getFreePlanLimits();
 
       return {
         month,
-        jobSuggestPerDay,
+        jobSuggestPerDay: limits.jobSuggestPerDay,
         jobSuggestUsedToday: 0,
-        cvAnalysisTotal: cvAnalysisPerMonth,
+        cvAnalysisTotal: limits.cvAnalysisPerMonth,
         cvAnalysisUsed: 0,
-        cvAnalysisRemaining: cvAnalysisPerMonth >= UNLIMITED ? UNLIMITED : cvAnalysisPerMonth,
-        cvMatchCheckTotal: cvMatchCheckCount,
+        cvAnalysisRemaining: limits.cvAnalysisPerMonth,
+        cvMatchCheckTotal: limits.cvMatchCheckCount,
         cvMatchCheckUsed: 0,
-        cvMatchCheckRemaining: cvMatchCheckCount >= UNLIMITED ? UNLIMITED : cvMatchCheckCount,
+        cvMatchCheckRemaining: limits.cvMatchCheckCount,
       };
     }
 
@@ -221,28 +218,30 @@ export class SubscriptionService {
     const { activeSub, quota } = await this.getActiveQuota(user.userID);
 
     if (!quota) {
-      const limits = activeSub?.plan?.limits;
+      const limits = activeSub?.plan?.limits ?? await this.getFreePlanLimits();
       const limit = feature === 'cvAnalysis'
-        ? (limits?.cvAnalysisPerMonth ?? 0)
-        : (limits?.cvMatchCheckCount ?? 0);
+        ? limits.cvAnalysisPerMonth
+        : limits.cvMatchCheckCount;
 
       if (limit === 0) {
         throw new BadRequestException(
           `Bạn đã hết lượt ${FEATURE_LABEL[feature]}. Vui lòng nâng cấp gói.`,
         );
       }
+
       const today = new Date().toISOString().slice(0, 10);
       const month = this.currentMonth();
+
       await this.prisma.userQuota.create({
         data: {
           userID: user.userID,
           month,
-          subscriptionID: activeSub!.id,
-          jobSuggestPerDay: limits?.jobSuggestPerDay ?? 3,
+          subscriptionID: activeSub?.id ?? null,
+          jobSuggestPerDay: limits.jobSuggestPerDay,
           jobSuggestUsedToday: 0,
           jobSuggestResetDate: today,
-          cvAnalysisTotal: limits?.cvAnalysisPerMonth ?? 0,
-          cvMatchCheckTotal: limits?.cvMatchCheckCount ?? 0,
+          cvAnalysisTotal: limits.cvAnalysisPerMonth,
+          cvMatchCheckTotal: limits.cvMatchCheckCount,
           cvAnalysisUsed: feature === 'cvAnalysis' ? 1 : 0,
           cvMatchCheckUsed: feature === 'cvMatchCheck' ? 1 : 0,
         },
@@ -600,7 +599,7 @@ export class SubscriptionService {
       });
       return {
         planName: 'free',
-        displayName: 'Free',
+        displayName: 'free',
         billing: null,
         status: 'active',
         expiresAt: null,
@@ -724,5 +723,17 @@ export class SubscriptionService {
     }
 
     return { activeSub, quota };
+  }
+
+  private async getFreePlanLimits() {
+    const freePlan = await this.prisma.subscriptionPlan.findFirst({
+      where: { name: 'free' },
+      include: { limits: true },
+    });
+    return {
+      jobSuggestPerDay: freePlan?.limits?.jobSuggestPerDay ?? 3,
+      cvAnalysisPerMonth: freePlan?.limits?.cvAnalysisPerMonth ?? 0,
+      cvMatchCheckCount: freePlan?.limits?.cvMatchCheckCount ?? 0,
+    };
   }
 }

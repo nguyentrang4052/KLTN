@@ -30,7 +30,7 @@ export class JobsController {
     private readonly jobsService: JobsService,
     private readonly aiRecommendation: AIRecommendationService,
     private readonly jobsGateway: JobsGateway,
-  ) {}
+  ) { }
 
   @Get()
   @UseGuards(OptionalJwtGuard)
@@ -48,6 +48,17 @@ export class JobsController {
   @UseGuards(JwtAuthGuard)
   async getRecommendations(@GetUser() user: JwtUser) {
     return this.jobsService.getRecommendations(user.sub, false);
+  }
+
+  @Post('recommendations/refresh')
+  @UseGuards(JwtAuthGuard)
+  async refreshRecommendations(@GetUser() user: JwtUser) {
+    const hasChanged =
+      await this.aiRecommendation.computeAndSaveRecommendations(user.sub);
+    if (hasChanged) {
+      await this.jobsService.incrementRecommendationQuota(user.sub);
+    }
+    return this.jobsService.getRecommendations(user.sub, hasChanged);
   }
 
   @Get('saved')

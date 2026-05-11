@@ -5,21 +5,28 @@ import {
     Body,
     UploadedFile,
     UseInterceptors,
+    UseGuards,
     Res,
     HttpStatus,
     Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ChatbotService } from './chatbot.service';
+import { SubscriptionService } from '../subscription/subscription.service';
+import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { GetUser } from '../auth/decorators/get-user.decorator';
+import type { JwtUser } from '../auth/interfaces/jwt-user.interface';
 import type { Response } from 'express';
 import { Readable } from 'stream';
-
 
 @Controller('chatbot')
 export class ChatbotController {
     private readonly logger = new Logger(ChatbotController.name);
 
-    constructor(private readonly chatbotService: ChatbotService) { }
+    constructor(
+        private readonly chatbotService: ChatbotService,
+        private readonly subscriptionService: SubscriptionService,
+    ) { }
 
     @Post('chat')
     @UseInterceptors(FileInterceptor('file'))
@@ -56,12 +63,13 @@ export class ChatbotController {
         });
     }
 
-
     @Post('upload-cv')
+    @UseGuards(JwtAuthGuard)
     @UseInterceptors(FileInterceptor('file'))
     async uploadCV(
         @UploadedFile() file: Express.Multer.File,
         @Body() body: any,
+        @GetUser() user: JwtUser,
         @Res() res: Response,
     ) {
         const userID = body.userID;
@@ -87,7 +95,7 @@ export class ChatbotController {
         const allowedMimes = [
             'application/pdf',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'application/msword'
+            'application/msword',
         ];
 
         if (!allowedMimes.includes(file.mimetype)) {
@@ -98,7 +106,6 @@ export class ChatbotController {
             });
         }
 
-        // Giới hạn file size 10MB
         if (file.size > 10 * 1024 * 1024) {
             return res.status(HttpStatus.BAD_REQUEST).json({
                 success: false,
@@ -107,9 +114,19 @@ export class ChatbotController {
             });
         }
 
+        try {
+            await this.subscriptionService.checkAndConsumeQuota(user.sub, 'cvAnalysis');
+        } catch (err) {
+            return res.status(HttpStatus.PAYMENT_REQUIRED).json({
+                success: false,
+                message: err.message,
+                error: true,
+                quotaExceeded: true,
+            });
+        }
+
         const result = await this.chatbotService.uploadCV(userID, file);
 
-        // Trả về status phù hợp
         const statusCode = result.success
             ? HttpStatus.OK
             : result.isTimeout

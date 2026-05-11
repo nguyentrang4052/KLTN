@@ -305,8 +305,8 @@ export class JobsService {
     });
     if (!user) return { data: [], quota: null };
 
-    const today = new Date().toISOString().slice(0, 10);
-    const month = new Date().toISOString().slice(0, 7);
+    const today = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const month = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 7);
     const UNLIMITED = 999;
     const PREVIEW_LIMIT = 3;
 
@@ -352,9 +352,21 @@ export class JobsService {
       }
     }
 
-    const planLimits = activeSub?.plan?.limits;
+    // Fetch free plan limits nếu không có active sub
+    const freePlan = !activeSub
+      ? await this.prisma.subscriptionPlan.findFirst({
+        where: { name: 'free' },
+        include: { limits: true },
+      })
+      : null;
+
+    const planLimits = activeSub?.plan?.limits ?? freePlan?.limits ?? null;
+
     const jobSuggestPerDay =
-      quota?.jobSuggestPerDay ?? planLimits?.jobSuggestPerDay ?? 3;
+      quota?.jobSuggestPerDay ??
+      planLimits?.jobSuggestPerDay ??
+      3;
+
     const isUnlimited = jobSuggestPerDay >= UNLIMITED;
     const usedToday = quota?.jobSuggestUsedToday ?? 0;
     const quotaExceeded = !isUnlimited && usedToday >= jobSuggestPerDay;
@@ -378,7 +390,6 @@ export class JobsService {
       },
     });
 
-    // Chỉ tính quota khi wasRecomputed = true
     let newUsedToday = usedToday;
     if (!isUnlimited && !quotaExceeded && recs.length > 0 && wasRecomputed) {
       const currentUsed = quota?.jobSuggestUsedToday ?? 0;
@@ -403,11 +414,11 @@ export class JobsService {
             create: {
               userID: user.userID,
               month,
-              jobSuggestPerDay: 3,
+              jobSuggestPerDay: planLimits?.jobSuggestPerDay ?? 3,
               jobSuggestUsedToday: 1,
               jobSuggestResetDate: today,
-              cvAnalysisTotal: 0,
-              cvMatchCheckTotal: 0,
+              cvAnalysisTotal: planLimits?.cvAnalysisPerMonth ?? 0,
+              cvMatchCheckTotal: planLimits?.cvMatchCheckCount ?? 0,
               cvAnalysisUsed: 0,
               cvMatchCheckUsed: 0,
             },
@@ -472,33 +483,60 @@ export class JobsService {
       where: { accountID },
       select: { userID: true },
     });
-
     if (!user) return;
 
-    const today = new Date().toISOString().slice(0, 10);
-    const month = new Date().toISOString().slice(0, 7);
+    const today = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const month = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 7);
+
+    const existing = await this.prisma.userQuota.findFirst({
+      where: { userID: user.userID, month },
+    });
+
+    const needsReset = !existing?.jobSuggestResetDate || existing.jobSuggestResetDate !== today;
+
+    // Lấy limit theo gói đang active, fallback về free plan
+    const activeSub = await this.prisma.userSubscription.findFirst({
+      where: {
+        userID: user.userID,
+        status: 'active',
+        expiresAt: { gt: new Date() },
+      },
+      include: { plan: { include: { limits: true } } },
+      orderBy: { startedAt: 'desc' },
+    });
+
+    let jobSuggestPerDay: number;
+    let cvAnalysisTotal: number;
+    let cvMatchCheckTotal: number;
+
+    if (activeSub?.plan?.limits) {
+      jobSuggestPerDay = activeSub.plan.limits.jobSuggestPerDay;
+      cvAnalysisTotal = activeSub.plan.limits.cvAnalysisPerMonth;
+      cvMatchCheckTotal = activeSub.plan.limits.cvMatchCheckCount;
+    } else {
+      const freePlan = await this.prisma.subscriptionPlan.findFirst({
+        where: { name: 'free' },
+        include: { limits: true },
+      });
+      jobSuggestPerDay = freePlan?.limits?.jobSuggestPerDay ?? 3;
+      cvAnalysisTotal = freePlan?.limits?.cvAnalysisPerMonth ?? 0;
+      cvMatchCheckTotal = freePlan?.limits?.cvMatchCheckCount ?? 0;
+    }
 
     await this.prisma.userQuota.upsert({
-      where: {
-        userID_month: {
-          userID: user.userID,
-          month,
-        },
-      },
+      where: { userID_month: { userID: user.userID, month } },
       update: {
-        jobSuggestUsedToday: {
-          increment: 1,
-        },
+        jobSuggestUsedToday: needsReset ? 1 : { increment: 1 },
         jobSuggestResetDate: today,
       },
       create: {
         userID: user.userID,
         month,
-        jobSuggestPerDay: 3,
+        jobSuggestPerDay,
         jobSuggestUsedToday: 1,
         jobSuggestResetDate: today,
-        cvAnalysisTotal: 0,
-        cvMatchCheckTotal: 0,
+        cvAnalysisTotal,
+        cvMatchCheckTotal,
         cvAnalysisUsed: 0,
         cvMatchCheckUsed: 0,
       },

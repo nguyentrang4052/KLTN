@@ -66,7 +66,6 @@ export class ChatbotService {
                             'X-Internal-Key': this.internalApiKey,
                         },
                         timeout: this.CV_UPLOAD_TIMEOUT,
-                        // Thêm maxContentLength để tránh lỗi với response lớn
                         maxContentLength: Infinity,
                         maxBodyLength: Infinity,
                     },
@@ -87,7 +86,6 @@ export class ChatbotService {
 
             const pythonData = response.data;
 
-            // Validate response structure
             if (!pythonData || typeof pythonData !== 'object') {
                 throw new Error('Invalid response structure from Python service');
             }
@@ -196,9 +194,9 @@ export class ChatbotService {
 
         } catch (error: any) {
             this.logger.error(`Chat error: ${error?.message}`);
-            
+
             if (error instanceof AxiosError && error.response) {
-                const axiosMsg = 
+                const axiosMsg =
                     error.response.data?.detail ||
                     error.response.data?.message ||
                     error.message ||
@@ -222,24 +220,24 @@ export class ChatbotService {
 
 
     async healthCheck() {
-    try {
-        const response = await firstValueFrom(
-            this.httpService.get(`${this.pythonServiceUrl}/api/health`, {
-                timeout: this.HEALTH_TIMEOUT,
-            }),
-        );
-        return {
-            status: 'ok',
-            pythonService: response.data,
-            timestamp: new Date().toISOString(),
-        };
-    } catch (error: any) {
-        this.logger.error(`Health check failed: ${error.message}`);
-        return {
-            status: 'degraded',
-            pythonService: { status: 'down', error: error.message },
-            timestamp: new Date().toISOString(),
-        };
+        try {
+            const response = await firstValueFrom(
+                this.httpService.get(`${this.pythonServiceUrl}/api/health`, {
+                    timeout: this.HEALTH_TIMEOUT,
+                }),
+            );
+            return {
+                status: 'ok',
+                pythonService: response.data,
+                timestamp: new Date().toISOString(),
+            };
+        } catch (error: any) {
+            this.logger.error(`Health check failed: ${error.message}`);
+            return {
+                status: 'degraded',
+                pythonService: { status: 'down', error: error.message },
+                timestamp: new Date().toISOString(),
+            };
+        }
     }
-}
 }

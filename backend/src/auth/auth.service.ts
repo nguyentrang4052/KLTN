@@ -53,13 +53,14 @@ export class AuthService {
       include: { user: true },
     });
 
+    // Tạo quota mặc định cho free plan
+    if (account.user) {
+      await this.initFreeQuota(account.user.userID);
+    }
+
     return {
       message: 'Đăng ký thành công.',
-      accessToken: this.signToken(
-        account.accountID,
-        account.email,
-        account.role,
-      ),
+      accessToken: this.signToken(account.accountID, account.email, account.role),
       user: {
         accountID: account.accountID,
         email: account.email,
@@ -102,11 +103,7 @@ export class AuthService {
     };
   }
 
-  async oauthLogin(oauthUser: {
-    email: string;
-    fullName: string;
-    provider: string;
-  }) {
+  async oauthLogin(oauthUser: { email: string; fullName: string; provider: string }) {
     let account = await this.prisma.account.findUnique({
       where: { email: oauthUser.email },
       include: { user: true },
@@ -123,22 +120,21 @@ export class AuthService {
           password: '',
           provider: oauthUser.provider,
           user: {
-            create: {
-              fullName: oauthUser.fullName,
-            },
+            create: { fullName: oauthUser.fullName },
           },
         },
         include: { user: true },
       });
+
+      // Chỉ tạo quota khi account mới được tạo
+      if (account.user) {
+        await this.initFreeQuota(account.user.userID);
+      }
     }
 
     return {
       message: 'Đăng nhập thành công.',
-      accessToken: this.signToken(
-        account.accountID,
-        account.email,
-        account.role,
-      ),
+      accessToken: this.signToken(account.accountID, account.email, account.role),
       user: {
         accountID: account.accountID,
         email: account.email,
@@ -146,6 +142,31 @@ export class AuthService {
         role: account.role,
       },
     };
+  }
+
+  private async initFreeQuota(userID: number): Promise<void> {
+    const freePlan = await this.prisma.subscriptionPlan.findFirst({
+      where: { name: 'free' },
+      include: { limits: true },
+    });
+
+    const month = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 7);
+    const today = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+    await this.prisma.userQuota.create({
+      data: {
+        userID,
+        month,
+        subscriptionID: null,
+        jobSuggestPerDay: freePlan?.limits?.jobSuggestPerDay ?? 3,
+        jobSuggestUsedToday: 0,
+        jobSuggestResetDate: today,
+        cvAnalysisTotal: freePlan?.limits?.cvAnalysisPerMonth ?? 0,
+        cvMatchCheckTotal: freePlan?.limits?.cvMatchCheckCount ?? 0,
+        cvAnalysisUsed: 0,
+        cvMatchCheckUsed: 0,
+      },
+    });
   }
 
   async forgotPassword(dto: ForgotPasswordDto) {
@@ -228,7 +249,7 @@ export class AuthService {
       include: {
         user: {
           include: {
-            profiles: true
+            profiles: true,
           },
         },
       },
@@ -259,7 +280,7 @@ export class AuthService {
       provider: account.provider,
       avatar: account.user?.avatar ?? null,
       jobTitle: latestProfile?.jobTitle ?? 'Thành viên',
-      plan: sub?.plan ?? { name: 'free', displayName: 'Free' },
+      plan: sub?.plan ?? { name: 'free', displayName: 'free' },
     };
   }
 

@@ -48,7 +48,7 @@ export class AIRecommendationService {
   constructor(
     private prisma: PrismaService,
     private gemini: GeminiService,
-  ) {}
+  ) { }
 
   async computeAndSaveRecommendations(accountID: number): Promise<boolean> {
     this.logger.log(`Computing for accountID=${accountID}`);
@@ -62,16 +62,12 @@ export class AIRecommendationService {
     }
 
     const userID = user.userID;
-    this.logger.log(`userID=${userID}`);
 
     const today = new Date().toISOString().slice(0, 10);
     const month = new Date().toISOString().slice(0, 7);
 
     const quota = await this.prisma.userQuota.findFirst({
-      where: {
-        userID,
-        month,
-      },
+      where: { userID, month },
     });
 
     if (
@@ -88,80 +84,49 @@ export class AIRecommendationService {
       return false;
     }
 
-    const FRESH_MS = 1 * 60 * 1000;
-    const freshThreshold = new Date(Date.now() - FRESH_MS);
-    const latest = await this.prisma.jobRecommendation.findFirst({
-      where: { userID },
-      orderBy: { updatedAt: 'desc' },
-      select: { updatedAt: true },
-    });
-
-    this.logger.log(`latest=${latest?.updatedAt}, threshold=${freshThreshold}`);
-    if (latest && latest.updatedAt > freshThreshold) {
-      this.logger.log(`Skipping recompute — data is fresh (userID=${userID})`);
-      return false;
-    }
-
     this.computingLocks.add(userID);
     try {
       const userContext = await this.buildUserContext(userID);
-      this.logger.log(`hasContext check: skills=${userContext.skills.length}, jobTitle=${userContext.profile.jobTitle}`);
       const hasContext =
         userContext.skills.length > 0 ||
         userContext.profile.jobTitle ||
         userContext.behaviors.recentViewedTitles.length > 0 ||
         userContext.cvSummary;
 
-      this.logger.log(`hasContext=${hasContext}`);
-
       if (!hasContext) {
-        this.logger.log(`No context, deleting recs for userID=${userID}`);
         await this.prisma.jobRecommendation.deleteMany({ where: { userID } });
         return false;
       }
 
       const candidates = await this.fetchCandidateJobs(userID, userContext);
-      this.logger.log(`candidates=${candidates.length}`);
       if (candidates.length === 0) {
         await this.prisma.jobRecommendation.deleteMany({ where: { userID } });
         return false;
       }
 
       const scores = await this.scoreJobs(userContext, candidates);
-      this.logger.log(`scores=${scores.length}`);
       if (scores.length === 0) {
         await this.prisma.jobRecommendation.deleteMany({ where: { userID } });
         return false;
       }
 
-      // So sánh với recs hiện tại trước khi save
       const existingRecs = await this.prisma.jobRecommendation.findMany({
         where: { userID },
-        select: {
-          jobID: true,
-          matchPercent: true,
-          reason: true,
-        },
+        select: { jobID: true, matchPercent: true },
       });
 
-      // Chỉ tính changed khi có job mới
       const existingMap = new Map(existingRecs.map((r) => [r.jobID, r]));
 
       const hasChanged =
         existingRecs.length !== scores.length ||
         scores.some((s) => {
           const old = existingMap.get(s.jobID);
-
           if (!old) return true;
-
           return old.matchPercent !== s.matchPercent;
         });
-      this.logger.log(
-        `hasChanged=${hasChanged} (existing=${existingRecs.length}, new=${scores.length})`,
-      );
 
       if (!hasChanged) {
-        this.logger.log(`No new recommendations for userID=${userID}`);
+        this.logger.log(`No changes for userID=${userID}`);
         return false;
       }
 
@@ -172,56 +137,11 @@ export class AIRecommendationService {
     }
   }
 
-  //  matchPercent = skillScore    × 0.5
-  //              + industryScore × 0.2
-  //              + salaryScore   × 0.2
-  //              + behaviorScore × 0.1
-
   private computeMatchScore(ctx: UserContext, job: JobCandidate): number {
-    // Skill score
-    const userSkills = new Set(ctx.skills.map((s) => s.toLowerCase()));
-    const jobSkills = job.skills.map((s) => s.toLowerCase());
-    const matchedSkills = jobSkills.filter((s) => userSkills.has(s)).length;
-    const skillScore = jobSkills.length
-      ? (matchedSkills / jobSkills.length) * 100
-      : 50; // Không có skill tag, trung lập
-
-    // Industry score
-    //    Khớp ngành trong profile = 100, thấy trong lịch sử xem = 70, không khớp = 0
-    const industryScore =
-      ctx.profile.industry && ctx.profile.industry === job.industryName
-        ? 100
-        : ctx.behaviors.recentViewedIndustries.includes(job.industryName ?? '')
-          ? 70
-          : 0;
-
-    // Salary score
-    // So sánh lương kỳ vọng của user với lương job
-    // Job lương >= 80% kỳ vọng = 100, >= 60% = 60, < 60% = 20, không có data = 50
-    const expectedNum = this.parseSalaryToNumber(ctx.profile.expectedSalary);
-    const jobSalaryNum = this.parseSalaryToNumber(job.salary);
-    let salaryScore: number;
-    if (!expectedNum || !jobSalaryNum) {
-      salaryScore = 50;
-    } else {
-      const ratio = jobSalaryNum / expectedNum;
-      salaryScore = ratio >= 0.8 ? 100 : ratio >= 0.6 ? 60 : 20;
-    }
-
-    // Behavior score
-    // Job đã lưu = 100, job đã xem (title tương tự) = 70, không có = 0
-    const titleLower = (job.title ?? '').toLowerCase();
-    const isSaved = ctx.behaviors.savedJobTitles.some(
-      (t) =>
-        titleLower.includes(t.toLowerCase()) ||
-        t.toLowerCase().includes(titleLower),
-    );
-    const isViewed = ctx.behaviors.recentViewedTitles.some(
-      (t) =>
-        titleLower.includes(t.toLowerCase()) ||
-        t.toLowerCase().includes(titleLower),
-    );
-    const behaviorScore = isSaved ? 100 : isViewed ? 70 : 0;
+    const skillScore = this.computeSkillScore(ctx, job);
+    const industryScore = this.computeIndustryScore(ctx, job);
+    const salaryScore = this.computeSalaryScore(ctx, job);
+    const behaviorScore = this.computeBehaviorScore(ctx, job);
 
     const total =
       skillScore * 0.5 +
@@ -229,18 +149,114 @@ export class AIRecommendationService {
       salaryScore * 0.2 +
       behaviorScore * 0.1;
 
+    this.logger.debug(
+      `jobID=${job.jobID} skill=${skillScore} industry=${industryScore} salary=${salaryScore} behavior=${behaviorScore} total=${Math.round(total)}`,
+    );
+
     return Math.round(Math.min(100, Math.max(0, total)));
+  }
+
+  private computeSkillScore(ctx: UserContext, job: JobCandidate): number {
+    const userSkills = new Set(ctx.skills.map((s) => s.toLowerCase().trim()));
+
+    if (job.skills.length > 0) {
+      const jobSkills = job.skills.map((s) => s.toLowerCase().trim());
+      const matched = jobSkills.filter((s) => userSkills.has(s)).length;
+      return Math.round((matched / jobSkills.length) * 100);
+    }
+
+    // Đếm số skill của user xuất hiện trong văn bản mô tả job
+    if (userSkills.size === 0) return 0;
+
+    const jobText = [job.description ?? '', job.requirement ?? '']
+      .join(' ')
+      .toLowerCase();
+
+    if (!jobText.trim()) return 0;
+
+    const matchedInText = [...userSkills].filter((skill) =>
+      // Dùng word-boundary để "java" không khớp "javascript"
+      new RegExp(`(?<![a-z0-9])${escapeRegex(skill)}(?![a-z0-9])`, 'i').test(
+        jobText,
+      ),
+    ).length;
+
+    return Math.round(Math.min(80, (matchedInText / userSkills.size) * 100));
+  }
+
+  private computeIndustryScore(ctx: UserContext, job: JobCandidate): number {
+    const normalize = (s: string) => s.toLowerCase().trim();
+    const jobIndustry = job.industryName ? normalize(job.industryName) : null;
+
+    if (!jobIndustry) return 0;
+
+    if (ctx.profile.industry && normalize(ctx.profile.industry) === jobIndustry) {
+      return 100;
+    }
+
+    if (
+      ctx.behaviors.recentViewedIndustries.some(
+        (i) => normalize(i) === jobIndustry,
+      )
+    ) {
+      return 70;
+    }
+
+    return 0;
+  }
+
+  private computeSalaryScore(ctx: UserContext, job: JobCandidate): number {
+    const expectedNum = this.parseSalaryToNumber(ctx.profile.expectedSalary);
+    const jobSalaryNum = this.parseSalaryToNumber(job.salary);
+
+    if (!expectedNum || !jobSalaryNum) return 50;
+
+    const ratio = jobSalaryNum / expectedNum;
+    return ratio >= 0.8 ? 100 : ratio >= 0.6 ? 60 : 20;
+  }
+
+  private computeBehaviorScore(ctx: UserContext, job: JobCandidate): number {
+    const titleLower = (job.title ?? '').toLowerCase();
+
+    const isSaved = ctx.behaviors.savedJobTitles.some(
+      (t) => this.jaccardSimilarity(titleLower, t.toLowerCase()) >= 0.3,
+    );
+    if (isSaved) return 100;
+
+    const isViewed = ctx.behaviors.recentViewedTitles.some(
+      (t) => this.jaccardSimilarity(titleLower, t.toLowerCase()) >= 0.3,
+    );
+    if (isViewed) return 70;
+
+    return 0;
+  }
+
+  private jaccardSimilarity(a: string, b: string): number {
+    const tokensA = new Set(tokenize(a));
+    const tokensB = new Set(tokenize(b));
+
+    if (tokensA.size === 0 && tokensB.size === 0) return 1;
+    if (tokensA.size === 0 || tokensB.size === 0) return 0;
+
+    const intersection = [...tokensA].filter((t) => tokensB.has(t)).length;
+    const union = new Set([...tokensA, ...tokensB]).size;
+
+    return intersection / union;
   }
 
   private parseSalaryToNumber(salary: string | null): number | null {
     if (!salary) return null;
 
-    const match = salary.match(/\d+/);
-    if (!match) return null;
+    // bỏ dấu phẩy phân cách nghìn
+    const cleaned = salary.replace(/,/g, '');
+    const matches = cleaned.match(/\d+(\.\d+)?/g);
+    if (!matches || matches.length === 0) return null;
 
-    const num = parseInt(match[0], 10);
+    const nums = matches.map((m) => parseFloat(m)).filter((n) => !isNaN(n) && n > 0);
+    if (nums.length === 0) return null;
 
-    return isNaN(num) || num === 0 ? null : num;
+    // Lấy MAX cho job có khoảng lương
+    return Math.max(...nums);
   }
 
   private async scoreJobs(
@@ -251,7 +267,7 @@ export class AIRecommendationService {
       .map((job) => ({ job, score: this.computeMatchScore(ctx, job) }))
       .filter(({ score }) => score >= 50)
       .sort((a, b) => b.score - a.score)
-      .slice(0, 30); // Giữ top 30 để Gemini viết reason
+      .slice(0, 30);
 
     if (scored.length === 0) return [];
 
@@ -259,11 +275,9 @@ export class AIRecommendationService {
       `Formula scored ${scored.length} jobs >= 50% for AI reason generation`,
     );
 
-    // Gửi top jobs lên Gemini chỉ để lấy reason
     try {
       const reasons = await this.fetchReasonsFromAI(ctx, scored);
 
-      // Merge: điểm từ công thức, reason từ Gemini
       return scored.map(({ job, score }) => ({
         jobID: job.jobID,
         matchPercent: score,
@@ -274,7 +288,6 @@ export class AIRecommendationService {
         'Gemini reason generation failed — using default reasons',
         err?.message,
       );
-      // vẫn dùng điểm công thức, chỉ reason là mặc định
       return scored.map(({ job, score }) => ({
         jobID: job.jobID,
         matchPercent: score,
@@ -319,11 +332,15 @@ ${jobsBlock}
     const raw = await this.gemini.scoreJobs(prompt);
     const arr: { jobID: number; reason: string }[] = Array.isArray(raw)
       ? raw
-      : this.parseReasonArray(typeof raw === 'string' ? raw : JSON.stringify(raw));
+      : this.parseReasonArray(
+        typeof raw === 'string' ? raw : JSON.stringify(raw),
+      );
 
     return Object.fromEntries(
       arr
-        .filter((r) => typeof r.jobID === 'number' && typeof r.reason === 'string')
+        .filter(
+          (r) => typeof r.jobID === 'number' && typeof r.reason === 'string',
+        )
         .map((r) => [r.jobID, r.reason]),
     );
   }
@@ -335,37 +352,61 @@ ${jobsBlock}
   ): string {
     const parts: string[] = [];
 
+    // Skill match
     const userSkills = new Set(ctx.skills.map((s) => s.toLowerCase()));
     const matchedSkills = job.skills.filter((s) =>
       userSkills.has(s.toLowerCase()),
     );
     if (matchedSkills.length > 0) {
       parts.push(`khớp kỹ năng ${matchedSkills.slice(0, 3).join(', ')}`);
+    } else if (job.skills.length === 0) {
+      // Khi không có skill tag, thử mention skill từ text
+      const jobText = [job.description ?? '', job.requirement ?? '']
+        .join(' ')
+        .toLowerCase();
+      const mentionedSkills = ctx.skills
+        .filter((s) =>
+          new RegExp(
+            `(?<![a-z0-9])${escapeRegex(s.toLowerCase())}(?![a-z0-9])`,
+            'i',
+          ).test(jobText),
+        )
+        .slice(0, 2);
+      if (mentionedSkills.length > 0) {
+        parts.push(`yêu cầu ${mentionedSkills.join(', ')} phù hợp hồ sơ`);
+      }
     }
 
-    if (ctx.profile.industry === job.industryName && job.industryName) {
+    // Industry match
+    const normalize = (s: string) => s.toLowerCase().trim();
+    const jobIndustry = job.industryName ? normalize(job.industryName) : null;
+    if (jobIndustry && ctx.profile.industry && normalize(ctx.profile.industry) === jobIndustry) {
       parts.push(`đúng ngành ${job.industryName}`);
     } else if (
-      ctx.behaviors.recentViewedIndustries.includes(job.industryName ?? '')
+      jobIndustry &&
+      ctx.behaviors.recentViewedIndustries.some((i) => normalize(i) === jobIndustry)
     ) {
       parts.push(`ngành bạn quan tâm`);
     }
 
+    // Salary match
     const expectedNum = this.parseSalaryToNumber(ctx.profile.expectedSalary);
     const jobSalaryNum = this.parseSalaryToNumber(job.salary);
     if (expectedNum && jobSalaryNum && jobSalaryNum >= expectedNum * 0.8) {
       parts.push(`mức lương phù hợp kỳ vọng`);
     }
 
+    // Behavior match
+    const titleLower = (job.title ?? '').toLowerCase();
     if (
-      ctx.behaviors.savedJobTitles.some((t) =>
-        (job.title ?? '').toLowerCase().includes(t.toLowerCase()),
+      ctx.behaviors.savedJobTitles.some(
+        (t) => this.jaccardSimilarity(titleLower, t.toLowerCase()) >= 0.3,
       )
     ) {
       parts.push(`tương tự việc bạn đã lưu`);
     } else if (
-      ctx.behaviors.recentViewedTitles.some((t) =>
-        (job.title ?? '').toLowerCase().includes(t.toLowerCase()),
+      ctx.behaviors.recentViewedTitles.some(
+        (t) => this.jaccardSimilarity(titleLower, t.toLowerCase()) >= 0.3,
       )
     ) {
       parts.push(`tương tự việc bạn đã xem`);
@@ -517,8 +558,9 @@ ${jobsBlock}
     return jobs.map((j) => ({
       jobID: j.jobID,
       title: j.title,
-      description: j.description ? j.description.slice(0, 300) : null,
-      requirement: j.requirement ? j.requirement.slice(0, 300) : null,
+      // Tăng giới hạn text để text-match skill chính xác hơn
+      description: j.description ? j.description.slice(0, 600) : null,
+      requirement: j.requirement ? j.requirement.slice(0, 600) : null,
       salary: j.salary,
       jobType: j.jobType,
       experienceYear: j.experienceYear,
@@ -546,7 +588,6 @@ ${jobsBlock}
         update: {
           matchPercent: s.matchPercent,
           reason: s.reason,
-          // createdAt: new Date(),
         },
         create: {
           userID,
@@ -589,4 +630,23 @@ ${jobsBlock}
       lines.push(`- Jobs đã lưu: ${ctx.behaviors.savedJobTitles.join(', ')}`);
     return lines.join('\n');
   }
+}
+
+function tokenize(text: string): string[] {
+  const STOP_WORDS = new Set([
+    'and', 'or', 'the', 'a', 'an', 'in', 'of', 'for', 'to', 'with',
+    'on', 'at', 'by', 'from', 'as', 'is', 'are', 'be', 'was', 'were',
+    'it', 'its', 'this', 'that', 'we', 'our', 'you', 'your',
+    'và', 'hoặc', 'của', 'cho', 'với', 'tại', 'là', 'có', 'các', 'trong',
+  ]);
+
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9àáâãèéêìíòóôõùúýăđơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ\s]/g, ' ')
+    .split(/\s+/)
+    .filter((t) => t.length >= 2 && !STOP_WORDS.has(t));
+}
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

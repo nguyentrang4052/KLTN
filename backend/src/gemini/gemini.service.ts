@@ -7,7 +7,7 @@ import { jsonrepair } from 'jsonrepair';
 export class GeminiService {
     private readonly logger = new Logger(GeminiService.name);
     private readonly genAI: GoogleGenerativeAI;
-    private readonly model = 'gemini-3-flash-preview';
+    private readonly model = 'gemini-2.5-flash';
 
     constructor(private readonly configService: ConfigService) {
         const apiKey = this.configService.get<string>('GEMINI_API_KEY');
