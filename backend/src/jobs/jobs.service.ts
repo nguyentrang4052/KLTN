@@ -1075,4 +1075,61 @@ export class JobsService {
 
     return results;
   }
+
+  async getJobMatchPreview(accountID: number, jobID: number) {
+    const user = await this.prisma.user.findFirst({
+      where: { accountID },
+      select: { userID: true },
+    });
+    if (!user) return null;
+
+    const rec = await this.prisma.jobRecommendation.findUnique({
+      where: { userID_jobID: { userID: user.userID, jobID } },
+      select: { matchPercent: true, reason: true },
+    });
+
+    return rec ? { matchPercent: rec.matchPercent, reason: rec.reason } : null;
+  }
+
+  async getJobMatchDetail(accountID: number, jobID: number) {
+    const user = await this.prisma.user.findFirst({
+      where: { accountID },
+      select: { userID: true },
+    });
+    if (!user) return null;
+
+    const userSkillRows = await this.prisma.userSkill.findMany({
+      where: { userID: user.userID },
+      include: { skill: { select: { name: true } } },
+    });
+    const userSkills = new Set(
+      userSkillRows.map((s) => s.skill.name.toLowerCase()),
+    );
+
+    const job = await this.prisma.job.findUnique({
+      where: { jobID },
+      include: {
+        skills: { include: { skill: { select: { name: true } } } },
+      },
+    });
+    if (!job) return null;
+
+    const jobSkills = job.skills.map((s) => s.skill.name);
+    const skillOverlap = jobSkills.filter((s) =>
+      userSkills.has(s.toLowerCase()),
+    );
+    const skillGap = jobSkills.filter((s) => !userSkills.has(s.toLowerCase()));
+
+    const rec = await this.prisma.jobRecommendation.findUnique({
+      where: { userID_jobID: { userID: user.userID, jobID } },
+      select: { matchPercent: true, reason: true },
+    });
+
+    return {
+      matchPercent: rec?.matchPercent ?? null,
+      reason: rec?.reason ?? null,
+      skillOverlap,
+      skillGap,
+    };
+  }
 }
