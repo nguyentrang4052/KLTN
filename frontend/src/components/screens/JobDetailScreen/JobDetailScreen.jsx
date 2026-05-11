@@ -53,7 +53,6 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
       .catch(console.error)
   }, [token, id])
 
-  // Preview - không trừ quota
   useEffect(() => {
     if (!token || !id) return
     fetch(`${API}/jobs/${id}/match`, {
@@ -64,7 +63,7 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
       .catch(console.error)
   }, [token, id])
 
-  // Chi tiết - trừ quota khi user nhấn nút
+
   const handleCheckDetail = async () => {
     if (!token) { setShowLoginModal(true); return }
     setCheckingMatch(true)
@@ -167,7 +166,6 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
         </div>
       )}
 
-      {/* Login Modal */}
       {showLoginModal && (
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)',
@@ -202,7 +200,6 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
         </div>
       )}
 
-      {/* Apply Modal */}
       {applyModalOpen && (
         <div style={{
           display: 'flex', position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)',
@@ -314,14 +311,12 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
                 </div>
               </div>
 
-              {/* AI Match Box */}
               {token && (matchInfo || !matchInfo) && (
                 <div className="ai-box">
                   <div className="ai-box-header">
                     <div className="ai-box-title">🤖 Phân tích AI — Mức độ phù hợp</div>
                   </div>
 
-                  {/* Preview: vòng tròn % + reason */}
                   {matchInfo && (
                     <div className="ai-box-content" style={{ marginBottom: matchDetail ? 16 : 0 }}>
                       <div className="ai-ring" style={{
@@ -343,54 +338,91 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
 
                   {!matchInfo && (
                     <div style={{ fontSize: 13, color: 'var(--ink3)', marginBottom: 12 }}>
-                      Chưa có dữ liệu phù hợp. Hãy cập nhật kỹ năng hoặc nhận đề xuất việc làm trước.
+                      Chưa có dữ liệu phù hợp.
                     </div>
                   )}
 
-                  {/* Detail: skill overlap/gap — chỉ hiện sau khi check */}
                   {matchDetail && (
-                    <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
-                      {matchDetail.skillOverlap?.length > 0 && (
-                        <div style={{ marginBottom: 10 }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: '#2E6040', marginBottom: 6 }}>
-                            ✅ Kỹ năng phù hợp ({matchDetail.skillOverlap.length})
-                          </div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                            {matchDetail.skillOverlap.map(s => (
-                              <span key={s} style={{
-                                padding: '3px 10px', borderRadius: 6, fontSize: 11,
-                                background: '#E0F0E6', color: '#2E6040', fontWeight: 600,
-                              }}>{s}</span>
-                            ))}
+                    <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+                      {(matchDetail.skillOverlap?.length > 0 || matchDetail.skillGap?.length > 0) && (
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink2)', marginBottom: 8 }}>🛠 Kỹ năng</div>
+                          {matchDetail.skillOverlap?.length > 0 && (
+                            <div style={{ marginBottom: 8 }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: '#2E6040', marginBottom: 5 }}>
+                                ✅ Phù hợp ({matchDetail.skillOverlap.length})
+                              </div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                                {matchDetail.skillOverlap.map(s => (
+                                  <span key={s} style={{ padding: '3px 10px', borderRadius: 6, fontSize: 11, background: '#E0F0E6', color: '#2E6040', fontWeight: 600 }}>{s}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {matchDetail.skillGap?.length > 0 && (
+                            <div>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: '#C0412A', marginBottom: 5 }}>
+                                📚 Cần bổ sung ({matchDetail.skillGap.length})
+                              </div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                                {matchDetail.skillGap.map(s => (
+                                  <span key={s} style={{ padding: '3px 10px', borderRadius: 6, fontSize: 11, background: '#FDE8E4', color: '#C0412A', fontWeight: 600 }}>{s}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {matchDetail.industryName && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, background: matchDetail.industryMatch ? '#E0F0E6' : 'var(--bg3)', border: `1px solid ${matchDetail.industryMatch ? 'rgba(46,96,64,.2)' : 'var(--border)'}` }}>
+                          <span style={{ fontSize: 18 }}>{matchDetail.industryMatch ? '✅' : '⚠️'}</span>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: matchDetail.industryMatch ? '#2E6040' : 'var(--ink2)' }}>
+                              Ngành nghề: {matchDetail.industryName}
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--ink3)' }}>
+                              {matchDetail.industryMatch ? 'Đúng ngành bạn đang theo đuổi' : 'Khác ngành trong hồ sơ của bạn'}
+                            </div>
                           </div>
                         </div>
                       )}
 
-                      {matchDetail.skillGap?.length > 0 && (
-                        <div style={{ marginBottom: 10 }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: '#C0412A', marginBottom: 6 }}>
-                            📚 Cần bổ sung ({matchDetail.skillGap.length})
-                          </div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                            {matchDetail.skillGap.map(s => (
-                              <span key={s} style={{
-                                padding: '3px 10px', borderRadius: 6, fontSize: 11,
-                                background: '#FDE8E4', color: '#C0412A', fontWeight: 600,
-                              }}>{s}</span>
-                            ))}
+                      {matchDetail.jobExp && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, background: matchDetail.expMatch ? '#E0F0E6' : 'var(--bg3)', border: `1px solid ${matchDetail.expMatch ? 'rgba(46,96,64,.2)' : 'var(--border)'}` }}>
+                          <span style={{ fontSize: 18 }}>{matchDetail.expMatch ? '✅' : '📋'}</span>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: matchDetail.expMatch ? '#2E6040' : 'var(--ink2)' }}>
+                              Kinh nghiệm yêu cầu: {matchDetail.jobExp}
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--ink3)' }}>
+                              {matchDetail.userExp ? `Hồ sơ của bạn: ${matchDetail.userExp}` : 'Chưa cập nhật kinh nghiệm trong hồ sơ'}
+                            </div>
                           </div>
                         </div>
                       )}
 
-                      {matchDetail.skillOverlap?.length === 0 && matchDetail.skillGap?.length === 0 && (
-                        <div style={{ fontSize: 13, color: 'var(--ink3)' }}>
-                          Không có dữ liệu kỹ năng để so sánh.
+                      {/* Salary */}
+                      {matchDetail.salaryStatus !== 'unknown' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, background: matchDetail.salaryStatus === 'match' ? '#E0F0E6' : '#FFF8E1', border: `1px solid ${matchDetail.salaryStatus === 'match' ? 'rgba(46,96,64,.2)' : 'rgba(212,130,10,.3)'}` }}>
+                          <span style={{ fontSize: 18 }}>{matchDetail.salaryStatus === 'match' ? '💰' : '⚠️'}</span>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: matchDetail.salaryStatus === 'match' ? '#2E6040' : '#8a6000' }}>
+                              Lương: {matchDetail.jobSalary ?? 'Thỏa thuận'}
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--ink3)' }}>
+                              {matchDetail.salaryStatus === 'match'
+                                ? `Phù hợp kỳ vọng của bạn (${matchDetail.expectedSalary})`
+                                : `Thấp hơn kỳ vọng của bạn (${matchDetail.expectedSalary})`}
+                            </div>
+                          </div>
                         </div>
                       )}
+
                     </div>
                   )}
 
-                  {/* Nút check detail / error / nâng cấp */}
                   {!matchDetail && (
                     <div style={{ marginTop: 12 }}>
                       {matchError ? (
@@ -422,7 +454,6 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
                     </div>
                   )}
 
-                  {/* Nút tư vấn AI */}
                   <button onClick={() => navigate('/ai-assistant')} style={{
                     marginTop: 8, width: '100%', padding: '8px', borderRadius: 8,
                     fontSize: 12, fontWeight: 700, border: '1.5px solid var(--border2)',
@@ -490,7 +521,6 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
               )}
             </div>
 
-            {/* Sidebar */}
             <div className="jd-side">
               <div className="apply-box">
                 <div className="apply-salary">💰 {job.salary ?? 'Thỏa thuận'}</div>

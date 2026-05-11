@@ -1043,7 +1043,6 @@ function JobSearchScreen() {
         </main>
       </div>
 
-      {/* Bottom: trending / companies / alerts */}
       <div style={{
         maxWidth: '1360px', margin: '0 auto', padding: '0 28px 40px',
         display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px',
@@ -1141,7 +1140,6 @@ function JobSearchScreen() {
         </div>
       </div>
 
-      {/* ── Detail panel ── */}
       <div className={`detail-overlay ${detailOpen ? 'open' : ''}`} onClick={closeDetail}>
         <div className="detail-panel" onClick={e => e.stopPropagation()}>
           {selectedJob && (
@@ -1174,7 +1172,6 @@ function JobSearchScreen() {
 
               <div className="dp-body">
 
-                {/* Meta pills */}
                 <div className="dp-section">
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '4px' }}>
                     {selectedJob.location && <span className="jc-meta-item">📍 {selectedJob.location}</span>}
@@ -1184,7 +1181,6 @@ function JobSearchScreen() {
                   </div>
                 </div>
 
-                {/* ── AI Match Box ── */}
                 {token && (
                   <div className="dp-section">
                     <div style={{
@@ -1195,7 +1191,6 @@ function JobSearchScreen() {
                         🤖 Phân tích AI — Mức độ phù hợp
                       </div>
 
-                      {/* Preview ring + reason */}
                       {matchInfo ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12 }}>
                           <div style={{
@@ -1227,44 +1222,90 @@ function JobSearchScreen() {
                           fontSize: 12, color: 'var(--ink4)', marginBottom: 12,
                           padding: '8px 11px', background: 'var(--bg3)', borderRadius: 8,
                         }}>
-                          Chưa có dữ liệu phù hợp. Hãy cập nhật kỹ năng trong hồ sơ để AI phân tích.
+                          Chưa có dữ liệu phù hợp.
                         </div>
                       )}
 
-                      {/* Skill detail (sau khi check) */}
                       {matchDetail && (
-                        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginBottom: 12 }}>
-                          {matchDetail.skillOverlap?.length > 0 && (
-                            <div style={{ marginBottom: 10 }}>
-                              <div style={{ fontSize: 11, fontWeight: 700, color: '#2E6040', marginBottom: 6 }}>
-                                ✅ Kỹ năng phù hợp ({matchDetail.skillOverlap.length})
-                              </div>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                                {matchDetail.skillOverlap.map(s => (
-                                  <span key={s} style={{ padding: '3px 9px', borderRadius: 6, fontSize: 11, background: '#E0F0E6', color: '#2E6040', fontWeight: 600 }}>{s}</span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {matchDetail.skillGap?.length > 0 && (
+                        <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+                          {(matchDetail.skillOverlap?.length > 0 || matchDetail.skillGap?.length > 0) && (
                             <div>
-                              <div style={{ fontSize: 11, fontWeight: 700, color: '#C0412A', marginBottom: 6 }}>
-                                📚 Cần bổ sung ({matchDetail.skillGap.length})
-                              </div>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                                {matchDetail.skillGap.map(s => (
-                                  <span key={s} style={{ padding: '3px 9px', borderRadius: 6, fontSize: 11, background: '#FDE8E4', color: '#C0412A', fontWeight: 600 }}>{s}</span>
-                                ))}
+                              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink2)', marginBottom: 8 }}>🛠 Kỹ năng</div>
+                              {matchDetail.skillOverlap?.length > 0 && (
+                                <div style={{ marginBottom: 8 }}>
+                                  <div style={{ fontSize: 11, fontWeight: 700, color: '#2E6040', marginBottom: 5 }}>
+                                    ✅ Phù hợp ({matchDetail.skillOverlap.length})
+                                  </div>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                                    {matchDetail.skillOverlap.map(s => (
+                                      <span key={s} style={{ padding: '3px 10px', borderRadius: 6, fontSize: 11, background: '#E0F0E6', color: '#2E6040', fontWeight: 600 }}>{s}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {matchDetail.skillGap?.length > 0 && (
+                                <div>
+                                  <div style={{ fontSize: 11, fontWeight: 700, color: '#C0412A', marginBottom: 5 }}>
+                                    📚 Cần bổ sung ({matchDetail.skillGap.length})
+                                  </div>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                                    {matchDetail.skillGap.map(s => (
+                                      <span key={s} style={{ padding: '3px 10px', borderRadius: 6, fontSize: 11, background: '#FDE8E4', color: '#C0412A', fontWeight: 600 }}>{s}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {matchDetail.industryName && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, background: matchDetail.industryMatch ? '#E0F0E6' : 'var(--bg3)', border: `1px solid ${matchDetail.industryMatch ? 'rgba(46,96,64,.2)' : 'var(--border)'}` }}>
+                              <span style={{ fontSize: 18 }}>{matchDetail.industryMatch ? '✅' : '⚠️'}</span>
+                              <div>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: matchDetail.industryMatch ? '#2E6040' : 'var(--ink2)' }}>
+                                  Ngành nghề: {matchDetail.industryName}
+                                </div>
+                                <div style={{ fontSize: 11, color: 'var(--ink3)' }}>
+                                  {matchDetail.industryMatch ? 'Đúng ngành bạn đang theo đuổi' : 'Khác ngành trong hồ sơ của bạn'}
+                                </div>
                               </div>
                             </div>
                           )}
-                          {matchDetail.skillOverlap?.length === 0 && matchDetail.skillGap?.length === 0 && (
-                            <div style={{ fontSize: 12, color: 'var(--ink3)' }}>Không có dữ liệu kỹ năng để so sánh.</div>
+
+                          {matchDetail.jobExp && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, background: matchDetail.expMatch ? '#E0F0E6' : 'var(--bg3)', border: `1px solid ${matchDetail.expMatch ? 'rgba(46,96,64,.2)' : 'var(--border)'}` }}>
+                              <span style={{ fontSize: 18 }}>{matchDetail.expMatch ? '✅' : '📋'}</span>
+                              <div>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: matchDetail.expMatch ? '#2E6040' : 'var(--ink2)' }}>
+                                  Kinh nghiệm yêu cầu: {matchDetail.jobExp}
+                                </div>
+                                <div style={{ fontSize: 11, color: 'var(--ink3)' }}>
+                                  {matchDetail.userExp ? `Hồ sơ của bạn: ${matchDetail.userExp}` : 'Chưa cập nhật kinh nghiệm trong hồ sơ'}
+                                </div>
+                              </div>
+                            </div>
                           )}
+
+                          {matchDetail.salaryStatus !== 'unknown' && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, background: matchDetail.salaryStatus === 'match' ? '#E0F0E6' : '#FFF8E1', border: `1px solid ${matchDetail.salaryStatus === 'match' ? 'rgba(46,96,64,.2)' : 'rgba(212,130,10,.3)'}` }}>
+                              <span style={{ fontSize: 18 }}>{matchDetail.salaryStatus === 'match' ? '💰' : '⚠️'}</span>
+                              <div>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: matchDetail.salaryStatus === 'match' ? '#2E6040' : '#8a6000' }}>
+                                  Lương: {matchDetail.jobSalary ?? 'Thỏa thuận'}
+                                </div>
+                                <div style={{ fontSize: 11, color: 'var(--ink3)' }}>
+                                  {matchDetail.salaryStatus === 'match'
+                                    ? `Phù hợp kỳ vọng của bạn (${matchDetail.expectedSalary})`
+                                    : `Thấp hơn kỳ vọng của bạn (${matchDetail.expectedSalary})`}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
                         </div>
                       )}
 
-                      {/* Nút check / error / upgrade */}
                       {!matchDetail && (
                         matchError ? (
                           <div>
@@ -1291,7 +1332,6 @@ function JobSearchScreen() {
                         )
                       )}
 
-                      {/* Nút tư vấn AI */}
                       <button onClick={() => navigate('/ai-assistant')} style={{
                         marginTop: 8, width: '100%', padding: '8px', borderRadius: 8,
                         fontSize: 12, fontWeight: 700, border: '1.5px solid var(--border2)',
