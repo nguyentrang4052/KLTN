@@ -109,6 +109,12 @@ function JobSearchScreen() {
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
   const provinceInputRef = useRef(null);
 
+  // ── AI Match state ──
+  const [matchInfo, setMatchInfo] = useState(null);
+  const [matchDetail, setMatchDetail] = useState(null);
+  const [checkingMatch, setCheckingMatch] = useState(false);
+  const [matchError, setMatchError] = useState(null);
+
   const [recPage, setRecPage] = useState(1);
   const REC_LIMIT = 10;
   const pagedRecs = recommendations.slice((recPage - 1) * REC_LIMIT, recPage * REC_LIMIT);
@@ -121,10 +127,8 @@ function JobSearchScreen() {
   const [myAlerts, setMyAlerts] = useState([]);
   const [showMyAlerts, setShowMyAlerts] = useState(false);
 
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams();
   const currentPage = parseInt(searchParams.get('page')) || 1;
-
-  // const isFirstPage = useRef(true);
 
   const goToPage = useCallback((page, replace = false) => {
     setSearchParams(prev => {
@@ -134,18 +138,16 @@ function JobSearchScreen() {
     }, { replace });
   }, [setSearchParams]);
 
-  const [suggestions, setSuggestions] = useState([])
-  const [searchHistory, setSearchHistory] = useState([])
-  const [showDropdown, setShowDropdown] = useState(false)
-  const searchInputRef = useRef(null)
-  const [searchPos, setSearchPos] = useState({ top: 0, left: 0, width: 0 })
-  const suggestDebounceRef = useRef(null)
-  const historyDebounceRef = useRef(null)
+  const [suggestions, setSuggestions] = useState([]);
+  const [searchHistory, setSearchHistory] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const searchInputRef = useRef(null);
+  const [searchPos, setSearchPos] = useState({ top: 0, left: 0, width: 0 });
+  const suggestDebounceRef = useRef(null);
 
   const [pendingCount, setPendingCount] = useState(0);
   const [bgJobs, setBgJobs] = useState([]);
   const [bgMeta, setBgMeta] = useState(null);
-
   const loadStaticRef = useRef(null);
 
   useJobsSocket(useCallback(async (count) => {
@@ -163,13 +165,10 @@ function JobSearchScreen() {
     } catch { }
   }, [sort, token, keyword, activeFilters]));
 
-
   useEffect(() => {
-    const kw = searchParams.get('keyword') ?? ''
-    if (kw !== keyword) {
-      setKeyword(kw)
-    }
-  }, [searchParams])
+    const kw = searchParams.get('keyword') ?? '';
+    if (kw !== keyword) setKeyword(kw);
+  }, [searchParams]);
 
   useEffect(() => {
     const sync = () => setToken(getToken());
@@ -195,17 +194,13 @@ function JobSearchScreen() {
   const loadMyAlerts = useCallback(async () => {
     if (!token) return;
     try {
-      const res = await fetch(`${API}/job-alerts`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(`${API}/job-alerts`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       setMyAlerts(Array.isArray(data) ? data : []);
     } catch { }
   }, [token]);
 
-  useEffect(() => {
-    loadMyAlerts();
-  }, [loadMyAlerts]);
+  useEffect(() => { loadMyAlerts(); }, [loadMyAlerts]);
 
   useEffect(() => {
     if (!token) { setSavedJobIds(new Set()); return; }
@@ -217,7 +212,6 @@ function JobSearchScreen() {
       })
       .catch(console.error);
   }, [token]);
-
 
   useEffect(() => {
     const loadStatic = () =>
@@ -241,7 +235,6 @@ function JobSearchScreen() {
     const interval = setInterval(loadStatic, 30_000);
     return () => clearInterval(interval);
   }, []);
-
 
   useEffect(() => {
     setLoadingDynamic(true);
@@ -288,9 +281,7 @@ function JobSearchScreen() {
       const data = await res.json();
       setJobs(prev => {
         const newData = data.data ?? [];
-        if (JSON.stringify(prev.map(j => j.jobID)) === JSON.stringify(newData.map(j => j.jobID))) {
-          return prev; // Không update nếu giống nhau
-        }
+        if (JSON.stringify(prev.map(j => j.jobID)) === JSON.stringify(newData.map(j => j.jobID))) return prev;
         return newData;
       });
       setMeta(data.meta ?? { total: 0, totalPages: 1 });
@@ -339,11 +330,28 @@ function JobSearchScreen() {
       const data = await res.json();
       setSelectedJob(data);
       setDetailOpen(true);
+      setMatchInfo(null);
+      setMatchDetail(null);
+      setMatchError(null);
       document.body.style.overflow = 'hidden';
       trackBehavior(jobID, 'view');
+      if (token) {
+        fetch(`${API}/jobs/${jobID}/match`, { headers: { Authorization: `Bearer ${token}` } })
+          .then(r => r.json())
+          .then(d => setMatchInfo(d))
+          .catch(console.error);
+      }
     } catch (err) { console.error(err); }
   };
-  const closeDetail = () => { setDetailOpen(false); document.body.style.overflow = ''; };
+
+  const closeDetail = () => {
+    setDetailOpen(false);
+    document.body.style.overflow = '';
+    setMatchInfo(null);
+    setMatchDetail(null);
+    setMatchError(null);
+  };
+
   const openApply = (e) => { if (e) e.stopPropagation(); setApplyModalOpen(true); };
   const closeApply = () => setApplyModalOpen(false);
 
@@ -376,18 +384,38 @@ function JobSearchScreen() {
     if (e) e.stopPropagation();
     if (!token) { setShowLoginModal(true); return; }
     if (jobID) trackBehavior(jobID, 'apply');
-
     if (!selectedJob || selectedJob.jobID !== jobID) {
       try {
         const res = await fetch(`${API}/jobs/${jobID}`);
         const data = await res.json();
         setSelectedJob(data);
-      } catch (err) {
-        console.error(err);
-      }
+      } catch (err) { console.error(err); }
     }
-
     openApply(e);
+  };
+
+  const handleCheckMatchDetail = async () => {
+    if (!token) { setShowLoginModal(true); return; }
+    if (!selectedJob) return;
+    setCheckingMatch(true);
+    setMatchError(null);
+    try {
+      const res = await fetch(`${API}/jobs/${selectedJob.jobID}/match/check`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 402 || res.status === 400) {
+        const err = await res.json();
+        setMatchError(err.message || 'Đã hết lượt kiểm tra. Vui lòng nâng cấp gói.');
+        return;
+      }
+      const data = await res.json();
+      setMatchDetail(data);
+    } catch {
+      setMatchError('Có lỗi xảy ra. Vui lòng thử lại.');
+    } finally {
+      setCheckingMatch(false);
+    }
   };
 
   const handleCreateAlert = async () => {
@@ -397,10 +425,7 @@ function JobSearchScreen() {
     try {
       const res = await fetch(`${API}/job-alerts`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ keyword: alertKeyword.trim() }),
       });
       const data = await res.json();
@@ -419,10 +444,7 @@ function JobSearchScreen() {
     try {
       await fetch(`${API}/job-alerts`, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ keyword: kw }),
       });
       loadMyAlerts();
@@ -438,41 +460,26 @@ function JobSearchScreen() {
         : [...current, value];
       return { ...prev, [category]: updated };
     });
-    goToPage(1, true)
+    goToPage(1, true);
   };
 
   const toggleJobType = (value) => {
-    setActiveFilters(prev => ({
-      ...prev,
-      jobType: prev.jobType.includes(value) ? [] : [value],
-    }));
-    goToPage(1, true)
+    setActiveFilters(prev => ({ ...prev, jobType: prev.jobType.includes(value) ? [] : [value] }));
+    goToPage(1, true);
   };
 
   const toggleExperience = (value) => {
-    setActiveFilters(prev => ({
-      ...prev,
-      experience: prev.experience.includes(value) ? [] : [value],
-    }));
-    goToPage(1, true)
+    setActiveFilters(prev => ({ ...prev, experience: prev.experience.includes(value) ? [] : [value] }));
+    goToPage(1, true);
   };
 
   const toggleSource = (value) => {
-    setActiveFilters(prev => ({
-      ...prev,
-      source: prev.source.includes(value) ? [] : [value],
-      jobType: [],
-      industry: [],
-    }));
-    goToPage(1, true)
+    setActiveFilters(prev => ({ ...prev, source: prev.source.includes(value) ? [] : [value], jobType: [], industry: [] }));
+    goToPage(1, true);
   };
 
   const clearFilters = () => {
-    // const firstSource = filterOptions.sources[0]?.value ?? '';
-    setActiveFilters({
-      jobType: [], experience: [], industry: [], locations: [],
-      source: [],
-    });
+    setActiveFilters({ jobType: [], experience: [], industry: [], locations: [], source: [] });
     setSalaryMin(0); setSalaryMax(0); setSalaryRange(100); goToPage(1, true);
   };
 
@@ -507,6 +514,9 @@ function JobSearchScreen() {
     if (days === 0) return `Hết hạn hôm nay (${formatted})`;
     return `Còn ${days} ngày (${formatted})`;
   };
+
+  const matchColor = (pct) => pct >= 80 ? 'var(--sage)' : pct >= 60 ? 'var(--amber)' : 'var(--rust)';
+  const matchBg = (pct) => pct >= 80 ? 'rgba(46,96,64,.1)' : pct >= 60 ? 'rgba(212,130,10,.1)' : 'rgba(192,65,42,.1)';
 
   const openProvinceDropdown = () => {
     if (provinceInputRef.current) {
@@ -598,80 +608,71 @@ function JobSearchScreen() {
   ];
 
   useEffect(() => {
-    if (!token) { setSearchHistory([]); return }
-    fetch(`${API}/jobs/search-history`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    if (!token) { setSearchHistory([]); return; }
+    fetch(`${API}/jobs/search-history`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(data => setSearchHistory(Array.isArray(data) ? data : []))
-      .catch(console.error)
-  }, [token])
+      .catch(console.error);
+  }, [token]);
 
   useEffect(() => {
     const handler = (e) => {
       if (searchInputRef.current && !searchInputRef.current.contains(e.target))
-        setShowDropdown(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
+        setShowDropdown(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const handleKeywordChange = (e) => {
-    const val = e.target.value
-    setKeyword(val)
-    setShowDropdown(true)
-
-    clearTimeout(suggestDebounceRef.current)
-    if (!val.trim()) { setSuggestions([]); return }
+    const val = e.target.value;
+    setKeyword(val);
+    setShowDropdown(true);
+    clearTimeout(suggestDebounceRef.current);
+    if (!val.trim()) { setSuggestions([]); return; }
     suggestDebounceRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`${API}/jobs/search-suggestions?q=${encodeURIComponent(val)}`)
-        const data = await res.json()
-        setSuggestions(Array.isArray(data) ? data : [])
-      } catch { setSuggestions([]) }
-    }, 250)
-  }
+        const res = await fetch(`${API}/jobs/search-suggestions?q=${encodeURIComponent(val)}`);
+        const data = await res.json();
+        setSuggestions(Array.isArray(data) ? data : []);
+      } catch { setSuggestions([]); }
+    }, 250);
+  };
 
   const saveHistory = async (kw) => {
-    if (!kw?.trim() || !token) return
+    if (!kw?.trim() || !token) return;
     try {
       await fetch(`${API}/jobs/search-history`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ keyword: kw.trim() }),
-      })
+      });
       setSearchHistory(prev => {
-        const filtered = prev.filter(k => k !== kw.trim())
-        return [kw.trim(), ...filtered].slice(0, 8)
-      })
-    } catch (err) { console.error(err) }
-  }
+        const filtered = prev.filter(k => k !== kw.trim());
+        return [kw.trim(), ...filtered].slice(0, 8);
+      });
+    } catch (err) { console.error(err); }
+  };
 
   const handleSearchFocus = () => {
     if (searchInputRef.current) {
-      const rect = searchInputRef.current.getBoundingClientRect()
-      setSearchPos({
-        top: rect.bottom + window.scrollY + 4,
-        left: rect.left + window.scrollX,
-        width: rect.width,
-      })
+      const rect = searchInputRef.current.getBoundingClientRect();
+      setSearchPos({ top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX, width: rect.width });
     }
-    setShowDropdown(true)
-  }
+    setShowDropdown(true);
+  };
 
   const handleQuickSearch = (kw) => {
-    const trimmed = kw.trim()
-    setKeyword(trimmed)
-    goToPage(1, true)
-    setSuggestions([])
-    setShowDropdown(false)
-  }
+    setKeyword(kw.trim());
+    goToPage(1, true);
+    setSuggestions([]);
+    setShowDropdown(false);
+  };
 
   const showSearchDropdown = showDropdown && (
     (keyword.trim() && suggestions.length > 0) ||
     (!keyword.trim() && searchHistory.length > 0)
-  )
+  );
 
   return (
     <div className="app">
@@ -692,9 +693,7 @@ function JobSearchScreen() {
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             }} onMouseDown={(e) => { e.preventDefault(); toggleFilter('locations', p.value); setProvinceSearch(''); }}>
               <span>{p.label}</span>
-              {activeFilters.locations.includes(p.value) && (
-                <span style={{ color: 'rgb(35,42,162)', fontWeight: 700 }}>✓</span>
-              )}
+              {activeFilters.locations.includes(p.value) && <span style={{ color: 'rgb(35,42,162)', fontWeight: 700 }}>✓</span>}
             </div>
           ))}
         </div>
@@ -714,9 +713,7 @@ function JobSearchScreen() {
                 ? <div style={{ fontSize: '12px', color: 'var(--ink4)' }}>Đang tải...</div>
                 : filterOptions.sources.map(source => (
                   <div key={source.value} className="source-row" onClick={() => toggleSource(source.value)}>
-                    <div className={`source-logo ${getSourceLogoClass(source.value)}`}>
-                      {source.value?.[0] ?? '?'}
-                    </div>
+                    <div className={`source-logo ${getSourceLogoClass(source.value)}`}>{source.value?.[0] ?? '?'}</div>
                     <span style={{ fontSize: '13px', flex: 1 }}>{source.value}</span>
                     <div className={`ck ${activeFilters.source.includes(source.value) ? 'on' : ''}`}>
                       {activeFilters.source.includes(source.value) ? '✓' : ''}
@@ -835,8 +832,8 @@ function JobSearchScreen() {
                 onChange={handleKeywordChange}
                 onFocus={handleSearchFocus}
                 onKeyDown={e => {
-                  if (e.key === 'Enter') { setShowDropdown(false); goToPage(1, true); saveHistory(keyword) }
-                  if (e.key === 'Escape') setShowDropdown(false)
+                  if (e.key === 'Enter') { setShowDropdown(false); goToPage(1, true); saveHistory(keyword); }
+                  if (e.key === 'Escape') setShowDropdown(false);
                 }}
               />
               {keyword && (
@@ -844,10 +841,10 @@ function JobSearchScreen() {
                   position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
                   background: 'none', border: 'none', cursor: 'pointer',
                   color: 'var(--ink4)', fontSize: 16, lineHeight: 1, padding: '0 4px',
-                }} onClick={() => { setKeyword(''); setSuggestions([]); setShowDropdown(false) }}>×</button>
+                }} onClick={() => { setKeyword(''); setSuggestions([]); setShowDropdown(false); }}>×</button>
               )}
             </div>
-            <button className="search-btn" onClick={() => { setShowDropdown(false); goToPage(1, true); saveHistory(keyword) }}>
+            <button className="search-btn" onClick={() => { setShowDropdown(false); goToPage(1, true); saveHistory(keyword); }}>
               Tìm kiếm
             </button>
           </div>
@@ -856,71 +853,46 @@ function JobSearchScreen() {
             <>
               <div
                 style={{ position: 'fixed', inset: 0, zIndex: 9996 }}
-                onMouseDown={(e) => { e.preventDefault(); setShowDropdown(false) }}
+                onMouseDown={(e) => { e.preventDefault(); setShowDropdown(false); }}
               />
               <div style={{
-                position: 'absolute',
-                top: searchPos.top,
-                left: searchPos.left,
-                width: Math.max(searchPos.width, 320),
-                zIndex: 9997,
-                background: 'var(--surf)',
-                border: '1.5px solid var(--border)',
-                borderRadius: 12,
-                boxShadow: '0 8px 32px rgba(0,0,0,.15)',
-                overflow: 'hidden',
+                position: 'absolute', top: searchPos.top, left: searchPos.left,
+                width: Math.max(searchPos.width, 320), zIndex: 9997,
+                background: 'var(--surf)', border: '1.5px solid var(--border)',
+                borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,.15)', overflow: 'hidden',
               }}>
-                {/* Lịch sử */}
                 {!keyword.trim() && searchHistory.length > 0 && (
                   <>
-                    <div style={{
-                      padding: '8px 14px 4px', fontSize: 11, fontWeight: 700,
-                      color: 'var(--ink4)', textTransform: 'uppercase', letterSpacing: 1,
-                    }}>
+                    <div style={{ padding: '8px 14px 4px', fontSize: 11, fontWeight: 700, color: 'var(--ink4)', textTransform: 'uppercase', letterSpacing: 1 }}>
                       Tìm kiếm gần đây
                     </div>
                     {searchHistory.map((h, i) => (
                       <div key={i}
-                        style={{
-                          padding: '9px 14px', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', gap: 10,
-                          fontSize: 13, color: 'var(--ink)',
-                        }}
+                        style={{ padding: '9px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--ink)' }}
                         onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                        onMouseDown={(e) => { e.preventDefault(); handleQuickSearch(h) }}>
-                        <span style={{ opacity: .5 }}>🕐</span>
-                        {h}
+                        onMouseDown={(e) => { e.preventDefault(); handleQuickSearch(h); }}>
+                        <span style={{ opacity: .5 }}>🕐</span>{h}
                       </div>
                     ))}
                   </>
                 )}
-
-                {/* Gợi ý */}
                 {keyword.trim() && suggestions.length > 0 && (
                   <>
-                    <div style={{
-                      padding: '8px 14px 4px', fontSize: 11, fontWeight: 700,
-                      color: 'var(--ink4)', textTransform: 'uppercase', letterSpacing: 1,
-                    }}>
+                    <div style={{ padding: '8px 14px 4px', fontSize: 11, fontWeight: 700, color: 'var(--ink4)', textTransform: 'uppercase', letterSpacing: 1 }}>
                       Gợi ý
                     </div>
                     {suggestions.map((s, i) => {
-                      const display = typeof s === 'object' ? s.display : s
+                      const display = typeof s === 'object' ? s.display : s;
                       return (
                         <div key={i}
-                          style={{
-                            padding: '9px 14px', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', gap: 10,
-                            fontSize: 13, color: 'var(--ink)',
-                          }}
+                          style={{ padding: '9px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--ink)' }}
                           onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                          onMouseDown={(e) => { e.preventDefault(); handleQuickSearch(display) }}>
-                          <span style={{ opacity: .5 }}>🔍</span>
-                          {display}
+                          onMouseDown={(e) => { e.preventDefault(); handleQuickSearch(display); }}>
+                          <span style={{ opacity: .5 }}>🔍</span>{display}
                         </div>
-                      )
+                      );
                     })}
                   </>
                 )}
@@ -954,8 +926,7 @@ function JobSearchScreen() {
             </div>
             <div className="sort-row">
               <span className="sort-label">Sắp xếp:</span>
-              <select className="sort-sel" value={sort}
-                onChange={e => { setSort(e.target.value); goToPage(1, true); }}>
+              <select className="sort-sel" value={sort} onChange={e => { setSort(e.target.value); goToPage(1, true); }}>
                 {token && <option value="match">Phù hợp nhất</option>}
                 <option value="newest">Mới nhất</option>
                 <option value="salary">Lương cao nhất</option>
@@ -965,14 +936,10 @@ function JobSearchScreen() {
           </div>
 
           {displayLoading ? (
-            <div style={{ textAlign: 'center', padding: '48px', color: 'var(--ink4)', fontSize: '14px' }}>
-              ⟳ Đang tải việc làm...
-            </div>
+            <div style={{ textAlign: 'center', padding: '48px', color: 'var(--ink4)', fontSize: '14px' }}>⟳ Đang tải việc làm...</div>
           ) : (sort === 'match' && token ? pagedRecs : displayJobs).length === 0 ? (
             <div style={{ textAlign: 'center', padding: '48px', color: 'var(--ink4)', fontSize: '14px' }}>
-              {sort === 'match' && token
-                ? 'Chưa có gợi ý — hãy cập nhật kỹ năng trong hồ sơ'
-                : 'Không tìm thấy việc làm phù hợp'}
+              {sort === 'match' && token ? 'Chưa có gợi ý — hãy cập nhật kỹ năng trong hồ sơ' : 'Không tìm thấy việc làm phù hợp'}
             </div>
           ) : (
             <>
@@ -980,10 +947,8 @@ function JobSearchScreen() {
                 <div onClick={applyPendingJobs} style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   gap: '8px', padding: '10px 16px', marginBottom: '12px',
-                  background: 'rgba(35,42,162,0.07)',
-                  border: '1.5px solid rgba(35,42,162,0.25)',
-                  borderRadius: '10px', cursor: 'pointer',
-                  fontSize: '13px', fontWeight: 700, color: 'rgb(35,42,162)',
+                  background: 'rgba(35,42,162,0.07)', border: '1.5px solid rgba(35,42,162,0.25)',
+                  borderRadius: '10px', cursor: 'pointer', fontSize: '13px', fontWeight: 700, color: 'rgb(35,42,162)',
                 }}>
                   🆕 Có {pendingCount} việc làm mới — Nhấn để cập nhật
                 </div>
@@ -1008,9 +973,7 @@ function JobSearchScreen() {
 
                     <div className="jc-top">
                       <div className="co-logo" style={{ background: 'linear-gradient(135deg,#1565C0,#1E88E5)' }}>
-                        {job.companyLogo
-                          ? <img src={job.companyLogo} alt={job.companyName} />
-                          : <span>{getLogoLetter(job.companyName)}</span>}
+                        {job.companyLogo ? <img src={job.companyLogo} alt={job.companyName} /> : <span>{getLogoLetter(job.companyName)}</span>}
                       </div>
                       <div className="jc-info">
                         <div className="jc-title">{job.title}</div>
@@ -1029,8 +992,7 @@ function JobSearchScreen() {
                         <div className="jc-salary">{job.salary ?? 'Thỏa thuận'}</div>
                         <div className="jc-posted">{formatPostedAt(job.postedAt)}</div>
                         {job.deadline && (
-                          <div className="jc-deadline"
-                            style={formatDeadline(job.deadline)?.includes('hết') ? { color: 'var(--rust)' } : {}}>
+                          <div className="jc-deadline" style={formatDeadline(job.deadline)?.includes('hết') ? { color: 'var(--rust)' } : {}}>
                             ⏰ {formatDeadline(job.deadline)}
                           </div>
                         )}
@@ -1039,14 +1001,8 @@ function JobSearchScreen() {
 
                     <div className="jc-bottom">
                       <div className="jc-tags">
-                        {(job.skills ?? []).map(tag => (
-                          <span key={tag} className="jtag">{tag}</span>
-                        ))}
-                        {job.sourcePlatform && (
-                          <span className={`source-chip ${getSourceClass(job.sourcePlatform)}`}>
-                            {job.sourcePlatform}
-                          </span>
-                        )}
+                        {(job.skills ?? []).map(tag => <span key={tag} className="jtag">{tag}</span>)}
+                        {job.sourcePlatform && <span className={`source-chip ${getSourceClass(job.sourcePlatform)}`}>{job.sourcePlatform}</span>}
                       </div>
                       <div className="jc-actions">
                         <button
@@ -1055,13 +1011,11 @@ function JobSearchScreen() {
                           style={{
                             width: savedJobIds.has(job.jobID) ? 'auto' : '34px',
                             padding: savedJobIds.has(job.jobID) ? '0 10px' : '0',
-                            gap: '4px',
-                            fontSize: savedJobIds.has(job.jobID) ? '12px' : '15px',
+                            gap: '4px', fontSize: savedJobIds.has(job.jobID) ? '12px' : '15px',
                           }}>
                           {savedJobIds.has(job.jobID) ? '🔖 Đã lưu' : '🔖'}
                         </button>
-                        <button className="jc-apply"
-                          onClick={(e) => { e.stopPropagation(); handleApply(e, job.jobID); }}>
+                        <button className="jc-apply" onClick={(e) => { e.stopPropagation(); handleApply(e, job.jobID); }}>
                           ⚡ Apply ngay
                         </button>
                       </div>
@@ -1079,7 +1033,6 @@ function JobSearchScreen() {
               <button className="pg-btn" disabled={recPage === recTotalPages} onClick={() => setRecPage(p => p + 1)}>›</button>
             </div>
           )}
-
           {meta.totalPages > 1 && sort !== 'match' && (
             <div className="pagination">
               <button className="pg-btn" disabled={currentPage === 1} onClick={() => goToPage(currentPage - 1)}>‹</button>
@@ -1090,6 +1043,7 @@ function JobSearchScreen() {
         </main>
       </div>
 
+      {/* Bottom: trending / companies / alerts */}
       <div style={{
         maxWidth: '1360px', margin: '0 auto', padding: '0 28px 40px',
         display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px',
@@ -1109,13 +1063,9 @@ function JobSearchScreen() {
         <div className="side-card">
           <div className="side-title">🏢 Công ty đang tuyển nhiều <a className="see-all" href="/companies">Tất cả</a></div>
           {topCompanies.map(company => (
-            <div key={company.companyID} className="co-row"
-              onClick={() => openCompanyDetail(company.companyID)}
-              style={{ cursor: 'pointer' }}>
+            <div key={company.companyID} className="co-row" onClick={() => openCompanyDetail(company.companyID)} style={{ cursor: 'pointer' }}>
               <div className="co-mini" style={{ background: 'linear-gradient(135deg,#1565C0,#1E88E5)' }}>
-                {company.logo
-                  ? <img src={company.logo} alt={company.name} />
-                  : <span>{getLogoLetter(company.name)}</span>}
+                {company.logo ? <img src={company.logo} alt={company.name} /> : <span>{getLogoLetter(company.name)}</span>}
               </div>
               <div className="co-info">
                 <div className="co-name">{company.name}</div>
@@ -1146,17 +1096,12 @@ function JobSearchScreen() {
             <div style={{
               fontSize: 12, fontWeight: 600, marginBottom: 8, padding: '6px 10px',
               borderRadius: 7, textAlign: 'center',
-              background: alertMsg.includes('thành công') || alertMsg.includes('Đăng ký')
-                ? 'rgba(46,96,64,.1)' : 'rgba(192,65,42,.1)',
-              color: alertMsg.includes('thành công') || alertMsg.includes('Đăng ký')
-                ? 'var(--sage)' : 'var(--rust)',
-            }}>
-              {alertMsg}
-            </div>
+              background: alertMsg.includes('thành công') || alertMsg.includes('Đăng ký') ? 'rgba(46,96,64,.1)' : 'rgba(192,65,42,.1)',
+              color: alertMsg.includes('thành công') || alertMsg.includes('Đăng ký') ? 'var(--sage)' : 'var(--rust)',
+            }}>{alertMsg}</div>
           )}
           <button className="btn btn-rust" style={{ width: '100%', justifyContent: 'center' }}
-            onClick={handleCreateAlert}
-            disabled={alertLoading || !alertKeyword.trim()}>
+            onClick={handleCreateAlert} disabled={alertLoading || !alertKeyword.trim()}>
             {alertLoading ? '⏳ Đang đăng ký...' : '🔔 Tạo thông báo miễn phí'}
           </button>
           <div style={{ fontSize: '11px', color: 'var(--ink4)', marginTop: '8px', textAlign: 'center' }}>
@@ -1164,13 +1109,9 @@ function JobSearchScreen() {
           </div>
           {myAlerts.length > 0 && (
             <div style={{ marginTop: 14, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-              <div style={{
-                fontSize: 12, fontWeight: 700, color: 'var(--ink3)', marginBottom: 8,
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink3)', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>📋 Đang theo dõi ({myAlerts.length})</span>
-                <span style={{ fontSize: 11, color: 'var(--rust)', cursor: 'pointer' }}
-                  onClick={() => setShowMyAlerts(p => !p)}>
+                <span style={{ fontSize: 11, color: 'var(--rust)', cursor: 'pointer' }} onClick={() => setShowMyAlerts(p => !p)}>
                   {showMyAlerts ? 'Thu gọn' : 'Xem tất cả'}
                 </span>
               </div>
@@ -1178,15 +1119,11 @@ function JobSearchScreen() {
                 {(showMyAlerts ? myAlerts : myAlerts.slice(0, 3)).map(alert => (
                   <div key={alert.keyword} style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '5px 9px', borderRadius: 7,
-                    background: 'var(--bg)', border: '1px solid var(--border)',
+                    padding: '5px 9px', borderRadius: 7, background: 'var(--bg)', border: '1px solid var(--border)',
                   }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink2)' }}>
-                      🔍 {alert.keyword}
-                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink2)' }}>🔍 {alert.keyword}</span>
                     <button onClick={() => handleRemoveAlert(alert.keyword)} style={{
-                      background: 'none', border: 'none', cursor: 'pointer',
-                      fontSize: 16, color: 'var(--ink4)', padding: '0 2px', lineHeight: 1,
+                      background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--ink4)', padding: '0 2px', lineHeight: 1,
                     }}
                       onMouseEnter={e => e.currentTarget.style.color = 'var(--rust)'}
                       onMouseLeave={e => e.currentTarget.style.color = 'var(--ink4)'}>×</button>
@@ -1204,6 +1141,7 @@ function JobSearchScreen() {
         </div>
       </div>
 
+      {/* ── Detail panel ── */}
       <div className={`detail-overlay ${detailOpen ? 'open' : ''}`} onClick={closeDetail}>
         <div className="detail-panel" onClick={e => e.stopPropagation()}>
           {selectedJob && (
@@ -1228,59 +1166,170 @@ function JobSearchScreen() {
                   <div style={{ display: 'flex', gap: '7px', marginTop: '8px', flexWrap: 'wrap' }}>
                     {selectedJob.salary && <span className="badge b-amber">💰 {selectedJob.salary}</span>}
                     {selectedJob.deadline && <span className="badge b-sage">⏰ {formatDeadline(selectedJob.deadline)}</span>}
-                    {selectedJob.sourcePlatform && (
-                      <span className={`source-chip ${getSourceClass(selectedJob.sourcePlatform)}`}>
-                        {selectedJob.sourcePlatform}
-                      </span>
-                    )}
+                    {selectedJob.sourcePlatform && <span className={`source-chip ${getSourceClass(selectedJob.sourcePlatform)}`}>{selectedJob.sourcePlatform}</span>}
                   </div>
                 </div>
                 <button className="dp-close" onClick={closeDetail}>✕</button>
               </div>
 
               <div className="dp-body">
+
+                {/* Meta pills */}
                 <div className="dp-section">
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '4px' }}>
                     {selectedJob.location && <span className="jc-meta-item">📍 {selectedJob.location}</span>}
                     {selectedJob.jobType && <span className="jc-meta-item">⏰ {selectedJob.jobType}</span>}
                     {selectedJob.experienceYear && <span className="jc-meta-item">🎯 {selectedJob.experienceYear}</span>}
                     {selectedJob.workingTime && <span className="jc-meta-item">🕐 {selectedJob.workingTime}</span>}
                   </div>
                 </div>
+
+                {/* ── AI Match Box ── */}
+                {token && (
+                  <div className="dp-section">
+                    <div style={{
+                      background: 'var(--bg2)', borderRadius: 12,
+                      border: '1px solid var(--border)', padding: '14px 16px',
+                    }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12 }}>
+                        🤖 Phân tích AI — Mức độ phù hợp
+                      </div>
+
+                      {/* Preview ring + reason */}
+                      {matchInfo ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12 }}>
+                          <div style={{
+                            width: 60, height: 60, borderRadius: '50%', flexShrink: 0,
+                            background: `conic-gradient(${matchColor(matchInfo.matchPercent)} 0% ${matchInfo.matchPercent}%, var(--bg3) ${matchInfo.matchPercent}%)`,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            <div style={{
+                              width: 44, height: 44, borderRadius: '50%', background: 'var(--bg2)',
+                              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                              <span style={{ fontSize: 13, fontWeight: 800, lineHeight: 1, color: matchColor(matchInfo.matchPercent) }}>
+                                {Math.round(matchInfo.matchPercent)}%
+                              </span>
+                              <span style={{ fontSize: 9, color: 'var(--ink4)', lineHeight: 1.2 }}>Match</span>
+                            </div>
+                          </div>
+                          {matchInfo.reason && (
+                            <div style={{
+                              fontSize: 12, color: 'var(--ink2)', lineHeight: 1.65, flex: 1,
+                              background: matchBg(matchInfo.matchPercent), padding: '8px 11px', borderRadius: 8,
+                            }}>
+                              💡 {matchInfo.reason}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div style={{
+                          fontSize: 12, color: 'var(--ink4)', marginBottom: 12,
+                          padding: '8px 11px', background: 'var(--bg3)', borderRadius: 8,
+                        }}>
+                          Chưa có dữ liệu phù hợp. Hãy cập nhật kỹ năng trong hồ sơ để AI phân tích.
+                        </div>
+                      )}
+
+                      {/* Skill detail (sau khi check) */}
+                      {matchDetail && (
+                        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginBottom: 12 }}>
+                          {matchDetail.skillOverlap?.length > 0 && (
+                            <div style={{ marginBottom: 10 }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: '#2E6040', marginBottom: 6 }}>
+                                ✅ Kỹ năng phù hợp ({matchDetail.skillOverlap.length})
+                              </div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                                {matchDetail.skillOverlap.map(s => (
+                                  <span key={s} style={{ padding: '3px 9px', borderRadius: 6, fontSize: 11, background: '#E0F0E6', color: '#2E6040', fontWeight: 600 }}>{s}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {matchDetail.skillGap?.length > 0 && (
+                            <div>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: '#C0412A', marginBottom: 6 }}>
+                                📚 Cần bổ sung ({matchDetail.skillGap.length})
+                              </div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                                {matchDetail.skillGap.map(s => (
+                                  <span key={s} style={{ padding: '3px 9px', borderRadius: 6, fontSize: 11, background: '#FDE8E4', color: '#C0412A', fontWeight: 600 }}>{s}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {matchDetail.skillOverlap?.length === 0 && matchDetail.skillGap?.length === 0 && (
+                            <div style={{ fontSize: 12, color: 'var(--ink3)' }}>Không có dữ liệu kỹ năng để so sánh.</div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Nút check / error / upgrade */}
+                      {!matchDetail && (
+                        matchError ? (
+                          <div>
+                            <div style={{ fontSize: 12, color: '#C0412A', background: '#FDE8E4', padding: '8px 12px', borderRadius: 8, marginBottom: 8 }}>
+                              ⚠️ {matchError}
+                            </div>
+                            <button onClick={() => navigate('/services')} style={{
+                              width: '100%', padding: '8px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                              cursor: 'pointer', border: 'none',
+                              background: 'linear-gradient(135deg,#C0412A,#E05A40)', color: '#fff',
+                            }}>
+                              ⚡ Nâng cấp gói →
+                            </button>
+                          </div>
+                        ) : (
+                          <button onClick={handleCheckMatchDetail} disabled={checkingMatch} style={{
+                            width: '100%', padding: '8px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                            border: 'none', cursor: checkingMatch ? 'not-allowed' : 'pointer',
+                            background: checkingMatch ? '#EDE8DF' : 'linear-gradient(135deg,#232AA2,#1565C0)',
+                            color: checkingMatch ? '#9A8D80' : '#fff',
+                          }}>
+                            {checkingMatch ? '⟳ Đang phân tích...' : '🔍 Xem chi tiết độ phù hợp'}
+                          </button>
+                        )
+                      )}
+
+                      {/* Nút tư vấn AI */}
+                      <button onClick={() => navigate('/ai-assistant')} style={{
+                        marginTop: 8, width: '100%', padding: '8px', borderRadius: 8,
+                        fontSize: 12, fontWeight: 700, border: '1.5px solid var(--border2)',
+                        background: 'transparent', color: 'var(--ink2)', cursor: 'pointer',
+                      }}>
+                        🤖 Tư vấn chi tiết với AI →
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {selectedJob.description && (
                   <div className="dp-section">
                     <div className="dp-sec-title">Mô tả công việc</div>
-                    <div style={{ fontSize: '13.5px', color: 'var(--ink2)', lineHeight: 1.7, whiteSpace: 'pre-line' }}>
-                      {selectedJob.description}
-                    </div>
+                    <div style={{ fontSize: '13.5px', color: 'var(--ink2)', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{selectedJob.description}</div>
                   </div>
                 )}
                 {selectedJob.requirement && (
                   <div className="dp-section">
                     <div className="dp-sec-title">Yêu cầu ứng viên</div>
-                    <div style={{ fontSize: '13.5px', color: 'var(--ink2)', lineHeight: 1.7, whiteSpace: 'pre-line' }}>
-                      {selectedJob.requirement}
-                    </div>
+                    <div style={{ fontSize: '13.5px', color: 'var(--ink2)', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{selectedJob.requirement}</div>
                   </div>
                 )}
                 {selectedJob.benefit && (
                   <div className="dp-section">
                     <div className="dp-sec-title">Quyền lợi</div>
-                    <div style={{ fontSize: '13.5px', color: 'var(--ink2)', lineHeight: 1.7, whiteSpace: 'pre-line' }}>
-                      {selectedJob.benefit}
-                    </div>
+                    <div style={{ fontSize: '13.5px', color: 'var(--ink2)', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{selectedJob.benefit}</div>
                   </div>
                 )}
                 {selectedJob.skills?.length > 0 && (
                   <div className="dp-section">
                     <div className="dp-sec-title">Kỹ năng yêu cầu</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
-                      {selectedJob.skills.map(skill => (
-                        <span key={skill} className="jtag">{skill}</span>
-                      ))}
+                      {selectedJob.skills.map(skill => <span key={skill} className="jtag">{skill}</span>)}
                     </div>
                   </div>
                 )}
+
                 <div className="dp-section">
                   <div className="dp-sec-title">Thông tin công ty</div>
                   <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
@@ -1295,17 +1344,11 @@ function JobSearchScreen() {
                         {selectedJob.company?.companyName}
                       </div>
                       {selectedJob.company?.companyProfile && (
-                        <div style={{ fontSize: '12.5px', color: 'var(--ink3)', lineHeight: 1.65 }}>
-                          {selectedJob.company.companyProfile}
-                        </div>
+                        <div style={{ fontSize: '12.5px', color: 'var(--ink3)', lineHeight: 1.65 }}>{selectedJob.company.companyProfile}</div>
                       )}
                       <div style={{ display: 'flex', gap: '6px', marginTop: '9px', flexWrap: 'wrap' }}>
-                        {selectedJob.company?.companySize && (
-                          <span className="badge b-teal">👥 {selectedJob.company.companySize}</span>
-                        )}
-                        {selectedJob.company?.address && (
-                          <span className="badge b-gray">📍 {selectedJob.company.address}</span>
-                        )}
+                        {selectedJob.company?.companySize && <span className="badge b-teal">👥 {selectedJob.company.companySize}</span>}
+                        {selectedJob.company?.address && <span className="badge b-gray">📍 {selectedJob.company.address}</span>}
                       </div>
                     </div>
                   </div>
@@ -1332,6 +1375,7 @@ function JobSearchScreen() {
         </div>
       </div>
 
+      {/* Apply modal */}
       {applyModalOpen && (
         <div style={{
           display: 'flex', position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)',
@@ -1368,9 +1412,7 @@ function JobSearchScreen() {
                 <span style={{ fontSize: '18px' }}>{item.icon}</span>
                 <div>
                   <div style={{ fontSize: '13px', fontWeight: 600 }}>{item.title}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--ink3)', wordBreak: 'break-word', whiteSpace: 'normal', overflowWrap: 'break-word' }}>
-                    {item.desc}
-                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--ink3)', wordBreak: 'break-word', whiteSpace: 'normal', overflowWrap: 'break-word' }}>{item.desc}</div>
                 </div>
               </div>
             ))}
@@ -1381,8 +1423,7 @@ function JobSearchScreen() {
               Đi đến trang ứng tuyển →
             </button>
             <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '12px', color: 'var(--ink4)' }}>
-              Hoặc <span style={{ color: 'var(--rust)', cursor: 'pointer', fontWeight: 600 }}
-                onClick={closeApply}>quay lại xem việc khác</span>
+              Hoặc <span style={{ color: 'var(--rust)', cursor: 'pointer', fontWeight: 600 }} onClick={closeApply}>quay lại xem việc khác</span>
             </div>
           </div>
         </div>

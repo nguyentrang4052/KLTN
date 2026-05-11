@@ -103,6 +103,7 @@ export default function HomeScreen() {
   const searchInputRef = useRef(null)
   const [searchPos, setSearchPos] = useState({ top: 0, left: 0, width: 0 })
   const debounceRef = useRef(null)
+  const [refreshMessage, setRefreshMessage] = useState(null)
 
   useEffect(() => { pageRef.current = page }, [page])
   useEffect(() => { sortRef.current = sort }, [sort])
@@ -268,7 +269,6 @@ export default function HomeScreen() {
     }
   }, [locationFilter, fetchJobs])
 
-  // Fetch recs lần đầu khi load — chỉ GET, không trừ quota
   useEffect(() => {
     if (!token) { setRecommendations([]); setRecQuota(null); return }
     setLoadingRecs(true)
@@ -285,7 +285,6 @@ export default function HomeScreen() {
       .finally(() => setLoadingRecs(false))
   }, [token])
 
-  // Nhấn nút mới tính lại và trừ quota
   const handleRefreshRecommendations = async () => {
     if (!token || refreshingRecs) return
     setRefreshingRecs(true)
@@ -298,6 +297,10 @@ export default function HomeScreen() {
       setRecommendations(Array.isArray(data) ? data : (data.data ?? []))
       setRecQuota(Array.isArray(data) ? null : (data.quota ?? null))
       setRecPage(1)
+
+      if (data.message) {
+        setRefreshMessage({ text: data.message, isNew: data.hasChanged })
+      }
     } catch (err) {
       console.error('Refresh recs error:', err)
     } finally {
@@ -828,6 +831,23 @@ export default function HomeScreen() {
                 </button>
               )}
             </div>
+
+            {refreshMessage && (
+              <div style={{
+                padding: '10px 16px', marginBottom: 12, borderRadius: 10, fontSize: 13,
+                background: refreshMessage.isNew ? '#E8F5E9' : '#FFF8E1',
+                border: `1px solid ${refreshMessage.isNew ? '#C3E6CB' : '#FFE082'}`,
+                color: refreshMessage.isNew ? '#2E6040' : '#7B5800',
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <span>{refreshMessage.isNew ? '✅' : '💡'}</span>
+                <span>{refreshMessage.text}</span>
+                <button onClick={() => setRefreshMessage(null)} style={{
+                  marginLeft: 'auto', background: 'none', border: 'none',
+                  cursor: 'pointer', fontSize: 14, color: 'inherit', opacity: 0.6,
+                }}>✕</button>
+              </div>
+            )}
 
             {recQuota && !recQuota.isUnlimited && (
               <div style={{

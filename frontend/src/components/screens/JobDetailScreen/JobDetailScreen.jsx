@@ -3,7 +3,6 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import './JobDetailScreen.css'
 import Badge from '../../common/Badge/Badge'
 import { getToken } from '../../../utils/auth'
-import Header from '../../layout/Header/Header'
 
 const API = 'http://localhost:3000/api'
 
@@ -20,24 +19,15 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
   const [applyModalOpen, setApplyModalOpen] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
 
-  const returnUrl = location.state?.fromPath || '/home'
-  const scrollY = location.state?.scrollY || 0
-
   const [matchInfo, setMatchInfo] = useState(null)
+  const [matchDetail, setMatchDetail] = useState(null)
+  const [checkingMatch, setCheckingMatch] = useState(false)
+  const [matchError, setMatchError] = useState(null)
 
   const handleBack = () => {
     const fromPath = location.state?.fromPath
-
-    if (fromPath === '/ai-assistant') {
-      navigate('/ai-assistant')
-      return
-    }
-    if (fromPath) {
-      navigate(fromPath, {
-        state: { scrollY: location.state?.scrollY || 0 }
-      })
-      return
-    }
+    if (fromPath === '/ai-assistant') { navigate('/ai-assistant'); return }
+    if (fromPath) { navigate(fromPath, { state: { scrollY: location.state?.scrollY || 0 } }); return }
     navigate(-1)
   }
 
@@ -46,13 +36,10 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
     setLoading(true)
     fetch(`${API}/jobs/${id}`)
       .then(r => r.json())
-      .then(data => {
-        setJob(data)
-      })
+      .then(setJob)
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [id])
-
 
   useEffect(() => {
     if (!token || !id) return
@@ -66,7 +53,7 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
       .catch(console.error)
   }, [token, id])
 
-
+  // Preview - không trừ quota
   useEffect(() => {
     if (!token || !id) return
     fetch(`${API}/jobs/${id}/match`, {
@@ -77,6 +64,29 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
       .catch(console.error)
   }, [token, id])
 
+  // Chi tiết - trừ quota khi user nhấn nút
+  const handleCheckDetail = async () => {
+    if (!token) { setShowLoginModal(true); return }
+    setCheckingMatch(true)
+    setMatchError(null)
+    try {
+      const res = await fetch(`${API}/jobs/${id}/match/check`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.status === 402 || res.status === 400) {
+        const err = await res.json()
+        setMatchError(err.message || 'Đã hết lượt kiểm tra. Vui lòng nâng cấp gói.')
+        return
+      }
+      const data = await res.json()
+      setMatchDetail(data)
+    } catch (err) {
+      setMatchError('Có lỗi xảy ra. Vui lòng thử lại.')
+    } finally {
+      setCheckingMatch(false)
+    }
+  }
 
   const handleSave = async () => {
     if (!token) { setShowLoginModal(true); return }
@@ -116,13 +126,9 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
 
   const openCompany = () => {
     if (!job?.company?.companyID) return
-    if (onCompanyClick) {
-      onCompanyClick(job.company.companyID)
-    } else {
-      navigate(`/jobs/companies/${job.company.companyID}`)
-    }
+    if (onCompanyClick) onCompanyClick(job.company.companyID)
+    else navigate(`/jobs/companies/${job.company.companyID}`)
   }
-
 
   if (loading) {
     return (
@@ -141,16 +147,12 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
   }
 
   const isExpired = job?.deadline && (new Date(job.deadline).getTime() < Date.now())
-
   const logoLetter = job.company?.companyName?.[0]?.toUpperCase() ?? '?'
 
   return (
     <div id="s4">
       {onBack && (
-        <div style={{
-          background: 'var(--surf)', borderBottom: '1px solid var(--border)',
-          padding: '0 28px',
-        }}>
+        <div style={{ background: 'var(--surf)', borderBottom: '1px solid var(--border)', padding: '0 28px' }}>
           <div style={{
             maxWidth: 1280, margin: '0 auto', height: 44,
             display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#9A8D80',
@@ -165,6 +167,7 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
         </div>
       )}
 
+      {/* Login Modal */}
       {showLoginModal && (
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)',
@@ -199,6 +202,7 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
         </div>
       )}
 
+      {/* Apply Modal */}
       {applyModalOpen && (
         <div style={{
           display: 'flex', position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)',
@@ -262,17 +266,13 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
           <div className="jd-wrap">
 
             <div className="jd-main" style={{ position: 'relative', opacity: isExpired ? 0.6 : 1 }}>
-              {isExpired && (
-                <div className="jd-card-ribbon">Đã hết hạn</div>
-              )}
+              {isExpired && <div className="jd-card-ribbon">Đã hết hạn</div>}
 
               <div className="jd-head">
                 <div style={{
                   width: 64, height: 64, borderRadius: 14, flexShrink: 0,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: job.company?.companyLogo
-                    ? 'transparent'
-                    : 'linear-gradient(135deg,#1565C0,#1E88E5)',
+                  background: job.company?.companyLogo ? 'transparent' : 'linear-gradient(135deg,#1565C0,#1E88E5)',
                   fontSize: 24, fontWeight: 800, color: '#fff', marginBottom: 12,
                   border: job.company?.companyLogo ? '1px solid var(--border)' : 'none',
                   overflow: 'hidden',
@@ -286,18 +286,12 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
                 <h1 className="jd-title">{job.title}</h1>
 
                 <div className="jd-co">
-                  <span
-                    onClick={openCompany}
-                    style={{ cursor: 'pointer', textDecorationLine: 'underline', textDecorationStyle: 'dotted' }}
-                  >
+                  <span onClick={openCompany}
+                    style={{ cursor: 'pointer', textDecorationLine: 'underline', textDecorationStyle: 'dotted' }}>
                     {job.company?.companyName}
                   </span>
-                  {job.company?.companySize && (
-                    <Badge variant="indigo">👥 {job.company.companySize}</Badge>
-                  )}
-                  {job.sourcePlatform && (
-                    <Badge variant="teal">{job.sourcePlatform}</Badge>
-                  )}
+                  {job.company?.companySize && <Badge variant="indigo">👥 {job.company.companySize}</Badge>}
+                  {job.sourcePlatform && <Badge variant="teal">{job.sourcePlatform}</Badge>}
                 </div>
 
                 <div className="jd-meta-row">
@@ -311,68 +305,133 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
 
                 <div className="jd-actions">
                   <button className="btn btn-rust btn-lg" onClick={handleApply} disabled={isExpired}
-                    style={{
-                      opacity: isExpired ? 0.5 : 1,
-                      cursor: isExpired ? 'not-allowed' : 'pointer',
-                    }}>⚡ Apply ngay</button>
-                  <button className="btn btn-outline btn-lg" onClick={handleSave} disabled={isExpired}  >
+                    style={{ opacity: isExpired ? 0.5 : 1, cursor: isExpired ? 'not-allowed' : 'pointer' }}>
+                    ⚡ Apply ngay
+                  </button>
+                  <button className="btn btn-outline btn-lg" onClick={handleSave} disabled={isExpired}>
                     {saved ? '🔖 Đã lưu' : '🔖 Lưu'}
                   </button>
                 </div>
               </div>
 
-              {/* <div className="ai-box">
-                <div className="ai-box-header">
-                  <div className="ai-box-title">🤖 Phân tích AI — Mức độ phù hợp</div>
-                </div>
-                <div className="ai-box-content">
-                  <div className="ai-ring">
-                    <div className="ai-ring-in">
-                      <div className="ai-ring-n">87%</div>
-                      <div className="ai-ring-s">Match</div>
-                    </div>
-                  </div>
-                  <div className="match-breakdown">
-                    {matchData.map((item, idx) => (
-                      <div key={idx} className="mbar-row">
-                        <span className="mbar-label">{item.label}</span>
-                        <div className="mbar-bg">
-                          <div className={`mbar-fill ${item.color}`} style={{ width: `${item.value}%` }} />
-                        </div>
-                        <span className="mbar-pct">{item.value}%</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="ai-tip">
-                    💡 Bổ sung thêm kỹ năng phù hợp vào CV để tăng điểm match
-                  </div>
-                </div>
-              </div>
-               */}
-
-              {matchInfo ? (
+              {/* AI Match Box */}
+              {token && (matchInfo || !matchInfo) && (
                 <div className="ai-box">
                   <div className="ai-box-header">
                     <div className="ai-box-title">🤖 Phân tích AI — Mức độ phù hợp</div>
                   </div>
-                  <div className="ai-box-content">
-                    <div className="ai-ring" style={{
-                      background: `conic-gradient(var(--sage) 0% ${matchInfo.matchPercent}%, var(--bg3) ${matchInfo.matchPercent}%)`
-                    }}>
-                      <div className="ai-ring-in">
-                        <div className="ai-ring-n">{Math.round(matchInfo.matchPercent)}%</div>
-                        <div className="ai-ring-s">Match</div>
+
+                  {/* Preview: vòng tròn % + reason */}
+                  {matchInfo && (
+                    <div className="ai-box-content" style={{ marginBottom: matchDetail ? 16 : 0 }}>
+                      <div className="ai-ring" style={{
+                        background: `conic-gradient(var(--sage) 0% ${matchInfo.matchPercent}%, var(--bg3) ${matchInfo.matchPercent}%)`
+                      }}>
+                        <div className="ai-ring-in">
+                          <div className="ai-ring-n">{Math.round(matchInfo.matchPercent)}%</div>
+                          <div className="ai-ring-s">Match</div>
+                        </div>
                       </div>
+                      {matchInfo.reason && (
+                        <div className="ai-reason">
+                          <span className="ai-reason-icon">💡</span>
+                          <span>{matchInfo.reason}</span>
+                        </div>
+                      )}
                     </div>
-                    {matchInfo.reason && (
-                      <div className="ai-reason">
-                        <span className="ai-reason-icon">💡</span>
-                        <span>{matchInfo.reason}</span>
-                      </div>
-                    )}
-                  </div>
+                  )}
+
+                  {!matchInfo && (
+                    <div style={{ fontSize: 13, color: 'var(--ink3)', marginBottom: 12 }}>
+                      Chưa có dữ liệu phù hợp. Hãy cập nhật kỹ năng hoặc nhận đề xuất việc làm trước.
+                    </div>
+                  )}
+
+                  {/* Detail: skill overlap/gap — chỉ hiện sau khi check */}
+                  {matchDetail && (
+                    <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+                      {matchDetail.skillOverlap?.length > 0 && (
+                        <div style={{ marginBottom: 10 }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: '#2E6040', marginBottom: 6 }}>
+                            ✅ Kỹ năng phù hợp ({matchDetail.skillOverlap.length})
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {matchDetail.skillOverlap.map(s => (
+                              <span key={s} style={{
+                                padding: '3px 10px', borderRadius: 6, fontSize: 11,
+                                background: '#E0F0E6', color: '#2E6040', fontWeight: 600,
+                              }}>{s}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {matchDetail.skillGap?.length > 0 && (
+                        <div style={{ marginBottom: 10 }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: '#C0412A', marginBottom: 6 }}>
+                            📚 Cần bổ sung ({matchDetail.skillGap.length})
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {matchDetail.skillGap.map(s => (
+                              <span key={s} style={{
+                                padding: '3px 10px', borderRadius: 6, fontSize: 11,
+                                background: '#FDE8E4', color: '#C0412A', fontWeight: 600,
+                              }}>{s}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {matchDetail.skillOverlap?.length === 0 && matchDetail.skillGap?.length === 0 && (
+                        <div style={{ fontSize: 13, color: 'var(--ink3)' }}>
+                          Không có dữ liệu kỹ năng để so sánh.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Nút check detail / error / nâng cấp */}
+                  {!matchDetail && (
+                    <div style={{ marginTop: 12 }}>
+                      {matchError ? (
+                        <div style={{ marginBottom: 8 }}>
+                          <div style={{
+                            fontSize: 12, color: '#C0412A', background: '#FDE8E4',
+                            padding: '8px 12px', borderRadius: 8, marginBottom: 8,
+                          }}>
+                            ⚠️ {matchError}
+                          </div>
+                          <button onClick={() => navigate('/services')} style={{
+                            width: '100%', padding: '8px', borderRadius: 8,
+                            fontSize: 12, fontWeight: 700, cursor: 'pointer', border: 'none',
+                            background: 'linear-gradient(135deg,#C0412A,#E05A40)', color: '#fff',
+                          }}>
+                            ⚡ Nâng cấp gói →
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={handleCheckDetail} disabled={checkingMatch} style={{
+                          width: '100%', padding: '8px', borderRadius: 8,
+                          fontSize: 12, fontWeight: 700, border: 'none', cursor: checkingMatch ? 'not-allowed' : 'pointer',
+                          background: checkingMatch ? '#EDE8DF' : 'linear-gradient(135deg,#232AA2,#1565C0)',
+                          color: checkingMatch ? '#9A8D80' : '#fff',
+                        }}>
+                          {checkingMatch ? '⟳ Đang phân tích...' : '🔍 Xem chi tiết độ phù hợp'}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Nút tư vấn AI */}
+                  <button onClick={() => navigate('/ai-assistant')} style={{
+                    marginTop: 8, width: '100%', padding: '8px', borderRadius: 8,
+                    fontSize: 12, fontWeight: 700, border: '1.5px solid var(--border2)',
+                    background: 'transparent', color: 'var(--ink2)', cursor: 'pointer',
+                  }}>
+                    🤖 Tư vấn chi tiết với AI →
+                  </button>
                 </div>
-              ) : null}
+              )}
 
               <div className="divider" />
 
@@ -431,22 +490,19 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
               )}
             </div>
 
+            {/* Sidebar */}
             <div className="jd-side">
               <div className="apply-box">
-                <div className="apply-salary">
-                  💰 {job.salary ?? 'Thỏa thuận'}
-                </div>
+                <div className="apply-salary">💰 {job.salary ?? 'Thỏa thuận'}</div>
                 {job.deadline && (
                   <div className="apply-dl">⏰ Hạn nộp: {formatDeadline(job.deadline)}</div>
                 )}
                 <button className="btn btn-rust w100 btn-lg" onClick={handleApply} disabled={isExpired}
-                  style={{
-                    opacity: isExpired ? 0.5 : 1,
-                    cursor: isExpired ? 'not-allowed' : 'pointer',
-                  }}>
+                  style={{ opacity: isExpired ? 0.5 : 1, cursor: isExpired ? 'not-allowed' : 'pointer' }}>
                   ⚡ Apply ngay
                 </button>
-                <button className="btn btn-outline w100 btn-lg" style={{ marginTop: 8 }} onClick={handleSave} disabled={isExpired}  >
+                <button className="btn btn-outline w100 btn-lg" style={{ marginTop: 8 }}
+                  onClick={handleSave} disabled={isExpired}>
                   {saved ? '🔖 Đã lưu' : '🔖 Lưu việc làm'}
                 </button>
               </div>
@@ -457,35 +513,27 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
                   <img src={job.company.companyLogo} alt={job.company.companyName}
                     style={{ width: 48, height: 48, objectFit: 'contain', borderRadius: 10, marginBottom: 10 }} />
                 )}
-                <div
-                  className="company-name"
-                  onClick={openCompany}
-                >
+                <div className="company-name" onClick={openCompany}>
                   {job.company?.companyName}
                 </div>
                 {job.company?.companyProfile && (
                   <div className="company-desc">
-                    {job.company.companyProfile.slice(0, 200)}{job.company.companyProfile.length > 200 ? '...' : ''}
+                    {job.company.companyProfile.slice(0, 200)}
+                    {job.company.companyProfile.length > 200 ? '...' : ''}
                   </div>
                 )}
                 <div className="company-badges" style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {job.company?.companySize && (
-                    <Badge variant="teal">👥 {job.company.companySize}</Badge>
-                  )}
-                  {job.company?.address && (
-                    <Badge variant="gray">📍 {job.company.address}</Badge>
-                  )}
+                  {job.company?.companySize && <Badge variant="teal">👥 {job.company.companySize}</Badge>}
+                  {job.company?.address && <Badge variant="gray">📍 {job.company.address}</Badge>}
                   {job.company?.companyWebsite && (
                     <a href={job.company.companyWebsite} target="_blank" rel="noreferrer">
                       <Badge variant="indigo">🌐 Website</Badge>
                     </a>
                   )}
                 </div>
-                <button
-                  className="btn btn-outline btn-md"
+                <button className="btn btn-outline btn-md"
                   style={{ marginTop: 12, width: '100%', justifyContent: 'center' }}
-                  onClick={openCompany}
-                >
+                  onClick={openCompany}>
                   Xem tất cả việc làm →
                 </button>
               </div>
