@@ -103,6 +103,29 @@ export class SubscriptionService {
     if (subQuota) {
       await db.userQuota.delete({ where: { id: subQuota.id } });
     }
+
+    // Dùng this.prisma thay vì db để tránh lỗi nested transaction
+    const freeQuota = await this.prisma.userQuota.findFirst({
+      where: { userID, subscriptionID: null },
+    });
+
+    if (freeQuota) {
+      const freePlan = await this.prisma.subscriptionPlan.findFirst({
+        where: { name: 'free' },
+        include: { limits: true },
+      });
+      await this.prisma.userQuota.update({
+        where: { id: freeQuota.id },
+        data: {
+          cvAnalysisTotal: 10,
+          cvMatchCheckTotal: 20,
+          cvAnalysisUsed: 0,
+          cvMatchCheckUsed: 0,
+          jobSuggestPerDay: freePlan?.limits?.jobSuggestPerDay ?? 3,
+          jobSuggestUsedToday: 0,
+        },
+      });
+    }
   }
 
   async getUserQuota(accountID: number) {
@@ -119,7 +142,6 @@ export class SubscriptionService {
 
     const { activeSub, quota } = await this.getActiveQuota(user.userID);
 
-    // Chỉ reset jobSuggest theo ngày, KHÔNG reset cvAnalysis/cvMatchCheck
     if (quota && (quota.jobSuggestResetDate == null || quota.jobSuggestResetDate < today)) {
       await this.prisma.userQuota.update({
         where: { id: quota.id },
@@ -128,7 +150,6 @@ export class SubscriptionService {
       quota.jobSuggestUsedToday = 0;
     }
 
-    // Kiểm tra gói còn hạn không
     const subExpired = activeSub && new Date() > new Date(activeSub.expiresAt);
 
     if (!quota) {
@@ -209,7 +230,7 @@ export class SubscriptionService {
     if (feature === 'cvAnalysis') {
       if (quota.cvAnalysisTotal < UNLIMITED && quota.cvAnalysisUsed >= quota.cvAnalysisTotal) {
         throw new BadRequestException(
-          `Bạn đã dùng hết ${quota.cvAnalysisTotal} lượt ${FEATURE_LABEL[feature]}. Vui lòng nâng cấp gói.`,
+          `Bạn đã dùng hết ${quota.cvAnalysisTotal} lượt ${FEATURE_LABEL[feature]}.`,
         );
       }
       await this.prisma.userQuota.update({
@@ -221,7 +242,7 @@ export class SubscriptionService {
     if (feature === 'cvMatchCheck') {
       if (quota.cvMatchCheckTotal < UNLIMITED && quota.cvMatchCheckUsed >= quota.cvMatchCheckTotal) {
         throw new BadRequestException(
-          `Bạn đã dùng hết ${quota.cvMatchCheckTotal} lượt ${FEATURE_LABEL[feature]}. Vui lòng nâng cấp gói.`,
+          `Bạn đã dùng hết ${quota.cvMatchCheckTotal} lượt ${FEATURE_LABEL[feature]}.`,
         );
       }
       await this.prisma.userQuota.update({
@@ -246,6 +267,23 @@ export class SubscriptionService {
       where: { name: dto.planName },
     });
     if (!plan) throw new NotFoundException('Plan not found');
+
+    const pendingSubs = await this.prisma.userSubscription.findMany({
+      where: { userID: user.userID, status: 'pending' },
+      select: { id: true },
+    });
+
+    if (pendingSubs.length > 0) {
+      const pendingIds = pendingSubs.map((s) => s.id);
+
+      await this.prisma.payment.deleteMany({
+        where: { subscriptionID: { in: pendingIds } },
+      });
+
+      await this.prisma.userSubscription.deleteMany({
+        where: { id: { in: pendingIds } },
+      });
+    }
 
     const existing = await this.prisma.userSubscription.findFirst({
       where: {
@@ -514,20 +552,24 @@ export class SubscriptionService {
     if (!user) throw new NotFoundException('User not found');
 
     const sub = await this.prisma.userSubscription.findFirst({
-      where: { userID: user.userID, status: 'active' },
+      where: {
+        userID: user.userID,
+        status: 'active',
+        expiresAt: { gt: new Date() },
+      },
       orderBy: { startedAt: 'desc' },
     });
     if (!sub) throw new NotFoundException('Không có gói đang active');
 
     await this.prisma.userSubscription.update({
       where: { id: sub.id },
-      data: { status: 'cancelled' },
+      data: { autoRenew: false },
     });
 
-    await this.revokeQuota(user.userID);
+    // await this.revokeQuota(user.userID);
 
     return {
-      message: 'Đã huỷ gói dịch vụ. Quota sẽ được thu hồi ngay.',
+      message: 'Đã hủy gói. Gói sẽ tiếp tục đến hết chu kỳ hiện tại.',
       expiresAt: sub.expiresAt,
     };
   }
@@ -668,12 +710,36 @@ export class SubscriptionService {
       orderBy: { startedAt: 'desc' },
     });
 
-    const quota = activeSub?.quota ??
-      await this.prisma.userQuota.findFirst({
-        where: { userID, subscriptionID: null },
-      }) ?? null;
+    // Còn hạn → dùng quota của sub
+    if (activeSub?.quota) {
+      return { activeSub, quota: activeSub.quota };
+    }
 
-    return { activeSub, quota };
+    // Tìm sub hết hạn tự nhiên (chưa bị xử lý)
+    const expiredSub = await this.prisma.userSubscription.findFirst({
+      where: {
+        userID,
+        status: 'active',       // vẫn còn status active nhưng đã quá expiresAt
+        expiresAt: { lte: new Date() },
+      },
+      orderBy: { expiresAt: 'desc' },
+    });
+
+    // Nếu có sub hết hạn tự nhiên → revoke và reset free quota
+    if (expiredSub) {
+      await this.prisma.userSubscription.update({
+        where: { id: expiredSub.id },
+        data: { status: 'expired' },
+      });
+      await this.revokeQuota(userID);
+    }
+
+    // Trả về free quota (đã được reset nếu sub vừa hết hạn)
+    const freeQuota = await this.prisma.userQuota.findFirst({
+      where: { userID, subscriptionID: null },
+    }) ?? null;
+
+    return { activeSub: null, quota: freeQuota };
   }
 
   private async getFreePlanLimits() {
