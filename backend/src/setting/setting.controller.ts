@@ -8,13 +8,6 @@ export class SettingController {
     constructor(private settingService: SettingService) { }
 
     @UseGuards(JwtAuthGuard)
-    // @Post('change-password')
-    // changePassword(@Req() req, @Body() changePasswordDto: ChangePasswordDto) {
-    //     const accountID = req.account.accountID;
-    //     return this.settingService.changePassword(accountID, changePasswordDto);
-
-    // }
-
     @Post('change-password')
     changePassword(@Req() req, @Body() dto: ChangePasswordDto) {
         console.log('REQ USER:', req.user);

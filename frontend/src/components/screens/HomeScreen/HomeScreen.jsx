@@ -416,11 +416,6 @@ export default function HomeScreen() {
     setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
 
-  // const handlePageChange = useCallback((newPage) => {
-  //   pageRef.current = newPage
-  //   setPage(newPage)
-  // }, [])
-
   const renderPages = (curPage, totalPages, onPageChange) => {
     const pages = []
     const addBtn = (n) => pages.push(

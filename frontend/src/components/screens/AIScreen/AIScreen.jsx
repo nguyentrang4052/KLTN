@@ -267,13 +267,6 @@ function CompanyCard({ company, onSelect }) {
                     ))}
                 </div>
             )}
-
-            {/* <button
-                className="ai-company-view-btn"
-                onClick={handleCompanyClick}
-            >
-                🔍 Xem chi tiết công ty
-            </button> */}
         </div>
     );
 }
