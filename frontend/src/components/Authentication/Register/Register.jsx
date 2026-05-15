@@ -60,58 +60,21 @@ const IconGoogle = () => (
     <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
   </svg>
 )
-const IconFacebook = () => (
-  <svg viewBox="0 0 24 24" fill="#1877F2">
-    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-  </svg>
-)
 
 const PROVINCES = [
-  'Hà Nội',
-  'TP. Hồ Chí Minh',
-  'Hải Phòng',
-  'Đà Nẵng',
-  'Cần Thơ',
-  'Huế',
-  'An Giang',
-  'Bắc Ninh',
-  'Bình Dương',
-  'Bình Thuận',
-  'Cao Bằng',
-  'Cà Mau',
-  'Đắk Lắk',
-  'Điện Biên',
-  'Đồng Nai',
-  'Đồng Tháp',
-  'Gia Lai',
-  'Hà Tĩnh',
-  'Hưng Yên',
-  'Khánh Hòa',
-  'Lai Châu',
-  'Lào Cai',
-  'Lâm Đồng',
-  'Lạng Sơn',
-  'Long An',
-  'Nghệ An',
-  'Ninh Bình',
-  'Phú Thọ',
-  'Quảng Ngãi',
-  'Quảng Ninh',
-  'Sơn La',
-  'Thanh Hóa',
-  'Thái Nguyên',
-  'Tuyên Quang',
-  'Vĩnh Long',
+  'Hà Nội', 'TP. Hồ Chí Minh', 'Hải Phòng', 'Đà Nẵng', 'Cần Thơ', 'Huế',
+  'An Giang', 'Bắc Ninh', 'Bình Dương', 'Bình Thuận', 'Cao Bằng', 'Cà Mau',
+  'Đắk Lắk', 'Điện Biên', 'Đồng Nai', 'Đồng Tháp', 'Gia Lai', 'Hà Tĩnh',
+  'Hưng Yên', 'Khánh Hòa', 'Lai Châu', 'Lào Cai', 'Lâm Đồng', 'Lạng Sơn',
+  'Long An', 'Nghệ An', 'Ninh Bình', 'Phú Thọ', 'Quảng Ngãi', 'Quảng Ninh',
+  'Sơn La', 'Thanh Hóa', 'Thái Nguyên', 'Tuyên Quang', 'Vĩnh Long',
 ]
 
 function ProvinceSelect({ value, onChange }) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const wrapRef = useRef(null)
-
-  const filtered = PROVINCES.filter(p =>
-    p.toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = PROVINCES.filter(p => p.toLowerCase().includes(search.toLowerCase()))
 
   useEffect(() => {
     const handler = (e) => {
@@ -125,42 +88,25 @@ function ProvinceSelect({ value, onChange }) {
 
   return (
     <div className="rg-province-wrap" ref={wrapRef}>
-      <button
-        type="button"
-        className={`rg-province-trigger${open ? ' open' : ''}${value ? ' has-value' : ''}`}
-        onClick={() => setOpen(v => !v)}
-      >
+      <button type="button" className={`rg-province-trigger${open ? ' open' : ''}${value ? ' has-value' : ''}`} onClick={() => setOpen(v => !v)}>
         <span className="rg-province-ico"><IconMapPin /></span>
         <span className="rg-province-val">{value || 'Chọn tỉnh / thành phố'}</span>
         <span className={`rg-province-chevron${open ? ' open' : ''}`}><IconChevron /></span>
       </button>
-
       {open && (
         <div className="rg-province-dropdown">
           <div className="rg-province-search">
             <span className="rg-ps-ico"><IconSearch /></span>
-            <input
-              autoFocus
-              className="rg-ps-input"
-              placeholder="Tìm tỉnh thành..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
+            <input autoFocus className="rg-ps-input" placeholder="Tìm tỉnh thành..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           <div className="rg-province-list">
             {filtered.length === 0
               ? <div className="rg-province-empty">Không tìm thấy</div>
               : filtered.map(p => (
-                <div
-                  key={p}
-                  className={`rg-province-item${value === p ? ' selected' : ''}`}
-                  onClick={() => select(p)}
-                >
-                  {p}
-                  {value === p && <span className="rg-province-check">✓</span>}
+                <div key={p} className={`rg-province-item${value === p ? ' selected' : ''}`} onClick={() => select(p)}>
+                  {p}{value === p && <span className="rg-province-check">✓</span>}
                 </div>
-              ))
-            }
+              ))}
           </div>
         </div>
       )}
@@ -175,23 +121,15 @@ function getStrength(pw) {
   if (/[A-Z]/.test(pw)) s++
   if (/[0-9]/.test(pw)) s++
   if (/[^A-Za-z0-9]/.test(pw)) s++
-  return {
-    score: s,
-    label: ['', 'Yếu', 'Trung bình', 'Khá', 'Mạnh'][s],
-    cls: ['', 'weak', 'fair', 'good', 'strong'][s],
-  }
+  return { score: s, label: ['', 'Yếu', 'Trung bình', 'Khá', 'Mạnh'][s], cls: ['', 'weak', 'fair', 'good', 'strong'][s] }
 }
 
-function isValidPhone(phone) {
-  return /^(0|\+84)[0-9]{9}$/.test(phone)
-}
+function isValidPhone(phone) { return /^(0|\+84)[0-9]{9}$/.test(phone) }
 
 function isValidBirthYear(year) {
   if (!year) return true
-
   const y = Number(year)
   const current = new Date().getFullYear()
-
   return y >= 1950 && y <= current - 16
 }
 
@@ -203,6 +141,10 @@ export default function Register() {
   const [error, setError] = useState('')
   const navigate = useNavigate()
 
+  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', ''])
+  const [resendCooldown, setResendCooldown] = useState(0)
+  const otpRefs = useRef([])
+
   const [form, setForm] = useState({
     email: '', password: '', confirm: '',
     fullName: '', phone: '', birthYear: '', gender: '', address: '',
@@ -210,6 +152,12 @@ export default function Register() {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const strength = getStrength(form.password)
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const t = setTimeout(() => setResendCooldown(v => v - 1), 1000)
+    return () => clearTimeout(t)
+  }, [resendCooldown])
 
   const handleStep1 = () => {
     setError('')
@@ -223,35 +171,16 @@ export default function Register() {
 
   const handleStep2 = async () => {
     setError('')
-
-    if (!form.fullName.trim()) {
-      setError('Vui lòng nhập họ tên.')
-      return
-    }
-
-    if (!form.phone.trim()) {
-      setError('Vui lòng nhập số điện thoại.')
-      return
-    }
-
-    if (!isValidPhone(form.phone)) {
-      setError('Số điện thoại không hợp lệ.')
-      return
-    }
-
-    if (!isValidBirthYear(form.birthYear)) {
-      setError('Năm sinh không hợp lệ (16 - 75 tuổi).')
-      return
-    }
+    if (!form.fullName.trim()) { setError('Vui lòng nhập họ tên.'); return }
+    if (!form.phone.trim()) { setError('Vui lòng nhập số điện thoại.'); return }
+    if (!isValidPhone(form.phone)) { setError('Số điện thoại không hợp lệ.'); return }
+    if (!isValidBirthYear(form.birthYear)) { setError('Năm sinh không hợp lệ (16 - 75 tuổi).'); return }
 
     setLoading(true)
-
     try {
-      const res = await fetch('http://localhost:3000/api/auth/register', {
+      const res = await fetch('http://localhost:3000/api/auth/register/initiate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: form.email,
           password: form.password,
@@ -262,13 +191,10 @@ export default function Register() {
           address: form.address,
         }),
       })
-
       const data = await res.json()
-
-      if (!res.ok) {
-        throw new Error(data.message || 'Đăng ký thất bại')
-      }
-
+      if (!res.ok) throw new Error(data.message || 'Gửi OTP thất bại')
+      setOtpDigits(['', '', '', '', '', ''])
+      setResendCooldown(60)
       setStep(3)
     } catch (err) {
       setError(err.message)
@@ -277,15 +203,67 @@ export default function Register() {
     }
   }
 
-  const STEP_LABELS = ['Tài khoản', 'Hồ sơ', 'Xong']
-
-  const handleGoogleRegister = () => {
-    window.location.href = 'http://localhost:3000/api/auth/google'
+  const handleOtpChange = (index, value) => {
+    if (!/^\d*$/.test(value)) return
+    const next = [...otpDigits]
+    next[index] = value.slice(-1)
+    setOtpDigits(next)
+    if (value && index < 5) otpRefs.current[index + 1]?.focus()
   }
 
-  const handleFacebookRegister = () => {
-    window.location.href = 'http://localhost:3000/api/auth/facebook'
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus()
+    }
   }
+
+  const handleOtpPaste = (e) => {
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
+    if (pasted.length === 6) {
+      setOtpDigits(pasted.split(''))
+      otpRefs.current[5]?.focus()
+    }
+    e.preventDefault()
+  }
+
+  const handleStep3 = async () => {
+    setError('')
+    const otp = otpDigits.join('')
+    if (otp.length < 6) { setError('Vui lòng nhập đủ 6 chữ số OTP.'); return }
+    setLoading(true)
+    try {
+      const res = await fetch('http://localhost:3000/api/auth/register/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: form.email, otp }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Xác thực OTP thất bại')
+      setStep(4)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0) return
+    try {
+      const res = await fetch('http://localhost:3000/api/auth/register/resend-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: form.email }),
+      })
+      if (res.ok) {
+        setResendCooldown(60)
+        setOtpDigits(['', '', '', '', '', ''])
+        otpRefs.current[0]?.focus()
+      }
+    } catch { }
+  }
+
+  const STEP_LABELS = ['Tài khoản', 'Hồ sơ', 'Xác thực']
 
   return (
     <div className="rg-wrap">
@@ -309,46 +287,34 @@ export default function Register() {
         </div>
       </div>
 
-
       <div className="rg-right">
         <div className="rg-glow" />
         <div className="rg-card">
 
-
-          {step < 3 && (
+          {step < 4 && (
             <div className="rg-stepper">
-              {[1, 2].map((s) => (
+              {[1, 2, 3].map((s) => (
                 <div key={s} className={`rg-stepper-item${step === s ? ' active' : step > s ? ' done' : ''}`}>
-                  <div className="rg-stepper-circle">
-                    {step > s ? '✓' : s}
-                  </div>
+                  <div className="rg-stepper-circle">{step > s ? '✓' : s}</div>
                   <span className="rg-stepper-label">{STEP_LABELS[s - 1]}</span>
-                  {s < 2 && <div className={`rg-stepper-line${step > s ? ' done' : ''}`} />}
+                  {s < 3 && <div className={`rg-stepper-line${step > s ? ' done' : ''}`} />}
                 </div>
               ))}
             </div>
           )}
 
-
           {step === 1 && (
             <>
               <h2 className="rg-card-title">Tạo tài khoản</h2>
               <p className="rg-card-sub">Đã có tài khoản? <a onClick={() => navigate("/login")}>Đăng nhập →</a></p>
-
               <div className="rg-socials">
-                <button className="rg-social-btn" onClick={handleGoogleRegister}>
+                <button className="rg-social-btn" onClick={() => window.location.href = 'http://localhost:3000/api/auth/google'}>
                   <IconGoogle /> Google
                 </button>
-
-                {/* <button className="rg-social-btn" onClick={handleFacebookRegister}>
-                  <IconFacebook /> Facebook
-                </button> */}
               </div>
               <div className="rg-divider"><span>hoặc đăng ký bằng email</span></div>
-
               <div className="rg-form">
                 {error && <div className="rg-error">⚠ {error}</div>}
-
                 <div className="rg-field">
                   <label>Email <span className="rg-req">*</span></label>
                   <div className="rg-input-wrap">
@@ -358,17 +324,13 @@ export default function Register() {
                       onKeyDown={e => e.key === 'Enter' && handleStep1()} />
                   </div>
                 </div>
-
                 <div className="rg-field">
                   <label>Mật khẩu <span className="rg-req">*</span></label>
                   <div className="rg-input-wrap">
                     <span className="rg-input-ico"><IconLock /></span>
-                    <input className="rg-input has-toggle"
-                      type={showPw ? 'text' : 'password'} placeholder="Tối thiểu 8 ký tự"
+                    <input className="rg-input has-toggle" type={showPw ? 'text' : 'password'} placeholder="Tối thiểu 8 ký tự"
                       value={form.password} onChange={e => set('password', e.target.value)} />
-                    <button className="rg-toggle-pw" type="button" onClick={() => setShowPw(v => !v)}>
-                      <IconEye off={showPw} />
-                    </button>
+                    <button className="rg-toggle-pw" type="button" onClick={() => setShowPw(v => !v)}><IconEye off={showPw} /></button>
                   </div>
                   {form.password && (
                     <div className="rg-strength-wrap">
@@ -381,49 +343,30 @@ export default function Register() {
                     </div>
                   )}
                 </div>
-
                 <div className="rg-field">
                   <label>Xác nhận mật khẩu <span className="rg-req">*</span></label>
                   <div className="rg-input-wrap">
                     <span className="rg-input-ico"><IconLock /></span>
-                    <input className="rg-input has-toggle"
-                      type={showPw2 ? 'text' : 'password'} placeholder="Nhập lại mật khẩu"
+                    <input className="rg-input has-toggle" type={showPw2 ? 'text' : 'password'} placeholder="Nhập lại mật khẩu"
                       value={form.confirm} onChange={e => set('confirm', e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleStep1()} />
-                    <button className="rg-toggle-pw" type="button" onClick={() => setShowPw2(v => !v)}>
-                      <IconEye off={showPw2} />
-                    </button>
+                    <button className="rg-toggle-pw" type="button" onClick={() => setShowPw2(v => !v)}><IconEye off={showPw2} /></button>
                   </div>
-                  {form.confirm && form.password !== form.confirm && (
-                    <span className="rg-field-hint error">Mật khẩu chưa khớp</span>
-                  )}
-                  {form.confirm && form.password === form.confirm && form.confirm.length > 0 && (
-                    <span className="rg-field-hint ok">✓ Mật khẩu khớp</span>
-                  )}
+                  {form.confirm && form.password !== form.confirm && <span className="rg-field-hint error">Mật khẩu chưa khớp</span>}
+                  {form.confirm && form.password === form.confirm && form.confirm.length > 0 && <span className="rg-field-hint ok">✓ Mật khẩu khớp</span>}
                 </div>
-
-                <button className="rg-submit" type="button" onClick={handleStep1}>
-                  Tiếp theo →
-                </button>
-
+                <button className="rg-submit" type="button" onClick={handleStep1}>Tiếp theo →</button>
               </div>
             </>
           )}
 
-
           {step === 2 && (
             <>
-              <button className="rg-back" onClick={() => { setStep(1); setError('') }}>
-                <IconArrowLeft /> Quay lại
-              </button>
-
+              <button className="rg-back" onClick={() => { setStep(1); setError('') }}><IconArrowLeft /> Quay lại</button>
               <h2 className="rg-card-title">Thông tin cá nhân</h2>
               <p className="rg-card-sub">Giúp AI đề xuất việc làm phù hợp hơn với bạn.</p>
-
               <div className="rg-form">
                 {error && <div className="rg-error">⚠ {error}</div>}
-
-
                 <div className="rg-field">
                   <label>Họ và tên <span className="rg-req">*</span></label>
                   <div className="rg-input-wrap">
@@ -432,8 +375,6 @@ export default function Register() {
                       value={form.fullName} onChange={e => set('fullName', e.target.value)} />
                   </div>
                 </div>
-
-
                 <div className="rg-two-col">
                   <div className="rg-field">
                     <label>Số điện thoại <span className="rg-req">*</span></label>
@@ -447,59 +388,76 @@ export default function Register() {
                     <label>Năm sinh</label>
                     <div className="rg-input-wrap">
                       <span className="rg-input-ico rg-input-ico--emoji">🎂</span>
-                      <input className="rg-input" type="number" placeholder="2000"
-                        min="1950" max="2010"
+                      <input className="rg-input" type="number" placeholder="2000" min="1950" max="2010"
                         value={form.birthYear} onChange={e => set('birthYear', e.target.value)} />
                     </div>
                   </div>
                 </div>
-
-
                 <div className="rg-field">
                   <label>Giới tính</label>
                   <div className="rg-gender-row">
-                    {[
-                      { val: 'Nam', emoji: '👨' },
-                      { val: 'Nữ', emoji: '👩' },
-                      { val: 'Khác', emoji: '🧑' },
-                    ].map(g => (
+                    {[{ val: 'Nam', emoji: '👨' }, { val: 'Nữ', emoji: '👩' }, { val: 'Khác', emoji: '🧑' }].map(g => (
                       <button key={g.val} type="button"
                         className={`rg-gender-btn${form.gender === g.val ? ' selected' : ''}`}
                         onClick={() => set('gender', g.val)}>
-                        <span className="rg-gender-emoji">{g.emoji}</span>
-                        {g.val}
+                        <span className="rg-gender-emoji">{g.emoji}</span>{g.val}
                       </button>
                     ))}
                   </div>
                 </div>
-
-
                 <div className="rg-field">
                   <label>Tỉnh / Thành phố</label>
-                  <ProvinceSelect
-                    value={form.address}
-                    onChange={v => set('address', v)}
-                  />
+                  <ProvinceSelect value={form.address} onChange={v => set('address', v)} />
                 </div>
-
-                <button
-                  className={`rg-submit${loading ? ' loading' : ''}`}
-                  type="button"
-                  onClick={handleStep2}
-                  disabled={loading}
-                >
-                  {loading ? '⟳ Đang tạo tài khoản...' : 'Hoàn tất đăng ký ✓'}
+                <button className={`rg-submit${loading ? ' loading' : ''}`} type="button" onClick={handleStep2} disabled={loading}>
+                  {loading ? '⟳ Đang gửi mã OTP...' : 'Tiếp theo →'}
                 </button>
-
-                <p className="rg-terms">
-                  Các trường không bắt buộc có thể cập nhật sau trong phần <strong>Hồ sơ</strong>.
-                </p>
+                <p className="rg-terms">Các trường không bắt buộc có thể cập nhật sau trong phần <strong>Hồ sơ</strong>.</p>
               </div>
             </>
           )}
 
-
           {step === 3 && (
+            <>
+              <button className="rg-back" onClick={() => { setStep(2); setError(''); setOtpDigits(['', '', '', '', '', '']) }}>
+                <IconArrowLeft /> Quay lại
+              </button>
+              <h2 className="rg-card-title">Xác thực email</h2>
+              <p className="rg-card-sub">
+                Mã OTP đã được gửi đến<br /><strong>{form.email}</strong>
+              </p>
+              <div className="rg-form">
+                {error && <div className="rg-error">⚠ {error}</div>}
+                <div className="rg-otp-group" onPaste={handleOtpPaste}>
+                  {otpDigits.map((d, i) => (
+                    <input
+                      key={i}
+                      ref={el => { otpRefs.current[i] = el }}
+                      className={`rg-otp-input${d ? ' filled' : ''}`}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={d}
+                      onChange={e => handleOtpChange(i, e.target.value)}
+                      onKeyDown={e => handleOtpKeyDown(i, e)}
+                    />
+                  ))}
+                </div>
+                <p className="rg-resend-hint">
+                  Không nhận được mã?{' '}
+                  {resendCooldown > 0
+                    ? <span className="rg-resend-countdown">Gửi lại sau {resendCooldown}s</span>
+                    : <button type="button" className="rg-resend-btn" onClick={handleResendOtp}>Gửi lại OTP</button>
+                  }
+                </p>
+                <button className={`rg-submit${loading ? ' loading' : ''}`} type="button"
+                  onClick={handleStep3} disabled={loading || otpDigits.join('').length < 6}>
+                  {loading ? '⟳ Đang xác thực...' : 'Xác nhận OTP ✓'}
+                </button>
+              </div>
+            </>
+          )}
+          {step === 4 && (
             <div className="rg-success">
               <div className="rg-success-ring">
                 <div className="rg-success-ico">🎉</div>
@@ -507,14 +465,8 @@ export default function Register() {
               <h3>Chào mừng đến với GZCONNECT!</h3>
               <p>Tài khoản đã được tạo thành công.</p>
               <div className="rg-success-info">
-                <div className="rg-success-info-item">
-                  <span>📧</span> {form.email}
-                </div>
-                {form.address && (
-                  <div className="rg-success-info-item">
-                    <span>📍</span> {form.address}
-                  </div>
-                )}
+                <div className="rg-success-info-item"><span>📧</span> {form.email}</div>
+                {form.address && <div className="rg-success-info-item"><span>📍</span> {form.address}</div>}
               </div>
               <button className="rg-submit" style={{ marginTop: 24, maxWidth: 240 }} onClick={() => navigate("/login")}>
                 Đăng nhập để tiếp tục →

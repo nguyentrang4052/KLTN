@@ -26,6 +26,7 @@ export default function AdminPackages() {
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState({})
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const closeModal = () => { setModal(null); setFormError('') }
 
   const loadPackages = async () => {
     try {
@@ -53,8 +54,23 @@ export default function AdminPackages() {
     setModal('edit')
   }
 
+  const [formError, setFormError] = useState('')
+
+  const validateForm = () => {
+    if (!form.name?.trim()) return 'Tên gói không được để trống.'
+    if (Number(form.monthlyPrice) < 0) return 'Giá tháng không được âm.'
+    if (Number(form.yearlyPrice) < 0) return 'Giá năm không được âm.'
+    if (Number(form.dailyJobSuggestions) < 0) return 'Đề xuất việc làm không được âm.'
+    if (Number(form.cvAnalysis) < 0) return 'Phân tích CV không được âm.'
+    if (Number(form.compatibilityCheck) < 0) return 'Kiểm tra độ phù hợp không được âm.'
+    if (form.name.trim().length > 50) return 'Tên gói không được quá 50 ký tự.'
+    return null
+  }
+
   const savePackage = async () => {
-    if (!form.name?.trim()) return
+    const err = validateForm()
+    if (err) { setFormError(err); return }
+    setFormError('')
     try {
       await adminFetch(`/admin/packages/${form.id}`, {
         method: 'PUT',
@@ -68,12 +84,14 @@ export default function AdminPackages() {
         }),
       })
       await loadPackages()
-      setModal(null)
-    } catch (err) { alert(err.message) }
+      closeModal()
+    } catch (err) { setFormError(err.message) }
   }
 
   const createPackage = async () => {
-    if (!form.name?.trim()) return
+    const err = validateForm()
+    if (err) { setFormError(err); return }
+    setFormError('')
     try {
       await adminFetch('/admin/packages', {
         method: 'POST',
@@ -87,8 +105,8 @@ export default function AdminPackages() {
         }),
       })
       await loadPackages()
-      setModal(null)
-    } catch (err) { alert(err.message) }
+      closeModal()
+    } catch (err) { setFormError(err.message) }
   }
 
   const deletePackage = async (id) => {
@@ -96,7 +114,7 @@ export default function AdminPackages() {
       await adminFetch(`/admin/packages/${id}`, { method: 'DELETE' })
       setPackages(prev => prev.filter(p => p.id !== id))
       setDeleteTarget(null)
-      setModal(null)
+      closeModal()
     } catch (err) { alert(err.message) }
   }
 
@@ -131,7 +149,17 @@ export default function AdminPackages() {
         </div>
       ))}
       <p className="adm-pkgs__hint">💡 Nhập 999 để đặt không giới hạn</p>
+      {formError && (
+        <div style={{
+          padding: '9px 12px', borderRadius: 8,
+          background: 'rgba(192,65,42,.1)', color: '#C0412A',
+          fontSize: 12.5, fontWeight: 600,
+        }}>
+          ⚠ {formError}
+        </div>
+      )}
     </div>
+
   )
 
   if (loading) return <div className="adm-db__loading">Đang tải...</div>
@@ -143,7 +171,7 @@ export default function AdminPackages() {
         <div>
           <h1 className="adm-page-title">Quản lý gói dịch vụ</h1>
           <p className="adm-page-sub">
-            {packages.length} gói đang hoạt động · {packages.reduce((a, p) => a + (p.users ?? 0), 0).toLocaleString()} người dùng
+            {packages.length} gói đang hoạt động
           </p>
         </div>
         {/* <button className="adm-add-btn" onClick={() => { setForm({ ...EMPTY_FORM }); setModal('create') }}>
@@ -172,10 +200,10 @@ export default function AdminPackages() {
                   </div>
                 }
               </div>
-              <div className="adm-pkg2__users">
+              {/* <div className="adm-pkg2__users">
                 <span className="adm-pkg2__users-dot" style={{ background: pkg.color }} />
                 {(pkg.users ?? 0).toLocaleString()} người dùng
-              </div>
+              </div> */}
             </div>
             <div className="adm-pkg2__feats">
               {Object.entries(pkg.features).map(([k, v]) => (
@@ -234,15 +262,15 @@ export default function AdminPackages() {
       </div>
 
       {modal === 'edit' && (
-        <div className="adm-modal-overlay" onClick={() => setModal(null)}>
+        <div className="adm-modal-overlay" onClick={() => closeModal()}>
           <div className="adm-modal" onClick={e => e.stopPropagation()}>
             <div className="adm-modal__head">
               <h3>Chỉnh sửa gói <span style={{ color: '#342893' }}>{form.name}</span></h3>
-              <button onClick={() => setModal(null)}>✕</button>
+              <button onClick={() => closeModal()}>✕</button>
             </div>
             {PKG_FORM}
             <div className="adm-modal__foot">
-              <button className="adm-modal__close-btn" onClick={() => setModal(null)}>Hủy</button>
+              <button className="adm-modal__close-btn" onClick={() => closeModal()}>Hủy</button>
               <button className="adm-modal__action-btn unlock" onClick={savePackage}>Lưu thay đổi</button>
             </div>
           </div>
@@ -250,15 +278,15 @@ export default function AdminPackages() {
       )}
 
       {modal === 'create' && (
-        <div className="adm-modal-overlay" onClick={() => setModal(null)}>
+        <div className="adm-modal-overlay" onClick={() => closeModal()}>
           <div className="adm-modal" onClick={e => e.stopPropagation()}>
             <div className="adm-modal__head">
               <h3>Tạo gói dịch vụ mới</h3>
-              <button onClick={() => setModal(null)}>✕</button>
+              <button onClick={() => closeModal()}>✕</button>
             </div>
             {PKG_FORM}
             <div className="adm-modal__foot">
-              <button className="adm-modal__close-btn" onClick={() => setModal(null)}>Hủy</button>
+              <button className="adm-modal__close-btn" onClick={() => closeModal()}>Hủy</button>
               <button className="adm-modal__action-btn unlock" onClick={createPackage}>Tạo gói</button>
             </div>
           </div>
@@ -266,11 +294,11 @@ export default function AdminPackages() {
       )}
 
       {modal === 'delete' && deleteTarget && (
-        <div className="adm-modal-overlay" onClick={() => setModal(null)}>
+        <div className="adm-modal-overlay" onClick={() => closeModal()}>
           <div className="adm-modal adm-modal--sm" onClick={e => e.stopPropagation()}>
             <div className="adm-modal__head">
               <h3>Xóa gói dịch vụ?</h3>
-              <button onClick={() => setModal(null)}>✕</button>
+              <button onClick={() => closeModal()}>✕</button>
             </div>
             <div className="adm-modal__body" style={{ paddingTop: 8 }}>
               <p className="adm-modal__confirm-text">
@@ -279,7 +307,7 @@ export default function AdminPackages() {
               </p>
             </div>
             <div className="adm-modal__foot">
-              <button className="adm-modal__close-btn" onClick={() => setModal(null)}>Hủy</button>
+              <button className="adm-modal__close-btn" onClick={() => closeModal()}>Hủy</button>
               <button className="adm-modal__action-btn lock" onClick={() => deletePackage(deleteTarget.id)}>Xóa gói</button>
             </div>
           </div>

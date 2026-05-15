@@ -406,7 +406,7 @@ function JobSearchScreen() {
       });
       if (res.status === 402 || res.status === 400) {
         const err = await res.json();
-        setMatchError(err.message || 'Đã hết lượt kiểm tra. Vui lòng nâng cấp gói.');
+        setMatchError(err.message || 'Đã hết lượt kiểm tra.');
         return;
       }
       const data = await res.json();

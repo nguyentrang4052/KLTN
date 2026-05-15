@@ -1,5 +1,4 @@
 import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
 
@@ -7,32 +6,27 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { CVStoreProvider } from './store/cvStore'
-import axios from 'axios'
 
-// createRoot(document.getElementById('root')).render(
-//   <StrictMode>
-//     <App />
-//   </StrictMode>
 
-// ReactDOM.createRoot(document.getElementById("root")).render(
-//   <BrowserRouter>
-//     <App />
-//   </BrowserRouter>
-// );
+const originalFetch = window.fetch
+let isRedirecting = false
 
-axios.interceptors.response.use(
-  response => response,
-  error => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      sessionStorage.removeItem('token')
-      sessionStorage.removeItem('user')
-      window.location.href = '/'
-    }
-    return Promise.reject(error)
+window.fetch = async function (...args) {
+  const res = await originalFetch(...args)
+  const url = typeof args[0] === 'string' ? args[0] : args[0]?.url ?? ''
+  const isLogout = url.includes('/auth/logout')
+
+  if (res.status === 401 && !isRedirecting && !isLogout) {
+    isRedirecting = true
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('user')
+    window.location.href = '/'
   }
-)
+
+  return res
+}
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <BrowserRouter>

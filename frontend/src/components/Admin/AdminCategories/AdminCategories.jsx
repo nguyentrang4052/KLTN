@@ -221,9 +221,9 @@ export default function AdminCategories() {
                             onClick={() => { setForm({ id: sk.id, name: sk.name, industryId: sk.industryId }); setModal('skill') }}>
                             Sửa
                           </button>
-                          <button className="adm-act-btn adm-act-btn--lock" onClick={() => deleteSkill(sk.id)}>
+                          {/* <button className="adm-act-btn adm-act-btn--lock" onClick={() => deleteSkill(sk.id)}>
                             Xóa
-                          </button>
+                          </button> */}
                         </div>
                       </td>
                     </tr>

@@ -908,3 +908,61 @@
     padding: 32px 20px;
   }
 }
+
+
+.rg-otp-group {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 24px 0 8px;
+}
+
+.rg-otp-input {
+  width: 48px;
+  height: 56px;
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);   
+  color: #F0EAE0;                          
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s;
+  caret-color: transparent;
+}
+
+.rg-otp-input:focus {
+  border-color: rgba(192, 65, 42, 0.8);
+  box-shadow: 0 0 0 3px rgba(192, 65, 42, 0.15);
+  transform: scale(1.05);
+}
+
+.rg-otp-input.filled {
+  border-color: #C0412A;
+  background: rgba(192, 65, 42, 0.1);
+  color: #F0EAE0;
+}
+
+.rg-resend-hint {
+  text-align: center;
+  font-size: 0.85rem;
+  color: #666;
+  margin: 8px 0 16px;
+}
+
+.rg-resend-btn {
+  background: none;
+  border: none;
+  color: #E8C97A;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 0.85rem;
+  padding: 0;
+}
+
+.rg-resend-countdown {
+  color: #555;
+  font-weight: 500;
+}

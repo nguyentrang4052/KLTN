@@ -23,26 +23,60 @@ export function useNotifications() {
         }
     }
 
+    // useEffect(() => {
+    //     const token = getToken()
+    //     if (!token) return
+
+    //     fetchNotifications()
+
+    //     socketRef.current = io(`${WS}/notifications`, {
+    //         auth: { token },
+    //         transports: ['websocket'],
+    //     })
+
+    //     socketRef.current.on('notification', (notif) => {
+    //         setNotifications((prev) => [notif, ...prev])
+    //     })
+
+    //     socketRef.current.on('connect_error', (err) => {
+    //         console.error('[WS] connect error:', err.message)
+    //     })
+
+    //     return () => {
+    //         socketRef.current?.disconnect()
+    //     }
+    // }, [])
     useEffect(() => {
-        const token = getToken()
-        if (!token) return
+        const init = () => {
+            const token = getToken()
+            if (!token) return
+            if (socketRef.current?.connected) return
 
-        fetchNotifications()
+            socketRef.current?.disconnect()
 
-        socketRef.current = io(`${WS}/notifications`, {
-            auth: { token },
-            transports: ['websocket'],
-        })
+            fetchNotifications()
 
-        socketRef.current.on('notification', (notif) => {
-            setNotifications((prev) => [notif, ...prev])
-        })
+            const socket = io(`${WS}/notifications`, {
+                auth: { token },
+                transports: ['websocket'],
+            })
+            socketRef.current = socket
 
-        socketRef.current.on('connect_error', (err) => {
-            console.error('[WS] connect error:', err.message)
-        })
+            socket.on('notification', (notif) => {
+                setNotifications((prev) => [notif, ...prev])
+            })
+
+            socket.on('connect_error', (err) => {
+                console.error('[WS] connect error:', err.message)
+            })
+        }
+
+        init()
+
+        window.addEventListener('tokenChanged', init)
 
         return () => {
+            window.removeEventListener('tokenChanged', init)
             socketRef.current?.disconnect()
         }
     }, [])

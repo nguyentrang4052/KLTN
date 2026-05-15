@@ -149,6 +149,12 @@ export default function CheckoutScreen() {
     }, [countdownActive, countdown])
 
     useEffect(() => {
+        if (countdown <= 0 && countdownActive) {
+            setCountdownActive(false)
+        }
+    }, [countdown])
+
+    useEffect(() => {
         if (!transactionRef || !countdownActive || paymentVerified) return
         const interval = setInterval(async () => {
             try {
@@ -385,7 +391,22 @@ export default function CheckoutScreen() {
                                             Thanh toán thành công!
                                         </div>
                                     ) : qrCodeUrl ? (
-                                        <QRCodeSVG value={qrCodeUrl} size={200} level="M" includeMargin={true} />
+                                        countdown <= 0 && !paymentVerified ? (
+                                            <div style={{
+                                                width: 200, height: 200, display: 'flex', alignItems: 'center',
+                                                justifyContent: 'center', flexDirection: 'column', gap: 8,
+                                                color: '#C0412A', fontSize: 13, fontWeight: 700, textAlign: 'center',
+                                                border: '2px dashed #C0412A', borderRadius: 8, padding: 20
+                                            }}>
+                                                <div style={{ fontSize: 36 }}>⏰</div>
+                                                Mã QR đã hết hạn
+                                                <span style={{ fontSize: 12, color: '#9A8D80', fontWeight: 400 }}>
+                                                    Nhấn "Tạo lại QR" để tiếp tục
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <QRCodeSVG value={qrCodeUrl} size={200} level="M" includeMargin={true} />
+                                        )
                                     ) : (
                                         <div style={{ width: 200, height: 200, border: '2px dashed #DDD6C6', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9A8D80', fontSize: 13, padding: 20, textAlign: 'center' }}>
                                             Mã QR sẽ xuất hiện ở đây
@@ -398,7 +419,7 @@ export default function CheckoutScreen() {
                                 <div className="ck-qr-hint">Mở app ngân hàng → Quét mã → Thanh toán và chờ xác nhận tự động</div>
                             </div>
 
-                            {checkoutUrl && !paymentVerified && (
+                            {checkoutUrl && !paymentVerified && countdown > 0 && (
                                 <div style={{ textAlign: 'center', marginBottom: 16 }}>
                                     <a href={checkoutUrl} target="_blank" rel="noopener noreferrer"
                                         style={{ display: 'inline-block', padding: '8px 20px', background: '#0066CC', color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>

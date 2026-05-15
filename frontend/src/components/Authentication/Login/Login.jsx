@@ -59,8 +59,10 @@ export default function Login({ onGoRegister, onGoForgot, onLoginSuccess }) {
       const storage = remember ? localStorage : sessionStorage
       storage.setItem('token', data.accessToken)
       storage.setItem('user', JSON.stringify(data.user))
-      console.log('user data:', data.user)       // xem có role không
+      console.log('user data:', data.user)      
       console.log('role:', data.user.role)
+
+      window.dispatchEvent(new Event('tokenChanged'))
 
       if (data.user.role === 'admin') {
         navigate('/admin')
