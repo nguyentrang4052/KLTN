@@ -7,7 +7,7 @@ import { GeminiModule } from '../gemini/gemini.module';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
 import { JobsGateway } from '../websocket-gateway/jobs.gateway';
-import { ActiveUsersGateway } from '../websocket-gateway/active-users.gateway';
+// import { ActiveUsersGateway } from '../websocket-gateway/active-users.gateway';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { SubscriptionModule } from '../subscription/subscription.module';
@@ -31,7 +31,7 @@ import { SubscriptionModule } from '../subscription/subscription.module';
     AIRecommendationService,
     // RecommendationCron,
     JobsGateway,
-    ActiveUsersGateway,
+    // ActiveUsersGateway,
   ],
   exports: [JobsService, AIRecommendationService, JobsGateway],
 })

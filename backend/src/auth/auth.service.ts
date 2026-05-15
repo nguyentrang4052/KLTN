@@ -331,7 +331,7 @@ export class AuthService {
   ): string {
     return this.jwtService.sign(
       { sub: accountID, email, role },
-      { expiresIn: '24h' },
+      { expiresIn: '7d' },
     );
   }
 
