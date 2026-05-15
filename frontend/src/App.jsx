@@ -54,7 +54,7 @@ import TermScreen from './components/screens/TermScreen/TermScreen'
 function isTokenExpired(token) {
   try {
     const decoded = jwtDecode(token)
-    return decoded.exp * 1000 < Date.now()
+    return decoded.exp * 1000 < Date.now() + 10000
   } catch {
     return true
   }

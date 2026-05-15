@@ -8,6 +8,7 @@ const WS = 'http://localhost:3000'
 export function useNotifications() {
     const [notifications, setNotifications] = useState([])
     const socketRef = useRef(null)
+    const timeoutRef = useRef(null)
 
     const fetchNotifications = async () => {
         const token = getToken()
@@ -23,29 +24,6 @@ export function useNotifications() {
         }
     }
 
-    // useEffect(() => {
-    //     const token = getToken()
-    //     if (!token) return
-
-    //     fetchNotifications()
-
-    //     socketRef.current = io(`${WS}/notifications`, {
-    //         auth: { token },
-    //         transports: ['websocket'],
-    //     })
-
-    //     socketRef.current.on('notification', (notif) => {
-    //         setNotifications((prev) => [notif, ...prev])
-    //     })
-
-    //     socketRef.current.on('connect_error', (err) => {
-    //         console.error('[WS] connect error:', err.message)
-    //     })
-
-    //     return () => {
-    //         socketRef.current?.disconnect()
-    //     }
-    // }, [])
     useEffect(() => {
         const init = () => {
             const token = getToken()
@@ -53,12 +31,12 @@ export function useNotifications() {
             if (socketRef.current?.connected) return
 
             socketRef.current?.disconnect()
-
             fetchNotifications()
 
             const socket = io(`${WS}/notifications`, {
                 auth: { token },
                 transports: ['websocket'],
+                reconnection: true,
             })
             socketRef.current = socket
 
@@ -69,15 +47,34 @@ export function useNotifications() {
             socket.on('connect_error', (err) => {
                 console.error('[WS] connect error:', err.message)
             })
+
+            socket.on('disconnect', (reason) => {
+                if (reason === 'io server disconnect') {
+                    socket.io.reconnection(false)
+                }
+            })
+
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]))
+                const msUntilExpiry = payload.exp * 1000 - Date.now()
+                if (msUntilExpiry > 0) {
+                    timeoutRef.current = setTimeout(() => {
+                        socketRef.current?.io.reconnection(false)
+                        socketRef.current?.disconnect()
+                        socketRef.current = null
+                        setNotifications([])
+                    }, msUntilExpiry)
+                }
+            } catch { /* empty */ }
         }
 
         init()
-
         window.addEventListener('tokenChanged', init)
 
         return () => {
             window.removeEventListener('tokenChanged', init)
             socketRef.current?.disconnect()
+            clearTimeout(timeoutRef.current)
         }
     }, [])
 
