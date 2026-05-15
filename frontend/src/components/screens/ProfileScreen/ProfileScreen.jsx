@@ -454,35 +454,30 @@ function PreviewSection({ label, children }) {
 }
 
 function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
-  const [cvList, setCvList] = useState(() => {
-    try {
-      const key = profile?.userID ? `cv_builder_state_${profile.userID}` : 'cv_builder_state'
-      const raw = localStorage.getItem(key)
-      const state = raw ? JSON.parse(raw) : {}
-      const list = state._cvList
-      return Array.isArray(list) && list.length > 0 ? list : cvListProp
-    } catch { return cvListProp }
-  })
-  useEffect(() => {
-    const sync = () => {
-      try {
-        const key = profile?.userID ? `cv_builder_state_${profile.userID}` : 'cv_builder_state'
-        const raw = localStorage.getItem(key)
-        const state = raw ? JSON.parse(raw) : {}
-        if (Array.isArray(state._cvList)) setCvList(state._cvList)
-      } catch { }
-    }
-    window.addEventListener('storage', sync)
-    window.addEventListener('focus', sync)
-    return () => { window.removeEventListener('storage', sync); window.removeEventListener('focus', sync) }
-  }, [])
-  const navigate = useNavigate()
-  const token = getToken()
-  const authRef = useRef({
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-  })
+  // const [cvList, setCvList] = useState(() => {
+  //   try {
+  //     const key = profile?.userID ? `cv_builder_state_${profile.userID}` : 'cv_builder_state'
+  //     const raw = localStorage.getItem(key)
+  //     const state = raw ? JSON.parse(raw) : {}
+  //     const list = state._cvList
+  //     return Array.isArray(list) && list.length > 0 ? list : cvListProp
+  //   } catch { return cvListProp }
+  // })
+  // useEffect(() => {
+  //   const sync = () => {
+  //     try {
+  //       const key = profile?.userID ? `cv_builder_state_${profile.userID}` : 'cv_builder_state'
+  //       const raw = localStorage.getItem(key)
+  //       const state = raw ? JSON.parse(raw) : {}
+  //       if (Array.isArray(state._cvList)) setCvList(state._cvList)
+  //     } catch { }
+  //   }
+  //   window.addEventListener('storage', sync)
+  //   window.addEventListener('focus', sync)
+  //   return () => { window.removeEventListener('storage', sync); window.removeEventListener('focus', sync) }
+  // }, [])
 
+  const [cvList, setCvList] = useState(cvListProp)
   const [profile, setProfile] = useState(null)
   const [stats, setStats] = useState(null)
   const [allSkills, setAllSkills] = useState([])
@@ -494,8 +489,6 @@ function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
   const [saveMsg, setSaveMsg] = useState('')
   const [aiData, setAiData] = useState({ insights: [], preferences: [] })
 
-
-  // ── Import CV modal state ──
   const [showImportModal, setShowImportModal] = useState(false)
   const [importMsg, setImportMsg] = useState('')
 
@@ -505,6 +498,13 @@ function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
   const [careerForm, setCareerForm] = useState({
     jobTitle: '', experienceYear: '', careerLevel: '',
     expectedSalary: '', workingType: '', industryId: '',
+  })
+
+  const navigate = useNavigate()
+  const token = getToken()
+  const authRef = useRef({
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
   })
 
   const fetchProfile = useCallback(async (syncForm = true) => {
@@ -539,14 +539,6 @@ function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
     }
   }, [token])
 
-  useEffect(() => {
-    if (!profile?.userID) return
-    fetch(`${API}/profile/${profile.userID}/insights`, { headers: authRef.current })
-      .then(r => r.json())
-      .then(data => setAiData(data))
-      .catch(console.error)
-  }, [profile?.userID])
-
   const fetchStats = useCallback(async (userID) => {
     try {
       const res = await fetch(`${API}/profile/${userID}/stats`, { headers: authRef.current })
@@ -569,6 +561,38 @@ function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
       setIndustries(Array.isArray(data) ? data : [])
     } catch (err) { console.error('fetchIndustries:', err) }
   }, [])
+
+
+  useEffect(() => {
+    if (!profile?.userID) return
+
+    const sync = () => {
+      try {
+        const key = `cv_builder_state_${profile.userID}`
+        const raw = localStorage.getItem(key)
+        const state = raw ? JSON.parse(raw) : {}
+        if (Array.isArray(state._cvList)) setCvList(state._cvList)
+      } catch { }
+    }
+
+    sync()
+    window.addEventListener('storage', sync)
+    window.addEventListener('focus', sync)
+    return () => {
+      window.removeEventListener('storage', sync)
+      window.removeEventListener('focus', sync)
+    }
+  }, [profile?.userID])
+
+
+  useEffect(() => {
+    if (!profile?.userID) return
+    fetch(`${API}/profile/${profile.userID}/insights`, { headers: authRef.current })
+      .then(r => r.json())
+      .then(data => setAiData(data))
+      .catch(console.error)
+  }, [profile?.userID])
+
 
   useEffect(() => {
     fetchProfile(true)
@@ -652,9 +676,19 @@ function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
       ])
       if (!r1.ok || !r2.ok) throw new Error('Save failed')
       setSaveMsg('✓ Đã lưu thành công')
+
       const updatedRes = await fetch(`${API}/profile/me`, { headers: authRef.current })
       const updatedData = await updatedRes.json()
       setProfile(updatedData)
+
+      await Promise.all([
+        fetchStats(updatedData.userID),
+        fetch(`${API}/profile/${updatedData.userID}/insights`, { headers: authRef.current })
+          .then(r => r.json())
+          .then(data => setAiData(data))
+          .catch(console.error),
+      ])
+
       window.dispatchEvent(new CustomEvent('userProfileUpdated', { detail: updatedData }))
     } catch {
       setSaveMsg('✗ Lưu thất bại')
