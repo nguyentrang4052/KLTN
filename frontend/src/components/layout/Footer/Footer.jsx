@@ -1,6 +1,7 @@
 import { useState } from "react";
 import "./Footer.css";
 import { useNavigate } from "react-router-dom";
+import { getToken } from '../../../utils/auth'
 
 const IconChevron = () => (
   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -29,6 +30,8 @@ const IconMapPin = () => (
 );
 
 /* ─── Data ───────────────────────────────────────────────────── */
+const token = getToken()
+
 const FOOTER_LINKS = {
   "Tìm việc làm": [
     { label: "Việc làm IT / Tech", href: "/jobs?keyword=it" },
@@ -39,9 +42,10 @@ const FOOTER_LINKS = {
   ],
   "Công cụ": [
     { label: "CV Builder AI", href: "/cv-templates" },
-    { label: "AI Match Score", href: "/login" },
-    // { label: "Salary Insights", href: "/salary" },
-    // { label: "Interview Prep AI", href: "/interview-prep" },
+    {
+      label: "AI Match Score",
+      href: token ? "/ai-assistant" : "/login",
+    },
   ],
   "Giới thiệu": [
     { label: "Về GZCONNECT", href: "/about" },

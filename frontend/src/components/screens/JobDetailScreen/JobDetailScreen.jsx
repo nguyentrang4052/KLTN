@@ -31,6 +31,7 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
     navigate(-1)
   }
 
+  // Sửa từ dòng 48-57
   useEffect(() => {
     if (!id) return
     setLoading(true)
@@ -44,13 +45,13 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
   useEffect(() => {
     if (!token || !id) return
     fetch(`${API}/jobs/saved`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
+      .then(r => r.ok ? r.json() : [])
       .then(data => {
         const list = Array.isArray(data) ? data : (data?.data ?? [])
         const ids = new Set(list.map(s => s.job?.jobID ?? s.jobID))
         setSaved(ids.has(Number(id)))
       })
-      .catch(console.error)
+      .catch(err => console.error('Fetch saved error:', err))
   }, [token, id])
 
   useEffect(() => {
@@ -62,7 +63,6 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
       .then(data => setMatchInfo(data))
       .catch(console.error)
   }, [token, id])
-
 
   const handleCheckDetail = async () => {
     if (!token) { setShowLoginModal(true); return }
@@ -310,7 +310,6 @@ function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
                   </button>
                 </div>
               </div>
-
               {token && (matchInfo || !matchInfo) && (
                 <div className="ai-box">
                   <div className="ai-box-header">

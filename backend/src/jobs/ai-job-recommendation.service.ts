@@ -283,7 +283,7 @@ export class AIRecommendationService {
         matchPercent: score,
         reason: reasons[job.jobID] ?? this.buildDefaultReason(ctx, job, score),
       }));
-    } catch (err) {
+    } catch (err:any) {
       this.logger.warn(
         'Gemini reason generation failed — using default reasons',
         err?.message,

@@ -329,6 +329,7 @@ class JobDataAccess:
             "id": str(row.get("id")),
             "title": row.get("title"),
             "company": row.get("company"),
+            "company_id": row.get("company_id"),
             "location": row.get("location"),
             "salary": row.get("salary"),
             "description": row.get("description"),
@@ -379,6 +380,7 @@ class JobDataAccess:
                 j."jobID" as id,
                 j.title,
                 c."companyName" as company,
+                c."companyID" as company_id,
                 j.location,
                 j.salary,
                 j.description,
@@ -400,7 +402,7 @@ class JobDataAccess:
             WHERE j."isActive" = true 
               AND (j.deadline IS NULL OR j.deadline > NOW())
               AND {where_clause}
-            GROUP BY j."jobID", c."companyName", i.name
+            GROUP BY j."jobID", c."companyID", c."companyName", i.name
             ORDER BY j."postedAt" DESC NULLS LAST
             LIMIT ${param_idx}
         """

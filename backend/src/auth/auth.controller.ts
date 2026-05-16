@@ -93,7 +93,7 @@ export class AuthController {
       const name = result.user.fullName ?? '';
       const url = `${this.config.get<string>('FRONTEND_URL')}/oauth-callback?token=${result.accessToken}&email=${encodeURIComponent(result.user.email)}&name=${encodeURIComponent(name)}&role=${result.user.role ?? 'user'}`;
       res.redirect(url);
-    } catch (err) {
+    } catch (err:any) {
       const url = `${this.config.get<string>('FRONTEND_URL')}/login?error=${encodeURIComponent(err.message)}`;
       res.redirect(url);
     }

@@ -3,17 +3,48 @@ import './AIScreen.css';
 import { useNavigate } from 'react-router-dom';
 import { getToken } from '../../../utils/auth';
 import { useLocation } from 'react-router-dom';
+import useUserStore from '../../../store/userStore';
 
 const API_BASE_URL = 'http://localhost:3000/api';
 
-const QUICK_PROMPTS = [
-    // '🎯 Gợi ý việc phù hợp với tôi',
-    // '📄 Phân tích CV của tôi',
+const DEFAULT_QUICK_PROMPTS = [
     '💰 Mức lương thị trường cho React Dev',
     '🔍 Tìm việc Remote 100%',
     '📈 Tips để tăng match score',
     '🤝 Chuẩn bị phỏng vấn',
 ];
+
+const generateQuickPrompts = (profile) => {
+    if (!profile) return DEFAULT_QUICK_PROMPTS;
+
+    const prompts = [];
+
+    if (profile.jobTitle) {
+        prompts.push(`💰 Mức lương ${profile.jobTitle}`);
+        prompts.push(`📋 Tìm việc ${profile.jobTitle}`);
+    }
+
+    if (profile.industry?.name) {
+        prompts.push(`📈 Xu hướng ngành ${profile.industry.name}`);
+    }
+
+    if (profile.skills && profile.skills.length > 0) {
+        const topSkill = profile.skills[0]?.name || profile.skills[0];
+        if (topSkill) {
+            prompts.push(`🎯 Việc làm yêu cầu ${topSkill}`);
+        }
+    }
+
+    if (profile.workingType) {
+        prompts.push(`🔍 Tìm việc ${profile.workingType}`);
+    }
+
+    if (prompts.length < 4) {
+        prompts.push(...DEFAULT_QUICK_PROMPTS.slice(0, 4 - prompts.length));
+    }
+
+    return prompts.sort(() => Math.random() - 0.5).slice(0, 5);
+};
 
 const INITIAL_MESSAGES = [
     {
@@ -24,7 +55,6 @@ const INITIAL_MESSAGES = [
     },
 ];
 
-/* ── Helpers ── */
 const fetchWithTimeout = async (url, options = {}, timeout = 30000) => {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
@@ -51,49 +81,75 @@ const formatDate = (iso) => {
     return d.toLocaleDateString('vi-VN');
 };
 
-/* ── Markdown renderer ── */
 function MdText({ text }) {
-    if (!text) return null;
-    const lines = text.split('\n');
+    if (text == null) return null;
+
+    // Ép chắc chắn thành string
+    const safeText =
+        typeof text === 'string'
+            ? text
+            : JSON.stringify(text, null, 2);
+
+    const lines = safeText.split('\n');
+
     return (
         <div className="ai-md">
             {lines.map((line, i) => {
                 if (!line) return <br key={i} />;
+
                 const parsed = line
                     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
                     .replace(/\*(.+?)\*/g, '<em>$1</em>')
                     .replace(/`(.+?)`/g, '<code>$1</code>');
+
                 if (/^\|[-:]+/.test(line)) return null;
+
                 if (line.startsWith('|')) {
                     const cells = line.split('|').filter((c) => c.trim());
                     const isHeader = lines[i + 1]?.startsWith('|---');
+
                     return (
-                        <div key={i} className={`ai-table-row${isHeader ? ' ai-table-head' : ''}`}>
+                        <div
+                            key={i}
+                            className={`ai-table-row${isHeader ? ' ai-table-head' : ''}`}
+                        >
                             {cells.map((c, j) => (
                                 <span
                                     key={j}
                                     className="ai-table-cell"
-                                    dangerouslySetInnerHTML={{ __html: c.trim() }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: c.trim(),
+                                    }}
                                 />
                             ))}
                         </div>
                     );
                 }
+
                 if (line.startsWith('• ')) {
                     return (
                         <div key={i} className="ai-list-item">
                             <span className="ai-bullet">•</span>
-                            <span dangerouslySetInnerHTML={{ __html: parsed.replace(/^• /, '') }} />
+                            <span
+                                dangerouslySetInnerHTML={{
+                                    __html: parsed.replace(/^• /, ''),
+                                }}
+                            />
                         </div>
                     );
                 }
-                return <p key={i} dangerouslySetInnerHTML={{ __html: parsed }} />;
+
+                return (
+                    <p
+                        key={i}
+                        dangerouslySetInnerHTML={{ __html: parsed }}
+                    />
+                );
             })}
         </div>
     );
 }
 
-/* ── CV Attachment (user upload preview) ── */
 function CVAttachment({ fileName, fileUrl, fileSize, setPreviewFile }) {
     const isPDF = fileName?.toLowerCase().endsWith('.pdf');
     return (
@@ -122,23 +178,126 @@ function CVAttachment({ fileName, fileUrl, fileSize, setPreviewFile }) {
     );
 }
 
+// Thêm component CompanyCard trước component JobMatchCard (khoảng dòng 200-250)
+
+function CompanyCard({ company, onSelect }) {
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    const handleCompanyClick = (e) => {
+        e.stopPropagation();
+        if (company.company_id) {
+            navigate(`/companies/${company.company_id}`, {
+                state: {
+                    fromPath: location.pathname,
+                    scrollY: window.scrollY,
+                    company: company
+                }
+            });
+        } else {
+            navigate(`/jobs?company=${encodeURIComponent(company.company)}`);
+        }
+    };
+
+    // Tính phần trăm match để hiển thị thanh progress
+    const matchPercent = company.match_score;
+    const barColor = matchPercent >= 80 ? '#10b981' : matchPercent >= 60 ? '#f59e0b' : '#6b7280';
+
+    return (
+        <div className="ai-company-card" onClick={() => onSelect?.(company)}>
+            <div className="ai-company-header">
+                <div className="ai-company-icon"> {company.company_logo
+                    ? <img
+                        src={company.company_logo}
+                        alt={company.company}
+                        onError={(e) => { e.target.onerror = null; e.target.replaceWith(Object.assign(document.createElement('span'), { textContent: '🏢' })) }}
+                        style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '6px' }}
+                    />
+                    : '🏢'
+                }</div>
+                <div className="ai-company-info">
+                    <div
+                        className="ai-company-name"
+                        onClick={handleCompanyClick}
+                    >
+                        {company.company}
+                    </div>
+                    {company.location && (
+                        <div className="ai-company-location">📍 {company.location}</div>
+                    )}
+                </div>
+                <div className="ai-company-salary-badge">
+                    💰 {company.salary}
+                </div>
+            </div>
+
+            <div className="ai-company-details">
+                {company.company_size && (
+                    <div className="ai-company-size">
+                        👥 Quy mô: {company.company_size}
+                    </div>
+                )}
+                {company.job_count && (
+                    <div className="ai-company-job-count">
+                        📋 Đang tuyển: {company.job_count} vị trí
+                    </div>
+                )}
+            </div>
+
+            {/* Thanh match score */}
+            {matchPercent && (
+                <div className="ai-company-match-bar">
+                    <div className="ai-company-match-label">
+                        <span>🎯 Mức độ phù hợp</span>
+                        <span className="ai-company-match-percent">{matchPercent}%</span>
+                    </div>
+                    <div className="ai-company-match-progress-bg">
+                        <div
+                            className="ai-company-match-progress-fill"
+                            style={{ width: `${matchPercent}%`, backgroundColor: barColor }}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {company.match_reasons && company.match_reasons.length > 0 && (
+                <div className="ai-company-reasons">
+                    {company.match_reasons.slice(0, 2).map((reason, idx) => (
+                        <span key={idx} className="ai-company-reason">✅ {reason}</span>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 function JobMatchCard({ job, onSelect }) {
     const navigate = useNavigate();
     const location = useLocation()
+
+    // Trong JobMatchCard component, sửa phần navigate:
+    const handleTitleClick = (e) => {
+        e.stopPropagation();
+        if (job.is_company_card && job.company_id) {
+            // Nếu là card công ty, navigate sang trang chi tiết công ty
+            navigate(`/companies/${job.company_id}`);
+        } else if (job.job_id) {
+            // Nếu là card job bình thường
+            navigate(`/ai/jobs/${job.job_id}`, {
+                state: {
+                    fromPath: location.pathname,
+                    scrollY: window.scrollY,
+                    job: job
+                }
+            });
+        }
+    };
     return (
         <div className="ai-job-card" onClick={() => onSelect?.(job)}>
             <div className="ai-job-header">
                 <div
                     className="ai-job-title"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/ai/jobs/${job.job_id}`, {
-                            state: {
-                                fromPath: location.pathname,
-                                scrollY: window.scrollY
-                            }
-                        });
-                    }}
+                    onClick={handleTitleClick}
                 >
                     {job.job_title}
                 </div>
@@ -148,7 +307,9 @@ function JobMatchCard({ job, onSelect }) {
                     {job.match_score}%
                 </div>
             </div>
-            <div className="ai-job-co">🏢 {job.company}</div><div className="ai-job-location">📍 {job.location || 'N/A'}</div><div className="ai-job-salary">💰 {job.salary}</div>
+            <div className="ai-job-co">🏢 {job.company}</div>
+            <div className="ai-job-location">📍 {job.location || 'Chưa có thông tin'}</div>
+            <div className="ai-job-salary">💰 {job.salary}</div>
 
             {job.match_reasons?.length > 0 && (
                 <div className="ai-job-reasons">
@@ -187,7 +348,6 @@ function JobMatchCard({ job, onSelect }) {
     );
 }
 
-/* ── Inline Job Card (legacy / quick suggestions) ── */
 function InlineJobCard({ job }) {
     return (
         <div className="ai-job-card">
@@ -206,8 +366,53 @@ function InlineJobCard({ job }) {
     );
 }
 
-/* ── Main Component ── */
+function SalaryInfoCard({ position, stats, topCompanies }) {
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    const handleCompanyClick = (companyName) => {
+        navigate(`/jobs?company=${encodeURIComponent(companyName)}`);
+    };
+
+    return (
+        <div className="ai-salary-card">
+            <div className="ai-salary-title">💰 Mức lương {position}</div>
+            <div className="ai-salary-stats">
+                <div className="ai-salary-range">
+                    <strong>Trung bình:</strong> {stats.avg_salary || 'Chưa có dữ liệu'}
+                </div>
+                <div className="ai-salary-levels">
+                    {stats.by_level && Object.entries(stats.by_level).map(([level, salary]) => (
+                        <div key={level} className="ai-salary-level">
+                            <span className="level-name">{level}:</span>
+                            <span className="level-salary">{salary}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {topCompanies && topCompanies.length > 0 && (
+                <div className="ai-top-companies">
+                    <div className="ai-top-title">🏢 Công ty có mức lương cao nhất:</div>
+                    {topCompanies.map((comp, idx) => (
+                        <div
+                            key={idx}
+                            className="ai-company-item clickable"
+                            onClick={() => handleCompanyClick(comp.company)}
+                            style={{ cursor: 'pointer' }}
+                        >
+                            <span className="company-name">{comp.company}</span>
+                            <span className="company-salary">{comp.salary}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function AIAssistantScreen({ onNavigate }) {
+    const token = getToken()
     const [messages, setMessages] = useState(INITIAL_MESSAGES);
     const [input, setInput] = useState('');
     const [typing, setTyping] = useState(false);
@@ -220,9 +425,8 @@ export default function AIAssistantScreen({ onNavigate }) {
 
     const [cvAnalysis, setCvAnalysis] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
-    const [uploadedCV, setUploadedCV] = useState(null); // { name, size, type, url }
+    const [uploadedCV, setUploadedCV] = useState(null);
 
-    // State cho rename và pin
     const [editingSessionId, setEditingSessionId] = useState(null);
     const [editTitle, setEditTitle] = useState('');
     const [renaming, setRenaming] = useState(false);
@@ -235,13 +439,28 @@ export default function AIAssistantScreen({ onNavigate }) {
     const user = userStr ? JSON.parse(userStr) : null;
     const userID = user?.accountID;
     const [previewFile, setPreviewFile] = useState(null);
+    const { profile, fetchProfile, loading } = useUserStore();
+    const [quickPrompts, setQuickPrompts] = useState(DEFAULT_QUICK_PROMPTS);
+    const [initialLoadDone, setInitialLoadDone] = useState(false);
+    const navigate = useNavigate()
 
-    /* ── Scroll to bottom ── */
+
+    const saveCurrentMessages = useCallback(() => {
+        if (userID && messages.length > 0 && !isRestoringRef.current) {
+            const messagesToSave = messages.filter(m => m.type !== 'welcome');
+            if (messagesToSave.length > 0) {
+                sessionStorage.setItem(`ai_messages_${userID}`, JSON.stringify(messagesToSave));
+            }
+        }
+    }, [userID, messages]);
+
+    // Flag để tránh vòng lặp khi restore
+    const isRestoringRef = useRef(false);
+
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, typing]);
 
-    /* ── Cleanup blob URL ── */
     useEffect(() => {
         return () => {
             if (uploadedCV?.url?.startsWith('blob:')) {
@@ -250,14 +469,13 @@ export default function AIAssistantScreen({ onNavigate }) {
         };
     }, [uploadedCV]);
 
-    /* ── History API ── */
     const fetchSessions = useCallback(async () => {
         try {
             const res = await fetchWithTimeout(`${API_BASE_URL}/chat-history/get-sessions`, {
                 method: 'GET',
                 credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${token}`
                 }
             });
             if (!res.ok) throw new Error('Failed');
@@ -275,7 +493,7 @@ export default function AIAssistantScreen({ onNavigate }) {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+                        'Authorization': `Bearer ${token}`
                     },
                     credentials: 'include',
                     body: JSON.stringify({ title }),
@@ -294,7 +512,7 @@ export default function AIAssistantScreen({ onNavigate }) {
                 method: 'GET',
                 credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${token}`
                 }
             });
             if (!res.ok) throw new Error('Failed');
@@ -305,7 +523,6 @@ export default function AIAssistantScreen({ onNavigate }) {
         }
     }, []);
 
-
     const saveMessageToHistory = useCallback(
         async (sessionID, msg) => {
             if (!sessionID) return;
@@ -314,7 +531,7 @@ export default function AIAssistantScreen({ onNavigate }) {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        'Authorization': `Bearer ${token}`
                     },
                     credentials: 'include',
                     body: JSON.stringify({
@@ -347,13 +564,12 @@ export default function AIAssistantScreen({ onNavigate }) {
                     method: 'POST',
                     credentials: 'include',
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        'Authorization': `Bearer ${token}`
                     }
                 });
                 setSessions((prev) => prev.filter((s) => s.id !== sessionID));
                 if (currentSessionId === sessionID)
                     startNewChat();
-
             } catch (err) {
                 console.error('Delete session error:', err);
             }
@@ -361,39 +577,119 @@ export default function AIAssistantScreen({ onNavigate }) {
         [currentSessionId]
     );
 
-    /* ── Init ── */
+    // ========== LOAD MESSAGES ==========
     useEffect(() => {
-        const init = async () => {
-            if (!userID) return;
-            setLoadingHistory(true);
+        if (!userID) return;
+
+        const loadMessages = async () => {
+            // Load từ sessionStorage trước
+            const savedMessages = sessionStorage.getItem(`ai_messages_${userID}`);
+            const savedSessions = sessionStorage.getItem(`ai_sessions_${userID}`);
             const list = await fetchSessions();
             setSessions(list);
 
-            const lastId = localStorage.getItem(`ai_last_session_${userID}`);
-            const targetSession = lastId ? list.find((s) => s.id === Number(lastId)) : list[0];
-
-            if (targetSession) {
-                const msgs = await fetchMessages(targetSession.id);
-                const ui = msgs.length > 0
-                    ? msgs.map((m) => ({ id: m.id || Date.now() + Math.random(), role: m.role, content: m.content, type: m.type || 'text', ...(m.metadata || {}) }))
-                    : INITIAL_MESSAGES;
-                setMessages(ui);
-                setCurrentSessionId(targetSession.id);
-                localStorage.setItem(`ai_last_session_${userID}`, String(targetSession.id));
-                const lastA = msgs.slice().reverse().find((m) => m.metadata?.analysis);
-                if (lastA) setCvAnalysis(lastA.metadata.analysis);
-            } else {
-                setMessages(INITIAL_MESSAGES);
-                setCurrentSessionId(null);
+            // Khôi phục sessions trước
+            if (savedSessions) {
+                try {
+                    const parsedSessions = JSON.parse(savedSessions);
+                    if (parsedSessions && parsedSessions.length > 0) {
+                        setSessions(parsedSessions);
+                    }
+                } catch (e) {
+                    console.error('Failed to parse saved sessions:', e);
+                }
             }
-            setLoadingHistory(false);
+
+            // Khôi phục messages
+            if (savedMessages) {
+                try {
+                    const parsed = JSON.parse(savedMessages);
+                    if (parsed && parsed.length > 0) {
+
+                        isRestoringRef.current = true;
+                        setMessages(parsed);
+                        setInitialLoadDone(true);
+
+                        setTimeout(() => {
+                            isRestoringRef.current = false;
+                        }, 100);
+                        return;
+                    }
+                } catch (e) {
+                    console.error('Failed to parse saved messages:', e);
+                }
+            }
+            setLoadingHistory(true);
+
+            try {
+                const list = await fetchSessions();
+                setSessions(list);
+
+                // Lưu sessions vừa load vào sessionStorage
+                if (list.length > 0) {
+                    sessionStorage.setItem(`ai_sessions_${userID}`, JSON.stringify(list));
+                }
+
+                const lastId = localStorage.getItem(`ai_last_session_${userID}`);
+                const targetSession = lastId ? list.find((s) => s.id === Number(lastId)) : list[0];
+
+                if (targetSession) {
+                    const msgs = await fetchMessages(targetSession.id);
+                    const ui = msgs.length > 0
+                        ? msgs.map((m) => ({ id: m.id || Date.now() + Math.random(), role: m.role, content: m.content, type: m.type || 'text', ...(m.metadata || {}) }))
+                        : INITIAL_MESSAGES;
+                    setMessages(ui);
+                    setCurrentSessionId(targetSession.id);
+                    localStorage.setItem(`ai_last_session_${userID}`, String(targetSession.id));
+                    const lastA = msgs.slice().reverse().find((m) => m.metadata?.analysis);
+                    if (lastA) setCvAnalysis(lastA.metadata.analysis);
+                } else {
+                    setMessages(INITIAL_MESSAGES);
+                    setCurrentSessionId(null);
+                }
+            } catch (err) {
+                console.error('Failed to load from API:', err);
+                setMessages(INITIAL_MESSAGES);
+            } finally {
+                setLoadingHistory(false);
+                setInitialLoadDone(true);
+            }
         };
-        init();
-        // eslint-disable-next-line
+
+        loadMessages();
     }, [userID]);
 
+    // ========== SAVE SESSIONS TO SESSION STORAGE ==========
+    useEffect(() => {
+        if (userID && sessions.length > 0 && !isRestoringRef.current) {
+            sessionStorage.setItem(`ai_sessions_${userID}`, JSON.stringify(sessions));
+        }
+    }, [sessions, userID]);
 
-    /* ── New Chat ── */
+    // ========== SAVE MESSAGES ==========
+    useEffect(() => {
+        // 🔥 Chỉ lưu khi đã load xong và không đang restore
+        if (userID && initialLoadDone && messages.length > 0 && !isRestoringRef.current) {
+            // Không lưu nếu chỉ có welcome message và đã có messages khác
+            const hasRealMessages = messages.some(m => m.type !== 'welcome');
+            if (hasRealMessages) {
+                const messagesToSave = messages.filter(m => m.type !== 'welcome');
+                sessionStorage.setItem(`ai_messages_${userID}`, JSON.stringify(messagesToSave));
+            } else if (messages.length === 1 && messages[0].type === 'welcome') {
+                // Lưu cả welcome nếu là tin nhắn duy nhất
+                sessionStorage.setItem(`ai_messages_${userID}`, JSON.stringify(messages));
+            }
+        }
+    }, [messages, userID, initialLoadDone]);
+
+    // ========== SAVE CV ANALYSIS ==========
+    useEffect(() => {
+        if (userID && cvAnalysis) {
+            sessionStorage.setItem(`ai_cv_analysis_${userID}`, JSON.stringify(cvAnalysis));
+        }
+    }, [cvAnalysis, userID]);
+
+    // ========== NEW CHAT ==========
     const startNewChat = useCallback(async () => {
         const session = await createSession('New Chat');
         if (session) {
@@ -407,10 +703,14 @@ export default function AIAssistantScreen({ onNavigate }) {
         setCvAnalysis(null);
         setUploadedCV(null);
         setInput('');
+        if (userID) {
+            sessionStorage.removeItem(`ai_messages_${userID}`);
+            sessionStorage.removeItem(`ai_sessions_${userID}`);
+            sessionStorage.removeItem(`ai_cv_analysis_${userID}`);
+        }
     }, [userID, createSession]);
 
-
-    /* ── Load old session ── */
+    // ========== LOAD OLD SESSION ==========
     const loadSession = useCallback(async (sessionID) => {
         setLoadingHistory(true);
         const msgs = await fetchMessages(sessionID);
@@ -425,7 +725,7 @@ export default function AIAssistantScreen({ onNavigate }) {
         setLoadingHistory(false);
     }, [userID, fetchMessages]);
 
-    /* ── Send Message ── */
+    // ========== SEND MESSAGE ==========
     const sendMessage = useCallback(
         async (text) => {
             const msgText = text || input.trim();
@@ -434,7 +734,6 @@ export default function AIAssistantScreen({ onNavigate }) {
             setInput('');
             setTyping(true);
 
-            // Ensure session exists
             let sessionId = currentSessionId;
             if (!sessionId) {
                 const session = await createSession(msgText.slice(0, 50) || 'New Chat');
@@ -455,6 +754,7 @@ export default function AIAssistantScreen({ onNavigate }) {
             };
 
             setMessages((prev) => [...prev, userMsg]);
+            saveCurrentMessages();
             if (sessionId) await saveMessageToHistory(sessionId, userMsg);
 
             try {
@@ -476,24 +776,49 @@ export default function AIAssistantScreen({ onNavigate }) {
 
                 const data = await response.json();
 
-                let responseText = '';
-                if (data.response) responseText = data.response;
-                else if (data.message) responseText = data.message;
-                else if (data.content) responseText = data.content;
-                else responseText = JSON.stringify(data);
+                if (data.type === 'job_list' && data.jobs && Array.isArray(data.jobs) && data.jobs.length > 0) {
+                    const assistantMsg = {
+                        id: userMsgId + 1,
+                        role: 'assistant',
+                        content: data.content ?? '',
+                        type: 'job_list',
+                        jobs: data.jobs,
+                        cached: data.cached || false,
+                    };
+                    setMessages((prev) => [...prev, assistantMsg]);
+                    if (sessionId) await saveMessageToHistory(sessionId, assistantMsg);
+                }
+                else if (data.type === 'cv_analysis_complete' && data.job_matches && Array.isArray(data.job_matches)) {
+                    const assistantMsg = {
+                        id: userMsgId + 1,
+                        role: 'assistant',
+                        content: data.message || data.content || `Phân tích CV: Tìm thấy ${data.job_matches.length} việc làm phù hợp`,
+                        type: 'cv_analysis',
+                        analysis: data.analysis,
+                        jobMatches: data.job_matches,
+                        cached: data.cached || false,
+                    };
+                    setMessages((prev) => [...prev, assistantMsg]);
+                    if (sessionId) await saveMessageToHistory(sessionId, assistantMsg);
+                }
+                else {
+                    let responseText = '';
+                    if (data.response) responseText = data.response;
+                    else if (data.message) responseText = data.message;
+                    else if (data.content) responseText = data.content;
+                    else responseText = JSON.stringify(data);
 
-                const assistantMsg = {
-                    id: userMsgId + 1,
-                    role: 'assistant',
-                    content: responseText,
-                    type: 'text',
-                    cached: data.cached || false,
-                };
+                    const assistantMsg = {
+                        id: userMsgId + 1,
+                        role: 'assistant',
+                        content: responseText,
+                        type: data.type === 'error' ? 'error' : 'text',
+                        cached: data.cached || false,
+                    };
+                    setMessages((prev) => [...prev, assistantMsg]);
+                    if (sessionId) await saveMessageToHistory(sessionId, assistantMsg);
+                }
 
-                setMessages((prev) => [...prev, assistantMsg]);
-                if (sessionId) await saveMessageToHistory(sessionId, assistantMsg);
-
-                // Update session title if first real message
                 const realMsgCount = messages.filter((m) => m.type !== 'welcome').length;
                 if (realMsgCount === 0 && sessionId) {
                     setSessions((prev) =>
@@ -519,7 +844,7 @@ export default function AIAssistantScreen({ onNavigate }) {
         [input, typing, userID, currentSessionId, messages, createSession, saveMessageToHistory]
     );
 
-    /* ── Upload CV ── */
+    // ========== UPLOAD CV ==========
     const handleFileUpload = useCallback(
         async (file) => {
             if (!file) return;
@@ -557,7 +882,6 @@ export default function AIAssistantScreen({ onNavigate }) {
                 return;
             }
 
-            // Ensure session
             let sessionId = currentSessionId;
             if (!sessionId) {
                 const session = await createSession('Phân tích CV');
@@ -617,7 +941,6 @@ export default function AIAssistantScreen({ onNavigate }) {
 
                 if (data.analysis) setCvAnalysis(data.analysis);
 
-                // Build display message
                 let displayMessage = data.message || '';
                 if (data.analysis) {
                     const a = data.analysis;
@@ -688,15 +1011,25 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
         fileInputRef.current?.click();
     };
 
+    // ✅ MỚI
     const handleJobClick = useCallback((job) => {
-        // Tạo message để focus vào job
+        saveCurrentMessages();
+        if (job.is_company_card) {
+            if (job.company_id) {
+                navigate(`/companies/${job.company_id}`);
+            } else {
+                // fallback nếu chưa có company_id: tìm theo tên
+                navigate(`/jobs?company=${encodeURIComponent(job.company)}`);
+            }
+            return;
+        }
+        // Job thường: điền vào input như cũ
         const focusMessage = `Cho tôi biết thêm về job "${job.job_title}" tại ${job.company}`;
         setInput(focusMessage);
         inputRef.current?.focus();
-    }, []);
+    }, [saveCurrentMessages, navigate]);
 
-
-    /* ── Rename Session ── */
+    // ========== RENAME SESSION ==========
     const renameSession = useCallback(async (sessionId, newTitle) => {
         if (!newTitle || !newTitle.trim()) return;
 
@@ -714,13 +1047,11 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
 
             if (!response.ok) throw new Error('Rename failed');
 
-            // Cập nhật local state
             setSessions(prev => prev.map(session =>
                 session.id === sessionId
                     ? { ...session, title: newTitle.trim() }
                     : session
             ));
-
         } catch (err) {
             console.error('Rename session error:', err);
         } finally {
@@ -730,7 +1061,7 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
         }
     }, []);
 
-    /* ── Pin Session ── */
+    // ========== PIN SESSION ==========
     const pinSession = useCallback(async (sessionId, isPinned) => {
         try {
             const response = await fetchWithTimeout(`${API_BASE_URL}/chat-history/pin-session/${sessionId}`, {
@@ -745,34 +1076,29 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
 
             if (!response.ok) throw new Error('Pin failed');
 
-            // Cập nhật local state
             setSessions(prev => {
                 const updated = prev.map(session =>
                     session.id === sessionId
                         ? { ...session, isPinned: !isPinned }
                         : session
                 );
-                // Sắp xếp: pinned lên đầu, sau đó theo updatedAt
                 return updated.sort((a, b) => {
                     if (a.isPinned && !b.isPinned) return -1;
                     if (!a.isPinned && b.isPinned) return 1;
                     return new Date(b.updatedAt) - new Date(a.updatedAt);
                 });
             });
-
         } catch (err) {
             console.error('Pin session error:', err);
         }
     }, []);
 
-    /* ── Start Rename ── */
     const startRename = (session, e) => {
         e.stopPropagation();
         setEditingSessionId(session.id);
         setEditTitle(session.title || 'New Chat');
     };
 
-    /* ── Handle Rename Key Press ── */
     const handleRenameKeyPress = (e, sessionId) => {
         if (e.key === 'Enter') {
             renameSession(sessionId, editTitle);
@@ -782,7 +1108,6 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
         }
     };
 
-    /* ── Render History Item ── */
     const renderHistoryItem = (session) => {
         const isEditing = editingSessionId === session.id;
 
@@ -828,7 +1153,6 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                     >
                         {session.isPinned ? '📌' : '📍'}
                     </button>
-
                     <button
                         className="ai-history-rename"
                         onClick={(e) => startRename(session, e)}
@@ -836,7 +1160,6 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                     >
                         ✏️
                     </button>
-
                     <button
                         className="ai-history-delete"
                         onClick={(e) => {
@@ -852,17 +1175,25 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
         );
     };
 
-    // Sắp xếp sessions: pinned lên đầu
     const sortedSessions = [...sessions].sort((a, b) => {
         if (a.isPinned && !b.isPinned) return -1;
         if (!a.isPinned && b.isPinned) return 1;
         return new Date(b.updatedAt) - new Date(a.updatedAt);
     });
 
-    /* ── Render ── */
+    useEffect(() => {
+        fetchProfile();
+    }, [fetchProfile]);
+
+    useEffect(() => {
+        if (profile) {
+            const newPrompts = generateQuickPrompts(profile);
+            setQuickPrompts(newPrompts);
+        }
+    }, [profile]);
+
     return (
         <div className="ai-page">
-            {/* Header */}
             <div className="ai-header">
                 <div className="ai-header-inner">
                     <div className="ai-header-brand">
@@ -894,7 +1225,6 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
             </div>
 
             <div className="ai-layout">
-                {/* ── History Sidebar ── */}
                 {showHistory && (
                     <aside className="ai-history-panel">
                         <div className="ai-history-header">
@@ -914,7 +1244,6 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                     </aside>
                 )}
 
-                {/* ── Chat Area ── */}
                 <div className="ai-chat-area">
                     <div className="ai-messages">
                         {messages.map((msg) => (
@@ -928,7 +1257,6 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                                     </div>
                                 )}
                                 <div className={`ai-bubble${msg.role === 'user' ? ' user' : ''}`}>
-                                    {/* Welcome */}
                                     {msg.type === 'welcome' && (
                                         <div className="ai-welcome">
                                             <div className="ai-welcome-wave">👋</div>
@@ -938,28 +1266,16 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                                                     : 'Xin chào!'}
                                             </div>
                                             <div className="ai-welcome-sub">
-                                                Tôi là <strong>GZCONNECT AI</strong> — trợ lý tìm việc
-                                                thông minh.
+                                                Tôi là <strong>GZCONNECT AI</strong> — trợ lý tìm việc thông minh.
                                                 {cvAnalysis && (
                                                     <div style={{ marginTop: 8 }}>
-                                                        CV của bạn:{' '}
-                                                        <strong>{cvAnalysis.format_score}/10</strong>{' '}
-                                                        · Cấp bậc:{" "}
-                                                        <strong>{cvAnalysis.suitable_level}</strong>{' '}
-                                                        · Kinh nghiệm:{" "}
-                                                        <strong>
-                                                            {cvAnalysis.experience_years} năm
-                                                        </strong>
+                                                        CV của bạn: <strong>{cvAnalysis.format_score}/10</strong> · Cấp bậc: <strong>{cvAnalysis.suitable_level}</strong> · Kinh nghiệm: <strong>{cvAnalysis.experience_years} năm</strong>
                                                     </div>
                                                 )}
                                             </div>
                                             <div className="ai-welcome-chips">
-                                                {QUICK_PROMPTS.map((p) => (
-                                                    <button
-                                                        key={p}
-                                                        className="ai-welcome-chip"
-                                                        onClick={() => send(p)}
-                                                    >
+                                                {quickPrompts.map((p) => (
+                                                    <button key={p} className="ai-welcome-chip" onClick={() => send(p)}>
                                                         {p}
                                                     </button>
                                                 ))}
@@ -967,18 +1283,14 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                                         </div>
                                     )}
 
-                                    {/* Text / Error */}
                                     {(msg.type === 'text' || msg.type === 'error') && msg.content && (
                                         <>
                                             <MdText text={msg.content} />
                                             {msg.streaming && <span className="ai-cursor">▊</span>}
-                                            {msg.cached && (
-                                                <span className="ai-cached-badge">⚡ Cached</span>
-                                            )}
+                                            {msg.cached && <span className="ai-cached-badge">⚡ Cached</span>}
                                         </>
                                     )}
 
-                                    {/* CV Upload (user) */}
                                     {msg.type === 'cv_upload' && (
                                         <CVAttachment
                                             fileName={msg.fileName}
@@ -988,39 +1300,22 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                                         />
                                     )}
 
-                                    {/* CV Analysis (assistant) */}
                                     {msg.type === 'cv_analysis' && (
                                         <>
                                             {msg.content && <MdText text={msg.content} />}
                                             {msg.analysis && (
                                                 <div className="ai-analysis-summary">
                                                     <div className="ai-analysis-score">
-                                                        <span>
-                                                            Điểm CV:{" "}
-                                                            <strong>
-                                                                {msg.analysis.format_score}/10
-                                                            </strong>
-                                                        </span>
-                                                        <span>
-                                                            Cấp bậc:{" "}
-                                                            <strong>
-                                                                {msg.analysis.suitable_level}
-                                                            </strong>
-                                                        </span>
-                                                        <span>
-                                                            Kinh nghiệm:{" "}
-                                                            <strong>
-                                                                {msg.analysis.experience_years} năm
-                                                            </strong>
-                                                        </span>
+                                                        <span>Điểm CV: <strong>{msg.analysis.format_score}/10</strong></span>
+                                                        <span>Cấp bậc: <strong>{msg.analysis.suitable_level}</strong></span>
+                                                        <span>Kinh nghiệm: <strong>{msg.analysis.experience_years} năm</strong></span>
                                                     </div>
                                                 </div>
                                             )}
-
                                             {msg.jobMatches?.length > 0 && (
                                                 <div className="ai-jobs-section">
                                                     <div className="ai-jobs-title">
-                                                        🎯 {msg.jobMatches.length} việc làm phù hợp (điểm {">"}50%)
+                                                        🎯 {msg.jobMatches.length} việc làm phù hợp (điểm &gt;50%)
                                                     </div>
                                                     <div className="ai-jobs-list">
                                                         {msg.jobMatches
@@ -1038,7 +1333,34 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                                         </>
                                     )}
 
-                                    {/* Jobs list (legacy) */}
+                                    {msg.type === 'job_list' && (
+                                        msg.jobs && msg.jobs.length > 0 ? (
+                                            <div className="ai-jobs-section">
+                                                {msg.content && msg.jobs.some(item => item.is_company_card) && (
+                                                    <MdText text={msg.content} />
+                                                )}
+                                                <div className="ai-jobs-title">
+                                                    {msg.jobs.every(item => item.is_company_card)
+                                                        ? `🏢 ${msg.jobs.length} công ty có mức lương cao nhất`
+                                                        : `💼 ${msg.jobs.length} công việc phù hợp`
+                                                    }
+                                                </div>
+                                                <div className="ai-jobs-list">
+                                                    {msg.jobs.map((item, idx) =>
+                                                        item.is_company_card
+                                                            ? <CompanyCard key={`${item.job_id}-${idx}`} company={item} onSelect={handleJobClick} />
+                                                            : <JobMatchCard key={`${item.job_id}-${idx}`} job={item} onSelect={handleJobClick} />
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            // jobs rỗng — không có job nào >= 50%
+                                            <div className="ai-bubble-text">
+                                                🔍 Không tìm thấy công việc phù hợp (độ phù hợp &lt; 50%). Hãy thử từ khóa khác hoặc cập nhật CV để tăng độ phù hợp.
+                                            </div>
+                                        )
+                                    )}
+
                                     {msg.type === 'jobs' && (
                                         <>
                                             {msg.content && <MdText text={msg.content} />}
@@ -1067,9 +1389,7 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                                 </div>
                                 <div className="ai-bubble">
                                     <div className="ai-typing">
-                                        <span />
-                                        <span />
-                                        <span />
+                                        <span /><span /><span />
                                     </div>
                                 </div>
                             </div>
@@ -1078,7 +1398,7 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                     </div>
 
                     <div className="ai-quick-bar">
-                        {QUICK_PROMPTS.slice(0, 4).map((p) => (
+                        {quickPrompts.slice(0, 4).map((p) => (
                             <button key={p} className="ai-quick-chip" onClick={() => send(p)}>
                                 {p}
                             </button>
@@ -1106,8 +1426,7 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                                     📎
                                 </button>
                                 <button
-                                    className={`ai-send-btn${input.trim() && !typing ? ' active' : ''
-                                        }`}
+                                    className={`ai-send-btn${input.trim() && !typing ? ' active' : ''}`}
                                     onClick={() => send()}
                                     disabled={!input.trim() || typing}
                                 >
@@ -1125,39 +1444,24 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                 {previewFile && (
                     <div className="cv-modal-overlay" onClick={() => setPreviewFile(null)}>
                         <div className="cv-modal" onClick={(e) => e.stopPropagation()}>
-
-                            {/* Header */}
                             <div className="cv-modal-header">
                                 <div className="cv-modal-title">{previewFile.name}</div>
-                                <button
-                                    className="cv-modal-close"
-                                    onClick={() => setPreviewFile(null)}
-                                >
-                                    ✕
-                                </button>
+                                <button className="cv-modal-close" onClick={() => setPreviewFile(null)}>✕</button>
                             </div>
-
-                            {/* Content */}
                             <div className="cv-modal-body">
-                                {/* PDF / file preview */}
                                 {previewFile.url ? (
-
                                     <embed
                                         src={previewFile.url}
                                         type="application/pdf"
                                         className="cv-preview-frame"
                                         title="CV Preview"
-
                                         width="100%"
                                         height="100%"
                                     />
                                 ) : (
-                                    <pre className="cv-preview-text">
-                                        Loading...
-                                    </pre>
+                                    <pre className="cv-preview-text">Loading...</pre>
                                 )}
                             </div>
-
                         </div>
                     </div>
                 )}

@@ -40,7 +40,6 @@ export class SettingService {
 
         // 🔥 CASE 2: tài khoản thường → cần oldPassword
         if (account.provider !== 'google' || (account.provider === 'google' && account.password)) {
-            // account thường → bắt buộc oldPassword
             if (!oldPassword) {
                 throw new BadRequestException('Vui lòng nhập mật khẩu cũ');
             }
@@ -48,7 +47,7 @@ export class SettingService {
             const isMatch = await bcrypt.compare(oldPassword, account.password);
 
             if (!isMatch) {
-                throw new UnauthorizedException('Mật khẩu cũ không đúng');
+                throw  new BadRequestException('Mật khẩu cũ không đúng');
             }
         }
 

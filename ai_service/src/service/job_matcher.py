@@ -168,6 +168,7 @@ class JobMatcher:
         
         # 2. EXPERIENCE SCORE (25%)
         exp_score = 0.5
+        req_exp = 0  # 🔥 KHỞI TẠO GIÁ TRỊ MẶC ĐỊNH
         exp_str = job.get('experience_year', '')
         if exp_str:
             numbers = re.findall(r'\d+', exp_str)
@@ -200,14 +201,16 @@ class JobMatcher:
         else:
             level_score = 0.5
         
-        # Final score - KHÔNG LÀM TRÒN CỐ ĐỊNH
+        # Final score
         final_score = (skill_score * 0.6) + (exp_score * 0.25) + (level_score * 0.15)
         final_percent = int(final_score * 100)
         
-        # Log chi tiết
+        # Log chi tiết - cần kiểm tra req_exp có tồn tại không
+        req_exp_display = req_exp if 'req_exp' in locals() else 'N/A'  # 🔥 TRÁNH LỖI
+        
         logger.info(f"Job: {job.get('title', '')[:30]}")
         logger.info(f"  Skill: {int(skill_score*100)}% (overlap: {len(overlap)}/{len(job_skills) if job_skills else 0})")
-        logger.info(f"  Exp: {int(exp_score*100)}% (cv={cv_experience}, req={req_exp if exp_str else 'N/A'})")
+        logger.info(f"  Exp: {int(exp_score*100)}% (cv={cv_experience}, req={req_exp_display})")
         logger.info(f"  Level: {int(level_score*100)}% (cv={cv_level}, job={job_title_lower[:30]})")
         logger.info(f"  Total: {final_percent}%")
         

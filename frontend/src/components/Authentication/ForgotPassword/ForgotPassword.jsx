@@ -173,7 +173,7 @@ export default function ForgotPassword({ onGoLogin }) {
 
 
           {step < 4 && (
-            <button className="fp-back" onClick={step === 1 ? onGoLogin : () => setStep(s => s - 1)}>
+            <button className="fp-back" onClick={step === 1 ? () => navigate("/login") : () => setStep(s => s - 1)}>
               <IconArrowLeft /> {step === 1 ? 'Về đăng nhập' : 'Quay lại'}
             </button>
           )}
@@ -312,7 +312,7 @@ export default function ForgotPassword({ onGoLogin }) {
               <div className="fp-success-ico">🔐</div>
               <h3>Đặt lại thành công!</h3>
               <p>Mật khẩu của bạn đã được cập nhật. Hãy đăng nhập với mật khẩu mới.</p>
-              <button className="fp-submit fp-submit-auto" onClick={onGoLogin}>
+              <button className="fp-submit fp-submit-auto" onClick = {() => navigate('/login')}>
                 Đăng nhập ngay →
               </button>
             </div>

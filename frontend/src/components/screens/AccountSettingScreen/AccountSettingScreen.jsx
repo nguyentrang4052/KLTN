@@ -42,6 +42,9 @@ export default function AccountSettingsScreen({ onNavigate }) {
             setOldPassword('');
             setNewPassword('');
             setConfirmPassword('');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
         } catch (err) {
             console.error(err);
             setError(err.response?.data?.message || 'Đã xảy ra lỗi');
@@ -91,33 +94,6 @@ export default function AccountSettingsScreen({ onNavigate }) {
                                 </button>
                             </div>
                         </div>
-
-                        {/* <div className="as-card">
-                            <div className="as-card-title">Đăng nhập bằng mạng xã hội</div>
-                            {[['🔵', 'Google', 'tranvana@gmail.com', true], ['🔷', 'Facebook', '—', false], ['🔗', 'LinkedIn', '—', false]].map(([ico, name, acc, linked]) => (
-                                <div key={name} className="as-social-row">
-                                    <span className="as-social-ico">{ico}</span>
-                                    <div className="as-social-info">
-                                        <div className="as-social-name">{name}</div>
-                                        <div className="as-social-acc">{acc}</div>
-                                    </div>
-                                    <button className={`as-social-btn${linked ? ' linked' : ''}`}>
-                                        {linked ? 'Đã kết nối · Ngắt' : 'Kết nối'}
-                                    </button>
-                                </div>
-                            ))}
-                        </div> */}
-
-                        {/* <div className="as-card">
-                            <div className="as-card-title">Xác thực 2 bước (2FA)</div>
-                            <div className="as-2fa-row">
-                                <div>
-                                    <div className="as-2fa-label">Bảo vệ tài khoản bằng OTP</div>
-                                    <div className="as-2fa-sub">Gửi mã qua SMS hoặc app Authenticator khi đăng nhập.</div>
-                                </div>
-                                <button className="as-save-btn sm">Bật 2FA</button>
-                            </div>
-                        </div> */}
                     </div>
                 </main>
             </div>

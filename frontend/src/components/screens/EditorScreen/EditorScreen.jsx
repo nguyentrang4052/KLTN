@@ -497,6 +497,113 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
     const [assistSuggestions, setAssistSuggestions] = useState(null);
     const [isAssisting, setIsAssisting] = useState(false);
     const [activeSection, setActiveSection] = useState(null); // null = tổng thể
+    const [selectedSuggestions, setSelectedSuggestions] = useState({});
+
+
+    const getSelectableSuggestionItems = (suggestions) => {
+        const items = [];
+        if (suggestions.summary) {
+            items.push({ path: 'summary', label: '📝 Mục tiêu nghề nghiệp (Summary)', value: suggestions.summary, type: 'summary' });
+        }
+        if (suggestions.skills && Array.isArray(suggestions.skills)) {
+            suggestions.skills.forEach((skill, idx) => {
+                items.push({ path: `skills.${idx}`, label: `🔧 Kỹ năng: ${skill.category || 'General'}`, value: skill, type: 'skills', index: idx });
+            });
+        }
+        if (suggestions.experiences && Array.isArray(suggestions.experiences)) {
+            suggestions.experiences.forEach((exp, idx) => {
+                items.push({ path: `experiences.${idx}`, label: `💼 Kinh nghiệm: ${exp.position} tại ${exp.company}`, value: exp, type: 'experiences', index: idx });
+            });
+        }
+        if (suggestions.education && Array.isArray(suggestions.education)) {
+            suggestions.education.forEach((edu, idx) => {
+                items.push({ path: `education.${idx}`, label: `🎓 Học vấn: ${edu.degree} tại ${edu.institution}`, value: edu, type: 'education', index: idx });
+            });
+        }
+        if (suggestions.certifications && Array.isArray(suggestions.certifications)) {
+            suggestions.certifications.forEach((cert, idx) => {
+                items.push({ path: `certifications.${idx}`, label: `📜 Chứng chỉ: ${cert.name}`, value: cert, type: 'certifications', index: idx });
+            });
+        }
+        if (suggestions.awards && Array.isArray(suggestions.awards)) {
+            suggestions.awards.forEach((award, idx) => {
+                items.push({ path: `awards.${idx}`, label: `🏆 Giải thưởng: ${award.title}`, value: award, type: 'awards', index: idx });
+            });
+        }
+        if (suggestions.activities && Array.isArray(suggestions.activities)) {
+            suggestions.activities.forEach((act, idx) => {
+                items.push({ path: `activities.${idx}`, label: `🌟 Hoạt động: ${act.role} tại ${act.organization}`, value: act, type: 'activities', index: idx });
+            });
+        }
+        return items;
+    };
+
+
+    useEffect(() => {
+        if (assistSuggestions) {
+            const items = getSelectableSuggestionItems(assistSuggestions);
+            const initialSelected = {};
+            items.forEach(item => { initialSelected[item.path] = true; });
+            setSelectedSuggestions(initialSelected);
+        }
+    }, [assistSuggestions]);
+
+
+    const applySelectedSuggestions = () => {
+        if (!assistSuggestions) return;
+        const items = getSelectableSuggestionItems(assistSuggestions);
+        const newData = JSON.parse(JSON.stringify(data));
+        let hasChanges = false;
+
+        items.forEach(item => {
+            if (selectedSuggestions[item.path]) {
+                switch (item.type) {
+                    case 'summary':
+                        newData.summary = item.value;
+                        hasChanges = true;
+                        break;
+                    case 'skills':
+                        if (!newData.skills) newData.skills = [];
+                        newData.skills[item.index] = item.value;
+                        hasChanges = true;
+                        break;
+                    case 'experiences':
+                        if (!newData.experiences) newData.experiences = [];
+                        newData.experiences[item.index] = item.value;
+                        hasChanges = true;
+                        break;
+                    case 'education':
+                        if (!newData.education) newData.education = [];
+                        newData.education[item.index] = item.value;
+                        hasChanges = true;
+                        break;
+                    case 'certifications':
+                        if (!newData.certifications) newData.certifications = [];
+                        newData.certifications[item.index] = item.value;
+                        hasChanges = true;
+                        break;
+                    case 'awards':
+                        if (!newData.awards) newData.awards = [];
+                        newData.awards[item.index] = item.value;
+                        hasChanges = true;
+                        break;
+                    case 'activities':
+                        if (!newData.activities) newData.activities = [];
+                        newData.activities[item.index] = item.value;
+                        hasChanges = true;
+                        break;
+                    default:
+                        break;
+                }
+            }
+        });
+
+        if (hasChanges) {
+            setData(newData);
+        }
+        setAssistModalOpen(false);
+    };
+
 
     // ---------- Effect xử lý reset (giữ nguyên) ----------
     useEffect(() => {
@@ -1065,6 +1172,7 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
                     <div style={{
                         background: "white", padding: 24, borderRadius: 12, maxWidth: 600, width: "90%", maxHeight: "80vh", overflow: "auto"
                     }}>
+
                         <h3 style={{ marginBottom: 12 }}>✨ AI chỉnh sửa CV</h3>
                         {activeSection && (
                             <p style={{ marginBottom: 12, color: "#6b21a5" }}>
@@ -1094,52 +1202,47 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
                         >
                             {isAssisting ? "Đang suy nghĩ..." : "Gợi ý"}
                         </button>
+                        <button onClick={() => setAssistModalOpen(false)} style={{ padding: "8px 16px", background: "#6b7280", color: "white", border: "none", borderRadius: 4, cursor: "pointer", marginLeft: "10px" }}>
+                            ❌ Đóng
+                        </button>
 
                         {assistSuggestions && (
                             <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 16 }}>
-                                <h4 style={{ marginBottom: 12 }}>✨ Đề xuất</h4>
-                                {assistSuggestions.summary && (
-                                    <div style={{ marginBottom: 12 }}>
-                                        <strong>Summary:</strong>
-                                        <p style={{ marginTop: 4, background: "#f9fafb", padding: 8, borderRadius: 6 }}>{assistSuggestions.summary}</p>
-                                    </div>
-                                )}
-                                {assistSuggestions.skills && (
-                                    <div style={{ marginBottom: 12 }}>
-                                        <strong>Skills:</strong>
-                                        <pre style={{ background: "#f9fafb", padding: 8, borderRadius: 6, fontSize: 12, overflow: "auto" }}>
-                                            {JSON.stringify(assistSuggestions.skills, null, 2)}
-                                        </pre>
-                                    </div>
-                                )}
-                                {assistSuggestions.experiences && (
-                                    <div style={{ marginBottom: 12 }}>
-                                        <strong>Experiences (cải tiến):</strong>
-                                        <pre style={{ background: "#f9fafb", padding: 8, borderRadius: 6, fontSize: 12, overflow: "auto" }}>
-                                            {JSON.stringify(assistSuggestions.experiences, null, 2)}
-                                        </pre>
-                                    </div>
-                                )}
+                                <h4 style={{ marginBottom: 12 }}>✨ Chọn các đề xuất muốn áp dụng</h4>
+                                <div style={{ maxHeight: 300, overflowY: 'auto', marginBottom: 16 }}>
+                                    {getSelectableSuggestionItems(assistSuggestions).map(item => (
+                                        <label key={item.path} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 12, fontSize: 13 }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={!!selectedSuggestions[item.path]}
+                                                onChange={(e) => setSelectedSuggestions(prev => ({ ...prev, [item.path]: e.target.checked }))}
+                                                style={{ marginTop: 2 }}
+                                            />
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ fontWeight: 500 }}>{item.label}</div>
+                                                <div style={{ background: '#f3f4f6', padding: 6, borderRadius: 4, marginTop: 4, fontSize: 12, whiteSpace: 'pre-wrap' }}>
+                                                    {typeof item.value === 'string' ? item.value : JSON.stringify(item.value, null, 2)}
+                                                </div>
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
+                                {/* Lời khuyên bổ sung - không có checkbox */}
                                 {assistSuggestions.suggestions && (
-                                    <div style={{ marginBottom: 12 }}>
+                                    <div style={{ marginBottom: 16, background: '#fef3c7', padding: 10, borderRadius: 6 }}>
                                         <strong>💡 Lời khuyên thêm:</strong>
-                                        <p style={{ marginTop: 4, background: "#fef3c7", padding: 8, borderRadius: 6 }}>{assistSuggestions.suggestions}</p>
+                                        <p style={{ marginTop: 6, fontSize: 13 }}>{assistSuggestions.suggestions}</p>
                                     </div>
                                 )}
-                                <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
-                                    <button onClick={applySuggestions} style={{ padding: "8px 16px", background: "#16a34a", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }}>
-                                        ✅ Thêm vào CV
+                                <div style={{ display: "flex", gap: 12 }}>
+                                    <button onClick={applySelectedSuggestions} style={{ padding: "8px 16px", background: "#16a34a", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }}>
+                                        ✅ Áp dụng mục đã chọn
                                     </button>
                                     <button onClick={() => setAssistModalOpen(false)} style={{ padding: "8px 16px", background: "#6b7280", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }}>
-                                        ❌ Bỏ qua
+                                        ❌ Đóng
                                     </button>
                                 </div>
                             </div>
-                        )}
-                        {!assistSuggestions && (
-                            <button onClick={() => setAssistModalOpen(false)} style={{ marginTop: 16, padding: "6px 12px", background: "#e5e7eb", border: "none", borderRadius: 6, cursor: "pointer" }}>
-                                Đóng
-                            </button>
                         )}
                     </div>
                 </div>
