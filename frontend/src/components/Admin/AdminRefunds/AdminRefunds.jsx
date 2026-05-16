@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo } from 'react'
 import { adminFetch } from '../../../utils/auth'
 import './AdminRefunds.css'
 
-const STATUS_LABEL = { pending: 'Chờ xử lý', approved: 'Đã duyệt', rejected: 'Từ chối' }
-const STATUS_COLOR = { pending: '#B07A10', approved: '#2E6040', rejected: '#C0412A' }
+const STATUS_LABEL = { pending: 'Chờ xử lý', approved: 'Đã duyệt' }
+const STATUS_COLOR = { pending: '#B07A10', approved: '#2E6040' }
 const PAGE_SIZE = 8
 
 function Pager({ page, total, onChange }) {
@@ -110,7 +110,7 @@ export default function AdminRefunds() {
                         value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} />
                 </div>
                 <div className="adm-filter-group">
-                    {['all', 'pending', 'approved', 'rejected'].map(s => (
+                    {['all', 'pending', 'approved'].map(s => (
                         <button key={s}
                             className={`adm-filter-btn${filter === s ? ' active' : ''}`}
                             onClick={() => { setFilter(s); setPage(1) }}>
@@ -179,8 +179,6 @@ export default function AdminRefunds() {
                                         <div className="adm-users__actions">
                                             <button className="adm-act-btn adm-act-btn--unlock"
                                                 onClick={() => openResolve(r, 'approved')}>Duyệt</button>
-                                            <button className="adm-act-btn adm-act-btn--lock"
-                                                onClick={() => openResolve(r, 'rejected')}>Từ chối</button>
                                         </div>
                                     ) : (
                                         <span className="adm-table__muted" style={{ fontSize: 11 }}>{r.resolvedAt ?? '—'}</span>
@@ -263,10 +261,6 @@ export default function AdminRefunds() {
                             <button className="adm-modal__close-btn" onClick={() => setModal(null)}>Đóng</button>
                             {modal.req.status === 'pending' && (
                                 <>
-                                    <button className="adm-modal__action-btn lock"
-                                        onClick={() => { setModal(null); setTimeout(() => openResolve(modal.req, 'rejected'), 50) }}>
-                                        ❌ Từ chối
-                                    </button>
                                     <button className="adm-modal__action-btn unlock"
                                         onClick={() => { setModal(null); setTimeout(() => openResolve(modal.req, 'approved'), 50) }}>
                                         ✅ Duyệt
@@ -282,7 +276,7 @@ export default function AdminRefunds() {
                 <div className="adm-modal-overlay" onClick={() => setModal(null)}>
                     <div className="adm-modal adm-modal--sm" onClick={e => e.stopPropagation()}>
                         <div className="adm-modal__head">
-                            <h3>{modal.action === 'approved' ? '✅ Duyệt hoàn tiền' : '❌ Từ chối hoàn tiền'}</h3>
+                            <h3>✅ Duyệt hoàn tiền</h3>
                             <button onClick={() => setModal(null)}>✕</button>
                         </div>
                         <div className="adm-modal__body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -296,18 +290,14 @@ export default function AdminRefunds() {
                                 <div><span>Chủ TK</span><strong>{modal.req.accountName}</strong></div>
                             </div>
 
-                            {modal.action === 'approved' && (
-                                <div className="adm-refunds__note-warn">
-                                    💡 Vui lòng chuyển khoản thủ công trước khi duyệt.
-                                </div>
-                            )}
+                            <div className="adm-refunds__note-warn">
+                                💡 Vui lòng chuyển khoản thủ công trước khi duyệt.
+                            </div>
 
                             <div className="adm-form-field">
-                                <label>Ghi chú {modal.action === 'rejected' && <span style={{ color: '#C0412A' }}>*</span>}</label>
+                                <label>Ghi chú </label>
                                 <textarea className="adm-form-input" rows={3}
-                                    placeholder={modal.action === 'approved'
-                                        ? 'VD: Đã chuyển khoản lúc 10:30 ngày...'
-                                        : 'Lý do từ chối...'}
+                                    placeholder="VD: Đã chuyển khoản lúc 10:30 ngày..."
                                     value={note}
                                     onChange={e => setNote(e.target.value)}
                                     style={{ resize: 'vertical' }}
@@ -317,11 +307,10 @@ export default function AdminRefunds() {
                         <div className="adm-modal__foot">
                             <button className="adm-modal__close-btn" onClick={() => setModal(null)}>Hủy</button>
                             <button
-                                className={`adm-modal__action-btn ${modal.action === 'approved' ? 'unlock' : 'lock'}`}
+                                className="adm-modal__action-btn unlock"
                                 onClick={handleResolve}
-                                disabled={resolving || (modal.action === 'rejected' && !note.trim())}>
-                                {resolving ? '⏳ Đang xử lý...'
-                                    : modal.action === 'approved' ? '✅ Xác nhận duyệt' : '❌ Xác nhận từ chối'}
+                                disabled={resolving}>
+                                {resolving ? '⏳ Đang xử lý...' : '✅ Xác nhận duyệt'}
                             </button>
                         </div>
                     </div>

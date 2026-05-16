@@ -1,0 +1,1138 @@
+[
+  {
+    "name": "cto_bundle",
+    "value": "_0SIu18xJTJGckVnVG9qeERHTnRJWU5kNHRQdzltUmVqUiUyQmNNOFMlMkJpeDl2Z1VKenVuJTJGRGU1NzliamNxVTRyUmRqdmVtTTVOaENLWnhmQlRVS3A5MG14aGk1NHRqUWo0azNZQmxFcVdCc2klMkJabXJBazlBWnZ2VzRLcEJjU0NEeXN4NkglMkJQdGdERnUlMkZsNnY0S25xbWxoSmJtbXg1dyUzRCUzRA",
+    "domain": ".criteo.com",
+    "path": "/dis/rtb/google",
+    "expires": 1812515755.026864,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None",
+    "partitionKey": "https://careerviet.vn",
+    "_crHasCrossSiteAncestor": true
+  },
+  {
+    "name": "NEXT_LOCALE",
+    "value": "vi",
+    "domain": "careerviet.vn",
+    "path": "/",
+    "expires": -1,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_gcl_au",
+    "value": "1.1.1854920477.1778818864",
+    "domain": ".careerviet.vn",
+    "path": "/",
+    "expires": 1786594864,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "g",
+    "value": "duRwW9c3rvh51PMiQiHa_1778818863344",
+    "domain": ".creativecdn.com",
+    "path": "/",
+    "expires": 1810354863.77142,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "c",
+    "value": "duRwW9c3rvh51PMiQiHa_38enoA6zVN7yUo0oREXl_1778818863344",
+    "domain": ".creativecdn.com",
+    "path": "/",
+    "expires": 1810354863.771666,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None",
+    "partitionKey": "https://careerviet.vn",
+    "_crHasCrossSiteAncestor": true
+  },
+  {
+    "name": "ts",
+    "value": "1778818863",
+    "domain": ".creativecdn.com",
+    "path": "/",
+    "expires": 1810354863.772964,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None",
+    "partitionKey": "https://careerviet.vn",
+    "_crHasCrossSiteAncestor": true
+  },
+  {
+    "name": "_pk_id.1.04ff",
+    "value": "95c6e0984ee71e53.1778818864.",
+    "domain": "careerviet.vn",
+    "path": "/",
+    "expires": 1812774064,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_gid",
+    "value": "GA1.2.1920599503.1778818864",
+    "domain": ".careerviet.vn",
+    "path": "/",
+    "expires": 1778923129,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_fbp",
+    "value": "fb.1.1778818864670.273878883390183136",
+    "domain": ".careerviet.vn",
+    "path": "/",
+    "expires": 1786612730,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "unbxd.netcoreId",
+    "value": "ImViMDQ1ZDc4ZDI3MzEwNzM0OGIwMzAwYzAxZDI5Yjc1NTJkNjIyYWJiYzZmYWY4MWIzZWM1NTM1OWFhOTk1MGMi",
+    "domain": "careerviet.vn",
+    "path": "/",
+    "expires": 1813396730.056821,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "__stbpnenable",
+    "value": "MQ%3D%3D",
+    "domain": "careerviet.vn",
+    "path": "/",
+    "expires": 1778905264,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "IDE",
+    "value": "AHWqTUn5WDht9ST2xOATry6vWMeGRT6n8FzmROA2VNhnXJP5ZuJUA6ITzBx79MFXR70",
+    "domain": ".doubleclick.net",
+    "path": "/",
+    "expires": 1813378864.815418,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "uid",
+    "value": "0e12e525-cab9-40bc-9f3f-733897074cc3",
+    "domain": ".criteo.com",
+    "path": "/",
+    "expires": 1812514865.816802,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "khaos",
+    "value": "MP6ETO3C-6-7NGG",
+    "domain": ".rubiconproject.com",
+    "path": "/",
+    "expires": 1810355756.055957,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "khaos_p",
+    "value": "MP6ETO3C-6-7NGG",
+    "domain": ".rubiconproject.com",
+    "path": "/",
+    "expires": 1810355756.056005,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None",
+    "partitionKey": "https://careerviet.vn",
+    "_crHasCrossSiteAncestor": true
+  },
+  {
+    "name": "receive-cookie-deprecation",
+    "value": "1",
+    "domain": ".rubiconproject.com",
+    "path": "/",
+    "expires": 1786595756.056152,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None",
+    "partitionKey": "https://careerviet.vn",
+    "_crHasCrossSiteAncestor": true
+  },
+  {
+    "name": "__stdf",
+    "value": "MA%3D%3D",
+    "domain": "careerviet.vn",
+    "path": "/",
+    "expires": 1779682865,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "tuuid",
+    "value": "b80a7eeb-a3b9-45d6-9db5-02a8130f1a3f",
+    "domain": ".360yield.com",
+    "path": "/",
+    "expires": 1786594865.324889,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "tuuid_lu",
+    "value": "1778818864",
+    "domain": ".360yield.com",
+    "path": "/",
+    "expires": 1786594865.32514,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "KADUSERCOOKIE",
+    "value": "D61EEBE3-E5C3-4F1A-AEEB-F3037ED38B3A",
+    "domain": ".pubmatic.com",
+    "path": "/",
+    "expires": 1810354865.359453,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "zoaw_sek",
+    "value": "Iwiv.346559324.3.MSy5aXJ_IRL8xE6X5Fz9jHJ_IRKK_qcr5S_Mitx_IRK",
+    "domain": ".zalo.me",
+    "path": "/",
+    "expires": 1779441530.2421,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "zoaw_type",
+    "value": "0",
+    "domain": ".zalo.me",
+    "path": "/",
+    "expires": 1779441530.24226,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "CMID",
+    "value": "agafMIsFVdUACpKXAFTHFwAA",
+    "domain": ".casalemedia.com",
+    "path": "/",
+    "expires": 1810355755.970506,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "CMPS",
+    "value": "4893",
+    "domain": ".casalemedia.com",
+    "path": "/",
+    "expires": 1786594865.38584,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "CMPRO",
+    "value": "4893",
+    "domain": ".casalemedia.com",
+    "path": "/",
+    "expires": 1786595755.970741,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "tuuid",
+    "value": "eb65aeba-016a-4a3e-8daa-cfe2b772b42f",
+    "domain": ".bidswitch.net",
+    "path": "/",
+    "expires": 1810354865.557353,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "c",
+    "value": "1778818865",
+    "domain": ".bidswitch.net",
+    "path": "/",
+    "expires": 1810354865.455582,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "tuuid_lu",
+    "value": "1778818865",
+    "domain": ".bidswitch.net",
+    "path": "/",
+    "expires": 1810354865.55755,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "visitor-id",
+    "value": "4218204644107427000V10",
+    "domain": ".media.net",
+    "path": "/",
+    "expires": 1810354865.486186,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "data-c",
+    "value": "k-q6Un3VPq6o_tNZHGGfNojni_C9e6Y1QkwIophQ~~3",
+    "domain": ".media.net",
+    "path": "/",
+    "expires": 1781411756.067414,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "udmts",
+    "value": "1778818865.0",
+    "domain": ".udmserve.net",
+    "path": "/",
+    "expires": 1810354865.514685,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "dt",
+    "value": "DF812E9C-64CE-3F6F-8881-E8FA12F2DE6C",
+    "domain": ".udmserve.net",
+    "path": "/",
+    "expires": 1810354865.514841,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "rtbh",
+    "value": "Jd5coXdoCnKZOvxpwIRizduAKyC61-FQkr1Sa61tT3o",
+    "domain": ".udmserve.net",
+    "path": "/",
+    "expires": 1786594865.514898,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "criteo_dsp",
+    "value": "k-QPgTN1Pq6o_tNZHGGfNojni_C9fnOlO-RG-xfA",
+    "domain": ".adingo.jp",
+    "path": "/",
+    "expires": 1813385522.770742,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "SOC",
+    "value": "agafMcCo8IwAAMMp0BgAAAAA",
+    "domain": ".socdm.com",
+    "path": "/",
+    "expires": 1813379756.196913,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "MUID",
+    "value": "2ED81871BBFC67A12A4A0F2BBAC9662D",
+    "domain": ".bing.com",
+    "path": "/",
+    "expires": 1812514866.644217,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "MR",
+    "value": "0",
+    "domain": ".c.bing.com",
+    "path": "/",
+    "expires": 1779423666.644336,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "pxrc",
+    "value": "CAA=",
+    "domain": ".rlcdn.com",
+    "path": "/",
+    "expires": 1784003756.128994,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "criteo_dsp",
+    "value": "k-QPgTN1Pq6o_tNZHGGfNojni_C9fnOlO-RG-xfA",
+    "domain": ".fluctssp.smt.docomo.ne.jp",
+    "path": "/",
+    "expires": 1813385522.885348,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "tt_viewer",
+    "value": "d437dcfb-31e3-4831-bcf9-b909b2e9c579",
+    "domain": ".teads.tv",
+    "path": "/",
+    "expires": 1810268465.804712,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "tluid",
+    "value": "2055868037230488327380",
+    "domain": ".3lift.com",
+    "path": "/",
+    "expires": 1786595756.159607,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "_rxuuid",
+    "value": "%7B%22rx_uuid%22%3A%22RX-96c2ad78-1483-4478-9d36-fdeaa453aa11-004%22%7D",
+    "domain": ".1rx.io",
+    "path": "/",
+    "expires": 1810354866.119616,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "TestIfCookieP",
+    "value": "ok",
+    "domain": ".smartadserver.com",
+    "path": "/",
+    "expires": 1812774066.322414,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "_rxuuid",
+    "value": "%7B%22rx_uuid%22%3A%22RX-96c2ad78-1483-4478-9d36-fdeaa453aa11-004%22%7D",
+    "domain": ".targeting.unrulymedia.com",
+    "path": "/",
+    "expires": 1810355756.261621,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "pid",
+    "value": "7514236059066877240",
+    "domain": ".smartadserver.com",
+    "path": "/",
+    "expires": 1786594866.3222,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "t_gid",
+    "value": "544c57fd-f83d-41af-b5e0-b1f78ef45ae5-tuct110024b1",
+    "domain": ".taboola.com",
+    "path": "/",
+    "expires": 1810355756.742576,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "t_pt_gid",
+    "value": "544c57fd-f83d-41af-b5e0-b1f78ef45ae5-tuct110024b1",
+    "domain": ".taboola.com",
+    "path": "/",
+    "expires": 1810355756.742764,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None",
+    "partitionKey": "https://careerviet.vn",
+    "_crHasCrossSiteAncestor": true
+  },
+  {
+    "name": "OAID",
+    "value": "e81dc5cb1746048278d8b1c08806f382",
+    "domain": "ads.careerviet.vn",
+    "path": "/",
+    "expires": 1810372728.785942,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "__zi",
+    "value": "2000.SSZzejyD2DyiZwEqqGn1pJ75lh39JHN1E8Yy_zm36zbwrAxraqyVsJ-SgFoIGnlLCzYl_f074jCysA7wDJOs.1",
+    "domain": ".zalo.me",
+    "path": "/",
+    "expires": 1813396729.976415,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "BID",
+    "value": "ZMPGGPVVHAOWK809062SLBEBI",
+    "domain": ".toast.com",
+    "path": "/",
+    "expires": 1794370878.205174,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "txpub_1570163526",
+    "value": "Jd5coXdoCnKZOvxpwIRizduAKyC61-FQkr1Sa61tT3o_:_EXP_:_1794370877_:_EXP_:_1778818877",
+    "domain": ".toast.com",
+    "path": "/",
+    "expires": 1794370878.205291,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "txsync",
+    "value": "1778818877",
+    "domain": ".toast.com",
+    "path": "/",
+    "expires": 1794370878.20534,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "BID",
+    "value": "ZMPGGPVVHAOWK809062SLBEBI",
+    "domain": ".nhnace.com",
+    "path": "/",
+    "expires": 1794370878.607099,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "txpub_1570163526",
+    "value": "Jd5coXdoCnKZOvxpwIRizduAKyC61-FQkr1Sa61tT3o_:_EXP_:_1794370878_:_EXP_:_1778818878",
+    "domain": ".nhnace.com",
+    "path": "/",
+    "expires": 1794370878.607188,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "txsync",
+    "value": "1778818878",
+    "domain": ".nhnace.com",
+    "path": "/",
+    "expires": 1794370878.607216,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "TR",
+    "value": "b0c5198107a24df6e14f1a3b2e3a5a814de1c1378a025f72",
+    "domain": ".send.microad.jp",
+    "path": "/",
+    "expires": 1786594885.098361,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "gid",
+    "value": "3024689063851497b28432cc07a85382",
+    "domain": ".gssprt.jp",
+    "path": "/",
+    "expires": 1813378885.162236,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "rtbhouse",
+    "value": "Jd5coXdoCnKZOvxpwIRizduAKyC61-FQkr1Sa61tT3o",
+    "domain": ".gssprt.jp",
+    "path": "/",
+    "expires": 1794370885.162357,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "177_dsp_uid",
+    "value": "Jd5coXdoCnKZOvxpwIRizduAKyC61-FQkr1Sa61tT3o",
+    "domain": ".bidence.net",
+    "path": "/",
+    "expires": 1794403322.20146,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "duid_update_time",
+    "value": "1778818921",
+    "domain": ".bidence.net",
+    "path": "/",
+    "expires": 1794403322.201591,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "124_ssp_update_time",
+    "value": "1778818921",
+    "domain": ".bidence.net",
+    "path": "/",
+    "expires": 1794403322.201637,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "uid",
+    "value": "bdfc5384-6f3e-4383-b6fc-90a76c6ff164",
+    "domain": ".ad-stir.com",
+    "path": "/",
+    "expires": 1810354922.450831,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "d39",
+    "value": "Jd5coXdoCnKZOvxpwIRizduAKyC61-FQkr1Sa61tT3o",
+    "domain": ".ad-stir.com",
+    "path": "/",
+    "expires": 1780028522.451038,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "si",
+    "value": "\"9a344ab5-30a9-461c-b895-ceeb6576d1ac\"",
+    "domain": ".mixer.mobon.net",
+    "path": "/",
+    "expires": 1810354922.547336,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "_uid",
+    "value": "umg3054_7640039969169765363",
+    "domain": ".fwmrm.net",
+    "path": "/",
+    "expires": 1794370959.05692,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "csync",
+    "value": "79:k-w1hvxlPq6o_tNZHGGfNojni_C9d4-Z-YHUymqA",
+    "domain": ".smartadserver.com",
+    "path": "/",
+    "expires": 1781411757.535771,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "st_cs",
+    "value": "/OEwt1mu77KUl+Bs5II6xjHYtzYpMs6qEKVquzC+eHxCLgOkfal/h/BEvz+9ppBXZDxKUKHZbOkzACw2LK0JAA==",
+    "domain": ".seedtag.com",
+    "path": "/",
+    "expires": 1809922969.73364,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "st_csd",
+    "value": "1778818969316:1778818969316",
+    "domain": ".seedtag.com",
+    "path": "/",
+    "expires": 1809922969.733775,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "st_uid",
+    "value": "019e29df-6ed9-74df-b9f1-906400b5129b",
+    "domain": ".seedtag.com",
+    "path": "/",
+    "expires": 1809922969.733842,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "di",
+    "value": "\"%5B%7B%22dc%22%3A%2208%22%2C%22di%22%3A%22-HqOYD5IK46Myw81zgWduaTyM2vCKmp_b3GA_0fMGZ1E-YijhLJAY1K2BdQF4bh6-5AyUerdpC5yV_RIaTJ7Hw..%5Cu0000%22%2C%22bq%22%3A0%2C%22wn%22%3A0%2C%22p%22%3A0.0%7D%2C%7B%22dc%22%3A%2214%22%2C%22di%22%3A%22Jd5coXdoCnKZOvxpwIRizduAKyC61-FQkr1Sa61tT3o%22%2C%22bq%22%3A0%2C%22wn%22%3A0%2C%22p%22%3A0.0%7D%5D\"",
+    "domain": ".mixer.mobon.net",
+    "path": "/",
+    "expires": 1784002969.975605,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "33x_ps",
+    "value": "u%3D213811771305622%3As1%3D1778818969799%3Ats%3D1778818969799",
+    "domain": ".33across.com",
+    "path": "/",
+    "expires": 1810354970.304306,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "TEST-COOKIE",
+    "value": "YES",
+    "domain": ".inmobi.com",
+    "path": "/",
+    "expires": 1810354992.965856,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "iid",
+    "value": "ID5-7-6d77622d-3345-41f1-a437-53f0d8338133",
+    "domain": ".inmobi.com",
+    "path": "/",
+    "expires": 1810354993.244146,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "pfxid",
+    "value": "6b3f95b8-f10d-4be1-98cb-55cc0b19617e",
+    "domain": ".adn.caprofitx.com",
+    "path": "/",
+    "expires": 1810387424.272464,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "pfxids_rtbhouse",
+    "value": "eyJpZCI6IkpkNWNvWGRvQ25LWk92eHB3SVJpemR1QUt5QzYxLUZRa3IxU2E2MXRUM28iLCJ1cGRhdGVkQXQiOiIyMDI2LTA1LTE1VDA0OjIzOjQzLjgzNVoifQ",
+    "domain": ".adn.caprofitx.com",
+    "path": "/",
+    "expires": 1810387424.272632,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "am-uid",
+    "value": "98085b73dafd48dcb010ea4431d5102f",
+    "domain": ".admixer.net",
+    "path": "/",
+    "expires": 1786595024.371377,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "CID",
+    "value": "1a747f4ced89908f7fc5bb1f2aebc5f7",
+    "domain": ".us.ck-ie.com",
+    "path": "/",
+    "expires": 1779423824.678292,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "targetcid7",
+    "value": "Jd5coXdoCnKZOvxpwIRizduAKyC61-FQkr1Sa61tT3o",
+    "domain": ".addlv.smt.docomo.ne.jp",
+    "path": "/",
+    "expires": 1813379067.552536,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "ljt_reader",
+    "value": "MqxH3QZHZNXBZVHYSTax9y3t",
+    "domain": ".lijit.com",
+    "path": "/",
+    "expires": 1810355036.181036,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "viewer_token",
+    "value": "e61ee34f-5ca4-4c9a-a43f-bd513e376850",
+    "domain": ".csync.loopme.me",
+    "path": "/",
+    "expires": 1786595070.217395,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "SCM",
+    "value": "7eeb3cd7de",
+    "domain": ".smaato.net",
+    "path": "/",
+    "expires": 1780633501.456511,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "SCM726",
+    "value": "7eeb3cd7de",
+    "domain": ".smaato.net",
+    "path": "/",
+    "expires": 1780633501.456815,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "SCMco",
+    "value": "7eeb3cd7de",
+    "domain": ".smaato.net",
+    "path": "/",
+    "expires": 1780633501.456895,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "Rp",
+    "value": "b42d9376adc87fb263654f609716a06a01d651d398a3e73a",
+    "domain": ".rmp.rakuten.com",
+    "path": "/",
+    "expires": 1781411101.546386,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "cnx_userId",
+    "value": "2-299b003f564a4895b701ca7c01c3bc95",
+    "domain": ".connatix.com",
+    "path": "/",
+    "expires": 1781411101.787546,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "uid",
+    "value": "af6c4da6-54a7-4a50-a526-6b52a6e9ca48",
+    "domain": ".connectad.io",
+    "path": "/",
+    "expires": 1781411112.767515,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "id",
+    "value": "eyJpdiI6Im53dmcxSmFiWXVWckl6L045NkFsTHc9PSIsInZhbHVlIjoiWWRuNGFqaXg4aEM0cERIYnlpdndCV05GV3RSWkZka0dWVFNKajNVdERjOUg1Q2xoTVRMdGdoMTN4dkxHbXBKNW53dFJRa1FJa1V5SWx5MUFqakdPM0FWNlNPUE91bS9nWDc2b1A4TXhuOUdsSnl2dnAvZTdWTTdtVC9pczQ4SmhEb0JWS2dUTzMyZjlNbGRjMEhjcmZVQ0JBcGtFQUsrUDYvb3VkVzdiTUEyWi94KzNzd2JWTGdNZVdlWm5LOU0vdmo4YTY4eDVzcUYxekVrWkNaMWxtbkJkODJKVWpBNE1yVEZ0KzZwaG04SkdCV0hFc1ppbTBFeVZwdm1VT25EdlJZcHJOVkpFQnA5c3MrM2M2SVM1OGc9PSIsIm1hYyI6IjNjMTI4YzEwOWE3OTFkMTU0MzM0ZTUxYzFhNTc1YjdhZDE0ZDc0MWJlZDY1OWMyMDM2NDJhZDNjMjIyZmY0ODciLCJ0YWciOiIifQ%3D%3D",
+    "domain": ".connectad.io",
+    "path": "/",
+    "expires": 1781411112.767626,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "OAU",
+    "value": "OPUeca38327172345fc9f9878851d2a9977",
+    "domain": ".opera.com",
+    "path": "/",
+    "expires": 1810355113.130602,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "fr",
+    "value": "0wHqYQbXOt8QMoEk8..BqBqEJ...1.0.BqBqEJ.",
+    "domain": ".facebook.com",
+    "path": "/",
+    "expires": 1786595338.008284,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "SPugT",
+    "value": "1778819755",
+    "domain": ".pubmatic.com",
+    "path": "/",
+    "expires": 1781411755.869185,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "um",
+    "value": "!38,GuiuQDCg-6lzhk.SJxmGc07GmKbs1uSjCZHqtbSeG5kGkF4QmED2M0QxwX.7wsaU9QPMcmOE5mj.wx7tOvR04YoK0Ck,1786595755",
+    "domain": ".360yield.com",
+    "path": "/",
+    "expires": 1786595755.906329,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "umeh",
+    "value": "!38,0,1841027755,-1",
+    "domain": ".360yield.com",
+    "path": "/",
+    "expires": 1786595755.906429,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "audit_p",
+    "value": "1|CkOX5cN/o0CJLt2Hd2R87jY89iutfR0y9PLehpA/eDcp4XLbV9R7pgkbY8anzVgOMGcOGew1Y/aM1KxoLazIt3VxIOQiUHNDVr6cEODDrE5rJutFWCKBalfOCH9YMXjUA8D85uc/ESEAesW6a1j4ub+p30LrBbEvwQSrI3XqpRuTMSCV0/h53A81qHLq4rKSm7QIxwcopQDc6UO785F0Pw==",
+    "domain": ".rubiconproject.com",
+    "path": "/",
+    "expires": 1810355756.055823,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None",
+    "partitionKey": "https://careerviet.vn",
+    "_crHasCrossSiteAncestor": true
+  },
+  {
+    "name": "audit",
+    "value": "1|CkOX5cN/o0CJLt2Hd2R87jY89iutfR0y9PLehpA/eDcp4XLbV9R7pgkbY8anzVgOMGcOGew1Y/aM1KxoLazIt3VxIOQiUHNDVr6cEODDrE5rJutFWCKBalfOCH9YMXjUA8D85uc/ESEAesW6a1j4ub+p30LrBbEvwQSrI3XqpRuTMSCV0/h53A81qHLq4rKSm7QIxwcopQDc6UO785F0Pw==",
+    "domain": ".rubiconproject.com",
+    "path": "/",
+    "expires": 1810355756.056057,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "data-c-ts",
+    "value": "1778819755",
+    "domain": ".media.net",
+    "path": "/",
+    "expires": 1781411756.067699,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "rlas3",
+    "value": "+LuKpFBBa4GRs0m0x0iUOHhi5PqZQH2cz+OAJ9cMWW4=",
+    "domain": ".rlcdn.com",
+    "path": "/",
+    "expires": 1810355756.128897,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "_pk_ses.1.04ff",
+    "value": "1",
+    "domain": "careerviet.vn",
+    "path": "/",
+    "expires": 1778838529,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "__stp",
+    "value": "eyJ2aXNpdCI6InJldHVybmluZyIsInV1aWQiOiJiM2Q3MDc4Ny04YTg3LTQ3ZjUtYmNkMi1mMTQwMzRiYzhkMGIiLCJjayI6InVuZGVmaW5lZCJ9",
+    "domain": "careerviet.vn",
+    "path": "/",
+    "expires": 1813396730.053356,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "strSearchJobRecent",
+    "value": "{%2259_1778836484581%22:%22eyJzaW1pbGFyIjowLCJvd25lciI6ImtpZW12aWVjIiwiY291bnRfc2VhcmNoIjp0cnVlLCJpbmR1c3RyeSI6IjU5IiwiYXJyX2luZHVzdHJ5IjpbIjU5Il0sImluZHVzdHJ5X2tleV92biI6InRhaS1jaGluaC1kYXUtdHUiLCJpbmR1c3RyeV9uYW1lIjpbeyJpbmR1c3RyeV9pZCI6IjU5IiwiaW5kdXN0cnlfbmFtZSI6IlRcdTAwZTBpIGNoXHUwMGVkbmggXC8gXHUwMTEwXHUxZWE3dSB0XHUwMWIwIn1dLCJsZXZlbCI6IiIsImxldmVsX25hbWUiOltdLCJsYXN0X21vZGlmeSI6MTc3ODgzNjQ4NDU4MX0=%22%2C%2259_1778836484537%22:%22eyJzaW1pbGFyIjowLCJvd25lciI6ImtpZW12aWVjIiwiY291bnRfc2VhcmNoIjp0cnVlLCJpbmR1c3RyeSI6IjU5IiwiYXJyX2luZHVzdHJ5IjpbIjU5Il0sImluZHVzdHJ5X2tleV92biI6InRhaS1jaGluaC1kYXUtdHUiLCJpbmR1c3RyeV9uYW1lIjpbeyJpbmR1c3RyeV9pZCI6IjU5IiwiaW5kdXN0cnlfbmFtZSI6IlRcdTAwZTBpIGNoXHUwMGVkbmggXC8gXHUwMTEwXHUxZWE3dSB0XHUwMWIwIn1dLCJsZXZlbCI6IiIsImxldmVsX25hbWUiOltdLCJsYXN0X21vZGlmeSI6MTc3ODgzNjQ4NDUzN30=%22%2C%2259_1778836171330%22:%22eyJzaW1pbGFyIjowLCJvd25lciI6ImtpZW12aWVjIiwiY291bnRfc2VhcmNoIjp0cnVlLCJpbmR1c3RyeSI6IjU5IiwiYXJyX2luZHVzdHJ5IjpbIjU5Il0sImluZHVzdHJ5X2tleV92biI6InRhaS1jaGluaC1kYXUtdHUiLCJpbmR1c3RyeV9uYW1lIjpbeyJpbmR1c3RyeV9pZCI6IjU5IiwiaW5kdXN0cnlfbmFtZSI6IlRcdTAwZTBpIGNoXHUwMGVkbmggXC8gXHUwMTEwXHUxZWE3dSB0XHUwMWIwIn1dLCJsZXZlbCI6IiIsImxldmVsX25hbWUiOltdLCJsYXN0X21vZGlmeSI6MTc3ODgzNjE3MTMzMH0=%22}",
+    "domain": "careerviet.vn",
+    "path": "/",
+    "expires": 1810372484,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_ga_649BTQ328X",
+    "value": "GS2.1.s1778822156$o2$g1$t1778836729$j60$l0$h1996233477",
+    "domain": ".careerviet.vn",
+    "path": "/",
+    "expires": 1813396729.588637,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_ga_6ZG50DXMHR",
+    "value": "GS2.1.s1778822157$o2$g1$t1778836729$j60$l0$h0",
+    "domain": ".careerviet.vn",
+    "path": "/",
+    "expires": 1813396729.622035,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_ga_9WDL9JQ84J",
+    "value": "GS2.1.s1778822156$o2$g1$t1778836729$j60$l0$h0",
+    "domain": ".careerviet.vn",
+    "path": "/",
+    "expires": 1813396729.677631,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_ga",
+    "value": "GA1.2.307212328.1778818864",
+    "domain": ".careerviet.vn",
+    "path": "/",
+    "expires": 1813396729.787217,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_gat_UA-29093916-1",
+    "value": "1",
+    "domain": ".careerviet.vn",
+    "path": "/",
+    "expires": 1778836789,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_gat",
+    "value": "1",
+    "domain": ".careerviet.vn",
+    "path": "/",
+    "expires": 1778836789,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_gat_UA-29093916-8",
+    "value": "1",
+    "domain": ".careerviet.vn",
+    "path": "/",
+    "expires": 1778836789,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "__rtbh.lid",
+    "value": "%7B%22eventType%22%3A%22lid%22%2C%22id%22%3A%22laxTGPNrh1uM2BmZeQ7U%22%2C%22expiryDate%22%3A%222027-05-15T09%3A18%3A49.808Z%22%7D",
+    "domain": "careerviet.vn",
+    "path": "/",
+    "expires": 1810372729,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "__sts",
+    "value": "eyJzaWQiOjE3Nzg4MjIxNTc0NjEsInR4IjoxNzc4ODM2NzI5ODY3LCJ1cmwiOiJodHRwcyUzQSUyRiUyRmNhcmVlcnZpZXQudm4lMkZ2aSUyRnRpbS12aWVjLWxhbSUyRmNodXllbi12aWVuLWtoYWNoLWhhbmctY2Etbmhhbi1waG9uZy1naWFvLWRpY2gtbmhhLXRyYW5nLWtoYW5oLWhvYS12dW5nLWRvbmctbmFtLWJvLTEuMzVDNzVDRTkuaHRtbCIsInBldCI6MTc3ODgzNjcyOTg2Nywic2V0IjoxNzc4ODIyMTU3NDYxLCJwVXJsIjoiaHR0cHMlM0ElMkYlMkZjYXJlZXJ2aWV0LnZuJTJGdmklMkZ0aW0tdmllYy1sYW0lMkZjaHV5ZW4tdmllbi1raGFjaC1oYW5nLWRvYW5oLW5naGllcC1waG9uZy1naWFvLWRpY2gtcGh1LW15LWJhLXJpYS12dW5nLXRhdS12dW5nLWRvbmctbmFtLWJvLTEuMzVDNzVDRDIuaHRtbCIsInBQZXQiOjE3Nzg4MzY2OTkzMTEsInBUeCI6MTc3ODgzNjY5OTMxMX0%3D",
+    "domain": "careerviet.vn",
+    "path": "/",
+    "expires": 1778838529,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "g_state",
+    "value": "{\"i_l\":0,\"i_ll\":1778836730061,\"i_b\":\"1WIgrv5wRDdjipVn8XeYkjgeHgkk7xaHSbP54mDCZGI\",\"i_e\":{\"enable_itp_optimization\":0},\"i_et\":1778818864911}",
+    "domain": "careerviet.vn",
+    "path": "/",
+    "expires": 1794388730,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "cto_bundle",
+    "value": "RjQiJ19aM20yeklsNE5JRzNPb3Z0ZWthZDRlNnprUGJoUjRKSEYwNHNjaDFyekQlMkJZeVhmVzFHN1ZHayUyQmdCem8lMkZNNG0xYlh1RHMlMkJ1aWswNHdmZUxwdFpCekIwJTJCUlM1NlM3ZXFTcFdvRnBBZnRqaTB0OTBEQW5WMFBuTmdHZG9NVVdnSEtiWXdqYXEwMElWaldaWjZlelNvaTlnJTNEJTNE",
+    "domain": ".criteo.com",
+    "path": "/",
+    "expires": 1812532730.105849,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None",
+    "partitionKey": "https://careerviet.vn",
+    "_crHasCrossSiteAncestor": true
+  },
+  {
+    "name": "cto_bundle",
+    "value": "1PaS119XVUdDUERWaUhHVzRSbk9OcCUyRnE1dm40ZVBGNlVQOXZoN1J3UGhVWThPUnpoekFXcEIyQnpqREIlMkY5MjE5Y2NMTHlKOWM4TEhMSXQ5YVhtVFZlNnR0ZFBnVUZ5bXh6ZVczSm13d2QlMkZwM1RmTyUyQjJXY21iV3RuTkVvMlJ3WlZnWHU5UU16VEJaSVJaZ3RIVDRhUUxzeVZQQSUzRCUzRA",
+    "domain": ".careerviet.vn",
+    "path": "/",
+    "expires": 1813000730,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "__stgeo",
+    "value": "ImRlbmllZCI%3D",
+    "domain": "careerviet.vn",
+    "path": "/",
+    "expires": 1779268734,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  }
+]
