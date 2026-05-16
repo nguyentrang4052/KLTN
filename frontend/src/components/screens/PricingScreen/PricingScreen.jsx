@@ -22,7 +22,7 @@ const LIMIT_ROWS = [
     field: 'jobSuggestPerDay',
     totalField: 'jobSuggestPerDay',   // dùng giá trị limit làm total
     usedField: 'jobSuggestUsedToday', // field mới từ quota
-    label: 'Đề xuất việc làm',
+    label: 'Đề xuất việc làm hôm nay',
     unit: ' lần/ngày',
     icon: '💡',
     isDaily: true,                    // flag để hiển thị đúng label
@@ -31,7 +31,7 @@ const LIMIT_ROWS = [
     field: 'cvAnalysisPerMonth',
     totalField: 'cvAnalysisTotal',
     usedField: 'cvAnalysisUsed',
-    label: 'Phân tích CV',
+    label: 'Phân tích CV với AI',
     unit: ' lần/tháng',
     icon: '🔍',
     isDaily: false,
@@ -358,7 +358,7 @@ export default function PricingScreen() {
                           }
                         </span>
                         <span className="pr-limit-lbl">
-                          {label}{isActivePlan && isDaily ? ' hôm nay' : isActivePlan ? ' tháng này' : ''}
+                          {label}{isActivePlan && isDaily ? '' : isActivePlan ? '' : ''}
                         </span>
 
                         {isActivePlan && !unlimited && (

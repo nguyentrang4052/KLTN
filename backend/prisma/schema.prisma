@@ -229,7 +229,7 @@ model Payment {
   amount         Int
   currency       String   @default("VND")
   status         String
-             String?
+  method         String?
   transactionRef String?  @unique
   paidAt         DateTime?
   createdAt      DateTime @default(now())
