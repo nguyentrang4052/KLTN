@@ -48,13 +48,13 @@ import MyCVScreen from './components/screens/MyCVScreen/MyCVScreen'
 import BlogScreen from './components/screens/BlogScreen/BlogScreen'
 import ContactScreen from './components/screens/ContactScreen/ContactScreen'
 import PrivacyScreen from './components/screens/PrivacyScreen/PrivacyScreen'
-import  TermScreen from './components/screens/TermScreen/TermScreen'
+import TermScreen from './components/screens/TermScreen/TermScreen'
 
 
 function isTokenExpired(token) {
   try {
     const decoded = jwtDecode(token)
-    return decoded.exp * 1000 < Date.now()
+    return decoded.exp * 1000 < Date.now() + 10000
   } catch {
     return true
   }
@@ -67,7 +67,9 @@ function ProtectedRoute({ children }) {
 
   if (!token || isTokenExpired(token)) {
     localStorage.removeItem('token')
+    localStorage.removeItem('user')
     sessionStorage.removeItem('token')
+    sessionStorage.removeItem('user')
     return <Navigate to="/" state={{ from: location }} replace />
   }
 
@@ -365,10 +367,10 @@ function App() {
             </ProtectedRoute>
           } />
 
-          <Route path="/term" element={<TermScreen/>}/>
-          <Route path="/privacy" element={<PrivacyScreen/>}/>
-          <Route path="/contact" element={<ContactScreen/>}/>
-          <Route path="/blog" element={<BlogScreen/>}/>
+          <Route path="/term" element={<TermScreen />} />
+          <Route path="/privacy" element={<PrivacyScreen />} />
+          <Route path="/contact" element={<ContactScreen />} />
+          <Route path="/blog" element={<BlogScreen />} />
 
           <Route path="/admin" element={
             <AdminRoute>

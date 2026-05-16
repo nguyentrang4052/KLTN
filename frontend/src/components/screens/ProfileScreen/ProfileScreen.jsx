@@ -8,23 +8,6 @@ import { getToken } from '../../../utils/auth'
 import useUserStore from '../../../store/userStore'
 
 const API = 'http://localhost:3000/api'
-
-
-const AI_INSIGHTS = [
-  { icon: '👁', text: 'Bạn thường xem kỹ JD có "React", "TypeScript" và lương >25tr', source: 'Từ 47 lần xem' },
-  { icon: '🔖', text: '80% tin bạn lưu là Hybrid hoặc Remote', source: 'Từ 23 lần lưu' },
-  { icon: '⚡', text: 'Bạn apply trong 24h đầu khi lương >30tr', source: 'Từ 14 lần apply' },
-  { icon: '🏢', text: 'Ưu tiên Fintech và E-commerce hơn 60%', source: 'Phân tích toàn lịch sử' },
-]
-const AI_PREFERENCES = [
-  { key: 'Ngành ưu tiên', value: 'Fintech, E-commerce, SaaS' },
-  { key: 'Quy mô công ty', value: '100 – 1,000 người' },
-  { key: 'Ngôn ngữ làm việc', value: 'Việt / English' },
-]
-const AI_TOGGLES = [
-  { key: 'Thông báo việc mới', active: true },
-  { key: 'Auto apply khi match >90%', active: false },
-]
 const CONNECTED_ACCOUNTS = [
   { name: 'TopCV', code: 'T', color: '#00B14F', connected: true },
   { name: 'CareerLink', code: 'C', color: '#D0392A', connected: true },
@@ -47,16 +30,7 @@ function ImportCVModal({ onClose, onImport, authHeaders }) {
     fetch(`${API}/cv-builder/list`, { headers: authHeaders })
       .then(r => r.ok ? r.json() : [])
       .then(data => {
-        const normalized = (Array.isArray(data) ? data : []).map(cv => ({
-          id: cv.id,
-          name: cv.name || 'Không tên',
-          templateId: cv.templateId,
-          data: cv.data || {},
-          createdAt: cv.createdAt,
-          updatedAt: cv.updatedAt,
-          type: 'local',
-        }))
-        setLocalCVs(normalized)
+        setLocalCVs(data.map(cv => ({ ...cv, type: 'local' })));
       })
       .catch(() => { })
       .finally(() => setLoadingLocal(false));
@@ -367,7 +341,7 @@ function AnalyzedCVPreview({ cv, authHeaders }) {
 // ─── Preview CV tự tạo (dùng dữ liệu từ API) ────────────────────────────────
 function LocalCVPreview({ cv }) {
   // Dữ liệu CV được lưu trong cv.data.cvData (backend trả về)
-  const cvData = cv.data?.cvData || cv.data || {};
+  const cvData = cv.data?.cvData || {};
   const info = cvData.personalInfo || {};
   const experiences = cvData.experiences || [];
   const education = cvData.education || [];
@@ -482,7 +456,6 @@ function PreviewSection({ label, children }) {
 
 function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
   const [cvList, setCvList] = useState(cvListProp)
-  const { updateProfile } = useUserStore();
 
   useEffect(() => {
     setCvList(cvListProp)
@@ -504,8 +477,8 @@ function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
+  const [aiData, setAiData] = useState({ insights: [], preferences: [] })
 
-  // ── Import CV modal state ──
   const [showImportModal, setShowImportModal] = useState(false)
   const [importMsg, setImportMsg] = useState('')
 
@@ -515,6 +488,13 @@ function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
   const [careerForm, setCareerForm] = useState({
     jobTitle: '', experienceYear: '', careerLevel: '',
     expectedSalary: '', workingType: '', industryId: '',
+  })
+
+  const navigate = useNavigate()
+  const token = getToken()
+  const authRef = useRef({
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
   })
 
   const fetchProfile = useCallback(async (syncForm = true) => {
@@ -571,6 +551,38 @@ function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
       setIndustries(Array.isArray(data) ? data : [])
     } catch (err) { console.error('fetchIndustries:', err) }
   }, [])
+
+
+  useEffect(() => {
+    if (!profile?.userID) return
+
+    const sync = () => {
+      try {
+        const key = `cv_builder_state_${profile.userID}`
+        const raw = localStorage.getItem(key)
+        const state = raw ? JSON.parse(raw) : {}
+        if (Array.isArray(state._cvList)) setCvList(state._cvList)
+      } catch { }
+    }
+
+    sync()
+    window.addEventListener('storage', sync)
+    window.addEventListener('focus', sync)
+    return () => {
+      window.removeEventListener('storage', sync)
+      window.removeEventListener('focus', sync)
+    }
+  }, [profile?.userID])
+
+
+  useEffect(() => {
+    if (!profile?.userID) return
+    fetch(`${API}/profile/${profile.userID}/insights`, { headers: authRef.current })
+      .then(r => r.json())
+      .then(data => setAiData(data))
+      .catch(console.error)
+  }, [profile?.userID])
+
 
   useEffect(() => {
     fetchProfile(true)
@@ -654,9 +666,19 @@ function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
       ])
       if (!r1.ok || !r2.ok) throw new Error('Save failed')
       setSaveMsg('✓ Đã lưu thành công')
+
       const updatedRes = await fetch(`${API}/profile/me`, { headers: authRef.current })
       const updatedData = await updatedRes.json()
       setProfile(updatedData)
+
+      await Promise.all([
+        fetchStats(updatedData.userID),
+        fetch(`${API}/profile/${updatedData.userID}/insights`, { headers: authRef.current })
+          .then(r => r.json())
+          .then(data => setAiData(data))
+          .catch(console.error),
+      ])
+
       window.dispatchEvent(new CustomEvent('userProfileUpdated', { detail: updatedData }))
     } catch {
       setSaveMsg('✗ Lưu thất bại')
@@ -728,34 +750,34 @@ if (!token) {
 const handleImportFromCV = async ({ type, cv }) => {
   if (!profile?.userID) return
 
-  try {
-    if (type === 'local') {
-      const res = await fetch(`${API}/cv-analyzer/map-to-profile/${cv.id}`, {
-        method: 'POST',
-        headers: authRef.current,
-      })
-      if (!res.ok) throw new Error('Map failed')
-      const result = await res.json()
-      const d = result.data || {}
-      setPersonalForm(prev => ({
-        ...prev,
-        fullName: d.fullName || prev.fullName,
-        phone: d.phone || prev.phone,
-        address: d.address || prev.address,
-      }))
-      setCareerForm(prev => ({
-        ...prev,
-        jobTitle: d.jobTitle ?? prev.jobTitle,
-        experienceYear: d.experienceYear ?? prev.experienceYear,
-        careerLevel: d.careerLevel ?? prev.careerLevel,
-      }))
-      setImportMsg('✓ Đã nhập từ CV phân tích thành công. Đang tải lại...')
-      setTimeout(() => window.location.reload(), 1200)
-      return
-    } else {
-      const cvData = cv?.data?.cvData || {}
-      const personalInfo = cvData.personalInfo || {}
-      const experiences = Array.isArray(cvData.experiences) ? cvData.experiences : []
+    try {
+      if (type === 'local') {
+        const res = await fetch(`${API}/cv-analyzer/map-to-profile/${cv.id}`, {
+          method: 'POST',
+          headers: authRef.current,
+        })
+        if (!res.ok) throw new Error('Map failed')
+        const result = await res.json()
+        const d = result.data || {}
+        setPersonalForm(prev => ({
+          ...prev,
+          fullName: d.fullName || prev.fullName,
+          phone: d.phone || prev.phone,
+          address: d.address || prev.address,
+        }))
+        setCareerForm(prev => ({
+          ...prev,
+          jobTitle: d.jobTitle ?? prev.jobTitle,
+          experienceYear: d.experienceYear ?? prev.experienceYear,
+          careerLevel: d.careerLevel ?? prev.careerLevel,
+        }))
+        setImportMsg('✓ Đã nhập từ CV phân tích thành công. Đang tải lại...')
+        setTimeout(() => window.location.reload(), 1200)
+        return
+      } else {
+        const cvData = cv?.data?.cvData || {}
+        const personalInfo = cvData.personalInfo || {}
+        const experiences = Array.isArray(cvData.experiences) ? cvData.experiences : []
 
       // Strip HTML khỏi summary trước khi gửi
       const rawSummary = cvData.summary || ''
@@ -906,29 +928,29 @@ return (
                   </div>
                 </div>
 
-                {stats && (
-                  <div className="card profile-card" style={{ padding: '16px 22px' }}>
-                    <div className="profile-section-title" style={{ marginBottom: 12 }}>📊 Hoạt động của bạn</div>
-                    <div style={{ display: 'flex' }}>
-                      {[
-                        { label: 'Đã xem', value: stats.viewCount, icon: '👁' },
-                        { label: 'Đã lưu', value: stats.saveCount, icon: '🔖' },
-                        // { label: 'Đã apply', value: stats.applyCount, icon: '⚡' },
-                        // { label: 'Đề xuất', value: stats.recommendCount, icon: '🎯' },
-                      ].map((s, i) => (
-                        <div key={i} style={{
-                          flex: 1, textAlign: 'center',
-                          borderRight: i < 3 ? '1px solid var(--border)' : 'none',
-                          padding: '4px 0',
-                        }}>
-                          <div style={{ fontSize: 18 }}>{s.icon}</div>
-                          <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Fraunces', serif" }}>{s.value}</div>
-                          <div style={{ fontSize: 11, color: 'var(--ink4)' }}>{s.label}</div>
-                        </div>
-                      ))}
+                  {stats && (
+                    <div className="card profile-card" style={{ padding: '16px 22px' }}>
+                      <div className="profile-section-title" style={{ marginBottom: 12 }}>📊 Hoạt động của bạn</div>
+                      <div style={{ display: 'flex' }}>
+                        {[
+                          { label: 'Đã xem', value: stats.viewCount, icon: '👁' },
+                          { label: 'Đã lưu', value: stats.saveCount, icon: '🔖' },
+                          // { label: 'Đã apply', value: stats.applyCount, icon: '⚡' },
+                          // { label: 'Đề xuất', value: stats.recommendCount, icon: '🎯' },
+                        ].map((s, i) => (
+                          <div key={i} style={{
+                            flex: 1, textAlign: 'center',
+                            borderRight: i < 3 ? '1px solid var(--border)' : 'none',
+                            padding: '4px 0',
+                          }}>
+                            <div style={{ fontSize: 18 }}>{s.icon}</div>
+                            <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Fraunces', serif" }}>{s.value}</div>
+                            <div style={{ fontSize: 11, color: 'var(--ink4)' }}>{s.label}</div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 <div className="card profile-card">
                   <div className="profile-section-title">Thông tin cá nhân</div>
@@ -1031,76 +1053,89 @@ return (
                   </div>
                 </div>
 
-                <div className="card profile-card">
-                  <div className="profile-section-title">Kỹ năng</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 14 }}>
-                    {(profile?.skills ?? []).map(skill => (
-                      <span key={skill.id} style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                        padding: '4px 10px', borderRadius: 7, fontSize: 12, fontWeight: 600,
-                        background: 'var(--bg2)', border: '1px solid var(--border)', color: 'var(--ink2)',
-                      }}>
-                        {skill.name}
-                        <span style={{ cursor: 'pointer', color: 'var(--ink4)', fontSize: 15, lineHeight: 1 }}
-                          onClick={() => handleRemoveSkill(skill.id)}>×</span>
-                      </span>
-                    ))}
-                    {(profile?.skills ?? []).length === 0 && (
-                      <span style={{ fontSize: 13, color: 'var(--ink4)' }}>Chưa có kỹ năng nào</span>
-                    )}
-                  </div>
-                  <div style={{ position: 'relative' }}>
-                    <input className="inp" placeholder="🔍 Tìm và thêm kỹ năng..."
-                      value={skillSearch}
-                      onChange={e => { setSkillSearch(e.target.value); setShowSkillDropdown(true) }}
-                      onFocus={() => setShowSkillDropdown(true)}
-                      onBlur={() => setTimeout(() => setShowSkillDropdown(false), 150)}
-                    />
-                    {showSkillDropdown && filteredSkills.length > 0 && (
-                      <div style={{
-                        position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 200,
-                        background: 'var(--surf)', border: '1px solid var(--border)',
-                        borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.12)',
-                        maxHeight: 200, overflowY: 'auto',
-                      }}>
-                        {filteredSkills.slice(0, 20).map(skill => (
-                          <div key={skill.skillID}
-                            onMouseDown={() => handleAddSkill(skill)}
-                            style={{
-                              padding: '8px 12px', fontSize: 13, cursor: 'pointer',
-                              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                            }}
-                            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'}
-                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                            <span>{skill.name}</span>
-                            <span style={{ fontSize: 11, color: 'var(--ink4)' }}>{skill.industry}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                  <div className="card profile-card">
+                    <div className="profile-section-title">Kỹ năng</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 14 }}>
+                      {(profile?.skills ?? []).map(skill => (
+                        <span key={skill.id} style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 5,
+                          padding: '4px 10px', borderRadius: 7, fontSize: 12, fontWeight: 600,
+                          background: 'var(--bg2)', border: '1px solid var(--border)', color: 'var(--ink2)',
+                        }}>
+                          {skill.name}
+                          <span style={{ cursor: 'pointer', color: 'var(--ink4)', fontSize: 15, lineHeight: 1 }}
+                            onClick={() => handleRemoveSkill(skill.id)}>×</span>
+                        </span>
+                      ))}
+                      {(profile?.skills ?? []).length === 0 && (
+                        <span style={{ fontSize: 13, color: 'var(--ink4)' }}>Chưa có kỹ năng nào</span>
+                      )}
+                    </div>
+                    <div style={{ position: 'relative' }}>
+                      <input className="inp" placeholder="🔍 Tìm và thêm kỹ năng..."
+                        value={skillSearch}
+                        onChange={e => { setSkillSearch(e.target.value); setShowSkillDropdown(true) }}
+                        onFocus={() => setShowSkillDropdown(true)}
+                        onBlur={() => setTimeout(() => setShowSkillDropdown(false), 150)}
+                      />
+                      {showSkillDropdown && filteredSkills.length > 0 && (
+                        <div style={{
+                          position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 200,
+                          background: 'var(--surf)', border: '1px solid var(--border)',
+                          borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.12)',
+                          maxHeight: 200, overflowY: 'auto',
+                        }}>
+                          {filteredSkills.slice(0, 20).map(skill => (
+                            <div key={skill.skillID}
+                              onMouseDown={() => handleAddSkill(skill)}
+                              style={{
+                                padding: '8px 12px', fontSize: 13, cursor: 'pointer',
+                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                              <span>{skill.name}</span>
+                              <span style={{ fontSize: 11, color: 'var(--ink4)' }}>{skill.industry}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="p-right">
+                <div className="p-right">
 
-                {profile && (
                   <div className="card profile-card">
-                    <div className="profile-section-title">ℹ️ Tài khoản</div>
-                    <div className="pref-row">
-                      <span className="pref-k">Email</span>
-                      <span className="pref-v" style={{ fontSize: 12 }}>{profile.email}</span>
-                    </div>
-                    <div className="pref-row" style={{ borderBottom: 'none' }}>
-                      <span className="pref-k">Thành viên từ</span>
-                      <span className="pref-v">
-                        {profile.memberSince
-                          ? new Date(profile.memberSince).toLocaleDateString('vi-VN')
-                          : '—'}
-                      </span>
-                    </div>
+                    <div className="profile-section-title">🧠 AI đã học gì từ bạn</div>
+                    {AI_INSIGHTS.map((insight, idx) => (
+                      <div key={idx} className="act-item">
+                        <div className="act-icon">{insight.icon}</div>
+                        <div className="act-content">
+                          <div className="act-text">{insight.text}</div>
+                          <div className="act-time">{insight.source}</div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                )}
+
+                  {profile && (
+                    <div className="card profile-card">
+                      <div className="profile-section-title">ℹ️ Tài khoản</div>
+                      <div className="pref-row">
+                        <span className="pref-k">Email</span>
+                        <span className="pref-v" style={{ fontSize: 12 }}>{profile.email}</span>
+                      </div>
+                      <div className="pref-row" style={{ borderBottom: 'none' }}>
+                        <span className="pref-k">Thành viên từ</span>
+                        <span className="pref-v">
+                          {profile.memberSince
+                            ? new Date(profile.memberSince).toLocaleDateString('vi-VN')
+                            : '—'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
               </div>
             </div>

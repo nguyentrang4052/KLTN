@@ -16,9 +16,9 @@ import { PayOS } from '@payos/node';
 import { NotificationService } from 'src/notification/notification.service';
 
 const PLANS_CONFIG = {
-  free: { displayName: 'Free', monthlyPrice: 0, yearlyPrice: 0 },
-  pro: { displayName: 'Pro', monthlyPrice: 10000, yearlyPrice: 96000 },
-  elite: { displayName: 'Elite', monthlyPrice: 10000, yearlyPrice: 96000 },
+  free: { displayName: 'free', monthlyPrice: 0, yearlyPrice: 0 },
+  pro: { displayName: 'pro', monthlyPrice: 10000, yearlyPrice: 96000 },
+  elite: { displayName: 'elite', monthlyPrice: 10000, yearlyPrice: 96000 },
 };
 
 @Injectable()
@@ -39,7 +39,7 @@ export class SubscriptionService {
   }
 
   private currentMonth(): string {
-    return new Date().toISOString().slice(0, 7);
+    return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 7);
   }
 
   private async grantQuota(
@@ -50,88 +50,82 @@ export class SubscriptionService {
     tx?: any,
   ): Promise<void> {
     const db = tx ?? this.prisma;
-
     const plan = await db.subscriptionPlan.findFirst({
       where: { name: planName },
       include: { limits: true },
     });
     if (!plan?.limits) return;
 
-    const month = this.currentMonth();
-    const today = new Date().toISOString().slice(0, 10);
-    const { jobSuggestPerDay, cvAnalysisPerMonth, cvMatchCheckCount } = plan.limits;
-
     const UNLIMITED = 999;
+    const { jobSuggestPerDay, cvAnalysisPerMonth, cvMatchCheckCount } = plan.limits;
     const multiplier = billing === 'yearly' ? 12 : 1;
 
-    const cvAnalysisGrant =
-      cvAnalysisPerMonth >= UNLIMITED
-        ? UNLIMITED
-        : cvAnalysisPerMonth * multiplier;
+    const cvAnalysisGrant = cvAnalysisPerMonth >= UNLIMITED ? UNLIMITED : cvAnalysisPerMonth * multiplier;
+    const cvMatchGrant = cvMatchCheckCount >= UNLIMITED ? UNLIMITED : cvMatchCheckCount * multiplier;
+    const today = new Date().toISOString().slice(0, 10);
 
-    const cvMatchGrant =
-      cvMatchCheckCount >= UNLIMITED
-        ? UNLIMITED
-        : cvMatchCheckCount * multiplier;
-
-    const existing = await db.userQuota.findUnique({
-      where: { userID_month: { userID, month } },
+    await db.userQuota.upsert({
+      where: { subscriptionID },
+      update: {
+        jobSuggestPerDay,
+        jobSuggestUsedToday: 0,
+        jobSuggestResetDate: today,
+        cvAnalysisTotal: cvAnalysisGrant,
+        cvMatchCheckTotal: cvMatchGrant,
+        cvAnalysisUsed: 0,
+        cvMatchCheckUsed: 0,
+      },
+      create: {
+        userID,
+        subscriptionID,
+        jobSuggestPerDay,
+        jobSuggestUsedToday: 0,
+        jobSuggestResetDate: today,
+        cvAnalysisTotal: cvAnalysisGrant,
+        cvMatchCheckTotal: cvMatchGrant,
+        cvAnalysisUsed: 0,
+        cvMatchCheckUsed: 0,
+      },
     });
-
-    if (existing) {
-      await db.userQuota.update({
-        where: { userID_month: { userID, month } },
-        data: {
-          subscriptionID,
-          jobSuggestPerDay,
-          jobSuggestUsedToday: 0,
-          jobSuggestResetDate: today,
-          cvAnalysisTotal: cvAnalysisGrant,
-          cvMatchCheckTotal: cvMatchGrant,
-          cvAnalysisUsed: 0,
-          cvMatchCheckUsed: 0,
-        },
-      });
-    } else {
-      await db.userQuota.create({
-        data: {
-          userID,
-          month,
-          subscriptionID,
-          jobSuggestPerDay,
-          jobSuggestUsedToday: 0,
-          jobSuggestResetDate: today,
-          cvAnalysisTotal: cvAnalysisGrant,
-          cvMatchCheckTotal: cvMatchGrant,
-          cvAnalysisUsed: 0,
-          cvMatchCheckUsed: 0,
-        },
-      });
-    }
   }
 
   private async revokeQuota(userID: number, tx?: any): Promise<void> {
     const db = tx ?? this.prisma;
 
-    const existing = await db.userQuota.findFirst({
+    const subQuota = await db.userQuota.findFirst({
       where: {
         userID,
-        subscription: {
-          status: { in: ['active', 'cancelled'] },
-        },
+        subscriptionID: { not: null },
       },
       orderBy: { id: 'desc' },
     });
-    if (!existing) return;
 
-    await db.userQuota.update({
-      where: { id: existing.id },
-      data: {
-        jobSuggestPerDay: 3,
-        cvAnalysisTotal: existing.cvAnalysisUsed,
-        cvMatchCheckTotal: existing.cvMatchCheckUsed,
-      },
+    if (subQuota) {
+      await db.userQuota.delete({ where: { id: subQuota.id } });
+    }
+
+    // Dùng this.prisma thay vì db để tránh lỗi nested transaction
+    const freeQuota = await this.prisma.userQuota.findFirst({
+      where: { userID, subscriptionID: null },
     });
+
+    if (freeQuota) {
+      const freePlan = await this.prisma.subscriptionPlan.findFirst({
+        where: { name: 'free' },
+        include: { limits: true },
+      });
+      await this.prisma.userQuota.update({
+        where: { id: freeQuota.id },
+        data: {
+          cvAnalysisTotal: 10,
+          cvMatchCheckTotal: 20,
+          cvAnalysisUsed: 0,
+          cvMatchCheckUsed: 0,
+          jobSuggestPerDay: freePlan?.limits?.jobSuggestPerDay ?? 3,
+          jobSuggestUsedToday: 0,
+        },
+      });
+    }
   }
 
   async getUserQuota(accountID: number) {
@@ -142,63 +136,48 @@ export class SubscriptionService {
     if (!user) throw new NotFoundException('User not found');
 
     const today = new Date().toISOString().slice(0, 10);
-    const month = this.currentMonth();
     const UNLIMITED = 999;
     const remaining = (total: number, used: number) =>
       total >= UNLIMITED ? UNLIMITED : Math.max(0, total - used);
 
-    const { activeSub, quota: subQuota } = await this.getActiveQuota(user.userID);
-    let quota = subQuota;
+    const { activeSub, quota } = await this.getActiveQuota(user.userID);
 
     if (quota && (quota.jobSuggestResetDate == null || quota.jobSuggestResetDate < today)) {
-      quota = await this.prisma.userQuota.update({
+      await this.prisma.userQuota.update({
         where: { id: quota.id },
         data: { jobSuggestUsedToday: 0, jobSuggestResetDate: today },
       });
+      quota.jobSuggestUsedToday = 0;
     }
 
-    if (!quota) {
-      quota = await this.prisma.userQuota.findFirst({
-        where: { userID: user.userID, month },
-      }) ?? null;
-
-      if (quota && (quota.jobSuggestResetDate == null || quota.jobSuggestResetDate < today)) {
-        quota = await this.prisma.userQuota.update({
-          where: { id: quota.id },
-          data: { jobSuggestUsedToday: 0, jobSuggestResetDate: today },
-        });
-      }
-    }
+    const subExpired = activeSub && new Date() > new Date(activeSub.expiresAt);
 
     if (!quota) {
-      const limits = activeSub?.plan?.limits;
-      const jobSuggestPerDay = limits?.jobSuggestPerDay ?? 3;
-      const cvAnalysisPerMonth = limits?.cvAnalysisPerMonth ?? 0;
-      const cvMatchCheckCount = limits?.cvMatchCheckCount ?? 0;
-
+      const limits = activeSub?.plan?.limits ?? await this.getFreePlanLimits();
       return {
-        month,
-        jobSuggestPerDay,
+        jobSuggestPerDay: limits.jobSuggestPerDay,
         jobSuggestUsedToday: 0,
-        cvAnalysisTotal: cvAnalysisPerMonth,
+        cvAnalysisTotal: 0,
         cvAnalysisUsed: 0,
-        cvAnalysisRemaining: cvAnalysisPerMonth >= UNLIMITED ? UNLIMITED : cvAnalysisPerMonth,
-        cvMatchCheckTotal: cvMatchCheckCount,
+        cvAnalysisRemaining: 0,
+        cvMatchCheckTotal: 0,
         cvMatchCheckUsed: 0,
-        cvMatchCheckRemaining: cvMatchCheckCount >= UNLIMITED ? UNLIMITED : cvMatchCheckCount,
+        cvMatchCheckRemaining: 0,
+        subExpired: false,
       };
     }
 
     return {
-      month: quota.month,
       jobSuggestPerDay: quota.jobSuggestPerDay,
       jobSuggestUsedToday: quota.jobSuggestUsedToday,
       cvAnalysisTotal: quota.cvAnalysisTotal,
       cvAnalysisUsed: quota.cvAnalysisUsed,
-      cvAnalysisRemaining: remaining(quota.cvAnalysisTotal, quota.cvAnalysisUsed),
+      cvAnalysisRemaining: subExpired ? 0 : remaining(quota.cvAnalysisTotal, quota.cvAnalysisUsed),
       cvMatchCheckTotal: quota.cvMatchCheckTotal,
       cvMatchCheckUsed: quota.cvMatchCheckUsed,
-      cvMatchCheckRemaining: remaining(quota.cvMatchCheckTotal, quota.cvMatchCheckUsed),
+      cvMatchCheckRemaining: subExpired ? 0 : remaining(quota.cvMatchCheckTotal, quota.cvMatchCheckUsed),
+      subExpired: !!subExpired,
+      expiresAt: activeSub?.expiresAt ?? null,
     };
   }
 
@@ -220,41 +199,38 @@ export class SubscriptionService {
 
     const { activeSub, quota } = await this.getActiveQuota(user.userID);
 
-    if (!quota) {
-      const limits = activeSub?.plan?.limits;
-      const limit = feature === 'cvAnalysis'
-        ? (limits?.cvAnalysisPerMonth ?? 0)
-        : (limits?.cvMatchCheckCount ?? 0);
-
-      if (limit === 0) {
+    if (quota?.subscriptionID && activeSub) {
+      if (new Date() > new Date(activeSub.expiresAt)) {
         throw new BadRequestException(
-          `Bạn đã hết lượt ${FEATURE_LABEL[feature]}. Vui lòng nâng cấp gói.`,
+          'Gói dịch vụ của bạn đã hết hạn. Vui lòng gia hạn để tiếp tục sử dụng.',
         );
       }
-      const today = new Date().toISOString().slice(0, 10);
-      const month = this.currentMonth();
-      await this.prisma.userQuota.create({
+    }
+
+    if (!quota) {
+      const freeLimits = await this.getFreePlanLimits();
+      const FREE_CV_TRIAL = 10;
+      const FREE_MATCH_TRIAL = 20;
+
+      const newQuota = await this.prisma.userQuota.create({
         data: {
           userID: user.userID,
-          month,
-          subscriptionID: activeSub!.id,
-          jobSuggestPerDay: limits?.jobSuggestPerDay ?? 3,
+          subscriptionID: null,
+          jobSuggestPerDay: freeLimits.jobSuggestPerDay,
           jobSuggestUsedToday: 0,
-          jobSuggestResetDate: today,
-          cvAnalysisTotal: limits?.cvAnalysisPerMonth ?? 0,
-          cvMatchCheckTotal: limits?.cvMatchCheckCount ?? 0,
+          cvAnalysisTotal: FREE_CV_TRIAL,
+          cvMatchCheckTotal: FREE_MATCH_TRIAL,
           cvAnalysisUsed: feature === 'cvAnalysis' ? 1 : 0,
           cvMatchCheckUsed: feature === 'cvMatchCheck' ? 1 : 0,
         },
       });
-
       return { success: true, feature };
     }
 
     if (feature === 'cvAnalysis') {
       if (quota.cvAnalysisTotal < UNLIMITED && quota.cvAnalysisUsed >= quota.cvAnalysisTotal) {
         throw new BadRequestException(
-          `Bạn đã dùng hết ${quota.cvAnalysisTotal} lượt ${FEATURE_LABEL[feature]} trong chu kỳ này.`,
+          `Bạn đã dùng hết ${quota.cvAnalysisTotal} lượt ${FEATURE_LABEL[feature]}.`,
         );
       }
       await this.prisma.userQuota.update({
@@ -266,7 +242,7 @@ export class SubscriptionService {
     if (feature === 'cvMatchCheck') {
       if (quota.cvMatchCheckTotal < UNLIMITED && quota.cvMatchCheckUsed >= quota.cvMatchCheckTotal) {
         throw new BadRequestException(
-          `Bạn đã dùng hết ${quota.cvMatchCheckTotal} lượt ${FEATURE_LABEL[feature]} trong chu kỳ này.`,
+          `Bạn đã dùng hết ${quota.cvMatchCheckTotal} lượt ${FEATURE_LABEL[feature]}.`,
         );
       }
       await this.prisma.userQuota.update({
@@ -291,6 +267,23 @@ export class SubscriptionService {
       where: { name: dto.planName },
     });
     if (!plan) throw new NotFoundException('Plan not found');
+
+    const pendingSubs = await this.prisma.userSubscription.findMany({
+      where: { userID: user.userID, status: 'pending' },
+      select: { id: true },
+    });
+
+    if (pendingSubs.length > 0) {
+      const pendingIds = pendingSubs.map((s) => s.id);
+
+      await this.prisma.payment.deleteMany({
+        where: { subscriptionID: { in: pendingIds } },
+      });
+
+      await this.prisma.userSubscription.deleteMany({
+        where: { id: { in: pendingIds } },
+      });
+    }
 
     const existing = await this.prisma.userSubscription.findFirst({
       where: {
@@ -559,20 +552,24 @@ export class SubscriptionService {
     if (!user) throw new NotFoundException('User not found');
 
     const sub = await this.prisma.userSubscription.findFirst({
-      where: { userID: user.userID, status: 'active' },
+      where: {
+        userID: user.userID,
+        status: 'active',
+        expiresAt: { gt: new Date() },
+      },
       orderBy: { startedAt: 'desc' },
     });
     if (!sub) throw new NotFoundException('Không có gói đang active');
 
     await this.prisma.userSubscription.update({
       where: { id: sub.id },
-      data: { status: 'cancelled' },
+      data: { autoRenew: false },
     });
 
-    await this.revokeQuota(user.userID);
+    // await this.revokeQuota(user.userID);
 
     return {
-      message: 'Đã huỷ gói dịch vụ. Quota sẽ được thu hồi ngay.',
+      message: 'Đã hủy gói. Gói sẽ tiếp tục đến hết chu kỳ hiện tại.',
       expiresAt: sub.expiresAt,
     };
   }
@@ -600,7 +597,7 @@ export class SubscriptionService {
       });
       return {
         planName: 'free',
-        displayName: 'Free',
+        displayName: 'free',
         billing: null,
         status: 'active',
         expiresAt: null,
@@ -668,18 +665,18 @@ export class SubscriptionService {
     const LIMITS_CONFIG = {
       free: {
         jobSuggestPerDay: 3,
-        cvAnalysisPerMonth: 0,
-        cvMatchCheckCount: 0,
+        cvAnalysisPerMonth: 10,
+        cvMatchCheckCount: 20,
       },
       pro: {
-        jobSuggestPerDay: 20,
-        cvAnalysisPerMonth: 5,
-        cvMatchCheckCount: 10,
+        jobSuggestPerDay: 10,
+        cvAnalysisPerMonth: 40,
+        cvMatchCheckCount: 60,
       },
       elite: {
-        jobSuggestPerDay: 999,
-        cvAnalysisPerMonth: 999,
-        cvMatchCheckCount: 999,
+        jobSuggestPerDay: 20,
+        cvAnalysisPerMonth: 70,
+        cvMatchCheckCount: 100,
       },
     };
 
@@ -713,16 +710,47 @@ export class SubscriptionService {
       orderBy: { startedAt: 'desc' },
     });
 
-    let quota = activeSub?.quota ?? null;
-
-    // tìm quota trực tiếp cho user free
-    if (!quota) {
-      const month = this.currentMonth();
-      quota = await this.prisma.userQuota.findFirst({
-        where: { userID, month },
-      }) ?? null;
+    // Còn hạn → dùng quota của sub
+    if (activeSub?.quota) {
+      return { activeSub, quota: activeSub.quota };
     }
 
-    return { activeSub, quota };
+    // Tìm sub hết hạn tự nhiên (chưa bị xử lý)
+    const expiredSub = await this.prisma.userSubscription.findFirst({
+      where: {
+        userID,
+        status: 'active',       // vẫn còn status active nhưng đã quá expiresAt
+        expiresAt: { lte: new Date() },
+      },
+      orderBy: { expiresAt: 'desc' },
+    });
+
+    // Nếu có sub hết hạn tự nhiên → revoke và reset free quota
+    if (expiredSub) {
+      await this.prisma.userSubscription.update({
+        where: { id: expiredSub.id },
+        data: { status: 'expired' },
+      });
+      await this.revokeQuota(userID);
+    }
+
+    // Trả về free quota (đã được reset nếu sub vừa hết hạn)
+    const freeQuota = await this.prisma.userQuota.findFirst({
+      where: { userID, subscriptionID: null },
+    }) ?? null;
+
+    return { activeSub: null, quota: freeQuota };
+  }
+
+  private async getFreePlanLimits() {
+    const freePlan = await this.prisma.subscriptionPlan.findFirst({
+      where: { name: 'free' },
+      include: { limits: true },
+    });
+    return {
+      jobSuggestPerDay: freePlan?.limits?.jobSuggestPerDay ?? 3,
+      cvAnalysisPerMonth: freePlan?.limits?.cvAnalysisPerMonth ?? 0,
+      cvMatchCheckCount: freePlan?.limits?.cvMatchCheckCount ?? 0,
+    };
   }
 }

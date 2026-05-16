@@ -68,7 +68,6 @@ export class ChatbotService {
                             'X-Internal-Key': this.internalApiKey,
                         },
                         timeout: this.CV_UPLOAD_TIMEOUT,
-                        // Thêm maxContentLength để tránh lỗi với response lớn
                         maxContentLength: Infinity,
                         maxBodyLength: Infinity,
                     },
@@ -89,7 +88,6 @@ export class ChatbotService {
 
             const pythonData = response.data;
 
-            // Validate response structure
             if (!pythonData || typeof pythonData !== 'object') {
                 throw new Error('Invalid response structure from Python service');
             }

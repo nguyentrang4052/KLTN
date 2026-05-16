@@ -30,11 +30,28 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly config: ConfigService,
-  ) {}
+  ) { }
 
-  @Post('register')
-  async register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+  // @Post('register')
+  // async register(@Body() dto: RegisterDto) {
+  //   return this.authService.register(dto);
+  // }
+
+  @Post('register/initiate')
+  async initiateRegister(@Body() dto: RegisterDto) {
+    return this.authService.initiateRegister(dto);
+  }
+
+  @Post('register/complete')
+  @HttpCode(HttpStatus.OK)
+  async completeRegister(@Body() body: { email: string; otp: string }) {
+    return this.authService.completeRegister(body.email, body.otp);
+  }
+
+  @Post('register/resend-otp')
+  @HttpCode(HttpStatus.OK)
+  async resendRegisterOtp(@Body() body: { email: string }) {
+    return this.authService.resendRegisterOtp(body.email);
   }
 
   @Post('login')
@@ -63,7 +80,7 @@ export class AuthController {
 
   @Get('google')
   @UseGuards(AuthGuard('google'))
-  googleLogin() {}
+  googleLogin() { }
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))

@@ -305,8 +305,7 @@ export class JobsService {
     });
     if (!user) return { data: [], quota: null };
 
-    const today = new Date().toISOString().slice(0, 10);
-    const month = new Date().toISOString().slice(0, 7);
+    const today = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const UNLIMITED = 999;
     const PREVIEW_LIMIT = 3;
 
@@ -323,38 +322,20 @@ export class JobsService {
       orderBy: { startedAt: 'desc' },
     });
 
-    let quota = activeSub?.quota ?? null;
+    const freeQuota = await this.prisma.userQuota.findFirst({
+      where: { userID: user.userID, subscriptionID: null },
+    });
 
-    if (
-      quota &&
-      (quota.jobSuggestResetDate == null || quota.jobSuggestResetDate < today)
-    ) {
+    let quota = activeSub?.quota ?? freeQuota ?? null;
+
+    if (quota && (quota.jobSuggestResetDate == null || quota.jobSuggestResetDate < today)) {
       quota = await this.prisma.userQuota.update({
         where: { id: quota.id },
         data: { jobSuggestUsedToday: 0, jobSuggestResetDate: today },
       });
     }
 
-    if (!quota) {
-      quota =
-        (await this.prisma.userQuota.findFirst({
-          where: { userID: user.userID, month },
-        })) ?? null;
-
-      if (
-        quota &&
-        (quota.jobSuggestResetDate == null || quota.jobSuggestResetDate < today)
-      ) {
-        quota = await this.prisma.userQuota.update({
-          where: { id: quota.id },
-          data: { jobSuggestUsedToday: 0, jobSuggestResetDate: today },
-        });
-      }
-    }
-
-    const planLimits = activeSub?.plan?.limits;
-    const jobSuggestPerDay =
-      quota?.jobSuggestPerDay ?? planLimits?.jobSuggestPerDay ?? 3;
+    const jobSuggestPerDay = quota?.jobSuggestPerDay ?? 3;
     const isUnlimited = jobSuggestPerDay >= UNLIMITED;
     const usedToday = quota?.jobSuggestUsedToday ?? 0;
     const quotaExceeded = !isUnlimited && usedToday >= jobSuggestPerDay;
@@ -378,11 +359,9 @@ export class JobsService {
       },
     });
 
-    // Chỉ tính quota khi wasRecomputed = true
     let newUsedToday = usedToday;
     if (!isUnlimited && !quotaExceeded && recs.length > 0 && wasRecomputed) {
       const currentUsed = quota?.jobSuggestUsedToday ?? 0;
-
       if (currentUsed < jobSuggestPerDay) {
         if (quota) {
           await this.prisma.userQuota.update({
@@ -394,20 +373,19 @@ export class JobsService {
           });
           newUsedToday = currentUsed + 1;
         } else {
-          await this.prisma.userQuota.upsert({
-            where: { userID_month: { userID: user.userID, month } },
-            update: {
-              jobSuggestUsedToday: { increment: 1 },
-              jobSuggestResetDate: today,
-            },
-            create: {
+          const freePlan = await this.prisma.subscriptionPlan.findFirst({
+            where: { name: 'free' },
+            include: { limits: true },
+          });
+          await this.prisma.userQuota.create({
+            data: {
               userID: user.userID,
-              month,
-              jobSuggestPerDay: 3,
+              subscriptionID: null,
+              jobSuggestPerDay: freePlan?.limits?.jobSuggestPerDay ?? 3,
               jobSuggestUsedToday: 1,
               jobSuggestResetDate: today,
-              cvAnalysisTotal: 0,
-              cvMatchCheckTotal: 0,
+              cvAnalysisTotal: 10,
+              cvMatchCheckTotal: 20,
               cvAnalysisUsed: 0,
               cvMatchCheckUsed: 0,
             },
@@ -438,9 +416,7 @@ export class JobsService {
       quota: {
         limit: isUnlimited ? null : jobSuggestPerDay,
         usedToday: isUnlimited ? null : newUsedToday,
-        remaining: isUnlimited
-          ? null
-          : Math.max(0, jobSuggestPerDay - newUsedToday),
+        remaining: isUnlimited ? null : Math.max(0, jobSuggestPerDay - newUsedToday),
         isUnlimited,
         quotaExceeded,
         resetAt: 'Ngày mai',
@@ -466,43 +442,58 @@ export class JobsService {
     //   });
     // }
   }
-
   async incrementRecommendationQuota(accountID: number) {
     const user = await this.prisma.user.findFirst({
       where: { accountID },
       select: { userID: true },
     });
-
     if (!user) return;
 
-    const today = new Date().toISOString().slice(0, 10);
-    const month = new Date().toISOString().slice(0, 7);
-
-    await this.prisma.userQuota.upsert({
+    const today = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const activeSub = await this.prisma.userSubscription.findFirst({
       where: {
-        userID_month: {
-          userID: user.userID,
-          month,
-        },
-      },
-      update: {
-        jobSuggestUsedToday: {
-          increment: 1,
-        },
-        jobSuggestResetDate: today,
-      },
-      create: {
         userID: user.userID,
-        month,
-        jobSuggestPerDay: 3,
-        jobSuggestUsedToday: 1,
-        jobSuggestResetDate: today,
-        cvAnalysisTotal: 0,
-        cvMatchCheckTotal: 0,
-        cvAnalysisUsed: 0,
-        cvMatchCheckUsed: 0,
+        status: 'active',
+        expiresAt: { gt: new Date() },
       },
+      include: { plan: { include: { limits: true } }, quota: true },
+      orderBy: { startedAt: 'desc' },
     });
+
+    const quota = activeSub?.quota ??
+      await this.prisma.userQuota.findFirst({
+        where: { userID: user.userID, subscriptionID: null },
+      }) ?? null;
+
+    const needsReset = !quota?.jobSuggestResetDate || quota.jobSuggestResetDate !== today;
+
+    if (quota) {
+      await this.prisma.userQuota.update({
+        where: { id: quota.id },
+        data: {
+          jobSuggestUsedToday: needsReset ? 1 : { increment: 1 },
+          jobSuggestResetDate: today,
+        },
+      });
+    } else {
+      const freePlan = await this.prisma.subscriptionPlan.findFirst({
+        where: { name: 'free' },
+        include: { limits: true },
+      });
+      await this.prisma.userQuota.create({
+        data: {
+          userID: user.userID,
+          subscriptionID: null,
+          jobSuggestPerDay: freePlan?.limits?.jobSuggestPerDay ?? 3,
+          jobSuggestUsedToday: 1,
+          jobSuggestResetDate: today,
+          cvAnalysisTotal: 10,
+          cvMatchCheckTotal: 20,
+          cvAnalysisUsed: 0,
+          cvMatchCheckUsed: 0,
+        },
+      });
+    }
   }
 
   async getUserStats(accountID: number) {
@@ -1036,5 +1027,104 @@ export class JobsService {
       .sort((a, b) => b.score - a.score);
 
     return results;
+  }
+
+  async getJobMatchPreview(accountID: number, jobID: number) {
+    const user = await this.prisma.user.findFirst({
+      where: { accountID },
+      select: { userID: true },
+    });
+    if (!user) return null;
+
+    const rec = await this.prisma.jobRecommendation.findUnique({
+      where: { userID_jobID: { userID: user.userID, jobID } },
+      select: { matchPercent: true, reason: true },
+    });
+
+    return rec ? { matchPercent: rec.matchPercent, reason: rec.reason } : null;
+  }
+
+  async getJobMatchDetail(accountID: number, jobID: number) {
+    const user = await this.prisma.user.findFirst({
+      where: { accountID },
+      select: { userID: true },
+    });
+    if (!user) return null;
+
+    const userSkillRows = await this.prisma.userSkill.findMany({
+      where: { userID: user.userID },
+      include: { skill: { select: { name: true } } },
+    });
+    const userSkills = new Set(
+      userSkillRows.map((s) => s.skill.name.toLowerCase()),
+    );
+
+    const profile = await this.prisma.userProfile.findFirst({
+      where: { userID: user.userID },
+      include: { industry: { select: { name: true } } },
+    });
+
+    const job = await this.prisma.job.findUnique({
+      where: { jobID },
+      include: {
+        skills: { include: { skill: { select: { name: true } } } },
+        industry: { select: { name: true } },
+      },
+    });
+    if (!job) return null;
+
+    const rec = await this.prisma.jobRecommendation.findUnique({
+      where: { userID_jobID: { userID: user.userID, jobID } },
+      select: { matchPercent: true, reason: true },
+    });
+
+    const jobSkills = job.skills.map((s) => s.skill.name);
+    const skillOverlap = jobSkills.filter((s) =>
+      userSkills.has(s.toLowerCase()),
+    );
+    const skillGap = jobSkills.filter((s) => !userSkills.has(s.toLowerCase()));
+
+    const industryMatch = !!(
+      profile?.industry?.name &&
+      job.industry?.name &&
+      profile.industry.name.toLowerCase() === job.industry.name.toLowerCase()
+    );
+
+    const expMatch = !!(
+      profile?.experienceYear &&
+      job.experienceYear &&
+      profile.experienceYear.toLowerCase() === job.experienceYear.toLowerCase()
+    );
+
+    const parseSalary = (s: string | null) => {
+      if (!s) return null;
+      const nums = s.replace(/,/g, '').match(/\d+(\.\d+)?/g);
+      if (!nums) return null;
+      return Math.max(...nums.map(Number).filter((n) => n > 0));
+    };
+
+    const userExpectedSalaryNum = parseSalary(profile?.expectedSalary ?? null);
+    const jobSalaryNum = parseSalary(job.salary ?? null);
+
+    let salaryStatus: 'match' | 'low' | 'unknown' = 'unknown';
+    if (userExpectedSalaryNum && jobSalaryNum) {
+      salaryStatus =
+        jobSalaryNum >= userExpectedSalaryNum * 0.8 ? 'match' : 'low';
+    }
+
+    return {
+      matchPercent: rec?.matchPercent ?? null,
+      reason: rec?.reason ?? null,
+      skillOverlap,
+      skillGap,
+      industryMatch,
+      industryName: job.industry?.name ?? null,
+      expMatch,
+      userExp: profile?.experienceYear ?? null,
+      jobExp: job.experienceYear ?? null,
+      salaryStatus,
+      expectedSalary: profile?.expectedSalary ?? null,
+      jobSalary: job.salary ?? null,
+    };
   }
 }

@@ -17,6 +17,10 @@ import { VerifyOtpDto } from '../dto/verify-otp.dto';
 import { ResetPasswordDto } from '../dto/reset-password.dto';
 
 const otpStore = new Map<string, { otp: string; expiredAt: Date }>();
+const registerOtpStore = new Map<
+  string,
+  { otp: string; expiredAt: Date; payload: any }
+>();
 
 @Injectable()
 export class AuthService {
@@ -27,12 +31,40 @@ export class AuthService {
     private blacklistService: TokenBlacklistService,
   ) { }
 
-  async register(dto: RegisterDto) {
+  async initiateRegister(dto: RegisterDto) {
     const existing = await this.prisma.account.findUnique({
       where: { email: dto.email },
     });
     if (existing) throw new ConflictException('Email đã được sử dụng.');
 
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiredAt = new Date(Date.now() + 10 * 60 * 1000);
+
+
+    registerOtpStore.set(dto.email, { otp, expiredAt, payload: dto });
+
+    await this.mailService.sendOtp(dto.email, otp);
+
+    return { message: 'Mã OTP đã được gửi tới email của bạn.' };
+  }
+
+  async completeRegister(email: string, otp: string) {
+    const record = registerOtpStore.get(email);
+
+    if (!record)
+      throw new BadRequestException(
+        'Phiên đăng ký không tồn tại hoặc đã hết hạn.',
+      );
+    if (new Date() > record.expiredAt)
+      throw new BadRequestException('Mã OTP đã hết hạn.');
+    if (record.otp !== otp) throw new BadRequestException('Mã OTP không đúng.');
+
+    const existing = await this.prisma.account.findUnique({
+      where: { email },
+    });
+    if (existing) throw new ConflictException('Email đã được sử dụng.');
+
+    const dto: RegisterDto = record.payload;
     const hashed = await bcrypt.hash(dto.password, 10);
 
     const account = await this.prisma.account.create({
@@ -53,6 +85,12 @@ export class AuthService {
       include: { user: true },
     });
 
+    if (account.user) {
+      await this.initFreeQuota(account.user.userID);
+    }
+
+    registerOtpStore.delete(email);
+
     return {
       message: 'Đăng ký thành công.',
       accessToken: this.signToken(
@@ -64,13 +102,71 @@ export class AuthService {
         accountID: account.accountID,
         email: account.email,
         fullName: account.user?.fullName,
-        address: account.user?.address,
-        phone: account.user?.phone,
-        birthYear: account.user?.birthYear,
-        gender: account.user?.gender,
       },
     };
   }
+
+  async resendRegisterOtp(email: string) {
+    const record = registerOtpStore.get(email);
+    if (!record)
+      throw new BadRequestException(
+        'Phiên đăng ký không tồn tại. Vui lòng thử lại từ đầu.',
+      );
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiredAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    registerOtpStore.set(email, { ...record, otp, expiredAt });
+    await this.mailService.sendOtp(email, otp);
+
+    return { message: 'Mã OTP mới đã được gửi.' };
+  }
+
+  // async register(dto: RegisterDto) {
+  //   const existing = await this.prisma.account.findUnique({
+  //     where: { email: dto.email },
+  //   });
+  //   if (existing) throw new ConflictException('Email đã được sử dụng.');
+
+  //   const hashed = await bcrypt.hash(dto.password, 10);
+
+  //   const account = await this.prisma.account.create({
+  //     data: {
+  //       email: dto.email,
+  //       password: hashed,
+  //       provider: 'local',
+  //       user: {
+  //         create: {
+  //           fullName: dto.fullName,
+  //           phone: dto.phone ?? null,
+  //           birthYear: dto.birthYear ?? null,
+  //           gender: dto.gender ?? null,
+  //           address: dto.address ?? null,
+  //         },
+  //       },
+  //     },
+  //     include: { user: true },
+  //   });
+
+  //   // Tạo quota mặc định cho free plan
+  //   if (account.user) {
+  //     await this.initFreeQuota(account.user.userID);
+  //   }
+
+  //   return {
+  //     message: 'Đăng ký thành công.',
+  //     accessToken: this.signToken(account.accountID, account.email, account.role),
+  //     user: {
+  //       accountID: account.accountID,
+  //       email: account.email,
+  //       fullName: account.user?.fullName,
+  //       address: account.user?.address,
+  //       phone: account.user?.phone,
+  //       birthYear: account.user?.birthYear,
+  //       gender: account.user?.gender,
+  //     },
+  //   };
+  // }
 
   async login(dto: LoginDto) {
     const account = await this.prisma.account.findUnique({
@@ -78,8 +174,11 @@ export class AuthService {
       include: { user: true },
     });
 
-    if (!account || !account.active)
+    if (!account)
       throw new UnauthorizedException('Email hoặc mật khẩu không đúng.');
+
+    if (!account.active)
+      throw new UnauthorizedException('Tài khoản đã bị vô hiệu hóa.');
 
     const pwMatch = await bcrypt.compare(dto.password, account.password);
     if (!pwMatch)
@@ -87,11 +186,7 @@ export class AuthService {
 
     return {
       message: 'Đăng nhập thành công.',
-      accessToken: this.signToken(
-        account.accountID,
-        account.email,
-        account.role,
-      ),
+      accessToken: this.signToken(account.accountID, account.email, account.role),
       user: {
         accountID: account.accountID,
         email: account.email,
@@ -102,11 +197,7 @@ export class AuthService {
     };
   }
 
-  async oauthLogin(oauthUser: {
-    email: string;
-    fullName: string;
-    provider: string;
-  }) {
+  async oauthLogin(oauthUser: { email: string; fullName: string; provider: string }) {
     let account = await this.prisma.account.findUnique({
       where: { email: oauthUser.email },
       include: { user: true },
@@ -123,22 +214,21 @@ export class AuthService {
           password: '',
           provider: oauthUser.provider,
           user: {
-            create: {
-              fullName: oauthUser.fullName,
-            },
+            create: { fullName: oauthUser.fullName },
           },
         },
         include: { user: true },
       });
+
+      // Chỉ tạo quota khi account mới được tạo
+      if (account.user) {
+        await this.initFreeQuota(account.user.userID);
+      }
     }
 
     return {
       message: 'Đăng nhập thành công.',
-      accessToken: this.signToken(
-        account.accountID,
-        account.email,
-        account.role,
-      ),
+      accessToken: this.signToken(account.accountID, account.email, account.role),
       user: {
         accountID: account.accountID,
         email: account.email,
@@ -146,6 +236,29 @@ export class AuthService {
         role: account.role,
       },
     };
+  }
+
+  private async initFreeQuota(userID: number): Promise<void> {
+    const freePlan = await this.prisma.subscriptionPlan.findFirst({
+      where: { name: 'free' },
+      include: { limits: true },
+    });
+
+    const today = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+    await this.prisma.userQuota.create({
+      data: {
+        userID,
+        subscriptionID: null,
+        jobSuggestPerDay: freePlan?.limits?.jobSuggestPerDay ?? 3,
+        jobSuggestUsedToday: 0,
+        jobSuggestResetDate: today,
+        cvAnalysisTotal: 10,
+        cvMatchCheckTotal: 20,
+        cvAnalysisUsed: 0,
+        cvMatchCheckUsed: 0,
+      },
+    });
   }
 
   async forgotPassword(dto: ForgotPasswordDto) {
@@ -218,7 +331,7 @@ export class AuthService {
   ): string {
     return this.jwtService.sign(
       { sub: accountID, email, role },
-      { expiresIn: '24h' },
+      { expiresIn: '7d' },
     );
   }
 
@@ -228,7 +341,7 @@ export class AuthService {
       include: {
         user: {
           include: {
-            profiles: true
+            profiles: true,
           },
         },
       },
@@ -259,7 +372,7 @@ export class AuthService {
       provider: account.provider,
       avatar: account.user?.avatar ?? null,
       jobTitle: latestProfile?.jobTitle ?? 'Thành viên',
-      plan: sub?.plan ?? { name: 'free', displayName: 'Free' },
+      plan: sub?.plan ?? { name: 'free', displayName: 'free' },
     };
   }
 

@@ -162,7 +162,7 @@ export default function PricingScreen() {
   const fmt = (n) => n === 0 ? 'Miễn phí' : n.toLocaleString('vi-VN') + 'đ';
   const formatDate = (iso) => iso ? new Date(iso).toLocaleDateString('vi-VN') : '';
   const getPrice = (plan) => billing === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice;
-  const isCurrentPlan = (name) => currentSub?.planName === name  // chỉ check tên, không check billing
+  const isCurrentPlan = (name) => currentSub?.planName === name 
   const isSameBilling = currentSub?.billing === billing
   const currentRank = PLAN_RANK[currentSub?.planName] ?? 0;
 

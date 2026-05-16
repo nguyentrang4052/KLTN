@@ -82,9 +82,9 @@ export default function HomeScreen() {
   const [loadingRecs, setLoadingRecs] = useState(false)
   const [loadingStats, setLoadingStats] = useState(false)
   const [savedJobIds, setSavedJobIds] = useState(new Set())
+  const [refreshingRecs, setRefreshingRecs] = useState(false)
 
   const [crawlStatus, setCrawlStatus] = useState(null)
-  const [isRealtime, setIsRealtime] = useState(false)
   const eventSourceRef = useRef(null)
   const [locations, setLocations] = useState([])
 
@@ -103,6 +103,7 @@ export default function HomeScreen() {
   const searchInputRef = useRef(null)
   const [searchPos, setSearchPos] = useState({ top: 0, left: 0, width: 0 })
   const debounceRef = useRef(null)
+  const [refreshMessage, setRefreshMessage] = useState(null)
 
   useEffect(() => { pageRef.current = page }, [page])
   useEffect(() => { sortRef.current = sort }, [sort])
@@ -220,7 +221,6 @@ export default function HomeScreen() {
       .finally(() => setLoadingIndustries(false))
   }, [activePlatform])
 
-
   const handlePageChange = useCallback((newPage) => {
     if (newPage >= 1 && newPage <= meta.totalPages && newPage !== page) {
       setPage(newPage)
@@ -270,27 +270,43 @@ export default function HomeScreen() {
   }, [locationFilter, fetchJobs])
 
   useEffect(() => {
-    if (!token) { setRecommendations([]); return }
-    const fetchRecs = () => {
-      setLoadingRecs(true)
-      fetch(`${API}/jobs/recommendations`, {
+    if (!token) { setRecommendations([]); setRecQuota(null); return }
+    setLoadingRecs(true)
+    fetch(`${API}/jobs/recommendations`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(res => {
+        setRecommendations(Array.isArray(res) ? res : (res.data ?? []))
+        setRecQuota(Array.isArray(res) ? null : (res.quota ?? null))
+        setRecPage(1)
+      })
+      .catch(console.error)
+      .finally(() => setLoadingRecs(false))
+  }, [token])
+
+  const handleRefreshRecommendations = async () => {
+    if (!token || refreshingRecs) return
+    setRefreshingRecs(true)
+    try {
+      const res = await fetch(`${API}/jobs/recommendations/refresh`, {
+        method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       })
-        .then(r => r.json())
-        .then(res => {
-          const list = Array.isArray(res) ? res : (res.data ?? [])
-          const quotaInfo = Array.isArray(res) ? null : (res.quota ?? null)
-          setRecommendations(list)
-          setRecQuota(quotaInfo)
-          setRecPage(1)
-        })
-        .catch(console.error)
-        .finally(() => setLoadingRecs(false))
+      const data = await res.json()
+      setRecommendations(Array.isArray(data) ? data : (data.data ?? []))
+      setRecQuota(Array.isArray(data) ? null : (data.quota ?? null))
+      setRecPage(1)
+
+      if (data.message) {
+        setRefreshMessage({ text: data.message, isNew: data.hasChanged })
+      }
+    } catch (err) {
+      console.error('Refresh recs error:', err)
+    } finally {
+      setRefreshingRecs(false)
     }
-    fetchRecs()
-    const interval = setInterval(fetchRecs, 30 * 60 * 1000)
-    return () => clearInterval(interval)
-  }, [token])
+  }
 
   useEffect(() => {
     if (!token) { setStats(null); return }
@@ -384,15 +400,14 @@ export default function HomeScreen() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ keyword: keywordRef.current.trim() }),
-        });
-
+        })
         const res = await fetch(`${API}/jobs/search-history`, {
           headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        setSearchHistory(Array.isArray(data) ? data : []);
+        })
+        const data = await res.json()
+        setSearchHistory(Array.isArray(data) ? data : [])
       } catch (err) {
-        console.error(err);
+        console.error(err)
       }
     }
     setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
@@ -559,7 +574,6 @@ export default function HomeScreen() {
                     width: Math.max(searchPos.width, 320),
                     zIndex: 9997,
                   }}>
-
                     {!keyword.trim() && searchHistory.length > 0 && (
                       <>
                         <div className="hs-sd-section-hd">
@@ -580,11 +594,11 @@ export default function HomeScreen() {
                         {suggestions.map((s, i) => (
                           <div key={i} className="hs-sd-item"
                             onMouseDown={(e) => {
-                              e.preventDefault();
-                              const selectedKeyword = typeof s === 'object' ? s.display : s;
-                              setKeyword(selectedKeyword);
-                              setShowDropdown(false);
-                              navigate(`?keyword=${encodeURIComponent(selectedKeyword)}&page=1`);
+                              e.preventDefault()
+                              const selectedKeyword = typeof s === 'object' ? s.display : s
+                              setKeyword(selectedKeyword)
+                              setShowDropdown(false)
+                              navigate(`?keyword=${encodeURIComponent(selectedKeyword)}&page=1`)
                             }}>
                             <span className="hs-sd-ico">🔍</span>
                             <span className="hs-sd-item-text">
@@ -667,22 +681,6 @@ export default function HomeScreen() {
               </div>
             )}
           </div>
-
-          {/* <div className="hs-hero-right">
-            <div className="hs-stat hs-stat-accent">
-              <div className="hs-stat-ico">🎯</div>
-              <div className="hs-stat-n">
-                {loadingStats ? '…'
-                  : recQuota?.quotaExceeded ? '—'
-                    : (stats?.jobMatch?.count ?? '—')}
-              </div>
-              <div className="hs-stat-l">
-                {recQuota?.quotaExceeded
-                  ? 'Hết lượt đề xuất hôm nay'
-                  : 'Việc phù hợp hôm nay'}
-              </div>
-            </div>
-          </div> */}
         </div>
       </div>
 
@@ -694,6 +692,7 @@ export default function HomeScreen() {
             setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
           }} />
         </div>
+
         <div className="hs-cats-wrap" style={{ margin: '0 -32px', padding: '40px 32px 48px' }}>
           <div className="hs-cats-header">
             <div className="hs-cats-titles">
@@ -815,7 +814,41 @@ export default function HomeScreen() {
               <span className="hs-sec-title">🎯 Việc làm phù hợp với bạn</span>
               <div className="hs-sec-line" />
               <span className="hs-sec-ct">{recommendations.length} kết quả</span>
+              {!recQuota?.quotaExceeded && (
+                <button
+                  onClick={handleRefreshRecommendations}
+                  disabled={refreshingRecs}
+                  style={{
+                    padding: '6px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+                    background: refreshingRecs ? '#EDE8DF' : 'linear-gradient(135deg,#232AA2,#1565C0)',
+                    color: refreshingRecs ? '#9A8D80' : '#fff',
+                    border: 'none', cursor: refreshingRecs ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    transition: 'all .18s', flexShrink: 0,
+                  }}
+                >
+                  {refreshingRecs ? '⟳ Đang tải...' : '✨ Nhận đề xuất'}
+                </button>
+              )}
             </div>
+
+            {refreshMessage && (
+              <div style={{
+                padding: '10px 16px', marginBottom: 12, borderRadius: 10, fontSize: 13,
+                background: refreshMessage.isNew ? '#E8F5E9' : '#FFF8E1',
+                border: `1px solid ${refreshMessage.isNew ? '#C3E6CB' : '#FFE082'}`,
+                color: refreshMessage.isNew ? '#2E6040' : '#7B5800',
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <span>{refreshMessage.isNew ? '✅' : '💡'}</span>
+                <span>{refreshMessage.text}</span>
+                <button onClick={() => setRefreshMessage(null)} style={{
+                  marginLeft: 'auto', background: 'none', border: 'none',
+                  cursor: 'pointer', fontSize: 14, color: 'inherit', opacity: 0.6,
+                }}>✕</button>
+              </div>
+            )}
+
             {recQuota && !recQuota.isUnlimited && (
               <div style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -841,10 +874,13 @@ export default function HomeScreen() {
                 )}
               </div>
             )}
-            {loadingRecs ? (
+
+            {loadingRecs || refreshingRecs ? (
               <div className="hs-loading">⟳ Đang tải việc làm...</div>
             ) : recommendations.length === 0 ? (
-              <div className="hs-empty">Chưa có gợi ý</div>
+              <div className="hs-empty">
+                Nhấn <strong>✨ Nhận đề xuất</strong> để AI tìm việc phù hợp với bạn
+              </div>
             ) : (
               <>
                 <div className="hs-grid">
