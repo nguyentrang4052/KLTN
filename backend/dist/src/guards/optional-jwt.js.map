@@ -1,0 +1,1 @@
+{"version":3,"file":"optional-jwt.js","sourceRoot":"","sources":["../../../src/guards/optional-jwt.ts"],"names":[],"mappings":";;;;;;;;;AAAA,2CAA4C;AAC5C,+CAA6C;AAGtC,IAAM,gBAAgB,GAAtB,MAAM,gBAAiB,SAAQ,IAAA,oBAAS,EAAC,KAAK,CAAC;IAC3C,aAAa,CAAc,IAAS,EAAE,IAAW;QACxD,OAAO,IAAI,CAAC;IACd,CAAC;CACF,CAAA;AAJY,4CAAgB;2BAAhB,gBAAgB;IAD5B,IAAA,mBAAU,GAAE;GACA,gBAAgB,CAI5B"}
