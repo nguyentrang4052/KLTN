@@ -93,3 +93,5 @@ chroma_db_cache/
 *.sqlite3
 *.pickle
 dist/
+tsconfig.build.tsbuildinfo
+tsconfig.tsbuildinfo
