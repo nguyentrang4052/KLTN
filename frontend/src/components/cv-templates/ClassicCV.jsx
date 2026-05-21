@@ -272,7 +272,7 @@ const SectionItem = memo(({ section, item, index, total, isEdit, accent, onUpdat
     }, [section, index, onUpdate]);
 
     const renderContent = useMemo(() => {
-        return renderConfig.render(item, index, handleChange);
+        return renderConfig.render(item || {}, index, handleChange);
     }, [renderConfig, item, index, handleChange]);
 
     if (!isEdit) {
