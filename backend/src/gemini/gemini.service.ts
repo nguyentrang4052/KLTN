@@ -410,15 +410,6 @@ ${cvText}`;
             .replace(/```\s*/gi, '')
             .trim();
 
-        // Bước 2: Tìm JSON object (tìm cặp ngoặc nhọn ngoài cùng)
-        // const firstBrace = cleaned.indexOf('{');
-        // const lastBrace = cleaned.lastIndexOf('}');
-
-
-        // if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-        //     cleaned = cleaned.substring(firstBrace, lastBrace + 1);
-        // } 
-
         const firstJson = this.extractFirstJsonObject(cleaned);
 
         if (firstJson) {

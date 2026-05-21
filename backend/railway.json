@@ -1,0 +1,5 @@
+{
+  "buildCommand": "npm ci --include=dev && npm run build",
+  "startCommand": "node dist/main",
+  "healthcheckPath": "/health"
+}
