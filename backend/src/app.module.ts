@@ -41,14 +41,27 @@ import { NotificationModule } from './notification/notification.module';
     SubscriptionModule,
     AdminModule,
     NotificationModule,
+    // CacheModule.registerAsync({
+    //   useFactory: async () => ({
+    //     store: await redisStore({
+    //       socket: {
+    //         host: 'localhost',
+    //         port: 6379,
+    //       },
+    //       ttl: 3600, // 1 giờ (giây)
+    //     }),
+    //   }),
+    // }),
     CacheModule.registerAsync({
+      isGlobal: true,
       useFactory: async () => ({
         store: await redisStore({
           socket: {
-            host: 'localhost',
-            port: 6379,
+            host: process.env.REDIS_HOST || 'localhost',
+            port: parseInt(process.env.REDIS_PORT || '6379'),
           },
-          ttl: 3600, // 1 giờ (giây)
+          password: process.env.REDIS_PASSWORD,
+          ttl: 3600,
         }),
       }),
     }),
