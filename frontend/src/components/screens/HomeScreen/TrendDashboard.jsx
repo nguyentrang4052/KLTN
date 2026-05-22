@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import {API} from '../../../config/api'
 
 const STATUS_META = {
     hot: { icon: '🔥', label: 'Hot', color: '#C0412A', bg: '#FDE8E4', border: '#F5C0B0' },
@@ -19,7 +20,7 @@ export default function TrendDashboard({ onIndustryClick }) {
     const containerRef = useRef(null)
 
     useEffect(() => {
-        fetch('http://localhost:3000/api/jobs/industry-trends')
+        fetch(`${API}/jobs/industry-trends`)
             .then(r => r.json())
             .then(data => { setTrends(Array.isArray(data) ? data : []); setLoading(false) })
             .catch(() => setLoading(false))

@@ -4,8 +4,8 @@ import { TEMPLATES, EMPTY_CV } from "../../../utils/constants"
 import CVRenderer from "./../../cv-templates/CVRenderer"
 import { getToken } from '../../../utils/auth'
 import ReturnDialog from "../ReturnDialog/ReturnDialog"
+import { API } from '../../../config/api'
 
-const API = "http://localhost:3000/api";
 
 const THUMB_COMPONENTS = {
   classic: ({ accent }) => (

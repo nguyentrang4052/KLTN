@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from "react-router-dom"
 import './Login.css'
+import {API} from '../../../config/api'
 
 const IconMail = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -48,7 +49,7 @@ export default function Login({ onGoRegister, onGoForgot, onLoginSuccess }) {
     if (!email || !password) { setError('Vui lòng điền đầy đủ thông tin.'); return }
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:3000/api/auth/login', {
+      const res = await fetch(`${API}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -78,7 +79,7 @@ export default function Login({ onGoRegister, onGoForgot, onLoginSuccess }) {
   }
 
   const handleGoogle = () => {
-    window.location.href = 'http://localhost:3000/api/auth/google'
+    window.location.href = `${API}/auth/google`
   }
 
   useEffect(() => {

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import './JobCard.css';
 import Badge from '../Badge/Badge';
 
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 function JobCard({ job, showMatch = true, showActions = true, token, onSave, onCompanyClick }) {
   const [saved, setSaved] = useState(job?.isSaved ?? false);

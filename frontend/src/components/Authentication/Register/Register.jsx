@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import './Register.css'
 import { useNavigate } from "react-router-dom"
+import {API} from '../../../config/api'
 
 const IconMail = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -178,7 +179,7 @@ export default function Register() {
 
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:3000/api/auth/register/initiate', {
+      const res = await fetch(`${API}/auth/register/initiate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -232,7 +233,7 @@ export default function Register() {
     if (otp.length < 6) { setError('Vui lòng nhập đủ 6 chữ số OTP.'); return }
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:3000/api/auth/register/complete', {
+      const res = await fetch(`${API}/auth/register/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: form.email, otp }),
@@ -250,7 +251,7 @@ export default function Register() {
   const handleResendOtp = async () => {
     if (resendCooldown > 0) return
     try {
-      const res = await fetch('http://localhost:3000/api/auth/register/resend-otp', {
+      const res = await fetch(`${API}/auth/register/resend-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: form.email }),
@@ -308,7 +309,7 @@ export default function Register() {
               <h2 className="rg-card-title">Tạo tài khoản</h2>
               <p className="rg-card-sub">Đã có tài khoản? <a onClick={() => navigate("/login")}>Đăng nhập →</a></p>
               <div className="rg-socials">
-                <button className="rg-social-btn" onClick={() => window.location.href = 'http://localhost:3000/api/auth/google'}>
+                <button className="rg-social-btn" onClick={() => window.location.href = `${API}/auth/google`}>
                   <IconGoogle /> Google
                 </button>
               </div>

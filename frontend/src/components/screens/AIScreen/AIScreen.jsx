@@ -5,7 +5,7 @@ import { getToken } from '../../../utils/auth';
 import { useLocation } from 'react-router-dom';
 import useUserStore from '../../../store/userStore';
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const DEFAULT_QUICK_PROMPTS = [
     '💰 Mức lương thị trường cho React Dev',

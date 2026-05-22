@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import './CompanyDetailScreen.css'
 import Header from '../../layout/Header/Header'
 
-const API = 'http://localhost:3000/api'
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 const JOBS_PER_PAGE = 10
 
 function matchCls(n) { return n >= 85 ? 'mc-hi' : n >= 70 ? 'mc-md' : 'mc-lo' }

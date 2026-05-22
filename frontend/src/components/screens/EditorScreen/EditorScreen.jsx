@@ -418,7 +418,7 @@ const EMPTY_CV_DATA = {
     activities: []
 };
 
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 // Helper gọi API trực tiếp
 async function callApi(endpoint, method, body) {

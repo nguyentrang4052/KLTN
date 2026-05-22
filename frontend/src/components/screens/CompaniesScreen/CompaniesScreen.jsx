@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import { getToken } from '../../../utils/auth'
 import { useJobsSocket } from '../../../hook/useJobsSocket'
 
-const API = 'http://localhost:3000/api'
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
 const COMPANY_SIZES = [
   { value: 'Dưới 10 người', label: 'Dưới 10 người' },

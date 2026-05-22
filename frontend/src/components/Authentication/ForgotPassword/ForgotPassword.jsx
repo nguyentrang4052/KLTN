@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useNavigate } from "react-router-dom"
 import './ForgotPassword.css'
 
+import {API} from '../../../config/api'
 /* ── Icons ── */
 const IconMail = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -72,7 +73,7 @@ export default function ForgotPassword({ onGoLogin }) {
     if (!email || !/\S+@\S+\.\S+/.test(email)) { setError('Email không hợp lệ.'); return }
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:3000/api/auth/forgot-password', {
+      const res = await fetch(`${API}/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -105,7 +106,7 @@ export default function ForgotPassword({ onGoLogin }) {
     if (otp.join('').length < 6) { setError('Vui lòng nhập đầy đủ 6 chữ số.'); return }
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:3000/api/auth/verify-otp', {
+      const res = await fetch(`${API}/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp: otp.join('') }),
@@ -126,7 +127,7 @@ export default function ForgotPassword({ onGoLogin }) {
     if (newPw !== confirmPw) { setError('Mật khẩu xác nhận không khớp.'); return }
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:3000/api/auth/reset-password', {
+      const res = await fetch(`${API}/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp: otp.join(''), newPassword: newPw }),

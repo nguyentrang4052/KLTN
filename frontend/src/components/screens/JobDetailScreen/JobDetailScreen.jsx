@@ -3,8 +3,8 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import './JobDetailScreen.css'
 import Badge from '../../common/Badge/Badge'
 import { getToken } from '../../../utils/auth'
+import { API } from '../../../config/api'
 
-const API = 'http://localhost:3000/api'
 
 function JobDetailScreen({ jobId, onBack, token: tokenProp, onCompanyClick }) {
   const params = useParams()

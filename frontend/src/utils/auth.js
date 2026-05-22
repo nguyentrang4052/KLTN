@@ -1,3 +1,5 @@
+import {API} from '../config/api'
+
 export function getToken() {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token')
     if (!token) return null
@@ -30,7 +32,7 @@ export function clearAuth() {
 }
 
 export async function fetchMe(token) {
-    const res = await fetch('http://localhost:3000/api/auth/me', {
+    const res = await fetch(`${API}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) throw new Error('Không thể lấy thông tin người dùng.');
@@ -46,7 +48,7 @@ export async function logoutRequest() {
     const token = getToken();
     if (token) {
         try {
-            await fetch('http://localhost:3000/api/auth/logout', {
+            await fetch(`${API}/auth/logout`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -59,7 +61,7 @@ export async function adminFetch(path, options = {}) {
     const token = getToken()
     if (!token) throw new Error('Unauthorized')
 
-    const res = await fetch(`http://localhost:3000/api${path}`, {
+    const res = await fetch(`${API}${path}`, {
         ...options,
         headers: {
             'Content-Type': 'application/json',

@@ -4,8 +4,8 @@ import { createPortal } from 'react-dom'
 import { getToken } from '../../../utils/auth';
 import './JobSearchScreen.css';
 import { useJobsSocket } from '../../../hook/useJobsSocket';
+import {API} from '../../../config/api'
 
-const API = 'http://localhost:3000/api';
 
 function LoginModal({ onClose }) {
   const navigate = useNavigate();

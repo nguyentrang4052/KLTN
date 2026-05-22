@@ -5,8 +5,8 @@ import Sidebar from '../../layout/Sidebar/Sidebar'
 import Topbar from '../../layout/Topbar/Topbar'
 import Badge from '../../common/Badge/Badge'
 import { getToken } from '../../../utils/auth'
+import { API } from '../../../config/api'
 
-const API = 'http://localhost:3000/api'
 const CONNECTED_ACCOUNTS = [
   { name: 'TopCV', code: 'T', color: '#00B14F', connected: true },
   { name: 'CareerLink', code: 'C', color: '#D0392A', connected: true },

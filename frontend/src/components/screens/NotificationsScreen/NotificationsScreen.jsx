@@ -3,7 +3,7 @@ import Sidebar from '../../layout/Sidebar/Sidebar'
 import Topbar from '../../layout/Topbar/Topbar'
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-
+import {API} from '../../../config/api'
 
 const TYPE_META = {
   job_alert: { icon: '💼', cls: 'n-ico-job_alert' },
@@ -53,8 +53,6 @@ const groupByDate = (notifications) => {
 
 function NotificationsScreen({ notifContext }) {
   const token = localStorage.getItem('token') || sessionStorage.getItem('token')
-  const API = 'http://localhost:3000/api'
-
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteOne } = notifContext
   const navigate = useNavigate()
 

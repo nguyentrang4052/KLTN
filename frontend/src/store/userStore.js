@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { getToken } from '../utils/auth';
 
-const API = 'http://localhost:3000/api';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const useUserStore = create((set, get) => ({
   profile: null,

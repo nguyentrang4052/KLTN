@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getToken } from '../../../utils/auth';
 import './PricingScreen.css';
+import { API } from '../../../config/api';
 
-const API = 'http://localhost:3000/api';
 
 const PLAN_STYLES = {
   free: { tagline: 'Bắt đầu miễn phí', color: '#9A8D80', gradient: 'linear-gradient(135deg,#6B5E50,#9A8D80)', icon: '🌱', badge: null },

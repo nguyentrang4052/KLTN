@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { getToken } from '../../../utils/auth'
 import './PaymentScreen.css'
+import { API } from '../../../config/api'
 
-const API = 'http://localhost:3000/api'
 const PLAN_COLORS = { free: '#9A8D80', pro: '#C0412A', elite: '#D4820A' }
 const STATUS_CONFIG = {
   success: { label: 'Thành công', cls: 'success' },

@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { io } from 'socket.io-client'
 import { getToken } from '../utils/auth'
 
-const API = 'http://localhost:3000/api'
-const WS = 'http://localhost:3000'
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+const WS = import.meta.env.VITE_WS_URL || 'http://localhost:3000'
 
 export function useNotifications() {
     const [notifications, setNotifications] = useState([])

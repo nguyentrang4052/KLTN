@@ -5,8 +5,8 @@ import './HomeScreen.css'
 import JobCard from '../../common/JobCard/JobCard'
 import { getToken } from '../../../utils/auth'
 import TrendDashboard from './TrendDashboard'
+import { API } from '../../../config/api'
 
-const API = 'http://localhost:3000/api'
 
 const PLATFORMS = [
   { value: 'Tất cả', label: 'Tất cả', color: '#efa85c' },

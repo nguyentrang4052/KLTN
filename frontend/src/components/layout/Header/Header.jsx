@@ -4,8 +4,8 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { getToken, getUser, fetchMe, logoutRequest } from '../../../utils/auth'
 
 
-const BASE_URL = 'http://localhost:3000'
-const API = 'http://localhost:3000/api'
+const BASE_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000'
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
 function Avatar({ avatar, initials, className }) {
   const [imgError, setImgError] = useState(false)

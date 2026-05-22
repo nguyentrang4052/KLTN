@@ -4,8 +4,8 @@ import Sidebar from '../../layout/Sidebar/Sidebar'
 import { useNavigate } from "react-router-dom"
 import { getToken } from '../../../utils/auth'
 import JobCard from '../../common/JobCard/JobCard'
+import { API } from '../../../config/api'
 
-const API = 'http://localhost:3000/api'
 
 // const COLLECTIONS = ['Tất cả', 'Việc IT', 'Remote', 'Chưa phân loại']
 

@@ -4,7 +4,7 @@ import { getToken, fetchMe } from '../../../utils/auth'
 import { QRCodeSVG } from 'qrcode.react'
 import './CheckoutScreen.css'
 
-const API = 'http://localhost:3000/api'
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 const PLAN_COLORS = { free: '#9A8D80', pro: '#C0412A', elite: '#D4820A' }
 const PLAN_ICONS = { free: '🌱', pro: '⚡', elite: '👑' }
 
