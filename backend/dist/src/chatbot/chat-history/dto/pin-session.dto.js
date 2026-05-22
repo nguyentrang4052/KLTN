@@ -12,7 +12,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PinSessionDto = void 0;
 const class_validator_1 = require("class-validator");
 class PinSessionDto {
-    isPinned;
 }
 exports.PinSessionDto = PinSessionDto;
 __decorate([

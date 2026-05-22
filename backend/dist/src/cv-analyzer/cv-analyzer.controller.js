@@ -21,7 +21,6 @@ const path_1 = require("path");
 const jwt_auth_guard_1 = require("../guards/jwt-auth.guard");
 const map_from_local_cv_dto_1 = require("./dto/map-from-local-cv.dto");
 let CvAnalyzerController = class CvAnalyzerController {
-    cvAnalyzerService;
     constructor(cvAnalyzerService) {
         this.cvAnalyzerService = cvAnalyzerService;
     }

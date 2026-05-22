@@ -1,0 +1,204 @@
+import { useState, useMemo, useEffect } from 'react'
+import { adminFetch } from '../../../utils/auth'
+import './UsersScreen.css'
+
+const STATUS_LABEL = { active: 'Hoạt động', locked: 'Đã khóa' }
+const PROVIDER_LABEL = { local: '✉ Email', google: '⬛ Google' }
+const PAGE_SIZE = 7
+
+export default function UsersScreen() {
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [search, setSearch] = useState('')
+  const [filterStatus, setFStatus] = useState('all')
+  const [filterPlan, setFPlan] = useState('all')
+  const [modal, setModal] = useState(null)
+  const [page, setPage] = useState(1)
+
+  useEffect(() => {
+    adminFetch('/admin/users')
+      .then(data => setUsers(data))
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const filtered = useMemo(() => users.filter(u => {
+    const matchSearch = u.name.toLowerCase().includes(search.toLowerCase()) ||
+      u.email.toLowerCase().includes(search.toLowerCase())
+    const matchStatus = filterStatus === 'all' || u.status === filterStatus
+    const matchPlan = filterPlan === 'all' || u.plan.toLowerCase() === filterPlan
+    return matchSearch && matchStatus && matchPlan
+  }), [users, search, filterStatus, filterPlan])
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+  const handleFilter = (setter, val) => { setter(val); setPage(1) }
+
+  const toggleStatus = async (id) => {
+    try {
+      const res = await adminFetch(`/admin/users/${id}/toggle-status`, { method: 'PATCH' })
+      setUsers(prev => prev.map(u => u.id === id ? { ...u, status: res.status } : u))
+      setModal(null)
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+
+  if (loading) return <div className="adm-db__loading">Đang tải...</div>
+  if (error) return <div className="adm-db__error">⚠ {error}</div>
+
+  return (
+    <div className="adm-users">
+      <div className="adm-users__header">
+        <h1 className="adm-page-title">Quản lý người dùng</h1>
+        <p className="adm-page-sub">
+          Tổng {users.length} tài khoản · {users.filter(u => u.status === 'locked').length} bị khóa
+        </p>
+      </div>
+
+      <div className="adm-users__filters">
+        <div className="adm-search">
+          <span className="adm-search__ico">⌕</span>
+          <input className="adm-search__input" placeholder="Tìm theo tên hoặc email..."
+            value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} />
+        </div>
+        <div className="adm-filter-group">
+          {['all', 'active', 'locked'].map(s => (
+            <button key={s} className={`adm-filter-btn${filterStatus === s ? ' active' : ''}`}
+              onClick={() => handleFilter(setFStatus, s)}>
+              {s === 'all' ? 'Tất cả' : STATUS_LABEL[s]}
+            </button>
+          ))}
+        </div>
+        <div className="adm-filter-group">
+          {['all', 'free', 'pro', 'elite'].map(p => (
+            <button key={p} className={`adm-filter-btn${filterPlan === p ? ' active' : ''}`}
+              onClick={() => handleFilter(setFPlan, p)}>
+              {p === 'all' ? 'Mọi gói' : p.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="adm-card">
+        <table className="adm-table adm-users__table">
+          <thead>
+            <tr>
+              <th>#</th><th>Họ tên</th><th>Email</th><th>Đăng nhập qua</th>
+              <th>Gói</th><th>Trạng thái</th><th>Ngày đăng ký</th><th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paged.map(u => (
+              <tr key={u.id}>
+                <td className="adm-table__muted">{u.id}</td>
+                <td className="adm-table__name">{u.name}</td>
+                <td className="adm-table__muted">{u.email}</td>
+                <td className="adm-table__muted" style={{ fontSize: 11 }}>
+                  {PROVIDER_LABEL[u.provider] ?? u.provider}
+                </td>
+                <td><span className={`adm-badge adm-badge--${u.plan.toLowerCase()}`}>{u.plan}</span></td>
+                <td><span className={`adm-status adm-status--${u.status}`}>{STATUS_LABEL[u.status]}</span></td>
+                <td className="adm-table__muted">{u.joined}</td>
+                <td>
+                  <div className="adm-users__actions">
+                    <button className="adm-act-btn adm-act-btn--view"
+                      onClick={() => setModal({ type: 'detail', user: u })}>Chi tiết</button>
+                    <button
+                      className={`adm-act-btn ${u.status === 'locked' ? 'adm-act-btn--unlock' : 'adm-act-btn--lock'}`}
+                      onClick={() => setModal({ type: 'confirm', user: u })}>
+                      {u.status === 'locked' ? 'Mở khóa' : 'Khóa'}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {paged.length === 0 && (
+              <tr><td colSpan={8} className="adm-table__empty">Không tìm thấy tài khoản nào</td></tr>
+            )}
+          </tbody>
+        </table>
+
+        {totalPages > 1 && (
+          <div className="adm-users__pager">
+            <span className="adm-users__pager-info">
+              {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} / {filtered.length} tài khoản
+            </span>
+            <div className="adm-pager">
+              <button className="adm-pager__btn" disabled={page === 1} onClick={() => setPage(p => p - 1)}>‹</button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                <button key={p} className={`adm-pager__btn${page === p ? ' active' : ''}`} onClick={() => setPage(p)}>{p}</button>
+              ))}
+              <button className="adm-pager__btn" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>›</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {modal?.type === 'detail' && (
+        <div className="adm-modal-overlay" onClick={() => setModal(null)}>
+          <div className="adm-modal" onClick={e => e.stopPropagation()}>
+            <div className="adm-modal__head">
+              <h3>Chi tiết tài khoản</h3>
+              <button onClick={() => setModal(null)}>✕</button>
+            </div>
+            <div className="adm-modal__body">
+              <div className="adm-modal__av">{modal.user.name?.[0] ?? '?'}</div>
+              <div className="adm-modal__name">{modal.user.name}</div>
+              <div className="adm-modal__email">{modal.user.email}</div>
+              <div className="adm-modal__rows">
+                {[
+                  ['ID tài khoản', modal.user.id],
+                  ['Đăng nhập qua', PROVIDER_LABEL[modal.user.provider] ?? modal.user.provider],
+                  ['Gói dịch vụ', modal.user.plan],
+                  ['Trạng thái', STATUS_LABEL[modal.user.status]],
+                  ['Ngày đăng ký', modal.user.joined],
+                ].map(([k, v]) => (
+                  <div className="adm-modal__row" key={k}>
+                    <span>{k}</span><span>{v}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="adm-modal__foot">
+              <button className="adm-modal__close-btn" onClick={() => setModal(null)}>Đóng</button>
+              <button
+                className={`adm-modal__action-btn ${modal.user.status === 'locked' ? 'unlock' : 'lock'}`}
+                onClick={() => toggleStatus(modal.user.id)}>
+                {modal.user.status === 'locked' ? '🔓 Mở khóa' : '🔒 Vô hiệu hóa'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modal?.type === 'confirm' && (
+        <div className="adm-modal-overlay" onClick={() => setModal(null)}>
+          <div className="adm-modal adm-modal--sm" onClick={e => e.stopPropagation()}>
+            <div className="adm-modal__head">
+              <h3>{modal.user.status === 'locked' ? 'Mở khóa tài khoản?' : 'Vô hiệu hóa tài khoản?'}</h3>
+              <button onClick={() => setModal(null)}>✕</button>
+            </div>
+            <div className="adm-modal__body" style={{ paddingTop: 8 }}>
+              <p className="adm-modal__confirm-text">
+                {modal.user.status === 'locked'
+                  ? `Tài khoản "${modal.user.name}" sẽ được mở khóa.`
+                  : `Tài khoản "${modal.user.name}" sẽ bị vô hiệu hóa.`}
+              </p>
+            </div>
+            <div className="adm-modal__foot">
+              <button className="adm-modal__close-btn" onClick={() => setModal(null)}>Hủy</button>
+              <button
+                className={`adm-modal__action-btn ${modal.user.status === 'locked' ? 'unlock' : 'lock'}`}
+                onClick={() => toggleStatus(modal.user.id)}>
+                Xác nhận
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

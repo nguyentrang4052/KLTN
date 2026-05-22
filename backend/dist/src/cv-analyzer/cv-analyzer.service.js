@@ -53,18 +53,13 @@ const file_converter_util_1 = require("./utils/file-converter.util");
 const fs = __importStar(require("fs/promises"));
 const crypto_1 = require("crypto");
 let CvAnalyzerService = CvAnalyzerService_1 = class CvAnalyzerService {
-    geminiService;
-    pdfToImageService;
-    cvAnalysisRepository;
-    redisService;
-    logger = new common_1.Logger(CvAnalyzerService_1.name);
-    CACHE_TTL = 7 * 24 * 60 * 60;
-    prisma;
     constructor(geminiService, pdfToImageService, cvAnalysisRepository, redisService) {
         this.geminiService = geminiService;
         this.pdfToImageService = pdfToImageService;
         this.cvAnalysisRepository = cvAnalysisRepository;
         this.redisService = redisService;
+        this.logger = new common_1.Logger(CvAnalyzerService_1.name);
+        this.CACHE_TTL = 7 * 24 * 60 * 60;
     }
     async analyzeMultipleCVs(files, userID, enableVerification = true) {
         try {

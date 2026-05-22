@@ -19,7 +19,6 @@ const gemini_service_1 = require("../gemini/gemini.service");
 const translate_cv_dto_1 = require("./dto/translate-cv.dto");
 const suggest_cv_dto_1 = require("./dto/suggest-cv.dto");
 let CvAssistantController = class CvAssistantController {
-    geminiService;
     constructor(geminiService) {
         this.geminiService = geminiService;
     }

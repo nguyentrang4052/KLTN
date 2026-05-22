@@ -13,7 +13,6 @@ exports.CvBuilderService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../../prisma/prisma.service");
 let CvBuilderService = class CvBuilderService {
-    prisma;
     constructor(prisma) {
         this.prisma = prisma;
     }

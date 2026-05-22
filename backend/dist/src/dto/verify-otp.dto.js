@@ -12,8 +12,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.VerifyOtpDto = void 0;
 const class_validator_1 = require("class-validator");
 class VerifyOtpDto {
-    email;
-    otp;
 }
 exports.VerifyOtpDto = VerifyOtpDto;
 __decorate([

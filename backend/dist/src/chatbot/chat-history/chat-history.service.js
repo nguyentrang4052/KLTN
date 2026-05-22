@@ -13,7 +13,6 @@ exports.ChatHistoryService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../../../prisma/prisma.service");
 let ChatHistoryService = class ChatHistoryService {
-    prisma;
     constructor(prisma) {
         this.prisma = prisma;
     }

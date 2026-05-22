@@ -12,7 +12,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.QueryIndustriesDto = void 0;
 const class_validator_1 = require("class-validator");
 class QueryIndustriesDto {
-    keyword;
 }
 exports.QueryIndustriesDto = QueryIndustriesDto;
 __decorate([

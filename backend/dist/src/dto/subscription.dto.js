@@ -12,9 +12,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RefundDto = exports.ConfirmPaymentDto = exports.CancelSubscriptionDto = exports.CreateSubscriptionDto = void 0;
 const class_validator_1 = require("class-validator");
 class CreateSubscriptionDto {
-    planName;
-    billing;
-    paymentMethod;
 }
 exports.CreateSubscriptionDto = CreateSubscriptionDto;
 __decorate([
@@ -32,7 +29,6 @@ __decorate([
     __metadata("design:type", String)
 ], CreateSubscriptionDto.prototype, "paymentMethod", void 0);
 class CancelSubscriptionDto {
-    reason;
 }
 exports.CancelSubscriptionDto = CancelSubscriptionDto;
 __decorate([
@@ -41,8 +37,6 @@ __decorate([
     __metadata("design:type", String)
 ], CancelSubscriptionDto.prototype, "reason", void 0);
 class ConfirmPaymentDto {
-    transactionRef;
-    result;
 }
 exports.ConfirmPaymentDto = ConfirmPaymentDto;
 __decorate([
@@ -56,10 +50,6 @@ __decorate([
     __metadata("design:type", String)
 ], ConfirmPaymentDto.prototype, "result", void 0);
 class RefundDto {
-    reason;
-    accountNumber;
-    accountName;
-    bankName;
 }
 exports.RefundDto = RefundDto;
 __decorate([

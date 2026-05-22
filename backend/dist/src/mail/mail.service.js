@@ -47,8 +47,6 @@ const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const nodemailer = __importStar(require("nodemailer"));
 let MailService = class MailService {
-    config;
-    transporter;
     constructor(config) {
         this.config = config;
         this.transporter = nodemailer.createTransport({

@@ -20,7 +20,6 @@ const get_user_decorator_1 = require("../auth/decorators/get-user.decorator");
 const jwt_auth_guard_1 = require("../guards/jwt-auth.guard");
 const optional_jwt_1 = require("../guards/optional-jwt");
 let CompaniesController = class CompaniesController {
-    companiesService;
     constructor(companiesService) {
         this.companiesService = companiesService;
     }

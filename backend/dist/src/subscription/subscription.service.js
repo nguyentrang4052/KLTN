@@ -22,11 +22,6 @@ const PLANS_CONFIG = {
     elite: { displayName: 'elite', monthlyPrice: 10000, yearlyPrice: 96000 },
 };
 let SubscriptionService = class SubscriptionService {
-    prisma;
-    config;
-    mailService;
-    notificationService;
-    payos;
     constructor(prisma, config, mailService, notificationService) {
         this.prisma = prisma;
         this.config = config;

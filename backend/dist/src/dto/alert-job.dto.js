@@ -12,7 +12,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RemoveAlertDto = exports.CreateAlertDto = void 0;
 const class_validator_1 = require("class-validator");
 class CreateAlertDto {
-    keyword;
 }
 exports.CreateAlertDto = CreateAlertDto;
 __decorate([
@@ -23,7 +22,6 @@ __decorate([
     __metadata("design:type", String)
 ], CreateAlertDto.prototype, "keyword", void 0);
 class RemoveAlertDto {
-    keyword;
 }
 exports.RemoveAlertDto = RemoveAlertDto;
 __decorate([

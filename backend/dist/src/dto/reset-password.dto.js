@@ -12,9 +12,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ResetPasswordDto = void 0;
 const class_validator_1 = require("class-validator");
 class ResetPasswordDto {
-    email;
-    otp;
-    newPassword;
 }
 exports.ResetPasswordDto = ResetPasswordDto;
 __decorate([

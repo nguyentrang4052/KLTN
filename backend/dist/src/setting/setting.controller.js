@@ -18,7 +18,6 @@ const setting_service_1 = require("./setting.service");
 const jwt_auth_guard_1 = require("../guards/jwt-auth.guard");
 const change_pass_dto_1 = require("../dto/change-pass.dto");
 let SettingController = class SettingController {
-    settingService;
     constructor(settingService) {
         this.settingService = settingService;
     }

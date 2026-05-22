@@ -19,7 +19,6 @@ const subscription_dto_1 = require("../dto/subscription.dto");
 const jwt_auth_guard_1 = require("../guards/jwt-auth.guard");
 const get_user_decorator_1 = require("../auth/decorators/get-user.decorator");
 let SubscriptionController = class SubscriptionController {
-    subscriptionService;
     constructor(subscriptionService) {
         this.subscriptionService = subscriptionService;
     }

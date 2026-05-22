@@ -14,8 +14,9 @@ exports.RedisService = void 0;
 const common_1 = require("@nestjs/common");
 const ioredis_1 = __importDefault(require("ioredis"));
 let RedisService = RedisService_1 = class RedisService {
-    logger = new common_1.Logger(RedisService_1.name);
-    client;
+    constructor() {
+        this.logger = new common_1.Logger(RedisService_1.name);
+    }
     onModuleInit() {
         this.client = new ioredis_1.default({
             host: process.env.REDIS_HOST || 'localhost',

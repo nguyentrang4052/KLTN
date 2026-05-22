@@ -16,9 +16,6 @@ const prisma_service_1 = require("../../prisma/prisma.service");
 const schedule_1 = require("@nestjs/schedule");
 const notification_service_1 = require("../notification/notification.service");
 let JobAlertService = class JobAlertService {
-    prisma;
-    mail;
-    notificationService;
     constructor(prisma, mail, notificationService) {
         this.prisma = prisma;
         this.mail = mail;

@@ -12,9 +12,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TranslateCVDto = void 0;
 const class_validator_1 = require("class-validator");
 class TranslateCVDto {
-    targetLang;
-    cvData;
-    sectionTitles;
 }
 exports.TranslateCVDto = TranslateCVDto;
 __decorate([

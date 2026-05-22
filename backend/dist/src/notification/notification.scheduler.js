@@ -17,14 +17,11 @@ const prisma_service_1 = require("../../prisma/prisma.service");
 const mail_service_1 = require("../mail/mail.service");
 const notification_service_1 = require("./notification.service");
 let NotificationScheduler = NotificationScheduler_1 = class NotificationScheduler {
-    prisma;
-    mailService;
-    notificationService;
-    logger = new common_1.Logger(NotificationScheduler_1.name);
     constructor(prisma, mailService, notificationService) {
         this.prisma = prisma;
         this.mailService = mailService;
         this.notificationService = notificationService;
+        this.logger = new common_1.Logger(NotificationScheduler_1.name);
     }
     async sendSubscriptionExpiryReminders() {
         this.logger.log('Running subscription expiry reminder job...');

@@ -15,7 +15,6 @@ const fs_1 = require("fs");
 const path_1 = require("path");
 const prisma_service_1 = require("../../prisma/prisma.service");
 let ProfileService = class ProfileService {
-    prisma;
     constructor(prisma) {
         this.prisma = prisma;
     }

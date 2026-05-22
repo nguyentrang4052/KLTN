@@ -16,12 +16,10 @@ const config_1 = require("@nestjs/config");
 const generative_ai_1 = require("@google/generative-ai");
 const jsonrepair_1 = require("jsonrepair");
 let GeminiService = GeminiService_1 = class GeminiService {
-    configService;
-    logger = new common_1.Logger(GeminiService_1.name);
-    genAI;
-    model = 'gemini-2.5-flash';
     constructor(configService) {
         this.configService = configService;
+        this.logger = new common_1.Logger(GeminiService_1.name);
+        this.model = 'gemini-2.5-flash';
         const apiKey = this.configService.get('GEMINI_API_KEY');
         if (!apiKey)
             throw new Error('GEMINI_API_KEY not found');

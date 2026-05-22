@@ -12,9 +12,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ChangePasswordDto = void 0;
 const class_validator_1 = require("class-validator");
 class ChangePasswordDto {
-    oldPassword;
-    newPassword;
-    confirmPassword;
 }
 exports.ChangePasswordDto = ChangePasswordDto;
 __decorate([

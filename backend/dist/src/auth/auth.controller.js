@@ -59,8 +59,6 @@ const get_user_decorator_1 = require("./decorators/get-user.decorator");
 const jwtUserInterface = __importStar(require("./interfaces/jwt-user.interface"));
 const jwt_auth_guard_1 = require("../guards/jwt-auth.guard");
 let AuthController = class AuthController {
-    authService;
-    config;
     constructor(authService, config) {
         this.authService = authService;
         this.config = config;

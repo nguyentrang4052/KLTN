@@ -17,8 +17,6 @@ const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../../prisma/prisma.service");
 const notification_gateway_1 = require("../websocket-gateway/notification.gateway");
 let NotificationService = class NotificationService {
-    prisma;
-    gateway;
     constructor(prisma, gateway) {
         this.prisma = prisma;
         this.gateway = gateway;

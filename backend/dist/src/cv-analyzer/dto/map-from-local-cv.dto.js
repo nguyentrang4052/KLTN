@@ -13,12 +13,6 @@ exports.MapFromLocalCvDto = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
 class PersonalInfoDto {
-    fullName;
-    phone;
-    address;
-    email;
-    linkedin;
-    portfolio;
 }
 __decorate([
     (0, class_validator_1.IsOptional)(),
@@ -51,10 +45,6 @@ __decorate([
     __metadata("design:type", String)
 ], PersonalInfoDto.prototype, "portfolio", void 0);
 class ExperienceDto {
-    company;
-    position;
-    duration;
-    description;
 }
 __decorate([
     (0, class_validator_1.IsOptional)(),
@@ -77,8 +67,6 @@ __decorate([
     __metadata("design:type", String)
 ], ExperienceDto.prototype, "description", void 0);
 class SkillDto {
-    category;
-    items;
 }
 __decorate([
     (0, class_validator_1.IsOptional)(),
@@ -91,11 +79,6 @@ __decorate([
     __metadata("design:type", String)
 ], SkillDto.prototype, "items", void 0);
 class MapFromLocalCvDto {
-    personalInfo;
-    experiences;
-    education;
-    skills;
-    summary;
 }
 exports.MapFromLocalCvDto = MapFromLocalCvDto;
 __decorate([

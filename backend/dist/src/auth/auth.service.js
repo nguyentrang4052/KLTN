@@ -52,10 +52,6 @@ const bcrypt = __importStar(require("bcrypt"));
 const otpStore = new Map();
 const registerOtpStore = new Map();
 let AuthService = class AuthService {
-    prisma;
-    jwtService;
-    mailService;
-    blacklistService;
     constructor(prisma, jwtService, mailService, blacklistService) {
         this.prisma = prisma;
         this.jwtService = jwtService;

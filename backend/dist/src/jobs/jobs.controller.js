@@ -23,10 +23,6 @@ const get_user_decorator_1 = require("../auth/decorators/get-user.decorator");
 const jobs_gateway_1 = require("../websocket-gateway/jobs.gateway");
 const subscription_service_1 = require("../subscription/subscription.service");
 let JobsController = class JobsController {
-    jobsService;
-    aiRecommendation;
-    jobsGateway;
-    subscriptionService;
     constructor(jobsService, aiRecommendation, jobsGateway, subscriptionService) {
         this.jobsService = jobsService;
         this.aiRecommendation = aiRecommendation;

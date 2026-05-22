@@ -20,7 +20,6 @@ const profile_dto_1 = require("../dto/profile.dto");
 const jwt_auth_guard_1 = require("../guards/jwt-auth.guard");
 const get_user_decorator_1 = require("../auth/decorators/get-user.decorator");
 let ProfileController = class ProfileController {
-    profileService;
     constructor(profileService) {
         this.profileService = profileService;
     }

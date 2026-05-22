@@ -32,9 +32,9 @@ export declare class NotificationService {
         deletedAt: Date | null;
     }[]>;
     countUnread(userID: number): Promise<number>;
-    markAsRead(userID: number, id: number): Promise<import("@prisma/client").Prisma.BatchPayload>;
-    markAllAsRead(userID: number): Promise<import("@prisma/client").Prisma.BatchPayload>;
-    deleteOne(userID: number, id: number): Promise<import("@prisma/client").Prisma.BatchPayload>;
+    markAsRead(userID: number, id: number): Promise<import(".prisma/client").Prisma.BatchPayload>;
+    markAllAsRead(userID: number): Promise<import(".prisma/client").Prisma.BatchPayload>;
+    deleteOne(userID: number, id: number): Promise<import(".prisma/client").Prisma.BatchPayload>;
     createIfNotExists(dto: CreateNotificationDto & {
         dedupeKey: string;
     }): Promise<{

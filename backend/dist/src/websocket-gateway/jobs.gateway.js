@@ -15,8 +15,9 @@ const websockets_1 = require("@nestjs/websockets");
 const socket_io_1 = require("socket.io");
 const common_1 = require("@nestjs/common");
 let JobsGateway = JobsGateway_1 = class JobsGateway {
-    server;
-    logger = new common_1.Logger(JobsGateway_1.name);
+    constructor() {
+        this.logger = new common_1.Logger(JobsGateway_1.name);
+    }
     broadcastNewJobs(count) {
         this.server.emit('new_jobs', { count, timestamp: Date.now() });
         this.logger.log(`Broadcast new_jobs: ${count} jobs`);

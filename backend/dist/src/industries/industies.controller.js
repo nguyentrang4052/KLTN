@@ -17,7 +17,6 @@ const common_1 = require("@nestjs/common");
 const industries_service_1 = require("./industries.service");
 const industries_dto_1 = require("../dto/industries.dto");
 let IndustriesController = class IndustriesController {
-    industriesService;
     constructor(industriesService) {
         this.industriesService = industriesService;
     }

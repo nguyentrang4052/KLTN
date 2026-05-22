@@ -9,7 +9,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TokenBlacklistService = void 0;
 const common_1 = require("@nestjs/common");
 let TokenBlacklistService = class TokenBlacklistService {
-    blacklist = new Set();
+    constructor() {
+        this.blacklist = new Set();
+    }
     add(token) {
         this.blacklist.add(token);
     }

@@ -13,12 +13,6 @@ exports.CVAnalysisResultDto = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
 class PersonalInfo {
-    fullName;
-    email;
-    phone;
-    address;
-    linkedin;
-    portfolio;
 }
 __decorate([
     (0, class_validator_1.IsString)(),
@@ -45,10 +39,6 @@ __decorate([
     __metadata("design:type", String)
 ], PersonalInfo.prototype, "portfolio", void 0);
 class Experience {
-    company;
-    position;
-    duration;
-    description;
 }
 __decorate([
     (0, class_validator_1.IsString)(),
@@ -67,10 +57,6 @@ __decorate([
     __metadata("design:type", String)
 ], Experience.prototype, "description", void 0);
 class Education {
-    institution;
-    degree;
-    year;
-    gpa;
 }
 __decorate([
     (0, class_validator_1.IsString)(),
@@ -89,8 +75,6 @@ __decorate([
     __metadata("design:type", String)
 ], Education.prototype, "gpa", void 0);
 class Skill {
-    category;
-    items;
 }
 __decorate([
     (0, class_validator_1.IsString)(),
@@ -101,10 +85,6 @@ __decorate([
     __metadata("design:type", String)
 ], Skill.prototype, "items", void 0);
 class Activity {
-    organization;
-    role;
-    duration;
-    description;
 }
 __decorate([
     (0, class_validator_1.IsString)(),
@@ -123,10 +103,6 @@ __decorate([
     __metadata("design:type", String)
 ], Activity.prototype, "description", void 0);
 class Award {
-    title;
-    issuer;
-    year;
-    description;
 }
 __decorate([
     (0, class_validator_1.IsString)(),
@@ -145,10 +121,6 @@ __decorate([
     __metadata("design:type", String)
 ], Award.prototype, "description", void 0);
 class Certification {
-    name;
-    issuer;
-    year;
-    score;
 }
 __decorate([
     (0, class_validator_1.IsString)(),
@@ -167,15 +139,6 @@ __decorate([
     __metadata("design:type", String)
 ], Certification.prototype, "score", void 0);
 class CVAnalysisResultDto {
-    personalInfo;
-    experiences;
-    education;
-    skills;
-    activities;
-    awards;
-    certifications;
-    summary;
-    rawText;
 }
 exports.CVAnalysisResultDto = CVAnalysisResultDto;
 __decorate([

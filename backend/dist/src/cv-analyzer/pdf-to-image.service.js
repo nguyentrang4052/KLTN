@@ -11,7 +11,9 @@ exports.PdfToImageService = void 0;
 const common_1 = require("@nestjs/common");
 const pdf_to_img_1 = require("pdf-to-img");
 let PdfToImageService = PdfToImageService_1 = class PdfToImageService {
-    logger = new common_1.Logger(PdfToImageService_1.name);
+    constructor() {
+        this.logger = new common_1.Logger(PdfToImageService_1.name);
+    }
     async convert(pdfBuffer) {
         this.logger.log('Converting PDF to images...');
         try {

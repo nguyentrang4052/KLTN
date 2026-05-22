@@ -17,11 +17,6 @@ var ChatRole;
     ChatRole["assistant"] = "assistant";
 })(ChatRole || (exports.ChatRole = ChatRole = {}));
 class SaveMessageDto {
-    sessionID;
-    role;
-    content;
-    type;
-    metadata;
 }
 exports.SaveMessageDto = SaveMessageDto;
 __decorate([

@@ -17,7 +17,6 @@ const common_1 = require("@nestjs/common");
 const cv_builder_service_1 = require("./cv-builder.service");
 const jwt_auth_guard_1 = require("../guards/jwt-auth.guard");
 let CvBuilderController = class CvBuilderController {
-    cvBuilderService;
     constructor(cvBuilderService) {
         this.cvBuilderService = cvBuilderService;
     }

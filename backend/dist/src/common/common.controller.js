@@ -13,7 +13,6 @@ exports.CommonController = void 0;
 const common_1 = require("@nestjs/common");
 const common_service_1 = require("./common.service");
 let CommonController = class CommonController {
-    commonService;
     constructor(commonService) {
         this.commonService = commonService;
     }

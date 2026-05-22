@@ -33,7 +33,6 @@ const JOB_TYPE_MAP = {
     'Remote': 'Remote',
 };
 let JobsService = class JobsService {
-    prisma;
     constructor(prisma) {
         this.prisma = prisma;
     }

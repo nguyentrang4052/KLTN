@@ -19,8 +19,6 @@ const jwt_auth_guard_1 = require("../guards/jwt-auth.guard");
 const get_user_decorator_1 = require("../auth/decorators/get-user.decorator");
 const prisma_service_1 = require("../../prisma/prisma.service");
 let NotificationController = class NotificationController {
-    notificationService;
-    prisma;
     constructor(notificationService, prisma) {
         this.notificationService = notificationService;
         this.prisma = prisma;

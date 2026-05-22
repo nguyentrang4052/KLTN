@@ -13,7 +13,6 @@ exports.UpdatePackageDto = exports.CreatePackageDto = exports.UpdateSkillDto = e
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
 class CreateIndustryDto {
-    name;
 }
 exports.CreateIndustryDto = CreateIndustryDto;
 __decorate([
@@ -22,7 +21,6 @@ __decorate([
     __metadata("design:type", String)
 ], CreateIndustryDto.prototype, "name", void 0);
 class UpdateIndustryDto {
-    name;
 }
 exports.UpdateIndustryDto = UpdateIndustryDto;
 __decorate([
@@ -31,8 +29,6 @@ __decorate([
     __metadata("design:type", String)
 ], UpdateIndustryDto.prototype, "name", void 0);
 class CreateSkillDto {
-    name;
-    industryId;
 }
 exports.CreateSkillDto = CreateSkillDto;
 __decorate([
@@ -46,8 +42,6 @@ __decorate([
     __metadata("design:type", Number)
 ], CreateSkillDto.prototype, "industryId", void 0);
 class UpdateSkillDto {
-    name;
-    industryId;
 }
 exports.UpdateSkillDto = UpdateSkillDto;
 __decorate([
@@ -61,12 +55,6 @@ __decorate([
     __metadata("design:type", Number)
 ], UpdateSkillDto.prototype, "industryId", void 0);
 class CreatePackageDto {
-    name;
-    monthlyPrice;
-    yearlyPrice;
-    dailyJobSuggestions;
-    cvAnalysis;
-    compatibilityCheck;
 }
 exports.CreatePackageDto = CreatePackageDto;
 __decorate([
@@ -105,12 +93,6 @@ __decorate([
     __metadata("design:type", Number)
 ], CreatePackageDto.prototype, "compatibilityCheck", void 0);
 class UpdatePackageDto {
-    name;
-    monthlyPrice;
-    yearlyPrice;
-    dailyJobSuggestions;
-    cvAnalysis;
-    compatibilityCheck;
 }
 exports.UpdatePackageDto = UpdatePackageDto;
 __decorate([

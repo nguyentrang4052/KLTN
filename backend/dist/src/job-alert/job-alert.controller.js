@@ -19,7 +19,6 @@ const alert_job_dto_1 = require("../dto/alert-job.dto");
 const jwt_auth_guard_1 = require("../guards/jwt-auth.guard");
 const get_user_decorator_1 = require("../auth/decorators/get-user.decorator");
 let JobAlertController = class JobAlertController {
-    jobAlertService;
     constructor(jobAlertService) {
         this.jobAlertService = jobAlertService;
     }

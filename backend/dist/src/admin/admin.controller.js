@@ -19,7 +19,6 @@ const jwt_auth_guard_1 = require("../guards/jwt-auth.guard");
 const roles_guard_1 = require("../guards/roles.guard");
 const admin_dto_1 = require("../dto/admin.dto");
 let AdminController = class AdminController {
-    adminService;
     constructor(adminService) {
         this.adminService = adminService;
     }

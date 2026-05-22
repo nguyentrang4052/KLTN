@@ -13,12 +13,11 @@ exports.QueryCompaniesDto = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
 class QueryCompaniesDto {
-    keyword;
-    location;
-    size;
-    sort = 'jobs';
-    page = 1;
-    limit = 9;
+    constructor() {
+        this.sort = 'jobs';
+        this.page = 1;
+        this.limit = 9;
+    }
 }
 exports.QueryCompaniesDto = QueryCompaniesDto;
 __decorate([

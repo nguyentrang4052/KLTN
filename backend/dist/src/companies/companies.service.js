@@ -21,7 +21,6 @@ const SIZE_RANGES = {
     'Trên 1000 người': { min: 1001 },
 };
 let CompaniesService = class CompaniesService {
-    prisma;
     constructor(prisma) {
         this.prisma = prisma;
     }

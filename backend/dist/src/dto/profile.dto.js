@@ -13,11 +13,6 @@ exports.UpdateUserProfileDto = exports.UpdateProfileDto = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
 class UpdateProfileDto {
-    fullName;
-    birthYear;
-    phone;
-    gender;
-    address;
 }
 exports.UpdateProfileDto = UpdateProfileDto;
 __decorate([
@@ -47,12 +42,6 @@ __decorate([
     __metadata("design:type", String)
 ], UpdateProfileDto.prototype, "address", void 0);
 class UpdateUserProfileDto {
-    jobTitle;
-    experienceYear;
-    careerLevel;
-    expectedSalary;
-    workingType;
-    industryId;
 }
 exports.UpdateUserProfileDto = UpdateUserProfileDto;
 __decorate([

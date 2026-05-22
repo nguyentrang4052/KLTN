@@ -15,13 +15,11 @@ const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../../prisma/prisma.service");
 const gemini_service_1 = require("../gemini/gemini.service");
 let AIRecommendationService = AIRecommendationService_1 = class AIRecommendationService {
-    prisma;
-    gemini;
-    logger = new common_1.Logger(AIRecommendationService_1.name);
-    computingLocks = new Set();
     constructor(prisma, gemini) {
         this.prisma = prisma;
         this.gemini = gemini;
+        this.logger = new common_1.Logger(AIRecommendationService_1.name);
+        this.computingLocks = new Set();
     }
     async computeAndSaveRecommendations(accountID) {
         this.logger.log(`Computing for accountID=${accountID}`);

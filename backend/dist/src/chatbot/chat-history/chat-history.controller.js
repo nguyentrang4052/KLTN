@@ -21,7 +21,6 @@ const jwt_auth_guard_1 = require("../../guards/jwt-auth.guard");
 const rename_session_dto_1 = require("./dto/rename-session.dto");
 const pin_session_dto_1 = require("./dto/pin-session.dto");
 let ChatHistoryController = class ChatHistoryController {
-    chatHistoryService;
     constructor(chatHistoryService) {
         this.chatHistoryService = chatHistoryService;
     }

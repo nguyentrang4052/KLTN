@@ -21,17 +21,13 @@ const rxjs_1 = require("rxjs");
 const form_data_1 = __importDefault(require("form-data"));
 const axios_2 = require("axios");
 let ChatbotService = ChatbotService_1 = class ChatbotService {
-    httpService;
-    configService;
-    logger = new common_1.Logger(ChatbotService_1.name);
-    pythonServiceUrl;
-    internalApiKey;
-    CV_UPLOAD_TIMEOUT = 600_000;
-    CHAT_TIMEOUT = 30_000;
-    HEALTH_TIMEOUT = 10_000;
     constructor(httpService, configService) {
         this.httpService = httpService;
         this.configService = configService;
+        this.logger = new common_1.Logger(ChatbotService_1.name);
+        this.CV_UPLOAD_TIMEOUT = 600_000;
+        this.CHAT_TIMEOUT = 30_000;
+        this.HEALTH_TIMEOUT = 10_000;
         this.pythonServiceUrl = this.configService.get('PYTHON_SERVICE_URL', 'http://localhost:8000');
         this.internalApiKey = this.configService.get('INTERNAL_API_KEY', 'chatbot_RecruitmentWEB_secure_key');
     }

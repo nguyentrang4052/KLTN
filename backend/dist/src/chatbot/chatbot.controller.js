@@ -22,12 +22,10 @@ const jwt_auth_guard_1 = require("../guards/jwt-auth.guard");
 const get_user_decorator_1 = require("../auth/decorators/get-user.decorator");
 const stream_1 = require("stream");
 let ChatbotController = ChatbotController_1 = class ChatbotController {
-    chatbotService;
-    subscriptionService;
-    logger = new common_1.Logger(ChatbotController_1.name);
     constructor(chatbotService, subscriptionService) {
         this.chatbotService = chatbotService;
         this.subscriptionService = subscriptionService;
+        this.logger = new common_1.Logger(ChatbotController_1.name);
     }
     async chat(body, file, res) {
         const userID = body.userID;

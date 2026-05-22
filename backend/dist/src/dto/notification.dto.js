@@ -13,8 +13,9 @@ exports.CreateNotificationDto = exports.GetNotificationsDto = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
 class GetNotificationsDto {
-    unread;
-    take = 50;
+    constructor() {
+        this.take = 50;
+    }
 }
 exports.GetNotificationsDto = GetNotificationsDto;
 __decorate([
@@ -31,11 +32,6 @@ __decorate([
     __metadata("design:type", Number)
 ], GetNotificationsDto.prototype, "take", void 0);
 class CreateNotificationDto {
-    userID;
-    type;
-    title;
-    body;
-    metadata;
 }
 exports.CreateNotificationDto = CreateNotificationDto;
 __decorate([
