@@ -1,8 +1,10 @@
 const tsConfigPaths = require('tsconfig-paths');
+const path = require('path');
 
 tsConfigPaths.register({
-  baseUrl: './dist/src',
+  baseUrl: path.join(__dirname, 'dist'),
   paths: {
-    'src/*': ['./*']
+    'src/*': ['src/*'],
+    'prisma/*': ['prisma/*']
   }
 });
