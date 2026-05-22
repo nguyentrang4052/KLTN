@@ -88,21 +88,11 @@
     "sameSite": "Lax"
   },
   {
-    "name": "_pk_ses.1.04ff",
-    "value": "1",
-    "domain": "careerviet.vn",
-    "path": "/",
-    "expires": 1779424814,
-    "httpOnly": false,
-    "secure": false,
-    "sameSite": "Lax"
-  },
-  {
     "name": "_gid",
     "value": "GA1.2.1597317895.1779411410",
     "domain": ".careerviet.vn",
     "path": "/",
-    "expires": 1779509415,
+    "expires": 1779534232,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
@@ -144,7 +134,7 @@
     "value": "fb.1.1779411410927.283250557940310443",
     "domain": ".careerviet.vn",
     "path": "/",
-    "expires": 1787199015,
+    "expires": 1787223833,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
@@ -414,21 +404,11 @@
     "sameSite": "None"
   },
   {
-    "name": "__stp",
-    "value": "eyJ2aXNpdCI6Im5ldyIsInV1aWQiOiJmMTBhMTY2My1lZDc3LTRkN2YtYjZlOC1kZWNlNGNhMDZlNDEiLCJjayI6InVuZGVmaW5lZCJ9",
-    "domain": "careerviet.vn",
-    "path": "/",
-    "expires": 1813983015.286221,
-    "httpOnly": false,
-    "secure": false,
-    "sameSite": "Lax"
-  },
-  {
     "name": "unbxd.netcoreId",
     "value": "ImViMDQ1ZDc4ZDI3MzEwNzM0OGIwMzAwYzAxZDI5Yjc1NTJkNjIyYWJiYzZmYWY4MWIzZWM1NTM1OWFhOTk1MGMi",
     "domain": "careerviet.vn",
     "path": "/",
-    "expires": 1813983015.293161,
+    "expires": 1814007833.031466,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
@@ -468,7 +448,7 @@
     "value": "5a4e5debcf7fc2b552130020c8164111",
     "domain": "ads.careerviet.vn",
     "path": "/",
-    "expires": 1810959015.508632,
+    "expires": 1810983833.237927,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
@@ -510,7 +490,7 @@
     "value": "EuzY.372810652.3.kpXYQnwsG_o25Nlg7hP3_1wsG_mUjaFy7sFgytIsG_m",
     "domain": ".zalo.me",
     "path": "/",
-    "expires": 1780027815.924421,
+    "expires": 1780052633.76024,
     "httpOnly": true,
     "secure": true,
     "sameSite": "None"
@@ -520,7 +500,7 @@
     "value": "0",
     "domain": ".zalo.me",
     "path": "/",
-    "expires": 1780027815.924548,
+    "expires": 1780052633.760385,
     "httpOnly": false,
     "secure": true,
     "sameSite": "None"
@@ -590,7 +570,7 @@
     "value": "2000.SSZzejyD2DyiZwEqqGn1pJ75lh39JHN1E8Yy_zm36zbwrAxraqyVsJwOelQSJ1BUEzUczPW95zWzsgFtEJSr.1",
     "domain": ".zalo.me",
     "path": "/",
-    "expires": 1813983015.631244,
+    "expires": 1814007833.404842,
     "httpOnly": false,
     "secure": true,
     "sameSite": "None"
@@ -1008,16 +988,6 @@
     "sameSite": "None"
   },
   {
-    "name": "s-146",
-    "value": "1779411546176",
-    "domain": ".pmbmonetize.live",
-    "path": "/",
-    "expires": 1779433146.350275,
-    "httpOnly": true,
-    "secure": true,
-    "sameSite": "None"
-  },
-  {
     "name": "uid",
     "value": "b660019a-6642-4d8e-979a-cb6e6fb955fe",
     "domain": ".connectad.io",
@@ -1160,111 +1130,111 @@
     "sameSite": "None"
   },
   {
-    "name": "strSearchJobRecent",
-    "value": "{%228_1779422929858%22:%22eyJzaW1pbGFyIjowLCJvd25lciI6ImtpZW12aWVjIiwiY291bnRfc2VhcmNoIjp0cnVlLCJpbmR1c3RyeSI6IjgiLCJhcnJfaW5kdXN0cnkiOlsiOCJdLCJpbmR1c3RyeV9rZXlfdm4iOiJ4YXktZHVuZyIsImluZHVzdHJ5X25hbWUiOlt7ImluZHVzdHJ5X2lkIjoiOCIsImluZHVzdHJ5X25hbWUiOiJYXHUwMGUyeSBkXHUxZWYxbmcifV0sImxldmVsIjoiIiwibGV2ZWxfbmFtZSI6W10sImxhc3RfbW9kaWZ5IjoxNzc5NDIyOTI5ODU4fQ==%22%2C%228_1779422929383%22:%22eyJzaW1pbGFyIjowLCJvd25lciI6ImtpZW12aWVjIiwiY291bnRfc2VhcmNoIjp0cnVlLCJpbmR1c3RyeSI6IjgiLCJhcnJfaW5kdXN0cnkiOlsiOCJdLCJpbmR1c3RyeV9rZXlfdm4iOiJ4YXktZHVuZyIsImluZHVzdHJ5X25hbWUiOlt7ImluZHVzdHJ5X2lkIjoiOCIsImluZHVzdHJ5X25hbWUiOiJYXHUwMGUyeSBkXHUxZWYxbmcifV0sImxldmVsIjoiIiwibGV2ZWxfbmFtZSI6W10sImxhc3RfbW9kaWZ5IjoxNzc5NDIyOTI5MzgzfQ==%22%2C%228_1779422929308%22:%22eyJzaW1pbGFyIjowLCJvd25lciI6ImtpZW12aWVjIiwiY291bnRfc2VhcmNoIjp0cnVlLCJpbmR1c3RyeSI6IjgiLCJhcnJfaW5kdXN0cnkiOlsiOCJdLCJpbmR1c3RyeV9rZXlfdm4iOiJ4YXktZHVuZyIsImluZHVzdHJ5X25hbWUiOlt7ImluZHVzdHJ5X2lkIjoiOCIsImluZHVzdHJ5X25hbWUiOiJYXHUwMGUyeSBkXHUxZWYxbmcifV0sImxldmVsIjoiIiwibGV2ZWxfbmFtZSI6W10sImxhc3RfbW9kaWZ5IjoxNzc5NDIyOTI5MzA4fQ==%22}",
+    "name": "_pk_ses.1.04ff",
+    "value": "1",
     "domain": "careerviet.vn",
     "path": "/",
-    "expires": 1810958929,
-    "httpOnly": false,
-    "secure": false,
-    "sameSite": "Lax"
-  },
-  {
-    "name": "_gat_UA-29093916-1",
-    "value": "1",
-    "domain": ".careerviet.vn",
-    "path": "/",
-    "expires": 1779423042,
-    "httpOnly": false,
-    "secure": false,
-    "sameSite": "Lax"
-  },
-  {
-    "name": "_gat",
-    "value": "1",
-    "domain": ".careerviet.vn",
-    "path": "/",
-    "expires": 1779423042,
-    "httpOnly": false,
-    "secure": false,
-    "sameSite": "Lax"
-  },
-  {
-    "name": "_gat_UA-29093916-8",
-    "value": "1",
-    "domain": ".careerviet.vn",
-    "path": "/",
-    "expires": 1779423042,
+    "expires": 1779449632,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
   },
   {
     "name": "_ga_649BTQ328X",
-    "value": "GS2.1.s1779411409$o1$g1$t1779423014$j27$l0$h1153297809",
-    "domain": ".careerviet.vn",
+    "value": "deleted",
+    "domain": "careerviet.vn",
     "path": "/",
-    "expires": 1813983014.857062,
+    "expires": 1814005393.060898,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
   },
   {
-    "name": "_ga_9WDL9JQ84J",
-    "value": "GS2.1.s1779411409$o1$g1$t1779423015$j27$l0$h0",
-    "domain": ".careerviet.vn",
+    "name": "__stp",
+    "value": "eyJ2aXNpdCI6InJldHVybmluZyIsInV1aWQiOiJmMTBhMTY2My1lZDc3LTRkN2YtYjZlOC1kZWNlNGNhMDZlNDEiLCJjayI6InVuZGVmaW5lZCJ9",
+    "domain": "careerviet.vn",
     "path": "/",
-    "expires": 1813983015.038787,
+    "expires": 1814007833.026528,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
   },
   {
-    "name": "_ga_6ZG50DXMHR",
-    "value": "GS2.1.s1779411410$o1$g1$t1779423015$j27$l0$h0",
-    "domain": ".careerviet.vn",
+    "name": "strSearchJobRecent",
+    "value": "{%2222_1779447832115%22:%22eyJzaW1pbGFyIjowLCJvd25lciI6ImtpZW12aWVjIiwiY291bnRfc2VhcmNoIjp0cnVlLCJpbmR1c3RyeSI6IjIyIiwiYXJyX2luZHVzdHJ5IjpbIjIyIl0sImluZHVzdHJ5X2tleV92biI6Im5oYW4tc3UiLCJpbmR1c3RyeV9uYW1lIjpbeyJpbmR1c3RyeV9pZCI6IjIyIiwiaW5kdXN0cnlfbmFtZSI6Ik5oXHUwMGUybiBzXHUxZWYxIn1dLCJsZXZlbCI6IiIsImxldmVsX25hbWUiOltdLCJsYXN0X21vZGlmeSI6MTc3OTQ0NzgzMjExNX0=%22%2C%2222_1779447832058%22:%22eyJzaW1pbGFyIjowLCJvd25lciI6ImtpZW12aWVjIiwiY291bnRfc2VhcmNoIjp0cnVlLCJpbmR1c3RyeSI6IjIyIiwiYXJyX2luZHVzdHJ5IjpbIjIyIl0sImluZHVzdHJ5X2tleV92biI6Im5oYW4tc3UiLCJpbmR1c3RyeV9uYW1lIjpbeyJpbmR1c3RyeV9pZCI6IjIyIiwiaW5kdXN0cnlfbmFtZSI6Ik5oXHUwMGUybiBzXHUxZWYxIn1dLCJsZXZlbCI6IiIsImxldmVsX25hbWUiOltdLCJsYXN0X21vZGlmeSI6MTc3OTQ0NzgzMjA1OH0=%22%2C%2222_1779447820983%22:%22eyJzaW1pbGFyIjowLCJvd25lciI6ImtpZW12aWVjIiwiY291bnRfc2VhcmNoIjp0cnVlLCJpbmR1c3RyeSI6IjIyIiwiYXJyX2luZHVzdHJ5IjpbIjIyIl0sImluZHVzdHJ5X2tleV92biI6Im5oYW4tc3UiLCJpbmR1c3RyeV9uYW1lIjpbeyJpbmR1c3RyeV9pZCI6IjIyIiwiaW5kdXN0cnlfbmFtZSI6Ik5oXHUwMGUybiBzXHUxZWYxIn1dLCJsZXZlbCI6IiIsImxldmVsX25hbWUiOltdLCJsYXN0X21vZGlmeSI6MTc3OTQ0NzgyMDk4M30=%22}",
+    "domain": "careerviet.vn",
     "path": "/",
-    "expires": 1813983015.079098,
+    "expires": 1810983832,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
   },
   {
     "name": "__rtbh.lid",
-    "value": "%7B%22eventType%22%3A%22lid%22%2C%22id%22%3A%22geMiHQyoinb4iJ9148of%22%2C%22expiryDate%22%3A%222027-05-22T04%3A10%3A15.091Z%22%7D",
+    "value": "%7B%22eventType%22%3A%22lid%22%2C%22id%22%3A%22geMiHQyoinb4iJ9148of%22%2C%22expiryDate%22%3A%222027-05-22T11%3A03%3A52.622Z%22%7D",
     "domain": "careerviet.vn",
     "path": "/",
-    "expires": 1810959015,
+    "expires": 1810983832,
     "httpOnly": false,
     "secure": true,
     "sameSite": "None"
   },
   {
     "name": "_ga",
-    "value": "GA1.2.1529969297.1779411409",
+    "value": "GA1.1.1529969297.1779411409",
     "domain": ".careerviet.vn",
     "path": "/",
-    "expires": 1813983015.132353,
+    "expires": 1814007832.852188,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_ga_9WDL9JQ84J",
+    "value": "GS2.1.s1779445392$o2$g1$t1779447832$j2$l0$h0",
+    "domain": ".careerviet.vn",
+    "path": "/",
+    "expires": 1814007832.694108,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_ga_649BTQ328X",
+    "value": "GS2.1.s1779445393$o1$g1$t1779447832$j2$l0$h1527459055",
+    "domain": ".careerviet.vn",
+    "path": "/",
+    "expires": 1814007832.809211,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_ga_6ZG50DXMHR",
+    "value": "GS2.1.s1779445393$o2$g1$t1779447832$j3$l0$h0",
+    "domain": ".careerviet.vn",
+    "path": "/",
+    "expires": 1814007832.866041,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
   },
   {
     "name": "__sts",
-    "value": "eyJzaWQiOjE3Nzk0MTE0MTExMzksInR4IjoxNzc5NDIzMDE1MjI1LCJ1cmwiOiJodHRwcyUzQSUyRiUyRmNhcmVlcnZpZXQudm4lMkZ2aSUyRnRpbS12aWVjLWxhbSUyRmJpbS1jb29yZGluYXRvci4zNUM2RjI2OC5odG1sIiwicGV0IjoxNzc5NDIzMDE1MjI1LCJzZXQiOjE3Nzk0MTE0MTExMzksInBVcmwiOiJodHRwcyUzQSUyRiUyRmNhcmVlcnZpZXQudm4lMkZ2aSUyRnRpbS12aWVjLWxhbSUyRm5oYW4tdmllbi1kdS10b2FuLXFzLW5vaS10aGF0LjM1QzZGMjYxLmh0bWwiLCJwUGV0IjoxNzc5NDIzMDAzMjc5LCJwVHgiOjE3Nzk0MjMwMDMyNzl9",
+    "value": "eyJzaWQiOjE3Nzk0NDUzOTM5MjAsInR4IjoxNzc5NDQ3ODMyOTM4LCJ1cmwiOiJodHRwcyUzQSUyRiUyRmNhcmVlcnZpZXQudm4lMkZ2aWVjLWxhbSUyRm5oYW4tc3UtYzIyLXRyYW5nLTItdmkuaHRtbCIsInBldCI6MTc3OTQ0NzgzMjkzOCwic2V0IjoxNzc5NDQ1MzkzOTIwLCJwVXJsIjoiaHR0cHMlM0ElMkYlMkZjYXJlZXJ2aWV0LnZuJTJGdmllYy1sYW0lMkZuaGFuLXN1LWMyMi12aS5odG1sIiwicFBldCI6MTc3OTQ0NzgyMjEzNywicFR4IjoxNzc5NDQ3ODIyMTM3fQ%3D%3D",
     "domain": "careerviet.vn",
     "path": "/",
-    "expires": 1779424815,
+    "expires": 1779449632,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
   },
   {
     "name": "cto_bundle",
-    "value": "4dM2Kl9zb3ZQeEVwY05Dcjd6bENzRXVZcDlDcFp3YTV5QnRtbnhaY3I3M1FlTU1SWDZzenNVMUMwaWd6eURVTDVZQTBpVFdQM0J0b3RjekpvUkFYRUl0NWNpWk1EZnZFNDNIVXRBc2dZN0Z1UiUyRlp3Z2o2UzNoTkVPMDU5Wnlpb09JMHExSzFnN1dPeVA0OGRlJTJCbU9qVnpkU2FRJTNEJTNE",
+    "value": "5SAQsV9JT0tvcGNtcHF0U0NMcHYyQ2lkUGQxSDhwUmEweHJsc3V2UHB4NmRJZFZkRjJ4Rk16RmJqVFBOWFlIOXVEMWZLNkhrb0ltbVRxWEpZNjg3VGMxS2pkazl3OElyUjFIMm1adEJEbmQweENJQk9icmlZdzh4SExwQ3UzUGZldTdFMGRtOTZuRkFzMHV2Z3lWbVIwME8yc1ElM0QlM0Q",
     "domain": ".criteo.com",
     "path": "/",
-    "expires": 1813119015.488404,
+    "expires": 1813143832.955892,
     "httpOnly": false,
     "secure": true,
     "sameSite": "None",
@@ -1273,30 +1243,30 @@
   },
   {
     "name": "cto_bundle",
-    "value": "1rtPxl8xQVhLVTA4YjhqbWdkUk1YaTd5cHBSSmNQQ0RXS3NhYXNQNnJFVXVDVnREalJUJTJGUlowWm1WZlhsRmh2NjE4M3NMZkxtQXJFcndjNFdMU296bURPTWdOaHclMkZSWG5wQmpjUkgzWUNBVkYwVzJDQUxXU0Q5VjIzeSUyQlFPd21tZzZCNFFtT00wVGNRajBLJTJCWXdjNGE5dW9JQSUzRCUzRA",
+    "value": "073ViV8xQVhLVTA4YjhqbWdkUk1YaTd5cHBjOGZwd2FMVGxySk1tNXAxSlRoM01DVlM0RVBoWU5yVmFkMTlYRndqY0Y0JTJCTHRFViUyQmxUTkpUSko2TlJjbiUyRldadTFOOVlnVVpjSmRGaGE1NjZwMUJJMGpFM3lWc21SSkt4cm02b1Z6JTJCJTJGQnFHZDhVeFFvSnEzQURWUXdQRndEVTl3JTNEJTNE",
     "domain": ".careerviet.vn",
     "path": "/",
-    "expires": 1813587015,
-    "httpOnly": false,
-    "secure": false,
-    "sameSite": "Lax"
-  },
-  {
-    "name": "g_state",
-    "value": "{\"i_l\":0,\"i_ll\":1779423015711,\"i_b\":\"zkHkgyYLVQKh1KjyF+cbjmt7RMd7z6l16plqDMeqXzM\",\"i_e\":{\"enable_itp_optimization\":0},\"i_et\":1779411413317}",
-    "domain": "careerviet.vn",
-    "path": "/",
-    "expires": 1794975015,
+    "expires": 1813611832,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
   },
   {
     "name": "__stgeo",
-    "value": "ImRlbmllZCI%3D",
+    "value": "IjEi",
     "domain": "careerviet.vn",
     "path": "/",
-    "expires": 1779855020,
+    "expires": 1779534232,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "g_state",
+    "value": "{\"i_l\":0,\"i_ll\":1779447833593,\"i_b\":\"1fmSEUu3STcO7wadw74IEb9Gb4qSMcEJ9mxeybnCsgQ\",\"i_e\":{\"enable_itp_optimization\":0},\"i_et\":1779411413317}",
+    "domain": "careerviet.vn",
+    "path": "/",
+    "expires": 1794999833,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"

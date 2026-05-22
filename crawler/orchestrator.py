@@ -353,8 +353,9 @@ def notify_new_jobs(count: int):
     if count <= 0:
         return
     try:
+        backend_url = os.getenv("BACKEND_URL", "http://localhost:3000")
         requests.post(
-            "http://localhost:3000/api/jobs/internal/broadcast-new-jobs",
+            f"{backend_url}/api/jobs/internal/broadcast-new-jobs",
             json={"count": count, "secret": os.getenv("INTERNAL_SECRET", "")},
             timeout=3,
         )
