@@ -2,7 +2,7 @@ import './PrivacyScreen.css';
 
 const sections = [
   {
-    icon: "📋", num: "01",
+    icon: "📋", num: "1",
     title: "Thông tin chúng tôi thu thập",
     items: [
       { sub: "Thông tin bạn cung cấp trực tiếp", text: "Khi đăng ký tài khoản, chúng tôi thu thập: họ tên, địa chỉ email, số điện thoại, thông tin hồ sơ nghề nghiệp (kinh nghiệm, học vấn, kỹ năng), CV và tài liệu đính kèm." },
@@ -11,7 +11,7 @@ const sections = [
     ]
   },
   {
-    icon: "🎯", num: "02",
+    icon: "🎯", num: "2",
     title: "Mục đích sử dụng thông tin",
     items: [
       { sub: "Cung cấp dịch vụ cốt lõi", text: "Hiển thị và gợi ý việc làm phù hợp, hỗ trợ quy trình ứng tuyển, tổng hợp từ các nền tảng TopCV, CareerLink, CareerViet." },
@@ -20,7 +20,7 @@ const sections = [
     ]
   },
   {
-    icon: "⚙️", num: "03",
+    icon: "⚙️", num: "3",
     title: "Quyền của bạn",
     items: [
       { sub: "Truy cập & Chỉnh sửa", text: "Bạn có quyền xem, cập nhật hoặc chỉnh sửa thông tin cá nhân bất kỳ lúc nào trong phần Cài đặt tài khoản." },
@@ -28,7 +28,7 @@ const sections = [
     ]
   },
   {
-    icon: "🍪", num: "04",
+    icon: "🍪", num: "4",
     title: "Cookie & Công nghệ theo dõi",
     items: [
       { sub: "Cookie cần thiết", text: "Duy trì phiên đăng nhập và bảo mật. Không thể tắt vì đây là yêu cầu kỹ thuật cơ bản của nền tảng." },
@@ -75,14 +75,14 @@ export default function PrivacyScreen() {
               <div className="pp-section-header">
                 <div className="pp-section-icon">{section.icon}</div>
                 <div>
-                  <div className="intro-eyebrow">{section.num}</div>
-                  <div className="intro-step-title">{section.title}</div>
+                  {/* <div className="intro-eyebrow">{section.num}</div> */}
+                  <div className="intro-step-title"> {section.num}. {section.title}</div>
                 </div>
               </div>
               <div className="pp-items">
                 {section.items.map((item) => (
                   <div key={item.sub} className="pp-item">
-                    <div className="pp-item-sub">▸ {item.sub}</div>
+                    <div className="pp-item-sub">➮ {item.sub}</div>
                     <div className="pp-item-text">{item.text}</div>
                   </div>
                 ))}

@@ -498,6 +498,86 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
     const [isAssisting, setIsAssisting] = useState(false);
     const [activeSection, setActiveSection] = useState(null); // null = tổng thể
     const [selectedSuggestions, setSelectedSuggestions] = useState({});
+    const [selectedQuickOptions, setSelectedQuickOptions] = useState([]);
+
+    // Mỗi section có bộ chip gợi ý riêng
+    const SECTION_QUICK_OPTIONS = {
+        experiences: [
+            { id: 'metrics', icon: '📊', label: 'Thêm số liệu cụ thể', hint: 'Thêm các con số định lượng vào mô tả kinh nghiệm (%, doanh thu, số lượng...)' },
+            { id: 'action_verbs', icon: '💪', label: 'Cải thiện động từ hành động', hint: 'Thay thế động từ yếu bằng từ ngữ mạnh mẽ, chuyên nghiệp hơn' },
+            { id: 'keywords', icon: '🔑', label: 'Thêm từ khóa ATS', hint: 'Tối ưu từ khóa trong kinh nghiệm để vượt qua bộ lọc ATS' },
+            { id: 'achievements', icon: '🏆', label: 'Làm nổi bật thành tích', hint: 'Nhấn mạnh các đóng góp và thành tích nổi bật trong từng công việc' },
+            { id: 'format', icon: '✨', label: 'Cải thiện diễn đạt', hint: 'Viết lại mô tả công việc rõ ràng, súc tích và chuyên nghiệp hơn' },
+            { id: 'impact', icon: '🎯', label: 'Thêm kết quả tác động', hint: 'Bổ sung kết quả cụ thể bạn đã tạo ra trong vai trò đó' },
+        ],
+        education: [
+            { id: 'highlight_gpa', icon: '🎓', label: 'Làm nổi bật GPA / học lực', hint: 'Làm nổi bật GPA hoặc thành tích học tập nếu đáng kể' },
+            { id: 'verify_school', icon: '🏫', label: 'Chuẩn hóa tên trường', hint: 'Sử dụng tên trường đầy đủ và chính thức' },
+            {id: 'add_honors', icon: '🏆', label: 'Bổ sung học lực', hint: 'Thêm xếp loại Giỏi, Xuất sắc hoặc thành tích nổi bật'}
+        ],
+        skills: [
+            { id: 'skills_gap', icon: '🧩', label: 'Bổ sung một số kỹ năng', hint: 'Gợi ý các kỹ năng phổ biến còn thiếu trong ngành của bạn' },
+            { id: 'keywords', icon: '🔑', label: 'Thêm từ khóa ATS', hint: 'Tối ưu kỹ năng để khớp với từ khóa mà nhà tuyển dụng tìm kiếm' },
+            { id: 'level', icon: '📊', label: 'Phân cấp độ thành thạo', hint: 'Phân chia kỹ năng theo mức độ: cơ bản, trung bình, nâng cao' },
+            { id: 'group_skills', icon: '🗂️', label: 'Nhóm kỹ năng theo loại', hint: 'Sắp xếp lại kỹ năng theo nhóm: kỹ thuật, mềm, ngôn ngữ...' },
+            { id: 'trending', icon: '📈', label: 'Thêm kỹ năng hot 2026', hint: 'Gợi ý các kỹ năng đang được thị trường lao động ưa chuộng nhất' },
+        ],
+        summary: [
+            { id: 'rewrite', icon: '✍️', label: 'Viết lại hoàn toàn', hint: 'Tạo lại mục tiêu nghề nghiệp mới hấp dẫn và chuyên nghiệp' },
+            { id: 'keywords', icon: '🔑', label: 'Thêm từ khóa ATS', hint: 'Tối ưu từ khóa trong mục tiêu để vượt qua bộ lọc ATS' },
+            { id: 'value_prop', icon: '💎', label: 'Làm rõ giá trị bản thân', hint: 'Nhấn mạnh điểm mạnh độc đáo và giá trị bạn mang lại cho công ty' },
+            { id: 'tailor', icon: '🎯', label: 'Điều chỉnh theo vị trí', hint: 'Tùy chỉnh mục tiêu cho phù hợp với vị trí và ngành cụ thể' },
+            { id: 'concise', icon: '✂️', label: 'Rút gọn súc tích hơn', hint: 'Viết lại ngắn gọn, đi thẳng vào điểm mạnh trong 2-3 câu' },
+        ],
+        certifications: [
+            { id: 'suggest_certs', icon: '🏅', label: 'Gợi ý chứng chỉ phù hợp', hint: 'Gợi ý các chứng chỉ phổ biến và được công nhận trong ngành của bạn' },
+            { id: 'add_details', icon: '📋', label: 'Bổ sung thông tin chi tiết', hint: 'Thêm ngày cấp, ngày hết hạn và tổ chức cấp chứng chỉ' },
+            { id: 'prioritize', icon: '⭐', label: 'Ưu tiên chứng chỉ quan trọng', hint: 'Sắp xếp lại thứ tự để chứng chỉ có giá trị nhất lên đầu' },
+            { id: 'online_certs', icon: '💻', label: 'Gợi ý chứng chỉ online', hint: 'Đề xuất khóa học online có chứng chỉ từ Coursera, Udemy, AWS...' },
+        ],
+        awards: [
+            { id: 'add_context', icon: '📖', label: 'Thêm bối cảnh giải thưởng', hint: 'Mô tả rõ hơn về quy mô, ý nghĩa và tiêu chí của giải thưởng' },
+            { id: 'metrics', icon: '📊', label: 'Thêm số liệu cụ thể', hint: 'Bổ sung số liệu về số người tham gia, tỷ lệ đạt giải...' },
+            { id: 'impact', icon: '🎯', label: 'Nhấn mạnh tác động', hint: 'Làm rõ tác động của giải thưởng đối với công ty hoặc dự án' },
+            { id: 'format', icon: '✨', label: 'Cải thiện diễn đạt', hint: 'Viết lại mô tả giải thưởng chuyên nghiệp và ấn tượng hơn' },
+        ],
+        activities: [
+            { id: 'leadership', icon: '👥', label: 'Làm nổi bật vai trò lãnh đạo', hint: 'Nhấn mạnh các vai trò lãnh đạo, quản lý nhóm trong hoạt động' },
+            { id: 'metrics', icon: '📊', label: 'Thêm số liệu cụ thể', hint: 'Bổ sung số lượng thành viên, quy mô sự kiện, kết quả đạt được...' },
+            { id: 'skills_transfer', icon: '🔗', label: 'Liên kết với kỹ năng nghề nghiệp', hint: 'Kết nối hoạt động ngoại khóa với kỹ năng áp dụng trong công việc' },
+            { id: 'format', icon: '✨', label: 'Cải thiện diễn đạt', hint: 'Viết lại mô tả hoạt động rõ ràng và chuyên nghiệp hơn' },
+        ],
+        // fallback cho null (cải thiện toàn bộ CV)
+        _general: [
+            { id: 'metrics', icon: '📊', label: 'Thêm số liệu cụ thể', hint: 'Thêm vào CV các con số định lượng (%, $, số lượng...)' },
+            { id: 'certs', icon: '🏅', label: 'Gợi ý chứng chỉ', hint: 'Gợi ý các chứng chỉ phù hợp với ngành nghề' },
+            { id: 'action_verbs', icon: '💪', label: 'Cải thiện động từ hành động', hint: 'Thay thế động từ yếu bằng từ ngữ mạnh mẽ hơn' },
+            { id: 'keywords', icon: '🔑', label: 'Thêm từ khóa ATS', hint: 'Tối ưu từ khóa để vượt qua bộ lọc ATS' },
+            { id: 'summary', icon: '✍️', label: 'Viết lại mục tiêu nghề nghiệp', hint: 'Tạo mục tiêu nghề nghiệp hấp dẫn, chuyên nghiệp' },
+            { id: 'skills_gap', icon: '🧩', label: 'Bổ sung kỹ năng còn thiếu', hint: 'Gợi ý kỹ năng phù hợp theo vị trí ứng tuyển' },
+            { id: 'format', icon: '✨', label: 'Cải thiện diễn đạt', hint: 'Viết lại các mô tả rõ ràng, súc tích hơn' },
+            { id: 'achievements', icon: '🏆', label: 'Làm nổi bật thành tích', hint: 'Nhấn mạnh những đóng góp và thành tích nổi bật' },
+        ],
+    };
+
+    // Lấy danh sách chips theo section đang active
+    const currentQuickOptions = SECTION_QUICK_OPTIONS[activeSection] ?? SECTION_QUICK_OPTIONS['_general'];
+
+    const toggleQuickOption = (id) => {
+        setSelectedQuickOptions(prev =>
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        );
+    };
+
+    const buildFinalPrompt = () => {
+        const selectedLabels = currentQuickOptions
+            .filter(o => selectedQuickOptions.includes(o.id))
+            .map(o => o.hint);
+        const parts = [];
+        if (assistPrompt.trim()) parts.push(assistPrompt.trim());
+        if (selectedLabels.length > 0) parts.push('Yêu cầu cụ thể: ' + selectedLabels.join('; '));
+        return parts.join('\n');
+    };
 
 
     const getSelectableSuggestionItems = (suggestions) => {
@@ -800,16 +880,18 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
         setActiveSection(section);
         setAssistPrompt('');
         setAssistSuggestions(null);
+        setSelectedQuickOptions([]); // reset chips khi đổi section
         setAssistModalOpen(true);
     };
 
     const generateSuggestions = async () => {
-        if (!assistPrompt.trim()) return;
+        const finalPrompt = buildFinalPrompt();
+        if (!finalPrompt.trim()) return;
         setIsAssisting(true);
         try {
             const result = await callApi('/cv-assistant/suggest', 'POST', {
                 cvData: data,
-                prompt: assistPrompt,
+                prompt: finalPrompt,
                 section: activeSection,
             });
             // Kiểm tra cấu trúc response
@@ -1170,44 +1252,93 @@ export default function EditorScreen({ templateId, initialData, cvId, onBack, fo
                     background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000
                 }}>
                     <div style={{
-                        background: "white", padding: 24, borderRadius: 12, maxWidth: 600, width: "90%", maxHeight: "80vh", overflow: "auto"
+                        background: "white", padding: 24, borderRadius: 12, maxWidth: 600, width: "90%", maxHeight: "85vh", overflow: "auto"
                     }}>
-
                         <h3 style={{ marginBottom: 12 }}>✨ AI chỉnh sửa CV</h3>
                         {activeSection && (
                             <p style={{ marginBottom: 12, color: "#6b21a5" }}>
                                 Đang cải thiện phần: <strong>{sectionTitles[activeSection] || activeSection}</strong>
                             </p>
                         )}
+
+                        {/* Textarea */}
                         <textarea
                             rows={4}
                             placeholder='Ví dụ: "Tôi là frontend dev, 2 năm kinh nghiệm, dùng React, muốn apply product company"'
                             value={assistPrompt}
                             onChange={(e) => setAssistPrompt(e.target.value)}
-                            style={{ width: "100%", padding: 8, marginBottom: 12, border: "1px solid #d1d5db", borderRadius: 6, fontSize: 13 }}
+                            style={{ width: "100%", padding: 8, marginBottom: 10, border: "1px solid #d1d5db", borderRadius: 6, fontSize: 13, boxSizing: "border-box", resize: "vertical" }}
                         />
-                        <button
-                            onClick={generateSuggestions}
-                            disabled={isAssisting || !assistPrompt.trim()}
-                            style={{
-                                padding: "8px 16px",
-                                background: "#8b5cf6",
-                                color: "white",
-                                border: "none",
-                                borderRadius: 6,
-                                cursor: (isAssisting || !assistPrompt.trim()) ? "not-allowed" : "pointer",
-                                opacity: (isAssisting || !assistPrompt.trim()) ? 0.6 : 1,
-                                marginBottom: 16,
-                            }}
-                        >
-                            {isAssisting ? "Đang suy nghĩ..." : "Gợi ý"}
-                        </button>
-                        <button onClick={() => setAssistModalOpen(false)} style={{ padding: "8px 16px", background: "#6b7280", color: "white", border: "none", borderRadius: 4, cursor: "pointer", marginLeft: "10px" }}>
-                            ❌ Đóng
-                        </button>
+
+                        {/* Quick-select option chips */}
+                        <div style={{ marginBottom: 16 }}>
+                            <p style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.4 }}>
+                                Chọn yêu cầu nhanh (có thể chọn nhiều)
+                            </p>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                {currentQuickOptions.map(opt => {
+                                    const isSelected = selectedQuickOptions.includes(opt.id);
+                                    return (
+                                        <button
+                                            key={opt.id}
+                                            onClick={() => toggleQuickOption(opt.id)}
+                                            title={opt.hint}
+                                            style={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: 5,
+                                                padding: "6px 12px",
+                                                borderRadius: 20,
+                                                border: isSelected ? "1.5px solid #8b5cf6" : "1.5px solid #e5e7eb",
+                                                background: isSelected ? "#f3e8ff" : "#f9fafb",
+                                                color: isSelected ? "#6d28d9" : "#374151",
+                                                fontSize: 12,
+                                                fontWeight: isSelected ? 600 : 400,
+                                                cursor: "pointer",
+                                                transition: "all 0.15s ease",
+                                                userSelect: "none",
+                                            }}
+                                        >
+                                            <span>{opt.icon}</span>
+                                            <span>{opt.label}</span>
+                                            {isSelected && <span style={{ fontSize: 10, background: "#8b5cf6", color: "white", borderRadius: "50%", width: 14, height: 14, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>✓</span>}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            {selectedQuickOptions.length > 0 && (
+                                <p style={{ fontSize: 11, color: "#8b5cf6", marginTop: 6 }}>
+                                    Đã chọn {selectedQuickOptions.length} yêu cầu
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Action buttons */}
+                        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                            <button
+                                onClick={generateSuggestions}
+                                disabled={isAssisting || (!assistPrompt.trim() && selectedQuickOptions.length === 0)}
+                                style={{
+                                    padding: "8px 20px",
+                                    background: "#8b5cf6",
+                                    color: "white",
+                                    border: "none",
+                                    borderRadius: 6,
+                                    cursor: (isAssisting || (!assistPrompt.trim() && selectedQuickOptions.length === 0)) ? "not-allowed" : "pointer",
+                                    opacity: (isAssisting || (!assistPrompt.trim() && selectedQuickOptions.length === 0)) ? 0.6 : 1,
+                                    fontWeight: 600,
+                                    fontSize: 13,
+                                }}
+                            >
+                                {isAssisting ? "⏳ Đang suy nghĩ..." : "✨ Gợi ý"}
+                            </button>
+                            <button onClick={() => setAssistModalOpen(false)} style={{ padding: "8px 16px", background: "#6b7280", color: "white", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13 }}>
+                                ❌ Đóng
+                            </button>
+                        </div>
 
                         {assistSuggestions && (
-                            <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 16 }}>
+                            <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 16, marginTop: 16 }}>
                                 <h4 style={{ marginBottom: 12 }}>✨ Chọn các đề xuất muốn áp dụng</h4>
                                 <div style={{ maxHeight: 300, overflowY: 'auto', marginBottom: 16 }}>
                                     {getSelectableSuggestionItems(assistSuggestions).map(item => (

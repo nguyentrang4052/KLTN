@@ -28,6 +28,10 @@
   margin-top: 8px;
 }
 
+.sect-eye {
+  font-size: 14px;
+}
+
 .cf-contact-card {
   background: var(--surface);
   border: 1px solid var(--card-accent-border, var(--border));
@@ -107,11 +111,11 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.2px;
-  color: var(--ink3);
+  color: var(--rust);
   margin-bottom: 10px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border);
@@ -180,10 +184,9 @@
 .cf-faq-a.open {
   max-height: 160px;
   padding: 0 18px 14px;
+  font-size: 13px;
+  color: black;
 }
-
-/* ── Form ── */
-.cf-form-col {}
 
 .cf-form-card {
   background: var(--surface);

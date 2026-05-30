@@ -15,6 +15,7 @@ from src.service.job_advisor import JobAdvisor
 import structlog
 from src.database.data_access.job import JobDataAccess
 from src.database.data_access.company import CompanyDataAccess
+from src.database.data_access.industry import IndustryDataAccess
 import re
 import statistics
 
@@ -700,14 +701,26 @@ class Chatbot:
             logger.error(f"chat_unexpected_error: {str(e)}", exc_info=True)
             return {
                 "type": "text",
-                "content": f"Xin lỗi, có lỗi xảy ra: {str(e)[:100]}",
+                "content": "Hiện tại chưa có thông tin mà bạn cần tìm. Vui lòng thử lại với câu hỏi khác hoặc liên hệ hỗ trợ!",
                 "error": True,
             }
-
+        
     async def _handle_quick_intent(self, user_id: str, message: str) -> Optional[str]:
         """Xử lý nhanh các câu hỏi phổ biến - DÙNG CV TỪ SESSION"""
         msg_lower = message.lower().strip()
 
+        # ========== XU HƯỚNG NGÀNH (TREND QUERY) ==========
+        trend_keywords = ["xu hướng", "trend", "thị trường", "ngành hot", "ngành đang phát triển", 
+                        "tương lai ngành", "cơ hội ngành", "nhu cầu tuyển dụng", "phân tích ngành"]
+        
+        if any(kw in msg_lower for kw in trend_keywords):
+            # Gọi method phân tích xu hướng ngành động
+            response = await self._get_industry_trend(message)
+            if response:
+                return response
+            # Nếu không xử lý được, trả về response mặc định
+            return "Vui lòng cho tôi biết bạn muốn phân tích xu hướng ngành nào (ví dụ: 'xu hướng ngành IT', 'phân tích ngành Marketing')?"
+        
         # Lấy thông tin CV từ session
         has_cv = self.session_manager.has_cv(user_id)
         cv_skills = self.session_manager.get_cv_skills(user_id)
@@ -811,213 +824,172 @@ class Chatbot:
 
         return None
 
-    async def _extract_search_criteria(self, message: str) -> Dict[str, Any]:
-        """Trích xuất tiêu chí tìm kiếm từ câu hỏi của user"""
+    async def _extract_industry_from_query(self, message: str) -> Optional[str]:
+        """Trích xuất cụm từ ngành từ câu hỏi của user"""
         msg_lower = message.lower()
+        
+        # Pattern 1: "ngành X" hoặc "xu hướng ngành X"
+        patterns = [
+            r'ngành\s+([a-zA-Z\sàáảãạăắằẳẵặâấầẩẫậđéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ]+)',
+            r'xu hướng\s+ngành\s+([a-zA-Z\sàáảãạăắằẳẵặâấầẩẫậđéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ]+)',
+            r'trend\s+ngành\s+([a-zA-Z\s]+)',
+            r'ngành\s+([a-zA-Z\s]+)\s+đang',
+            r'thị trường\s+ngành\s+([a-zA-Z\s]+)',
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, msg_lower)
+            if match:
+                industry_text = match.group(1).strip()
+                # Giới hạn độ dài và loại bỏ từ dừng
+                industry_text = industry_text[:50]
+                logger.info(f"Extracted industry text: '{industry_text}'")
+                return industry_text
+        
+        # Pattern 2: Câu hỏi ngắn như "Nhân sự", "IT", "Marketing"
+        # Loại bỏ các từ hỏi
+        stop_words = ["xu hướng", "của", "ngành", "lĩnh vực", "thị trường", "việc làm", "tuyển dụng"]
+        clean_text = msg_lower
+        for sw in stop_words:
+            clean_text = clean_text.replace(sw, "")
+        clean_text = clean_text.strip()
+        
+        # Nếu còn text ngắn gọn, đó có thể là tên ngành
+        if len(clean_text) > 2 and len(clean_text) < 50:
+            logger.info(f"Extracted industry from short text: '{clean_text}'")
+            return clean_text
+        
+        return None
 
+    async def _extract_search_criteria(self, message: str) -> Dict[str, Any]:
+        msg_lower = message.lower()
         criteria = {
             "title_keywords": [],
             "level": None,
             "company": None,
             "location": None,
             "skills": [],
+            "exact_phrase": None,  # 🔥 THÊM: Lưu cụm từ chính xác
         }
 
-        # Trích xuất cấp bậc
+        # 🔥 QUAN TRỌNG: Phát hiện cấp bậc (giữ nguyên cụm từ)
         levels = {
-            "fresher": ["fresher", "mới tốt nghiệp", "entry"],
-            "junior": ["junior", "juniors"],
-            "mid": ["mid", "middle"],
-            "senior": ["senior", "seniors"],
-            "intern": ["intern", "thực tập", "internship"],
+            "intern": ["thực tập sinh", "intern", "internship", "thực tập"],
+            "fresher": ["fresher", "mới tốt nghiệp", "entry level", "entry"],
+            "junior": ["junior", "jr", "nhân viên"],
+            "mid": ["mid", "middle", "chuyên viên"],
+            "senior": ["senior", "sr", "trưởng nhóm", "lead"],
+            "manager": ["manager", "quản lý", "trưởng phòng", "head"],
         }
-
+        
+        detected_level = None
         for level, keywords in levels.items():
-            if any(kw in msg_lower for kw in keywords):
-                criteria["level"] = level
+            for kw in keywords:
+                if kw in msg_lower:
+                    detected_level = level
+                    # 🔥 Xóa từ khóa cấp bậc khỏi message để lấy phần còn lại
+                    msg_lower = msg_lower.replace(kw, "").strip()
+                    break
+            if detected_level:
                 break
+        criteria["level"] = detected_level
 
-        # Trích xuất tên công ty (các công ty lớn)
-        companies = [
-            "fpt",
-            "vng",
-            "tma",
-            "kms",
-            "nashtech",
-            "axel",
-            "samsung",
-            "lg",
-            "vnpt",
-            "viettel",
-        ]
+        # Công ty
+        companies = ["fpt", "vng", "tma", "kms", "samsung", "viettel", "rikken"]
         for company in companies:
             if company in msg_lower:
                 criteria["company"] = company
+                msg_lower = msg_lower.replace(company, "").strip()
                 break
 
-        # Trích xuất địa điểm
-        locations = [
-            "hà nội",
-            "hn",
-            "hcm",
-            "hồ chí minh",
-            "đà nẵng",
-            "dn",
-            "cần thơ",
-            "bình dương",
-        ]
+        # Địa điểm
+        locations = ["hà nội", "hn", "hcm", "hồ chí minh", "đà nẵng", "dn", "quận 3", "quận 1"]
         for loc in locations:
             if loc in msg_lower:
                 criteria["location"] = loc
+                msg_lower = msg_lower.replace(loc, "").strip()
                 break
 
-        # Trích xuất kỹ năng
-        common_skills = [
-            "python",
-            "java",
-            "javascript",
-            "react",
-            "node",
-            "sql",
-            "aws",
-            "docker",
-            "git",
-            "typescript",
-        ]
-        for skill in common_skills:
-            if skill in msg_lower:
-                criteria["skills"].append(skill)
-
-        # Lấy title keywords (các từ còn lại sau khi đã lọc)
-        words = msg_lower.split()
-        exclude_words = [
-            "tìm",
-            "việc",
-            "job",
-            "list",
-            "danh sách",
-            "gợi ý",
-            "công",
-            "việc",
-            "làm",
-            "liên quan",
-            "về",
-            "tại",
-            "cho",
-            "của",
-            "tech",
-            "company",
-            "công ty",
-            "vị trí",
-        ]
-
-        for word in words:
-            if (
-                len(word) > 3
-                and word not in exclude_words
-                and not any(c in word for c in ["ả", "á", "à", "ạ", "ã", "ă", "ằ", "ắ"])
-            ):
-                # Thêm vào keywords nếu không phải là từ đặc biệt
-                if word not in criteria["title_keywords"] and word not in [
-                    criteria["level"],
-                    criteria["company"],
-                ]:
-                    criteria["title_keywords"].append(word)
-
+        # 🔥 QUAN TRỌNG: Lấy phần còn lại làm cụm từ tìm kiếm (giữ nguyên KHÔNG tách)
+        # Ví dụ: "thực tập sinh pháp lý" -> sau khi bỏ "thực tập sinh" (level intern) còn "pháp lý"
+        # Nhưng nếu level không được phát hiện, giữ nguyên cả cụm
+        
+        remaining = msg_lower.strip()
+        
+        # Loại bỏ các từ dừng ở đầu/cuối
+        stop_words = {"tìm", "việc", "job", "list", "danh sách", "gợi ý", "công", "việc", "làm",
+                    "liên quan", "về", "tại", "cho", "của", "vị trí", "tuyển", "dụng",
+                    "lương", "xin", "hỏi", "giúp", "tôi", "mình", "em", "anh", "chị"}
+        
+        # Tách từ và lọc bỏ stop words nhưng GIỮ NGUYÊN THỨ TỰ
+        words = remaining.split()
+        filtered_words = [w for w in words if w not in stop_words and len(w) > 1]
+        
+        # 🔥 Nếu có level (ví dụ intern) và còn từ khóa -> ghép lại thành cụm
+        if detected_level and filtered_words:
+            # Ví dụ: level=intern, filtered_words=["pháp", "lý"] -> "pháp lý"
+            criteria["title_keywords"] = [" ".join(filtered_words)]
+            criteria["exact_phrase"] = " ".join(filtered_words)
+        elif filtered_words:
+            # Không có level, giữ nguyên cụm từ
+            criteria["title_keywords"] = [" ".join(filtered_words)]
+            criteria["exact_phrase"] = " ".join(filtered_words)
+        else:
+            # Không còn gì, dùng từ khóa gốc
+            criteria["title_keywords"] = [remaining] if remaining else []
+            criteria["exact_phrase"] = remaining if remaining else None
+        
+        # 🔥 Log để debug
+        logger.info(f"Extracted criteria: level={criteria['level']}, exact_phrase={criteria['exact_phrase']}, keywords={criteria['title_keywords']}, location={criteria['location']}")
+        
         return criteria
 
-    async def _search_jobs_from_db(
-        self, criteria: Dict[str, Any], limit: int = 10
-    ) -> List[Dict]:
-        """Tìm kiếm job từ database theo tiêu chí"""
-
-        # Khởi tạo JobDataAccess ở đầu method
+    async def _search_jobs_from_db(self, criteria: Dict[str, Any], limit: int = 10) -> List[Dict]:
         job_da = JobDataAccess()
-
-        # Ưu tiên 1: Tìm theo cấp bậc
-        if criteria.get("level"):
-            jobs = await self._search_jobs_by_level(job_da, criteria["level"], limit)
+        
+        exact_phrase = criteria.get("exact_phrase")
+        level = criteria.get("level")
+        location = criteria.get("location")
+        
+        # 🔥 Ưu tiên 1: Tìm chính xác cụm từ + level
+        if exact_phrase:
+            logger.info(f"Searching by exact phrase: '{exact_phrase}', level={level}, location={location}")
+            jobs = await job_da.search_jobs_by_exact_phrase(
+                phrase=exact_phrase,
+                level=level,
+                location=location,
+                limit=limit
+            )
             if jobs:
+                logger.info(f"Found {len(jobs)} jobs by exact phrase")
                 return jobs
-
-        # Ưu tiên 2: Tìm theo tên công ty
-        if criteria.get("company"):
-            jobs = await job_da.search_jobs_by_keywords(
-                keywords=[criteria["company"]],
-                location=criteria.get("location"),
-                limit=limit,
+        
+        # Ưu tiên 2: Tìm theo level + title keywords
+        if level and criteria.get("title_keywords"):
+            logger.info(f"Searching by level={level} and keywords={criteria['title_keywords']}")
+            jobs = await job_da.search_jobs_by_level_and_title(
+                level=level,
+                title_keywords=criteria["title_keywords"],
+                limit=limit
             )
             if jobs:
                 return jobs
-
+        
         # Ưu tiên 3: Tìm theo title keywords
         if criteria.get("title_keywords"):
+            logger.info(f"Searching by keywords: {criteria['title_keywords']}")
             jobs = await job_da.search_jobs_by_keywords(
                 keywords=criteria["title_keywords"],
-                location=criteria.get("location"),
-                limit=limit,
+                location=location,
+                limit=limit
             )
             if jobs:
                 return jobs
-
-        # Ưu tiên 4: Tìm theo skills
-        if criteria.get("skills"):
-            user_skills = (
-                self.session_manager.get_cv_skills(criteria.get("user_id", ""))
-                if criteria.get("user_id")
-                else []
-            )
-            all_skills = list(set(criteria["skills"] + user_skills))
-
-            if all_skills:
-                try:
-                    # Gọi search_by_skills từ job_da
-                    jobs = await job_da.search_by_skills(all_skills, limit=limit)
-                    if jobs:
-                        # Convert jobs sang dict format
-                        result = []
-                        for job in jobs:
-                            if hasattr(job, "dict"):
-                                job_dict = job.dict()
-                            elif isinstance(job, dict):
-                                job_dict = job
-                            else:
-                                job_dict = {
-                                    "id": str(getattr(job, "id", "")),
-                                    "title": getattr(job, "title", "N/A"),
-                                    "company": getattr(job, "company", "N/A"),
-                                    "location": getattr(job, "location", "N/A"),
-                                    "salary": getattr(job, "salary", "Thương lượng"),
-                                    "skills": getattr(job, "skills", []),
-                                }
-                            result.append(job_dict)
-                        return result
-                except Exception as e:
-                    logger.error(f"search_by_skills error: {str(e)}")
-
-        # Fallback: Lấy jobs mới nhất
-        try:
-            jobs = await job_da.get_all_active_jobs(limit=limit)
-            result = []
-            for job in jobs:
-                if hasattr(job, "dict"):
-                    job_dict = job.dict()
-                elif isinstance(job, dict):
-                    job_dict = job
-                else:
-                    job_dict = {
-                        "id": str(getattr(job, "id", "")),
-                        "title": getattr(job, "title", "N/A"),
-                        "company": getattr(job, "company", "N/A"),
-                        "location": getattr(job, "location", "N/A"),
-                        "salary": getattr(job, "salary", "Thương lượng"),
-                        "skills": getattr(job, "skills", []),
-                    }
-                result.append(job_dict)
-            return result
-        except Exception as e:
-            logger.error(f"fallback search error: {str(e)}")
-            return []
+        
+        # Fallback: lấy jobs mới nhất
+        logger.info("No criteria, getting all active jobs")
+        jobs = await job_da.get_all_active_jobs(limit=limit)
+        return jobs
 
     async def _search_jobs_by_level(
         self, job_da: JobDataAccess, level: str, limit: int
@@ -1736,9 +1708,7 @@ class Chatbot:
 
         return response
 
-    async def _handle_job_detail_inquiry(
-        self, user_id: str, message: str, job: Dict
-    ) -> str:
+    async def _handle_job_detail_inquiry(self, user_id: str, message: str, job: Dict) -> str:
         """Xử lý khi user muốn tìm hiểu chi tiết về một job"""
 
         # Kiểm tra job có tồn tại không
@@ -1790,119 +1760,131 @@ class Chatbot:
 
         return response
 
-    async def _compare_cv_with_job_requirements(
-        self, cv_analysis: CVAnalysis, job: Dict
-    ) -> Dict[str, Any]:
+    async def _compare_cv_with_job_requirements(self, cv_analysis: CVAnalysis, job: Dict) -> Dict[str, Any]:
         """
         So sánh CV với requirements của job theo công thức:
         match_score = skills*60% + certifications*10% + position*20% + other*10%
         """
+        
+        # Lấy text từ job
         requirements_text = (job.get("requirements") or "").lower()
-        description_text  = (job.get("description")  or "").lower()
+        description_text = (job.get("description") or "").lower()
         combined_text = requirements_text + " " + description_text
+        job_title_lower = (job.get("title") or "").lower()
 
         # ── 1. SKILLS SCORE (60%) ──────────────────────────────────────────────
-        cv_skills  = set(s.lower().strip() for s in (cv_analysis.extracted_skills or []))
-        job_skills = set(s.lower().strip() for s in (job.get("skills") or []))
-
-        # Bổ sung skill từ requirements text nếu job_skills trống
+        # Lấy skills từ CV (đảm bảo không None)
+        cv_skills_raw = cv_analysis.extracted_skills or []
+        cv_skills = set([s.lower().strip() for s in cv_skills_raw if s])
+        
+        # Lấy skills từ job
+        job_skills_raw = job.get("skills") or []
+        job_skills = set([s.lower().strip() for s in job_skills_raw if s])
+        
+        logger.info(f"CV skills ({len(cv_skills)}): {list(cv_skills)[:10]}")
+        logger.info(f"Job skills ({len(job_skills)}): {list(job_skills)[:10]}")
+        
+        # Nếu job không có skills, extract từ requirements/description
         if not job_skills:
             skill_keywords = [
-                "python","java","javascript","typescript","react","vue","angular",
-                "node","sql","mysql","postgresql","mongodb","redis","docker",
-                "kubernetes","aws","azure","gcp","git","linux","nginx","spring",
-                "django","fastapi","php","laravel","swift","kotlin","flutter",
-                "excel","powerpoint","word","photoshop","illustrator","figma",
+                "python", "java", "javascript", "typescript", "react", "vue", "angular",
+                "node", "sql", "mysql", "postgresql", "mongodb", "redis", "docker",
+                "kubernetes", "aws", "azure", "gcp", "git", "linux", "nginx", "spring",
+                "django", "fastapi", "php", "laravel", "excel", "powerpoint", "word",
+                "figma", "photoshop", "illustrator", "kế toán", "accounting", "tax",
+                "sales", "marketing", "hr", "tuyển dụng", "recruitment"
             ]
             job_skills = {kw for kw in skill_keywords if kw in combined_text}
-
+            logger.info(f"Extracted job skills from text: {job_skills}")
+        
+        # Tính skills score
         if job_skills:
-            overlap    = cv_skills & job_skills
+            overlap = cv_skills & job_skills
             skill_ratio = len(overlap) / len(job_skills)
             skills_score = min(100, int(skill_ratio * 100))
+            logger.info(f"Skills overlap: {len(overlap)}/{len(job_skills)} = {skill_ratio:.2%} -> score={skills_score}%")
         else:
-            overlap      = set()
-            skills_score = 50  # không có data → trung bình
+            overlap = set()
+            skills_score = 50  # Không có data -> 50%
+            logger.info(f"No job skills, default skills_score=50%")
 
         skill_gap = list(job_skills - cv_skills)
+        skill_overlap = list(overlap)
 
         # ── 2. CERTIFICATIONS SCORE (10%) ──────────────────────────────────────
         cert_keywords = {
-            "toeic": ["toeic", "toefl", "ielts", "tiếng anh", "english"],
-            "aws":   ["aws certified", "aws certificate", "amazon web services cert"],
-            "pmp":   ["pmp", "project management professional"],
-            "cpa":   ["cpa", "kế toán công chứng", "certified public accountant"],
-            "cissp": ["cissp", "security+", "ceh"],
-            "ccna":  ["ccna", "ccnp", "cisco"],
-            "gcp":   ["google cloud certified", "gcp certified"],
-            "azure": ["azure certified", "microsoft certified"],
-            "agile": ["agile", "scrum", "scrum master"],
-            "itil":  ["itil"],
+            "toeic": ["toeic", "ielts", "tiếng anh", "english"],
+            "aws": ["aws certified", "aws"],
+            "pmp": ["pmp", "project management"],
+            "cpa": ["cpa", "kế toán"],
+            "azure": ["azure certified", "azure"],
+            "agile": ["agile", "scrum"],
         }
-
-        cv_text_lower = " ".join([
-            " ".join(cv_analysis.extracted_skills or []),
-            " ".join(cv_analysis.strengths or []),
-            (cv_analysis.summary or ""),
-            (cv_analysis.career_trajectory or ""),
-        ]).lower()
-
+        
         # Chứng chỉ job yêu cầu
         required_certs = []
         for cert_name, kws in cert_keywords.items():
             if any(kw in combined_text for kw in kws):
                 required_certs.append(cert_name)
-
-        # Chứng chỉ CV có
+        
+        # Chứng chỉ CV có (dựa trên summary, strengths)
+        cv_text = " ".join([
+            cv_analysis.summary or "",
+            cv_analysis.career_trajectory or "",
+            " ".join(cv_analysis.strengths or [])
+        ]).lower()
+        
         cv_certs = []
         for cert_name, kws in cert_keywords.items():
-            if any(kw in cv_text_lower for kw in kws):
+            if any(kw in cv_text for kw in kws):
                 cv_certs.append(cert_name)
-
+        
         if required_certs:
             matched_certs = set(required_certs) & set(cv_certs)
             cert_score = min(100, int((len(matched_certs) / len(required_certs)) * 100))
+            logger.info(f"Required certs: {required_certs}, matched: {matched_certs} -> score={cert_score}%")
         else:
-            cert_score = 80  # không yêu cầu cert → cao mặc định
-
-        cert_gap = list(set(required_certs) - set(cv_certs))
+            cert_score = 80  # Không yêu cầu -> 80%
+            logger.info(f"No certs required, default cert_score=80%")
 
         # ── 3. POSITION SCORE (20%) ────────────────────────────────────────────
-        job_title_lower = (job.get("title") or "").lower()
-        cv_desired_positions = [t.lower() for t in (cv_analysis.suitable_job_titles or [])]
-
-        position_score = 0
+        cv_desired = [t.lower() for t in (cv_analysis.suitable_job_titles or [])]
+        
+        position_score = 50  # Mặc định
         position_matched = False
-
-        if cv_desired_positions:
-            for desired in cv_desired_positions:
-                # Match trực tiếp
+        
+        if cv_desired:
+            for desired in cv_desired:
                 desired_words = desired.split()
-                if any(w in job_title_lower for w in desired_words if len(w) > 2):
-                    position_score = 100
-                    position_matched = True
+                # Kiểm tra xem từ nào trong desired_words xuất hiện trong job title
+                for word in desired_words:
+                    if len(word) > 2 and word in job_title_lower:
+                        position_score = 100
+                        position_matched = True
+                        break
+                if position_matched:
                     break
-                # Match ngược
-                job_words = job_title_lower.split()
-                if any(w in desired for w in job_words if len(w) > 2):
-                    position_score = 80
-                    position_matched = True
-                    break
+            
             if not position_matched:
-                position_score = 20  # có CV nhưng vị trí khác hẳn
+                # Kiểm tra partial match
+                for desired in cv_desired:
+                    if desired in job_title_lower or job_title_lower in desired:
+                        position_score = 80
+                        position_matched = True
+                        break
         else:
-            position_score = 50  # không có desired position → trung bình
+            position_score = 50
+            logger.info(f"No desired job titles, default position_score=50%")
+        
+        logger.info(f"Position match: {position_matched}, score={position_score}%")
 
-        # ── 4. OTHER SCORE (10%) ───────────────────────────────────────────────
-        # Gồm: kinh nghiệm, soft skills, bằng cấp mention trong requirements
-        other_scores = []
-
-        # 4a. Experience
-        cv_exp  = cv_analysis.experience_years or 0
+        # ── 4. OTHER SCORE (10%) - Kinh nghiệm ─────────────────────────────────
+        cv_exp = cv_analysis.experience_years or 0
         exp_str = (job.get("experience_year") or "")
-        exp_nums = re.findall(r"\d+", exp_str)
-        job_exp  = int(exp_nums[0]) if exp_nums else 0
-
+        import re
+        exp_nums = re.findall(r'\d+', exp_str)
+        job_exp = int(exp_nums[0]) if exp_nums else 0
+        
         if job_exp > 0:
             if cv_exp >= job_exp:
                 exp_score = 100
@@ -1914,50 +1896,40 @@ class Chatbot:
                 exp_score = max(20, int((cv_exp / job_exp) * 100))
                 exp_message = f"❌ Bạn có {cv_exp} năm kinh nghiệm (thiếu {job_exp - cv_exp} năm)"
         else:
-            exp_score  = 80
+            exp_score = 80
             exp_message = "✅ Không yêu cầu kinh nghiệm cụ thể"
-        other_scores.append(exp_score)
+        
+        other_score = exp_score
+        logger.info(f"Experience: cv={cv_exp}, job={job_exp} -> score={exp_score}%")
 
-        # 4b. Soft skills / degree mention
-        soft_found = 0
-        soft_keywords = ["giao tiếp","communication","teamwork","làm việc nhóm",
-                        "áp lực","leadership","sáng tạo","tư duy","phân tích"]
-        for kw in soft_keywords:
-            if kw in combined_text:
-                soft_found += 1
-        soft_score = min(100, 60 + soft_found * 5)
-        other_scores.append(soft_score)
-
-        other_score = int(statistics.mean(other_scores))
-
-        # ── 5. TỔNG HỢP ────────────────────────────────────────────────────────
+        # ── 5. TỔNG HỢP ĐIỂM ───────────────────────────────────────────────────
         total_score = int(
-            skills_score  * 0.60 +
-            cert_score    * 0.10 +
-            position_score * 0.20 +
-            other_score   * 0.10
+            (skills_score * 0.6) +      # 60% kỹ năng
+            (cert_score * 0.1) +         # 10% chứng chỉ
+            (position_score * 0.2) +     # 20% vị trí
+            (other_score * 0.1)          # 10% khác
         )
         total_score = max(0, min(100, total_score))
+        
+        logger.info(f"=== FINAL SCORE: {total_score}% ===")
+        logger.info(f"  Skills: {skills_score}% * 0.6 = {skills_score*0.6:.1f}")
+        logger.info(f"  Cert: {cert_score}% * 0.1 = {cert_score*0.1:.1f}")
+        logger.info(f"  Position: {position_score}% * 0.2 = {position_score*0.2:.1f}")
+        logger.info(f"  Other: {other_score}% * 0.1 = {other_score*0.1:.1f}")
 
-        # ── 6. BREAKDOWN & REASONS ─────────────────────────────────────────────
-        score_breakdown = {
-            "skills":        {"score": skills_score,   "weight": "60%"},
-            "certifications":{"score": cert_score,     "weight": "10%"},
-            "position":      {"score": position_score, "weight": "20%"},
-            "other":         {"score": other_score,    "weight": "10%"},
-        }
-
+        # ── 6. MATCH REASONS ───────────────────────────────────────────────────
         match_reasons = []
-        if overlap:
-            match_reasons.append(f"✅ Kỹ năng phù hợp: {', '.join(list(overlap)[:4])}")
+        if skill_overlap:
+            match_reasons.append(f"✅ Kỹ năng phù hợp: {', '.join(skill_overlap[:3])}")
         if position_matched:
             match_reasons.append(f"✅ Vị trí ứng tuyển khớp với mục tiêu của bạn")
-        if matched_certs if required_certs else False:
-            match_reasons.append(f"✅ Chứng chỉ phù hợp: {', '.join(list(matched_certs))}")
         if exp_score >= 70:
             match_reasons.append(exp_message)
         if not match_reasons:
-            match_reasons.append("📌 Cần bổ sung thêm kỹ năng và kinh nghiệm để phù hợp hơn")
+            if skill_gap:
+                match_reasons.append(f"📌 Cần bổ sung kỹ năng: {', '.join(skill_gap[:3])}")
+            else:
+                match_reasons.append("📌 Xem xét kỹ yêu cầu công việc để chuẩn bị tốt hơn")
 
         # Recommendation
         if total_score >= 80:
@@ -1974,25 +1946,27 @@ class Chatbot:
             can_apply = False
 
         return {
-            "total_score":      total_score,
-            "skills_score":     skills_score,
-            "cert_score":       cert_score,
-            "position_score":   position_score,
-            "other_score":      other_score,
-            "exp_score":        exp_score,
-            "exp_message":      exp_message,
-            "skill_overlap":    list(overlap),
-            "skill_gap":        skill_gap,
-            "cert_gap":         cert_gap,
-            "score_breakdown":  score_breakdown,
-            "match_reasons":    match_reasons,
-            "can_apply":        can_apply,
-            "recommendation":   recommendation,
-            "advice":           recommendation,
+            "total_score": total_score,
+            "skills_score": skills_score,
+            "cert_score": cert_score,
+            "position_score": position_score,
+            "other_score": other_score,
+            "exp_score": exp_score,
+            "exp_message": exp_message,
+            "skill_overlap": skill_overlap,
+            "skill_gap": skill_gap,
+            "cert_gap": list(set(required_certs) - set(cv_certs)),
+            "score_breakdown": {
+                "skills": {"score": skills_score, "weight": "60%"},
+                "certifications": {"score": cert_score, "weight": "10%"},
+                "position": {"score": position_score, "weight": "20%"},
+                "other": {"score": other_score, "weight": "10%"},
+            },
+            "match_reasons": match_reasons,
+            "can_apply": can_apply,
+            "recommendation": recommendation,
             "position_matched": position_matched,
-            "llm_assessment":   None,
         }
-    
 
     async def _match_jobs_for_cv_with_formula(
         self, user_id: str, cv_analysis: CVAnalysis, limit: int = 10
@@ -2004,15 +1978,27 @@ class Chatbot:
         3. Bổ sung thêm jobs skill-match từ vị trí khác
         Tính match_score cho từng job rồi sort.
         """
+            # 🔥 THÊM LOG ĐỂ DEBUG
+        logger.info(f"=== MATCHING JOBS FOR CV ===")
+        logger.info(f"CV Skills: {cv_analysis.extracted_skills}")
+        logger.info(f"CV Level: {cv_analysis.suitable_level}")
+        logger.info(f"CV Experience: {cv_analysis.experience_years}")
+        logger.info(f"CV Job Titles: {cv_analysis.suitable_job_titles}")
+
+
         job_da = JobDataAccess()
         all_jobs: List[Dict] = []
         seen_ids: set = set()
 
         has_position = bool(cv_analysis.suitable_job_titles)
+        cv_skills = set([s.lower().strip() for s in (cv_analysis.extracted_skills or []) if s])
+
+        logger.info(f"Processed CV skills: {cv_skills}")
 
         # ── Bước 1: Tìm theo vị trí ứng tuyển ──────────────────────────────
         if has_position:
             for title in cv_analysis.suitable_job_titles[:3]:
+                logger.info(f"Searching jobs by title: {title}")
                 jobs = await job_da.search_jobs_by_keywords(
                     keywords=[title], limit=limit
                 )
@@ -2021,25 +2007,48 @@ class Chatbot:
                     if jid and jid not in seen_ids:
                         seen_ids.add(jid)
                         all_jobs.append(job)
+            
+            logger.info(f"Found {len(all_jobs)} jobs by position titles")
 
         # ── Bước 2: Bổ sung jobs skill-match (khác vị trí) ─────────────────
-        cv_skills = cv_analysis.extracted_skills or []
+        # cv_skills = cv_analysis.extracted_skills or []
         if cv_skills:
+            logger.info(f"Searching jobs by skills: {cv_skills}")
             try:
                 skill_jobs = await job_da.search_by_skills(cv_skills, limit=limit)
+                logger.info(f"Found {len(skill_jobs)} jobs by skills")
                 for job in skill_jobs:
-                    jid = str(job.get("id", ""))
+                    jid = str(job.id if hasattr(job, 'id') else job.get("id", ""))
                     if jid and jid not in seen_ids:
                         seen_ids.add(jid)
-                        all_jobs.append(job)
+                        if hasattr(job, 'dict'):
+                            all_jobs.append(job.dict())
+                        else:
+                            all_jobs.append(job)
             except Exception as e:
                 logger.error(f"skill search error: {str(e)}")
 
-        # ── Bước 3: Tính match_score cho từng job ───────────────────────────
+            # ── Bước 3: Nếu không có job nào, lấy tất cả active jobs ───────────
+            if not all_jobs:
+                logger.info("No jobs found, getting all active jobs")
+                jobs = await job_da.get_all_active_jobs(limit=limit)
+                for job in jobs:
+                    if hasattr(job, 'dict'):
+                        all_jobs.append(job.dict())
+                    else:
+                        all_jobs.append(job)
+
+            logger.info(f"Total candidate jobs: {len(all_jobs)}")
+
+        # ── Bước 4: Tính match_score cho từng job ───────────────────────────
         scored_jobs = []
         for job in all_jobs:
             comparison = await self._compare_cv_with_job_requirements(cv_analysis, job)
             score = comparison["total_score"]
+
+            logger.info(f"Job: {job.get('title', 'N/A')[:50]} - Score: {score}%")
+            logger.info(f"  Skill overlap: {len(comparison.get('skill_overlap', []))}")
+            logger.info(f"  Skill gap: {len(comparison.get('skill_gap', []))}")
 
             # Note nếu không có CV đầy đủ
             note = None
@@ -2067,6 +2076,10 @@ class Chatbot:
 
         # Sort theo match_score giảm dần
         scored_jobs.sort(key=lambda x: x["match_score"], reverse=True)
+        logger.info(f"Final matched jobs (>=50%): {len(scored_jobs)}")
+
+        for i, job in enumerate(scored_jobs[:3]):
+            logger.info(f"  Top {i+1}: {job['job_title']} - {job['match_score']}%")
         return scored_jobs[:limit]
     
     
@@ -2825,3 +2838,764 @@ class Chatbot:
         ]
 
         return any(indicator in msg_lower for indicator in off_topic_indicators)
+
+
+    async def _get_dynamic_industry_trend(self, industry_name: str = None) -> str:
+        """
+        Lấy xu hướng ngành động từ database + AI phân tích
+        """
+        
+        # Lấy dữ liệu từ database
+        trend_data = await self.job_data_access.get_industry_trends(industry_name)
+        
+        # Nếu không có dữ liệu, dùng LLM để phân tích
+        if not trend_data.get("stats") and not industry_name:
+            # Trường hợp không có ngành cụ thể - lấy tất cả ngành
+            trend_data = await self.job_data_access.get_industry_trends()
+        
+        # Xây dựng prompt cho LLM dựa trên dữ liệu thực tế
+        prompt = self._build_trend_analysis_prompt(industry_name, trend_data)
+        
+        try:
+            # Dùng LLM để phân tích và trả lời
+            response = await asyncio.wait_for(
+                self.rag_engine.llm.complete(prompt, temperature=0.5, max_tokens=800),
+                timeout=20.0
+            )
+            return response
+        except Exception as e:
+            logger.error(f"LLM trend analysis error: {str(e)}")
+            # Fallback: trả về dữ liệu thô từ database
+            return self._format_trend_data_fallback(industry_name, trend_data)
+
+
+    def _build_trend_analysis_prompt(self, industry_name: str, trend_data: Dict) -> str:
+        """Xây dựng prompt cho LLM phân tích xu hướng"""
+        
+        # Format dữ liệu từ database
+        stats_text = ""
+        for stat in trend_data.get("stats", [])[:5]:
+            stats_text += f"- {stat.get('industry')}: {stat.get('total_jobs', 0)} việc làm, {stat.get('total_companies', 0)} công ty\n"
+        
+        skills_text = ""
+        for skill in trend_data.get("hot_skills", [])[:10]:
+            skills_text += f"- {skill.get('skill')}: {skill.get('job_count', 0)} việc yêu cầu\n"
+        
+        salary_text = ""
+        for salary in trend_data.get("salary_by_level", [])[:8]:
+            salary_text += f"- {salary.get('industry')} - {salary.get('level')}: ~{int(salary.get('avg_salary', 0)):,} triệu\n"
+        
+        companies_text = ""
+        for comp in trend_data.get("top_companies", [])[:5]:
+            companies_text += f"- {comp.get('company')}: {comp.get('job_count', 0)} việc\n"
+        
+        if industry_name:
+            prompt = f"""Bạn là chuyên gia phân tích thị trường lao động Việt Nam. Hãy phân tích XU HƯỚNG NGÀNH {industry_name.upper()} dựa trên dữ liệu thực tế dưới đây.
+
+    ## DỮ LIỆU THỰC TẾ (từ database tuyển dụng):
+
+    ### Thống kê tổng quan:
+    {stats_text if stats_text else "Đang cập nhật dữ liệu..."}
+
+    ### Kỹ năng đang được tuyển dụng nhiều nhất:
+    {skills_text if skills_text else "Đang cập nhật..."}
+
+    ### Mức lương theo cấp bậc:
+    {salary_text if salary_text else "Đang cập nhật..."}
+
+    ### Top công ty tuyển dụng nhiều:
+    {companies_text if companies_text else "Đang cập nhật..."}
+
+    ## YÊU CẦU:
+    Hãy trả lời bằng TIẾNG VIỆT, phân tích chi tiết về:
+
+    1. **Tổng quan thị trường** - Nhu cầu tuyển dụng ngành này hiện tại thế nào?
+    2. **Kỹ năng hot** - Những kỹ năng nào đang được săn đón nhất?
+    3. **Mức lương** - Bảng lương tham khảo theo cấp bậc (Fresher/Junior/Mid/Senior)
+    4. **Công ty tiêu biểu** - Những công ty nào đang tuyển dụng nhiều?
+    5. **Dự báo và lời khuyên** - Xu hướng sắp tới và gợi ý cho người muốn theo ngành
+
+    **QUAN TRỌNG: Trả lời TRỰC TIẾP, KHÔNG hỏi lại người dùng. Sử dụng số liệu từ dữ liệu được cung cấp.**
+    """
+        else:
+            prompt =     prompt = f"""Bạn là chuyên gia phân tích thị trường lao động Việt Nam với 10 năm kinh nghiệm. Dựa trên DỮ LIỆU THỰC TẾ từ hệ thống tuyển dụng, hãy phân tích xu hướng ngành **{industry_name}**.
+
+    ## DỮ LIỆU THỰC TẾ:
+
+    ### Top ngành tuyển dụng nhiều nhất:
+    {stats_text if stats_text else "Đang cập nhật..."}
+
+    ### Kỹ năng hot nhất thị trường:
+    {skills_text if skills_text else "Đang cập nhật..."}
+
+    ### Top công ty tuyển dụng nhiều:
+    {companies_text if companies_text else "Đang cập nhật..."}
+
+    ## YÊU CẦU:
+    Phân tích:
+Hãy viết một phân tích CHUYÊN NGHIỆP, CHI TIẾT, CÓ CẤU TRÚC về ngành {industry_name} bao gồm:
+
+1. **TỔNG QUAN THỊ TRƯỜNG** (2-3 câu)
+   - Nhu cầu tuyển dụng hiện tại thế nào?
+   - Ngành này có đang phát triển không?
+
+2. **KỸ NĂNG HOT NHẤT** (liệt kê 5-7 kỹ năng quan trọng nhất)
+   - Dựa vào top kỹ năng ở trên, hãy phân tích kỹ năng nào là quan trọng nhất
+   - Giải thích ngắn gọn tại sao các kỹ năng đó quan trọng
+
+3. **MỨC LƯƠNG THAM KHẢO**
+   - Dựa vào số liệu thực tế, đưa ra bảng lương theo cấp bậc
+   - Nêu rõ mức lương cho từng cấp bậc (Fresher, Junior, Mid, Senior)
+
+4. **CƠ HỘI VIỆC LÀM**
+   - Những công ty nào đang tuyển dụng nhiều?
+   - Vị trí nào phổ biến trong ngành này?
+
+5. **LỜI KHUYÊN**
+   - Nên học và phát triển kỹ năng gì để thành công trong ngành này?
+   - Gợi ý lộ trình phát triển sự nghiệp cho người mới bắt đầu hoặc muốn chuyển ngành.
+
+    **Trả lời TRỰC TIẾP, KHÔNG hỏi lại.**
+    """
+        return prompt
+
+
+    def _format_trend_data_fallback(self, industry_name: str, trend_data: Dict) -> str:
+        """Fallback khi LLM lỗi - format dữ liệu thô từ database"""
+        
+        if industry_name:
+            response = f"## 📊 Dữ liệu xu hướng ngành {industry_name.upper()} (từ hệ thống tuyển dụng)\n\n"
+        else:
+            response = "## 📊 Dữ liệu xu hướng thị trường lao động (từ hệ thống tuyển dụng)\n\n"
+        
+        # Thống kê
+        if trend_data.get("stats"):
+            response += "### 🔹 Top ngành tuyển dụng:\n"
+            for stat in trend_data["stats"][:5]:
+                response += f"- **{stat.get('industry')}**: {stat.get('total_jobs', 0)} việc làm\n"
+            response += "\n"
+        
+        # Kỹ năng hot
+        if trend_data.get("hot_skills"):
+            response += "### 🔹 Kỹ năng được tuyển dụng nhiều:\n"
+            for skill in trend_data["hot_skills"][:8]:
+                response += f"- {skill.get('skill')}\n"
+            response += "\n"
+        
+        # Lương
+        if trend_data.get("salary_by_level"):
+            response += "### 🔹 Mức lương tham khảo:\n"
+            current_industry = None
+            for salary in trend_data["salary_by_level"][:10]:
+                if salary.get('industry') != current_industry:
+                    current_industry = salary.get('industry')
+                    response += f"\n**{current_industry}:**\n"
+                response += f"  • {salary.get('level')}: ~{int(salary.get('avg_salary', 0)):,} triệu\n"
+            response += "\n"
+        
+        # Top công ty
+        if trend_data.get("top_companies"):
+            response += "### 🔹 Công ty tuyển dụng nhiều:\n"
+            for comp in trend_data["top_companies"][:5]:
+                response += f"- {comp.get('company')}: {comp.get('job_count', 0)} việc\n"
+        
+        response += "\n💡 *Dữ liệu được cập nhật từ hệ thống tuyển dụng. Hãy hỏi tôi về ngành cụ thể để phân tích chi tiết hơn!*"
+        
+        return response
+
+
+    async def _get_industry_trend(self, user_message: str) -> Optional[str]:
+        """
+        Xử lý câu hỏi về xu hướng ngành
+        """
+        
+        # Bước 1: Trích xuất tên ngành từ câu hỏi
+        industry_text = await self._extract_industry_from_text(user_message)
+        
+        if not industry_text:
+            return None
+        
+        logger.info(f"Extracted industry text: '{industry_text}'")
+        
+        # Bước 2: Tìm ngành trong database
+        industry_da = IndustryDataAccess()
+        industry = await industry_da.find_industry_by_keyword(industry_text)
+        
+        if not industry:
+            # Không tìm thấy, liệt kê các ngành có sẵn
+            all_industries = await industry_da.get_all_industries()
+            industry_list = ", ".join([ind['name'] for ind in all_industries[:15]])
+            return f"""❌ Tôi chưa tìm thấy thông tin về ngành **"{industry_text}"** trong hệ thống.
+
+    📋 **Các ngành hiện có:**
+    {industry_list}
+
+    💡 Bạn có thể hỏi về một trong các ngành trên để được phân tích chi tiết!"""
+        
+        logger.info(f"Found industry: {industry['name']} (id={industry['id']})")
+        
+        # Bước 3: Lấy dữ liệu thực tế của ngành
+        jobs = await industry_da.get_jobs_by_industry(industry['id'], limit=200)
+        stats = await industry_da.get_industry_stats(industry['id'])
+        top_skills = await industry_da.get_top_skills_by_industry(industry['id'], limit=15)
+        top_companies = await industry_da.get_top_companies_by_industry(industry['id'], limit=10)
+        salary_stats = self._calculate_salary_stats_from_jobs(jobs)
+        
+        if not jobs:
+            return f"""📊 **Ngành {industry['name']}**
+
+    Hiện tại chưa có dữ liệu việc làm cho ngành này trong hệ thống. 
+    Vui lòng quay lại sau hoặc thử tìm hiểu ngành khác!"""
+        
+        # Bước 4: Xây dựng prompt phân tích
+        prompt = self._build_industry_analysis_prompt(
+            industry_name=industry['name'],
+            total_jobs=stats['total_jobs'],
+            total_companies=stats['total_companies'],
+            top_skills=top_skills,
+            top_companies=top_companies,
+            salary_stats=salary_stats,
+            sample_jobs=jobs[:5]
+        )
+        
+        # Bước 5: Gọi LLM phân tích
+        try:
+            response = await asyncio.wait_for(
+                self.rag_engine.llm.complete(prompt, temperature=0.5, max_tokens=800),
+                timeout=25.0
+            )
+            
+            # Clean response
+            cleaned_response = self._clean_trend_response(response)
+            
+            # 🔥 QUAN TRỌNG: Nếu clean trả về None, dùng fallback ngay
+            if cleaned_response is None:
+                logger.warning("Clean response returned None, using fallback")
+                return self._format_basic_industry_stats(
+                    industry_name=industry['name'],
+                    total_jobs=stats['total_jobs'],
+                    total_companies=stats['total_companies'],
+                    top_skills=top_skills,
+                    top_companies=top_companies,
+                    salary_stats=salary_stats
+                )
+            
+            # Đảm bảo format đúng
+            formatted_response = self._ensure_proper_format(cleaned_response)
+            
+            # Nếu vẫn quá ngắn hoặc rỗng, dùng fallback
+            if len(formatted_response) < 100:
+                logger.warning("Formatted response too short, using fallback")
+                return self._format_basic_industry_stats(
+                    industry_name=industry['name'],
+                    total_jobs=stats['total_jobs'],
+                    total_companies=stats['total_companies'],
+                    top_skills=top_skills,
+                    top_companies=top_companies,
+                    salary_stats=salary_stats
+                )
+            
+            return formatted_response
+            
+        except Exception as e:
+            logger.error(f"LLM analysis error: {str(e)}")
+            return self._format_basic_industry_stats(
+                industry_name=industry['name'],
+                total_jobs=stats['total_jobs'],
+                total_companies=stats['total_companies'],
+                top_skills=top_skills,
+                top_companies=top_companies,
+                salary_stats=salary_stats
+            )
+    
+    async def _extract_industry_from_text(self, message: str) -> Optional[str]:
+        """Trích xuất tên ngành từ câu hỏi của user"""
+        msg_lower = message.lower()
+        
+        # Pattern 1: "ngành X" hoặc "xu hướng ngành X"
+        patterns = [
+            r'ngành\s+([a-zA-Z\sàáảãạăắằẳẵặâấầẩẫậđéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ]+)(?:\s|$|\.)',
+            r'xu hướng\s+ngành\s+([a-zA-Z\sàáảãạăắằẳẵặâấầẩẫậđéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ]+)',
+            r'thị trường\s+ngành\s+([a-zA-Z\sàáảãạăắằẳẵặâấầẩẫậđéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ]+)',
+            r'phân tích\s+ngành\s+([a-zA-Z\sàáảãạăắằẳẵặâấầẩẫậđéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ]+)',
+            r'trend\s+ngành\s+([a-zA-Z\s]+)',
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, msg_lower)
+            if match:
+                industry = match.group(1).strip()
+                # Làm sạch: loại bỏ các từ dừng ở cuối
+                stop_suffixes = [' hiện nay', ' hiện tại', ' ở việt nam', ' tại việt nam']
+                for suffix in stop_suffixes:
+                    if industry.endswith(suffix):
+                        industry = industry[:-len(suffix)]
+                if len(industry) > 2 and len(industry) < 50:
+                    logger.info(f"Extracted industry from pattern: '{industry}'")
+                    return industry
+        
+        # Pattern 2: Câu hỏi ngắn như "Nhân sự", "IT", "Marketing"
+        # Loại bỏ các từ hỏi
+        stop_words = ["xu hướng", "của", "ngành", "lĩnh vực", "thị trường", "việc làm", 
+                    "tuyển dụng", "cho tôi", "biết", "thông tin", "về", "phân tích",
+                    "hãy", "cho", "tôi", "xem", "xem xu hướng", "xu hướng ngành"]
+        
+        clean_text = msg_lower
+        for sw in stop_words:
+            clean_text = clean_text.replace(sw, "")
+        
+        # Xóa các từ chỉ hành động
+        clean_text = re.sub(r'\b(tìm|xem|cho|biết|thấy|phân tích)\b', '', clean_text)
+        
+        # Lấy các từ có độ dài > 2 (chữ cái và tiếng Việt)
+        words = re.findall(r'\b[a-zàáảãạăắằẳẵặâấầẩẫậđéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ]{2,}\b', clean_text)
+        
+        if words:
+            # Ghép các từ liền nhau thành cụm (ví dụ: "nhân sự" -> "nhân sự")
+            # Ưu tiên cụm 2 từ trước
+            if len(words) >= 2:
+                # Kiểm tra xem 2 từ đầu có tạo thành cụm có nghĩa không
+                possible_phrase = f"{words[0]} {words[1]}"
+                # Loại bỏ các từ đệm
+                if possible_phrase not in ["có thể", "đang có", "sẽ có", "đã có"]:
+                    logger.info(f"Extracted industry as phrase: '{possible_phrase}'")
+                    return possible_phrase
+            
+            # Nếu không, lấy từ đầu tiên
+            industry = words[0]
+            logger.info(f"Extracted industry from words: '{industry}'")
+            return industry
+        
+        return None
+
+    def _build_trend_analysis_prompt(self, industry_name: str, trend_data: Dict) -> str:
+        """Xây dựng prompt cho LLM phân tích xu hướng"""
+        
+        # Format dữ liệu từ database
+        stats_text = ""
+        for stat in trend_data.get("stats", [])[:5]:
+            stats_text += f"- {stat.get('industry')}: {stat.get('total_jobs', 0)} việc làm, {stat.get('total_companies', 0)} công ty\n"
+        
+        skills_text = ""
+        for skill in trend_data.get("hot_skills", [])[:10]:
+            skills_text += f"- {skill.get('skill')}: {skill.get('job_count', 0)} việc yêu cầu\n"
+        
+        salary_text = ""
+        for salary in trend_data.get("salary_by_level", [])[:8]:
+            salary_text += f"- {salary.get('industry')} - {salary.get('level')}: ~{int(salary.get('avg_salary', 0)):,} triệu\n"
+        
+        companies_text = ""
+        for comp in trend_data.get("top_companies", [])[:5]:
+            companies_text += f"- {comp.get('company')}: {comp.get('job_count', 0)} việc\n"
+        
+        if industry_name:
+            prompt = f"""Bạn là chuyên gia phân tích thị trường lao động Việt Nam. Hãy phân tích XU HƯỚNG NGÀNH {industry_name.upper()} dựa trên dữ liệu thực tế dưới đây.
+
+    ## DỮ LIỆU THỰC TẾ (từ database tuyển dụng):
+
+    ### Thống kê tổng quan:
+    {stats_text if stats_text else "Đang cập nhật dữ liệu..."}
+
+    ### Kỹ năng đang được tuyển dụng nhiều nhất:
+    {skills_text if skills_text else "Đang cập nhật..."}
+
+    ### Mức lương theo cấp bậc:
+    {salary_text if salary_text else "Đang cập nhật..."}
+
+    ### Top công ty tuyển dụng nhiều:
+    {companies_text if companies_text else "Đang cập nhật..."}
+
+    ## YÊU CẦU:
+    Hãy trả lời bằng TIẾNG VIỆT, phân tích chi tiết về:
+
+    1. **Tổng quan thị trường** - Nhu cầu tuyển dụng ngành này hiện tại thế nào?
+    2. **Kỹ năng hot** - Những kỹ năng nào đang được săn đón nhất?
+    3. **Mức lương** - Bảng lương tham khảo theo cấp bậc (Fresher/Junior/Mid/Senior)
+    4. **Công ty tiêu biểu** - Những công ty nào đang tuyển dụng nhiều?
+    5. **Dự báo và lời khuyên** - Xu hướng sắp tới và gợi ý cho người muốn theo ngành
+
+    **QUAN TRỌNG: Trả lời TRỰC TIẾP, KHÔNG hỏi lại người dùng. Sử dụng số liệu từ dữ liệu được cung cấp.**
+    """
+        else:
+            prompt = f"""Bạn là chuyên gia phân tích thị trường lao động Việt Nam với 10 năm kinh nghiệm. Dựa trên DỮ LIỆU THỰC TẾ từ hệ thống tuyển dụng, hãy phân tích xu hướng thị trường lao động tổng quan.
+
+    ## DỮ LIỆU THỰC TẾ:
+
+    ### Top ngành tuyển dụng nhiều nhất:
+    {stats_text if stats_text else "Đang cập nhật..."}
+
+    ### Kỹ năng hot nhất thị trường:
+    {skills_text if skills_text else "Đang cập nhật..."}
+
+    ### Top công ty tuyển dụng nhiều:
+    {companies_text if companies_text else "Đang cập nhật..."}
+
+    ## YÊU CẦU:
+    Phân tích:
+    1. Ngành nào đang "hot" nhất hiện nay?
+    2. Kỹ năng nào cần ưu tiên học?
+    3. Xu hướng tuyển dụng sắp tới?
+    4. Lời khuyên cho người tìm việc
+
+    **Trả lời TRỰC TIẾP bằng TIẾNG VIỆT, KHÔNG hỏi lại.**
+    """
+        return prompt
+
+    async def get_salary_stats_by_industry_formatted(self, industry_id: int) -> Dict[str, Dict]:
+        """Lấy thống kê lương theo cấp bậc - format chuẩn"""
+        
+        query = """
+            SELECT 
+                j.title,
+                j.salary,
+                j."experienceYear" as experience_year
+            FROM "Job" j
+            WHERE j."industryID" = $1
+            AND j."isActive" = true
+            AND (j.deadline IS NULL OR j.deadline > NOW())
+            AND j.salary IS NOT NULL
+            AND j.salary != ''
+            AND j.salary NOT IN ('Thương lượng', 'Cạnh tranh', 'Thỏa thuận')
+        """
+        rows = await db.fetch(query, industry_id)
+        
+        
+        salary_by_level = {
+            "Fresher": [],
+            "Junior": [],
+            "Mid": [],
+            "Senior": [],
+            "Lead": [],
+            "Manager": []
+        }
+        
+        level_keywords = {
+            "Fresher": ["fresher", "mới tốt nghiệp", "entry", "entry level", "0 năm", "dưới 1 năm"],
+            "Junior": ["junior", "jr", "nhân viên", "1 năm", "1-2 năm", "2 năm"],
+            "Mid": ["mid", "middle", "chuyên viên", "2-3 năm", "3 năm", "3-4 năm", "4 năm"],
+            "Senior": ["senior", "sr", "5 năm", "4-5 năm", "5-6 năm", "trên 5 năm"],
+            "Lead": ["lead", "trưởng nhóm", "leader", "6-7 năm", "7 năm"],
+            "Manager": ["manager", "quản lý", "trưởng phòng", "head", "8 năm", "10 năm"]
+        }
+        
+        for row in rows:
+            title = (row["title"] or "").lower()
+            exp = (row["experience_year"] or "").lower()    
+            salary_str = row["salary"] or ""
+            
+            # Parse số từ salary string
+            numbers = re.findall(r'[\d,]+', salary_str.replace(',', ''))
+            if not numbers:
+                continue
+            
+            # Lấy mức lương trung bình nếu có range
+            salary_values = [float(n) for n in numbers]
+            if len(salary_values) >= 2:
+                salary_value = (salary_values[0] + salary_values[1]) / 2
+            else:
+                salary_value = salary_values[0]
+            
+            # Xác định cấp bậc
+            detected_level = None
+            for level, keywords in level_keywords.items():
+                for kw in keywords:
+                    if kw in title or kw in exp:
+                        detected_level = level
+                        break
+                if detected_level:
+                    break
+            
+            if detected_level and detected_level in salary_by_level:
+                salary_by_level[detected_level].append(salary_value)
+        
+        # Tính trung bình
+        result = {}
+        for level, salaries in salary_by_level.items():
+            if salaries:
+                result[level] = {
+                    "avg": int(sum(salaries) / len(salaries)),
+                    "count": len(salaries)
+                }
+        
+        return result
+
+    def _clean_trend_response(self, response: str) -> str:
+        """Làm sạch và format lại câu trả lời xu hướng - Đảm bảo tiếng Việt"""
+        
+        # Nếu response quá ngắn, trả về nguyên bản
+        if len(response) < 50:
+            return response
+        
+        # Đếm số từ tiếng Anh
+        english_words_count = 0
+        total_words = 0
+        for word in response.split():
+            if word.isalpha():
+                total_words += 1
+                if word[0].isascii() and not any(viet_char in word for viet_char in 'áàảãạăắằẳẵặâấầẩẫậđéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ'):
+                    english_words_count += 1
+        
+        # Nếu quá 50% là tiếng Anh, trả về response gốc (sẽ dùng fallback ở ngoài)
+        if total_words > 10 and english_words_count / total_words > 0.5:
+            logger.warning(f"Response has {english_words_count}/{total_words} English words")
+            return response  # Trả về nguyên bản, để ngoài xử lý
+        
+        # Loại bỏ các dòng chứa từ khóa rác
+        lines = response.split('\n')
+        cleaned_lines = []
+        skip_mode = False
+        
+        for line in lines:
+            line_lower = line.lower().strip()
+            
+            # Bỏ qua các dòng chứa từ khóa rác
+            if any(keyword in line_lower for keyword in ['quy tắc', 'lưu ý', 'yêu cầu', 'hướng dẫn', 'quan trọng', 
+                                                        'rule', 'note', 'important', 'based on', 'according to',
+                                                        'the current', 'this indicates', 'in the market']):
+                skip_mode = True
+                continue
+            
+            if skip_mode and (line_lower.startswith(('tổng quan', 'kỹ năng', 'mức lương', 'cơ hội', 'lời khuyên', '1.', '2.', '3.'))):
+                skip_mode = False
+            
+            if not skip_mode:
+                cleaned_lines.append(line)
+        
+        if not cleaned_lines:
+            return response
+        
+        result = '\n'.join(cleaned_lines).strip()
+        
+        # Đảm bảo có nội dung
+        if len(result) < 50:
+            return response
+        
+        return result
+
+    def _get_fallback_trend_response(self) -> str:
+        """Trả về response mặc định khi không thể clean"""
+        return """📊 **PHÂN TÍCH XU HƯỚNG NGÀNH**
+
+    **1. TỔNG QUAN THỊ TRƯỜNG**
+    Ngành này đang có nhu cầu tuyển dụng ổn định với nhiều cơ hội phát triển.
+
+    **2. KỸ NĂNG HOT NHẤT**
+    - Kỹ năng chuyên môn: Yêu cầu cao từ nhà tuyển dụng
+    - Kỹ năng mềm: Giao tiếp, làm việc nhóm
+    - Ngoại ngữ: Tiếng Anh là lợi thế
+
+    **3. MỨC LƯƠNG THAM KHẢO**
+    - Fresher: 7-12 triệu/tháng
+    - Junior: 12-20 triệu/tháng
+    - Mid-Level: 20-35 triệu/tháng
+    - Senior: 35-60 triệu/tháng
+
+    **4. CƠ HỘI VIỆC LÀM**
+    - Cơ hội việc làm đa dạng ở nhiều công ty
+    - Vị trí phổ biến: Chuyên viên, Trưởng nhóm, Quản lý
+
+    **5. LỜI KHUYÊN**
+    Hãy tập trung phát triển kỹ năng chuyên môn và ngoại ngữ. Tham gia các khóa học và chứng chỉ để tăng lợi thế cạnh tranh."""
+
+    def _format_basic_industry_stats(self, industry_name: str, total_jobs: int,
+                                total_companies: int, top_skills: List,
+                                top_companies: List, salary_stats: Dict) -> str:
+        """Format thống kê cơ bản bằng tiếng Việt"""
+        
+        response = f"""TỔNG QUAN THỊ TRƯỜNG
+
+    Ngành {industry_name} hiện đang có {total_jobs} việc làm đang tuyển dụng từ {total_companies} công ty. Đây là tín hiệu cho thấy nhu cầu nhân lực trong ngành này đang ở mức ổn định.
+
+    KỸ NĂNG HOT NHẤT
+
+    """
+        if top_skills:
+            for i, skill in enumerate(top_skills[:7], 1):
+                response += f"{i}. **{skill['skill']}**: Xuất hiện trong {skill['count']} tin tuyển dụng. Đây là kỹ năng quan trọng mà nhà tuyển dụng đang tìm kiếm.\n"
+        else:
+            response += "Đang cập nhật dữ liệu kỹ năng chi tiết.\n"
+        
+        # Format salary table
+        salary_table = ""
+        level_order = ["Fresher", "Junior", "Mid", "Senior", "Leader/Quản lý"]
+        
+        # Giá trị mặc định
+        default_salaries = {
+            "Fresher": "8-12",
+            "Junior": "12-18",
+            "Mid": "18-28",
+            "Senior": "28-45",
+            "Leader/Quản lý": "35-60"
+        }
+        
+        for level in level_order:
+            if level in salary_stats:
+                avg_salary = salary_stats[level].get('avg', 0)
+                if avg_salary > 0:
+                    salary_table += f"| {level} | ~{avg_salary:,} triệu/tháng |\n"
+                else:
+                    salary_table += f"| {level} | {default_salaries.get(level, '15-25')} triệu/tháng |\n"
+            else:
+                salary_table += f"| {level} | {default_salaries.get(level, '15-25')} triệu/tháng |\n"
+        
+        response += f"""
+    MỨC LƯƠNG THAM KHẢO
+
+    | Cấp bậc | Mức lương |
+    | --- | --- |
+    {salary_table}
+    CƠ HỘI VIỆC LÀM
+
+    **Các công ty đang tuyển dụng nhiều nhất:**
+    """
+        for comp in top_companies[:8]:
+            response += f"* {comp['company']}\n"
+        
+        response += """
+    LỜI KHUYÊN
+
+    Để thành công trong ngành này, bạn nên tập trung phát triển các kỹ năng chuyên môn được liệt kê ở trên. Đồng thời, hãy cập nhật CV thường xuyên và theo dõi các cơ hội việc làm từ những công ty hàng đầu trong ngành.
+    """
+        
+        return response
+
+
+    def _calculate_salary_stats_from_jobs(self, jobs: List[Dict]) -> Dict[str, Dict]:
+        """Tính thống kê lương từ danh sách job"""
+        
+        salary_by_level = {
+            "Fresher": [],
+            "Junior": [],
+            "Mid": [],
+            "Senior": [],
+            "Lead": [],
+            "Manager": []
+        }
+        
+        level_keywords = {
+            "Fresher": ["fresher", "mới tốt nghiệp", "entry", "entry level", "0 năm", "dưới 1 năm"],
+            "Junior": ["junior", "jr", "nhân viên", "1 năm", "1-2 năm", "2 năm"],
+            "Mid": ["mid", "middle", "chuyên viên", "2-3 năm", "3 năm", "3-4 năm", "4 năm"],
+            "Senior": ["senior", "sr", "5 năm", "4-5 năm", "5-6 năm", "trên 5 năm"],
+            "Lead": ["lead", "trưởng nhóm", "leader", "6-7 năm", "7 năm"],
+            "Manager": ["manager", "quản lý", "trưởng phòng", "head", "8 năm", "10 năm"]
+        }
+        
+        for job in jobs:
+            title = (job.get("title") or "").lower()
+            exp = (job.get("experience_year") or "").lower()
+            salary_str = job.get("salary") or ""
+            
+            # Bỏ qua các job không có lương cụ thể
+            if not salary_str or salary_str in ["Thương lượng", "Cạnh tranh", "Thỏa thuận", "Thoả thuận"]:
+                continue
+            
+            # Parse số từ salary string
+            numbers = re.findall(r'[\d,]+', salary_str.replace(',', ''))
+            if not numbers:
+                continue
+            
+            # Lấy mức lương trung bình nếu có range
+            salary_values = [float(n) for n in numbers]
+            if len(salary_values) >= 2:
+                salary_value = (salary_values[0] + salary_values[1]) / 2
+            else:
+                salary_value = salary_values[0]
+            
+            # Xác định cấp bậc
+            detected_level = None
+            for level, keywords in level_keywords.items():
+                for kw in keywords:
+                    if kw in title or kw in exp:
+                        detected_level = level
+                        break
+                if detected_level:
+                    break
+            
+            if detected_level and detected_level in salary_by_level:
+                salary_by_level[detected_level].append(salary_value)
+        
+        # Tính trung bình
+        result = {}
+        for level, salaries in salary_by_level.items():
+            if salaries:
+                result[level] = {
+                    "avg": int(sum(salaries) / len(salaries)),
+                    "count": len(salaries)
+                }
+        
+        return result
+
+    def _ensure_proper_format(self, response: str) -> str:
+        """Đảm bảo response có format đúng với đầy đủ các phần"""
+        
+        # Các phần cần có
+        required_sections = [
+            ("TỔNG QUAN THỊ TRƯỜNG", "Tổng quan"),
+            ("KỸ NĂNG HOT NHẤT", "Kỹ năng"),
+            ("MỨC LƯƠNG THAM KHẢO", "Lương"),
+            ("CƠ HỘI VIỆC LÀM", "Cơ hội"),
+            ("LỜI KHUYÊN", "Lời khuyên")
+        ]
+        
+        # Kiểm tra xem có đủ các phần không
+        for section, _ in required_sections:
+            if section not in response:
+                # Nếu thiếu phần nào, thêm vào
+                if section == "CƠ HỘI VIỆC LÀM":
+                    response += f"\n\n{section}\n* Đang cập nhật dữ liệu\n"
+                elif section == "LỜI KHUYÊN":
+                    response += f"\n\n{section}\nHãy tập trung phát triển kỹ năng chuyên môn và ngoại ngữ để tăng cơ hội việc làm.\n"
+                else:
+                    response += f"\n\n{section}\nĐang cập nhật thông tin\n"
+        
+        # Đảm bảo danh sách kỹ năng bắt đầu từ số 1
+        
+        # Tìm phần KỸ NĂNG HOT NHẤT
+        skills_section_match = re.search(r'KỸ NĂNG HOT NHẤT(.*?)(?=MỨC LƯƠNG|CƠ HỘI|LỜI KHUYÊN|$)', response, re.DOTALL)
+        if skills_section_match:
+            skills_section = skills_section_match.group(1)
+            # Nếu không có số 1
+            if not re.search(r'\n1\.', skills_section):
+                # Thay thế các dấu * hoặc - bằng số thứ tự
+                lines = skills_section.split('\n')
+                new_lines = []
+                counter = 1
+                for line in lines:
+                    stripped = line.strip()
+                    if stripped.startswith(('•', '-', '*')) and len(stripped) > 2:
+                        new_lines.append(f"{counter}. {stripped[1:].strip()}")
+                        counter += 1
+                    else:
+                        new_lines.append(line)
+                new_skills_section = '\n'.join(new_lines)
+                response = response.replace(skills_section, new_skills_section)
+        
+        # Loại bỏ dòng trống thừa
+        lines = response.split('\n')
+        cleaned = []
+        prev_empty = False
+        for line in lines:
+            is_empty = line.strip() == ''
+            if is_empty and prev_empty:
+                continue
+            cleaned.append(line)
+            prev_empty = is_empty
+        
+        return '\n'.join(cleaned).strip()
+
+    def _parse_salary_value(self, salary_str: str) -> float:
+        """Parse salary string để lấy giá trị số (triệu VND)"""
+        if not salary_str:
+            return 0
+        
+        # Tìm số trong string
+        numbers = re.findall(r'[\d,]+', salary_str.replace(',', ''))
+        if not numbers:
+            return 0
+        
+        values = [float(n) for n in numbers]
+        if len(values) >= 2:
+            # Lấy giá trị trung bình
+            return (values[0] + values[1]) / 2
+        return values[0]

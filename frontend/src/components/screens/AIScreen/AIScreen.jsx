@@ -8,7 +8,7 @@ import useUserStore from '../../../store/userStore';
 const API_BASE_URL = 'http://localhost:3000/api';
 
 const DEFAULT_QUICK_PROMPTS = [
-    '💰 Mức lương thị trường cho React Dev',
+    // '💰 Mức lương thị trường cho React Dev',
     '🔍 Tìm việc Remote 100%',
     '📈 Tips để tăng match score',
     '🤝 Chuẩn bị phỏng vấn',
@@ -20,7 +20,7 @@ const generateQuickPrompts = (profile) => {
     const prompts = [];
 
     if (profile.jobTitle) {
-        prompts.push(`💰 Mức lương ${profile.jobTitle}`);
+        prompts.push(`💰 Mức lương của ${profile.jobTitle}`);
         prompts.push(`📋 Tìm việc ${profile.jobTitle}`);
     }
 
@@ -348,6 +348,22 @@ function JobMatchCard({ job, onSelect }) {
     );
 }
 
+function ErrorMessage({ message }) {
+    return (
+        <div className="ai-error-message">
+            <div className="ai-error-text">{message || " ⚠️ Hiện tại chưa có thông tin mà bạn cần tìm"}</div>
+            <div className="ai-error-suggestion">
+                💡 Bạn có thể thử:
+                <ul>
+                    <li>Hỏi về việc làm theo kỹ năng của bạn</li>
+                    <li>Upload CV để được phân tích</li>
+                    <li>Hỏi về mức lương của một vị trí cụ thể</li>
+                </ul>
+            </div>
+        </div>
+    );
+}
+
 function InlineJobCard({ job }) {
     return (
         <div className="ai-job-card">
@@ -434,6 +450,7 @@ export default function AIAssistantScreen({ onNavigate }) {
     const bottomRef = useRef();
     const inputRef = useRef();
     const fileInputRef = useRef();
+    const messagesContainerRef = useRef(null);
 
     const userStr = localStorage.getItem('user');
     const user = userStr ? JSON.parse(userStr) : null;
@@ -443,6 +460,11 @@ export default function AIAssistantScreen({ onNavigate }) {
     const [quickPrompts, setQuickPrompts] = useState(DEFAULT_QUICK_PROMPTS);
     const [initialLoadDone, setInitialLoadDone] = useState(false);
     const navigate = useNavigate()
+
+    const messagesRef = useRef(messages);
+    useEffect(() => {
+        messagesRef.current = messages;
+    }, [messages]);
 
 
     const saveCurrentMessages = useCallback(() => {
@@ -458,7 +480,19 @@ export default function AIAssistantScreen({ onNavigate }) {
     const isRestoringRef = useRef(false);
 
     useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (messagesContainerRef.current && bottomRef.current) {
+            const container = messagesContainerRef.current;
+            const threshold = 200; // Chỉ auto-scroll nếu user đang ở gần dưới
+            const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+
+            if (distanceFromBottom < threshold || typing) {
+                // Dùng scrollTo trên container thay vì scrollIntoView
+                container.scrollTo({
+                    top: container.scrollHeight,
+                    behavior: 'smooth'
+                });
+            }
+        }
     }, [messages, typing]);
 
     useEffect(() => {
@@ -577,22 +611,21 @@ export default function AIAssistantScreen({ onNavigate }) {
         [currentSessionId]
     );
 
+
+
     // ========== LOAD MESSAGES ==========
     useEffect(() => {
         if (!userID) return;
 
         const loadMessages = async () => {
-            // Load từ sessionStorage trước
             const savedMessages = sessionStorage.getItem(`ai_messages_${userID}`);
             const savedSessions = sessionStorage.getItem(`ai_sessions_${userID}`);
-            const list = await fetchSessions();
-            setSessions(list);
 
-            // Khôi phục sessions trước
+            // Khôi phục sessions từ sessionStorage nếu có
             if (savedSessions) {
                 try {
                     const parsedSessions = JSON.parse(savedSessions);
-                    if (parsedSessions && parsedSessions.length > 0) {
+                    if (parsedSessions?.length > 0) {
                         setSessions(parsedSessions);
                     }
                 } catch (e) {
@@ -600,32 +633,36 @@ export default function AIAssistantScreen({ onNavigate }) {
                 }
             }
 
-            // Khôi phục messages
+            // Khôi phục messages từ sessionStorage nếu có
             if (savedMessages) {
                 try {
                     const parsed = JSON.parse(savedMessages);
-                    if (parsed && parsed.length > 0) {
-
+                    if (parsed?.length > 0) {
                         isRestoringRef.current = true;
                         setMessages(parsed);
                         setInitialLoadDone(true);
+                        setTimeout(() => { isRestoringRef.current = false; }, 100);
 
-                        setTimeout(() => {
-                            isRestoringRef.current = false;
-                        }, 100);
+                        // Đồng bộ sessions từ API nếu chưa có trong storage
+                        if (!savedSessions) {
+                            const list = await fetchSessions();
+                            setSessions(list);
+                            if (list.length > 0) {
+                                sessionStorage.setItem(`ai_sessions_${userID}`, JSON.stringify(list));
+                            }
+                        }
                         return;
                     }
                 } catch (e) {
                     console.error('Failed to parse saved messages:', e);
                 }
             }
-            setLoadingHistory(true);
 
+            // Nếu không có trong storage, load từ API
+            setLoadingHistory(true);
             try {
                 const list = await fetchSessions();
                 setSessions(list);
-
-                // Lưu sessions vừa load vào sessionStorage
                 if (list.length > 0) {
                     sessionStorage.setItem(`ai_sessions_${userID}`, JSON.stringify(list));
                 }
@@ -635,8 +672,15 @@ export default function AIAssistantScreen({ onNavigate }) {
 
                 if (targetSession) {
                     const msgs = await fetchMessages(targetSession.id);
+                    // === SỬA 5: ID ổn định, tránh remount ===
                     const ui = msgs.length > 0
-                        ? msgs.map((m) => ({ id: m.id || Date.now() + Math.random(), role: m.role, content: m.content, type: m.type || 'text', ...(m.metadata || {}) }))
+                        ? msgs.map((m, idx) => ({
+                            id: m.id || `msg-${targetSession.id}-${idx}`,
+                            role: m.role,
+                            content: m.content,
+                            type: m.type || 'text',
+                            ...(m.metadata || {})
+                        }))
                         : INITIAL_MESSAGES;
                     setMessages(ui);
                     setCurrentSessionId(targetSession.id);
@@ -1012,22 +1056,86 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
     };
 
     // ✅ MỚI
-    const handleJobClick = useCallback((job) => {
+    const handleJobClick = useCallback(async (job) => {
         saveCurrentMessages();
+
+        // Nếu là card công ty -> chuyển sang trang công ty
         if (job.is_company_card) {
             if (job.company_id) {
                 navigate(`/companies/${job.company_id}`);
             } else {
-                // fallback nếu chưa có company_id: tìm theo tên
                 navigate(`/jobs?company=${encodeURIComponent(job.company)}`);
             }
             return;
         }
-        // Job thường: điền vào input như cũ
-        const focusMessage = `Cho tôi biết thêm về job "${job.job_title}" tại ${job.company}`;
-        setInput(focusMessage);
-        inputRef.current?.focus();
-    }, [saveCurrentMessages, navigate]);
+
+        // Tạo câu hỏi để gửi lên chatbot
+        const queryMessage = `Cho tôi biết thêm về job "${job.job_title}" tại ${job.company}`;
+
+        setTyping(true);
+
+        // Tạo session mới nếu chưa có
+        let sessionId = currentSessionId;
+        if (!sessionId) {
+            const session = await createSession(queryMessage.slice(0, 50));
+            if (session) {
+                sessionId = session.id;
+                setCurrentSessionId(sessionId);
+                localStorage.setItem(`ai_last_session_${userID}`, sessionId);
+                setSessions((prev) => [session, ...prev]);
+            }
+        }
+
+        // Thêm tin nhắn user
+        const userMsgId = Date.now();
+        const userMsg = {
+            id: userMsgId,
+            role: 'user',
+            content: queryMessage,
+            type: 'text',
+        };
+        setMessages((prev) => [...prev, userMsg]);
+        if (sessionId) await saveMessageToHistory(sessionId, userMsg);
+
+        // Gọi API chat
+        try {
+            const formData = new URLSearchParams();
+            formData.append('userID', userID);
+            formData.append('message', queryMessage);
+            formData.append('stream', 'false');
+
+            const response = await fetchWithTimeout(`${API_BASE_URL}/chatbot/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString(),
+            });
+
+            const data = await response.json();
+            let responseText = data.response || data.message || data.content || JSON.stringify(data);
+
+            const assistantMsg = {
+                id: userMsgId + 1,
+                role: 'assistant',
+                content: responseText,
+                type: data.type === 'error' ? 'error' : 'text',
+                cached: data.cached || false,
+            };
+            setMessages((prev) => [...prev, assistantMsg]);
+            if (sessionId) await saveMessageToHistory(sessionId, assistantMsg);
+        } catch (error) {
+            console.error('Job detail error:', error);
+            const errMsg = {
+                id: userMsgId + 1,
+                role: 'assistant',
+                content: `❌ Không thể lấy thông tin chi tiết: ${error.message}`,
+                type: 'error',
+            };
+            setMessages((prev) => [...prev, errMsg]);
+            if (sessionId) await saveMessageToHistory(sessionId, errMsg);
+        } finally {
+            setTyping(false);
+        }
+    }, [saveCurrentMessages, navigate, userID, currentSessionId, createSession, saveMessageToHistory]);
 
     // ========== RENAME SESSION ==========
     const renameSession = useCallback(async (sessionId, newTitle) => {
@@ -1283,13 +1391,18 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                                         </div>
                                     )}
 
-                                    {(msg.type === 'text' || msg.type === 'error') && msg.content && (
+                                    {msg.type === 'text' && msg.content && (
                                         <>
                                             <MdText text={msg.content} />
                                             {msg.streaming && <span className="ai-cursor">▊</span>}
                                             {msg.cached && <span className="ai-cached-badge">⚡ Cached</span>}
                                         </>
                                     )}
+
+                                    {msg.type == 'error' && (
+                                        <ErrorMessage message={msg.content} />
+                                    )}
+
 
                                     {msg.type === 'cv_upload' && (
                                         <CVAttachment

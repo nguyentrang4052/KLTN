@@ -208,11 +208,11 @@ class JobMatcher:
         # Log chi tiết - cần kiểm tra req_exp có tồn tại không
         req_exp_display = req_exp if 'req_exp' in locals() else 'N/A'  # 🔥 TRÁNH LỖI
         
-        logger.info(f"Job: {job.get('title', '')[:30]}")
-        logger.info(f"  Skill: {int(skill_score*100)}% (overlap: {len(overlap)}/{len(job_skills) if job_skills else 0})")
-        logger.info(f"  Exp: {int(exp_score*100)}% (cv={cv_experience}, req={req_exp_display})")
-        logger.info(f"  Level: {int(level_score*100)}% (cv={cv_level}, job={job_title_lower[:30]})")
-        logger.info(f"  Total: {final_percent}%")
+        # logger.info(f"Job: {job.get('title', '')[:30]}")
+        # logger.info(f"  Skill: {int(skill_score*100)}% (overlap: {len(overlap)}/{len(job_skills) if job_skills else 0})")
+        # logger.info(f"  Exp: {int(exp_score*100)}% (cv={cv_experience}, req={req_exp_display})")
+        # logger.info(f"  Level: {int(level_score*100)}% (cv={cv_level}, job={job_title_lower[:30]})")
+        # logger.info(f"  Total: {final_percent}%")
         
         return final_percent
     

@@ -95,7 +95,7 @@ async def chat(
                 content={
                     "success": False,
                     "error": True,
-                    "message": result.get("content") or result.get("message") or "Lỗi xử lý",
+                    "message": result.get("content") or "Hiện tại chưa có thông tin mà bạn cần tìm",
                     "type": result.get("type", "error"),
                 }
             )

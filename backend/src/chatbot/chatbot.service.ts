@@ -175,7 +175,7 @@ export class ChatbotService {
             const pythonData = response.data;
 
             if (pythonData.error === true || pythonData.success === false) {
-                const errMsg = pythonData.message || pythonData.detail || 'Lỗi từ Python';
+                const errMsg = pythonData.message || "Hiện tại chưa có thông tin mà bạn cần tìm";
                 return {
                     type: 'error',
                     response: `❌ ${errMsg}`,
@@ -236,7 +236,7 @@ export class ChatbotService {
 
             return {
                 type: 'error',
-                response: `❌ ${error?.message || 'Lỗi không xác định'}`,
+                response: "Hiện tại chưa có thông tin mà bạn cần tìm. Vui lòng thử lại với câu hỏi khác!",
                 error: true,
                 success: false,
             };

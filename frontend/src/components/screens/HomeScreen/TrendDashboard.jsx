@@ -77,7 +77,7 @@ export default function TrendDashboard({ onIndustryClick }) {
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
                 <div>
-                    <div style={{ fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1.2, color: '#342893', marginBottom: 6 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.2, color: '#342893', marginBottom: 6 }}>
                         Phân tích thị trường
                     </div>
                     <h2 style={{ margin: 0, fontSize: 30, fontWeight: 700, color: '#1C1510', letterSpacing: -0.5 }}>
