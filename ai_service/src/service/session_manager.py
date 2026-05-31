@@ -272,4 +272,40 @@ class SessionManager:
         """Lấy kết quả tìm kiếm jobs từ session"""
         session = self.get_or_create(user_id)
         return getattr(session, 'search_result_jobs', [])
+
+    def set_jd_text(self, user_id: str, jd_text: str):
+        """Lưu JD text vào session"""
+        session = self.get_or_create(user_id)
+        session.jd_text = jd_text
+        session.last_updated = time.time()
+
+
+    def set_jd_analysis(self, user_id: str, jd_analysis: Dict):
+        """Lưu kết quả phân tích JD"""
+        session = self.get_or_create(user_id)
+        session.jd_analysis = jd_analysis
+        session.last_updated = time.time()
+
+
+    def set_jd_questions(self, user_id: str, questions: List):
+        """Lưu câu hỏi sinh từ JD"""
+        session = self.get_or_create(user_id)
+        session.jd_questions = questions
+        session.last_updated = time.time()
+
+
+    def get_jd_text(self, user_id: str) -> Optional[str]:
+        """Lấy JD text từ session"""
+        session = self.get_or_create(user_id)
+        return getattr(session, 'jd_text', None)
+
+    def get_jd_questions(self, user_id: str) -> List:
+        """Lấy câu hỏi từ JD đã lưu"""
+        session = self.get_or_create(user_id)
+        return getattr(session, 'jd_questions', [])
+
+    def get_jd_analysis(self, user_id: str) -> Optional[Dict]:
+        """Lấy kết quả phân tích JD từ session"""
+        session = self.get_or_create(user_id)
+        return getattr(session, 'jd_analysis', None)
     

@@ -1640,3 +1640,201 @@
     margin: 4px 0;
     color: #2d3748;
 }
+
+.ai-upload-cv-prompt {
+    display: flex;
+    align-items: flex-start;   /* đổi từ center → flex-start */
+    gap: 16px;
+    background: linear-gradient(135deg, #e8f4fd 0%, #d9effc 100%);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-top: 16px;
+    border: 1px solid #b8dff5;
+}
+
+.ai-upload-icon {
+    font-size: 32px;
+}
+
+.ai-upload-text p {
+    margin: 4px 0 12px 0;
+    font-size: 14px;
+    color: #2c5282;
+}
+
+.ai-upload-cv-btn {
+    background: #3182ce;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.ai-upload-cv-btn:hover {
+    background: #2b6cb0;
+    transform: translateY(-1px);
+}
+
+.ai-cv-ready {
+    background: #e6f7e6;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 12px;
+    color: #2e7d32;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ai-upload-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ai-upload-text strong {
+    font-size: 14px;
+    color: #1a365d;
+}
+/* ══ Inline CV Uploader (interview_questions block) ══════════════════ */
+.ai-upload-cv-prompt {
+    margin-top: 16px;
+    border-radius: 12px;
+    border: 1px solid #b8dff5;
+    background: linear-gradient(135deg, #e8f4fd 0%, #d9effc 100%);
+    overflow: hidden;
+}
+
+.ai-upload-cv-header {
+    padding: 14px 18px 10px;
+}
+
+.ai-upload-cv-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a365d;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.ai-upload-cv-desc {
+    margin: 0;
+    font-size: 13px;
+    color: #2c5282;
+    line-height: 1.5;
+}
+
+/* ── Drop zone ── */
+.ai-inline-cv-drop {
+    margin: 0 14px 14px;
+    border: 2px dashed #90cdf4;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.6);
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.ai-inline-cv-drop.dragging,
+.ai-inline-cv-drop:hover {
+    border-color: #3182ce;
+    background: rgba(255,255,255,0.9);
+    box-shadow: 0 0 0 3px rgba(49,130,206,0.15);
+}
+
+.ai-inline-cv-label {
+    display: block;
+    cursor: pointer;
+    padding: 16px;
+}
+
+.ai-inline-cv-idle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ai-inline-cv-icon {
+    font-size: 28px;
+    flex-shrink: 0;
+}
+
+.ai-inline-cv-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ai-inline-cv-text strong {
+    font-size: 13.5px;
+    color: #1a365d;
+}
+
+.ai-inline-cv-text span {
+    font-size: 12.5px;
+    color: #4a6fa5;
+}
+
+.ai-inline-cv-hint {
+    font-size: 11.5px !important;
+    color: #718096 !important;
+}
+
+.ai-inline-cv-selected {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ai-inline-cv-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #2b6cb0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ai-inline-cv-processing {
+    font-size: 12px;
+    color: #718096;
+    flex-shrink: 0;
+}
+
+/* ── Personalized badge ── */
+.ai-personalized-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #276749;
+    background: rgba(39, 103, 73, 0.1);
+    border: 1px solid rgba(39, 103, 73, 0.25);
+    border-radius: 20px;
+    padding: 3px 10px;
+    margin-bottom: 12px;
+}
+
+/* ── CV ready block khi đã có CV nhưng muốn update ── */
+.ai-cv-ready {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0;
+    background: transparent;
+    margin-top: 12px;
+    gap: 0;
+}
+
+.ai-cv-ready > :first-child {
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #276749;
+    background: #e6f7e6;
+    border-radius: 8px 8px 0 0;
+    width: 100%;
+}

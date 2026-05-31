@@ -295,11 +295,10 @@ class Chatbot:
             logger.info(f"_handle_chat_start: user={user_id}, msg={message[:100]}")
 
             find_out_keywords = [
-                "tìm hiểu", "xem chi tiết", "chi tiết job", "thông tin job", 
-                "mô tả job", "cho tôi biết thêm", "biết thêm về", "thông tin về",
-                "xem công việc", "job detail"  # Thêm các từ khóa mới
-            ]
-
+            "tìm hiểu", "xem chi tiết", "chi tiết job", "thông tin job", 
+            "mô tả job", "cho tôi biết thêm", "biết thêm về", "thông tin về",
+            "xem công việc", "job detail"
+        ]
 
             # ========== KIỂM TRA OFF-TOPIC ==========
             if await self._is_off_topic(message):
@@ -308,60 +307,126 @@ class Chatbot:
                     "content": "Xin lỗi, đây là một công cụ hỗ trợ tư vấn việc làm. Tôi chỉ có thể trả lời các câu hỏi liên quan đến:\n\n• Tìm kiếm việc làm\n• Phân tích CV và hồ sơ\n• Mức lương và đãi ngộ\n• Kỹ năng và lộ trình học tập\n• Phỏng vấn và chuẩn bị ứng tuyển\n• Thị trường lao động\n\nVui lòng hỏi tôi về các chủ đề trên!",
                     "cached": False,
                 }
-
+            
             # ========== XỬ LÝ CÂU HỎI VỀ LƯƠNG ==========
             if "lương" in message.lower() or "salary" in message.lower():
                 salary_response = await self._handle_salary_query(user_id, message)
                 if salary_response:
                     if isinstance(salary_response, dict):
-                        return salary_response   # pass through nguyên vẹn, giữ type="job_list" + jobs array
-                    # Nếu là string thì trả về text
+                        return salary_response
                     return {
                         "type": "text",
                         "content": salary_response,
                         "cached": False,
                     }
-
-            # Phát hiện và dịch câu hỏi sang tiếng Việt để xử lý
+                
+             # Phát hiện và dịch câu hỏi sang tiếng Việt để xử lý
             original_message = message
-
             translated_message = message
 
-            # Nếu câu hỏi đã được dịch, log lại
             try:
                 translated_message = await self._translate_if_needed(
                     message, Language.VIETNAMESE
                 )
                 if translated_message != message:
-                    logger.info(
-                        f"Translated: '{message[:50]}' -> '{translated_message[:50]}'"
-                    )
+                    logger.info(f"Translated: '{message[:50]}' -> '{translated_message[:50]}'")
                 else:
-                    logger.info(
-                        f"No translation needed, using original: '{message[:50]}'"
-                    )
+                    logger.info(f"No translation needed, using original: '{message[:50]}'")
             except Exception as e:
                 logger.error(f"Translation failed, using original: {str(e)}")
                 translated_message = message
 
-            # Sử dụng translated_message để xử lý intent và logic
             msg_lower = translated_message.lower().strip()
 
+            # ========== XỬ LÝ JD (JOB DESCRIPTION) ==========
+            jd_indicators = [
+            "job description", "jd", "mô tả công việc", "bản mô tả", 
+            "yêu cầu công việc", "phân tích jd", "đọc jd", "jd này"]
+
+            is_likely_jd = len(message) > 200 and (
+                "•" in message or "-" in message or "yêu cầu" in msg_lower or "mô tả" in msg_lower
+            )
+
+            if any(kw in msg_lower for kw in jd_indicators) or is_likely_jd:
+                if len(message) > 300:
+                    result = await self._handle_jd_upload_or_text(user_id, message)
+                    return result
+                else:
+                    return {
+                        "type": "text",
+                        "content": "Vui lòng dán nội dung Job Description (mô tả công việc) vào đây. Tôi sẽ phân tích và đưa ra câu hỏi phỏng vấn sát với yêu cầu của JD!"
+                    }
+            
+            # Trong _handle_chat, thay thế block xử lý interview_request_keywords bằng:
+
+            # ========== XỬ LÝ CÂU HỎI PHỎNG VẤN ==========
+            interview_request_keywords = [
+                "câu hỏi phỏng vấn", "tạo câu hỏi phỏng vấn", "phỏng vấn", "interview question",
+                "câu hỏi và câu trả lời", "cá nhân hóa theo cv", "dựa trên cv",
+                "đưa ra câu hỏi phỏng vấn", "câu hỏi phỏng vấn và câu trả lời"
+            ]
+
+            if any(kw in msg_lower for kw in interview_request_keywords):
+                logger.info(f"Processing interview request for user {user_id}")
+                
+                # Lấy CV từ session
+                session = self.session_manager.get_or_create(user_id)
+                cv_analysis = session.cv_analysis
+                has_cv = cv_analysis is not None
+                
+                # Lấy JD nếu có
+                jd_questions = self.session_manager.get_jd_questions(user_id)
+                jd_analysis = self.session_manager.get_jd_analysis(user_id)
+                
+                if jd_questions and has_cv:
+                    # Có cả JD và CV -> tạo câu hỏi cá nhân hóa từ JD + CV
+                    logger.info("Generating personalized questions from JD + CV")
+                    personalized_questions = await self._generate_personalized_questions_from_jd_and_cv(jd_analysis, cv_analysis)
+                    response = self._format_interview_questions_response(personalized_questions, jd_analysis, True)
+                    return {
+                        "type": "interview_questions",
+                        "response": response,
+                        "success": True,
+                        "cached": False,
+                    }
+                elif has_cv:
+                    # Chỉ có CV -> tạo câu hỏi dựa trên CV
+                    logger.info("Generating interview questions from CV only")
+                    # Lấy vị trí phù hợp từ CV
+                    position = cv_analysis.suitable_job_titles[0] if cv_analysis.suitable_job_titles else "vị trí phù hợp"
+                    response = self._get_interview_questions_with_cv(position, cv_analysis)
+                    return {
+                        "type": "interview_questions",
+                        "response": response,
+                        "success": True,
+                        "cached": False,
+                    }
+                elif jd_questions:
+                    # Chỉ có JD -> trả về câu hỏi từ JD
+                    logger.info("Generating interview questions from JD only")
+                    response = self._format_interview_questions_response(jd_questions, jd_analysis, False)
+                    return {
+                        "type": "interview_questions",
+                        "response": response,
+                        "success": True,
+                        "cached": False,
+                    }
+                else:
+                    # Không có CV và không có JD
+                    logger.info("No CV or JD found for interview request")
+                    return {
+                        "type": "text",
+                        "response": "Vui lòng upload CV hoặc cung cấp Job Description (JD) để tôi có thể tạo câu hỏi phỏng vấn phù hợp cho bạn!",
+                        "success": True,
+                    }
             # Lấy session
             session = self.session_manager.get_or_create(user_id)
 
-            # Kiểm tra xem đây có phải là câu hỏi đầu tiên sau khi upload CV không
-            # Nếu session có CV nhưng title vẫn là "New Chat" hoặc chưa được đặt
             has_cv = session.cv_analysis is not None
             is_default_title = session.title in ["New Chat", "", None]
-
-            # Đếm số tin nhắn để biết đây là câu hỏi thứ mấy
             msg_count = len(session.conversation_history)
 
-            # Nếu có CV và title chưa được đặt và đây là tin nhắn thứ 2 (sau upload)
-            # Hoặc tin nhắn đầu tiên sau khi upload
             if has_cv and is_default_title and msg_count >= 1:
-                # Lấy nội dung câu hỏi để làm title
                 new_title = message.strip()
                 if len(new_title) > 50:
                     new_title = new_title[:47] + "..."
@@ -370,19 +435,10 @@ class Chatbot:
 
             # ========== 1. TÌM KIẾM JOB THEO YÊU CẦU ==========
             search_indicators = [
-                "tìm việc",
-                "list job",
-                "danh sách job",
-                "gợi ý job",
-                "job liên quan",
-                "việc làm",
-                "công việc",
-                "jobs at",
-                "việc tại",
-                "tuyển dụng",
-                "dua ra list",
-                "đưa ra danh sách",
-            ]
+            "tìm việc", "list job", "danh sách job", "gợi ý job",
+            "job liên quan", "việc làm", "công việc", "jobs at",
+            "việc tại", "tuyển dụng", "dua ra list", "đưa ra danh sách",
+        ]
             if any(kw in msg_lower for kw in search_indicators):
                 search_criteria = await self._extract_search_criteria(translated_message)
                 search_criteria["user_id"] = user_id
@@ -397,10 +453,26 @@ class Chatbot:
 
                     formatted_jobs = []
                     for job in jobs:
-                        job_skills = set(s.lower() for s in (job.get('skills') or []))
+                        if isinstance(job, dict):
+                            job_skills = set(s.lower() for s in (job.get('skills') or []))
+                            job_title = job.get('title', '')
+                            job_company = job.get('company', '')
+                            job_location = job.get('location', '')
+                            job_salary = job.get('salary', 'Thương lượng')
+                            job_id = str(job.get('id', ''))
+                            job_company_id = job.get('company_id')
+                            job_exp = job.get('experience_year', '')
+                        else:
+                            job_skills = set(s.lower() for s in (job.skills or []))
+                            job_title = job.title or ''
+                            job_company = job.company or ''
+                            job_location = job.location or ''
+                            job_salary = job.salary or 'Thương lượng'
+                            job_id = str(job.id)
+                            job_company_id = getattr(job, 'company_id', None)
+                            job_exp = job.experience_year or ''
 
                         if cv_analysis:
-                            # Skills 60%
                             if job_skills:
                                 overlap      = cv_skills & job_skills
                                 skills_score = min(100, int(len(overlap) / len(job_skills) * 100))
@@ -408,7 +480,6 @@ class Chatbot:
                                 overlap      = set()
                                 skills_score = 50
 
-                            # Certifications 10%
                             cert_score = 80
 
                             # Position 20%
@@ -472,17 +543,17 @@ class Chatbot:
                             recommendation = "📎 Upload CV để xem mức độ phù hợp"
 
                         formatted_jobs.append({
-                            "job_id":        str(job.get('id')),
-                            "job_title":     job.get('title', 'N/A'),
-                            "company":       job.get('company', 'N/A'),
-                            "company_id":    job.get('company_id'),
-                            "location":      job.get('location', 'N/A'),
-                            "salary":        job.get('salary', 'Thương lượng'),
-                            "match_score":   match_score,
+                            "job_id": job_id,
+                            "job_title": job_title,
+                            "company": job_company,
+                            "company_id": job_company_id,
+                            "location": job_location,
+                            "salary": job_salary,
+                            "match_score": match_score,
                             "match_reasons": match_reasons,
-                            "recommendation":recommendation,
+                            "recommendation": recommendation,
                             "skill_overlap": skill_overlap,
-                            "skill_gap":     skill_gap,
+                            "skill_gap": skill_gap,
                         })
 
                     # Sort giảm dần theo match_score
@@ -560,6 +631,7 @@ class Chatbot:
             if any(kw in msg_lower for kw in find_out_keywords):
                 # Thử lấy job từ current focus
                 current_focus_job = self.session_manager.get_current_focus_job(user_id)
+                
 
                 # Nếu không có, thử tìm job theo tên từ câu hỏi
                 if not current_focus_job:
@@ -608,33 +680,48 @@ class Chatbot:
             # ========== 4. LẤY CURRENT FOCUS JOB TỪ SESSION ==========
             current_focus_job = self.session_manager.get_current_focus_job(user_id)
 
-            # ========== 5. DEEP DIVE VÀO JOB ĐÃ CHỌN ==========
+             # ========== ✅ MỚI: INTERVIEW CHECK TRƯỚC DEEP DIVE ==========
+            interview_kw = [
+                "phỏng vấn", "câu hỏi phỏng vấn", "chuẩn bị phỏng vấn", "trả lời câu hỏi",
+                "interview", "interview question", "prepare interview",
+            ]
+            if any(kw in msg_lower for kw in interview_kw):
+                if "trả lời" in msg_lower:
+                    interview_content = await self._handle_interview_question_with_answer(user_id, message)
+                else:
+                    jd_questions = self.session_manager.get_jd_questions(user_id)
+                    jd_analysis  = self.session_manager.get_jd_analysis(user_id)
+                    has_cv_flag  = self.session_manager.has_cv(user_id)
+
+                    if jd_questions:
+                        interview_content = self._format_interview_questions_response(jd_questions, jd_analysis, has_cv_flag)
+                    elif has_cv_flag:
+                        cv_analysis = self.session_manager.get_cv_analysis(user_id)
+                        position    = cv_analysis.suitable_job_titles[0] if cv_analysis.suitable_job_titles else "vị trí phù hợp"
+                        interview_content = self._get_interview_questions_with_cv(position, cv_analysis)
+                    else:
+                        position = await self._extract_position_from_message(message)
+                        interview_content = self._get_interview_questions(position) if position else \
+                            "📋 **Câu hỏi phỏng vấn thường gặp:**\n\n1. Hãy giới thiệu về bản thân bạn.\n2. Điểm mạnh và điểm yếu của bạn là gì?\n3. Vì sao bạn ứng tuyển vào vị trí này?\n4. Hãy kể về một thành tích bạn tự hào nhất.\n5. Mục tiêu nghề nghiệp của bạn trong 3-5 năm tới?\n\n📎 **Upload CV để có câu hỏi và câu trả lời cá nhân hóa!**"
+
+                final_response = await self._translate_response_if_needed(interview_content, original_message)
+                self.session_manager.add_message(user_id, ChatMessage(role="user", content=original_message))
+                self.session_manager.add_message(user_id, ChatMessage(role="assistant", content=final_response))
+                return {
+                    "type": "interview_questions",  # ✅ luôn đúng, không bị override
+                    "response": final_response,
+                    "cached": False,
+                }
+
+           # ========== 5. DEEP DIVE VÀO JOB ĐÃ CHỌN ==========
             deep_dive_keywords = [
-                "job này",
-                "vị trí này",
-                "công việc này",
-                "này khó",
-                "học gì",
-                "có nên apply",
-                "ứng tuyển",
-                "phỏng vấn",
-                "lương job",
-                "công ty này",
-                "thiếu kỹ năng",
-                "cần học",
-                "bao lâu",
-                "cơ hội",
-                "phù hợp không",
-                "this job",
-                "this position",
-                "this role",
-                "difficult",
-                "learn",
-                "should i apply",
-                "interview",
-                "salary",
-                "company",
-                "missing skill",
+                "job này", "vị trí này", "công việc này", "này khó",
+                "học gì", "có nên apply", "ứng tuyển",
+                # ❌ ĐÃ XÓA "phỏng vấn" và "interview" khỏi đây
+                "lương job", "công ty này", "thiếu kỹ năng", "cần học",
+                "bao lâu", "cơ hội", "phù hợp không",
+                "this job", "this position", "this role", "difficult",
+                "learn", "should i apply", "salary", "company", "missing skill",
             ]
 
             is_deep_dive = (
@@ -652,6 +739,7 @@ class Chatbot:
                     response = self._format_job_selected_response(job_selected)
                 else:
                     # ========== 7. XỬ LÝ NHANH CÁC INTENT ==========
+                    # ❌ ĐÃ XÓA block interview cũ ở đây
                     response = await self._handle_quick_intent(
                         user_id, translated_message
                     )
@@ -709,18 +797,16 @@ class Chatbot:
         """Xử lý nhanh các câu hỏi phổ biến - DÙNG CV TỪ SESSION"""
         msg_lower = message.lower().strip()
 
-        # ========== XU HƯỚNG NGÀNH (TREND QUERY) ==========
+            # ========== XU HƯỚNG NGÀNH ==========
         trend_keywords = ["xu hướng", "trend", "thị trường", "ngành hot", "ngành đang phát triển", 
                         "tương lai ngành", "cơ hội ngành", "nhu cầu tuyển dụng", "phân tích ngành"]
         
         if any(kw in msg_lower for kw in trend_keywords):
-            # Gọi method phân tích xu hướng ngành động
             response = await self._get_industry_trend(message)
             if response:
                 return response
-            # Nếu không xử lý được, trả về response mặc định
-            return "Vui lòng cho tôi biết bạn muốn phân tích xu hướng ngành nào (ví dụ: 'xu hướng ngành IT', 'phân tích ngành Marketing')?"
-        
+            return "Vui lòng cho tôi biết bạn muốn phân tích xu hướng ngành nào?"
+            
         # Lấy thông tin CV từ session
         has_cv = self.session_manager.has_cv(user_id)
         cv_skills = self.session_manager.get_cv_skills(user_id)
@@ -823,6 +909,58 @@ class Chatbot:
             return "Bạn chưa có CV hoặc chưa có gợi ý việc làm. Hãy upload CV để tôi phân tích và tư vấn kỹ năng cần học nhé!"
 
         return None
+    
+    def _get_interview_questions_with_cv(self, position: str, cv_analysis: CVAnalysis) -> str:
+        """Đưa ra câu hỏi và câu trả lời cá nhân hóa dựa trên CV - MỖI CÂU HỎI CÓ CÂU TRẢ LỜI LIỀN KỀ"""
+        
+        skills = cv_analysis.extracted_skills or []
+        experience = cv_analysis.experience_years or 0
+        strengths = cv_analysis.strengths or []
+        weaknesses = cv_analysis.weaknesses or []
+        
+        skills_text = ", ".join(skills[:5]) if skills else "chưa xác định"
+        strength_text = strengths[0] if strengths else "khả năng học hỏi nhanh"
+        weakness_text = weaknesses[0] if weaknesses else "chưa có nhiều kinh nghiệm trong lĩnh vực này"
+        
+        return f"""## 🎯 Câu hỏi phỏng vấn và câu trả lời cho vị trí {position} (dựa trên CV của bạn)
+
+    **1. Hãy giới thiệu về bản thân và kinh nghiệm làm việc của bạn.**
+
+    💡 **Câu trả lời gợi ý (cá nhân hóa theo CV):**
+    "Em tên là [Tên của bạn], hiện đã có {experience} năm kinh nghiệm làm việc. Em thành thạo các kỹ năng: {skills_text}. Điểm mạnh của em là {strength_text}. Em mong muốn được đóng góp và phát triển cùng công ty."
+
+    *💡 Hãy thay [Tên của bạn] bằng tên thật và thêm một dự án cụ thể để tạo ấn tượng.*
+
+    ---
+
+    **2. Vì sao bạn ứng tuyển vào vị trí {position}?**
+
+    💡 **Câu trả lời gợi ý:**
+    "Với {experience} năm kinh nghiệm trong lĩnh vực này và các kỹ năng {skills_text}, em thấy vị trí {position} là cơ hội tốt để em phát huy thế mạnh và đóng góp cho công ty."
+
+    ---
+
+    **3. Điểm mạnh và điểm yếu của bạn là gì?**
+
+    💡 **Câu trả lời gợi ý:**
+    "Điểm mạnh của em là {strength_text}. Điểm yếu của em là {weakness_text}, nhưng em đang học hỏi và cải thiện qua từng dự án."
+
+    ---
+
+    **4. Hãy mô tả một dự án/thành tích nổi bật nhất của bạn.**
+
+    💡 **Câu trả lời gợi ý:**
+    "Hãy chọn một dự án liên quan đến kỹ năng {skills_text.split(',')[0] if skills else 'chuyên môn'} của bạn. Mô tả ngắn gọn: Em đã làm gì, kết quả đạt được và bài học kinh nghiệm."
+
+    ---
+
+    **5. Bạn có câu hỏi gì cho chúng tôi?**
+
+    💡 **Câu trả lời gợi ý:**
+    "Em muốn hỏi về cơ hội phát triển trong công ty và quy trình đào tạo dành cho nhân viên mới."
+
+    ---
+    ✅ **Câu trả lời được cá nhân hóa dựa trên CV của bạn!**"""
 
     async def _extract_industry_from_query(self, message: str) -> Optional[str]:
         """Trích xuất cụm từ ngành từ câu hỏi của user"""
@@ -3005,11 +3143,9 @@ Hãy viết một phân tích CHUYÊN NGHIỆP, CHI TIẾT, CÓ CẤU TRÚC về
 
 
     async def _get_industry_trend(self, user_message: str) -> Optional[str]:
-        """
-        Xử lý câu hỏi về xu hướng ngành
-        """
+        """Xử lý câu hỏi về xu hướng ngành - KHÔNG BỊ LẶP"""
         
-        # Bước 1: Trích xuất tên ngành từ câu hỏi
+        # Bước 1: Trích xuất tên ngành
         industry_text = await self._extract_industry_from_text(user_message)
         
         if not industry_text:
@@ -3022,7 +3158,6 @@ Hãy viết một phân tích CHUYÊN NGHIỆP, CHI TIẾT, CÓ CẤU TRÚC về
         industry = await industry_da.find_industry_by_keyword(industry_text)
         
         if not industry:
-            # Không tìm thấy, liệt kê các ngành có sẵn
             all_industries = await industry_da.get_all_industries()
             industry_list = ", ".join([ind['name'] for ind in all_industries[:15]])
             return f"""❌ Tôi chưa tìm thấy thông tin về ngành **"{industry_text}"** trong hệ thống.
@@ -3047,58 +3182,39 @@ Hãy viết một phân tích CHUYÊN NGHIỆP, CHI TIẾT, CÓ CẤU TRÚC về
     Hiện tại chưa có dữ liệu việc làm cho ngành này trong hệ thống. 
     Vui lòng quay lại sau hoặc thử tìm hiểu ngành khác!"""
         
-        # Bước 4: Xây dựng prompt phân tích
-        prompt = self._build_industry_analysis_prompt(
-            industry_name=industry['name'],
-            total_jobs=stats['total_jobs'],
-            total_companies=stats['total_companies'],
-            top_skills=top_skills,
-            top_companies=top_companies,
-            salary_stats=salary_stats,
-            sample_jobs=jobs[:5]
-        )
-        
-        # Bước 5: Gọi LLM phân tích
+        # Bước 4: Gọi LLM - CHỈ DÙNG LLM, KHÔNG DÙNG FALLBACK TRỪ KHI LLM LỖI
         try:
+            prompt = self._build_industry_analysis_prompt(
+                industry_name=industry['name'],
+                total_jobs=stats['total_jobs'],
+                total_companies=stats['total_companies'],
+                top_skills=top_skills,
+                top_companies=top_companies,
+                salary_stats=salary_stats,
+                sample_jobs=jobs[:5]
+            )
+            
             response = await asyncio.wait_for(
                 self.rag_engine.llm.complete(prompt, temperature=0.5, max_tokens=800),
                 timeout=25.0
             )
             
-            # Clean response
+            # Clean response - chỉ lấy phần đầu tiên, bỏ phần trùng lặp
             cleaned_response = self._clean_trend_response(response)
             
-            # 🔥 QUAN TRỌNG: Nếu clean trả về None, dùng fallback ngay
-            if cleaned_response is None:
-                logger.warning("Clean response returned None, using fallback")
-                return self._format_basic_industry_stats(
-                    industry_name=industry['name'],
-                    total_jobs=stats['total_jobs'],
-                    total_companies=stats['total_companies'],
-                    top_skills=top_skills,
-                    top_companies=top_companies,
-                    salary_stats=salary_stats
-                )
+            # 🔥 QUAN TRỌNG: Nếu response vẫn bị trùng, cắt bỏ phần sau
+            if "TỔNG QUAN THỊ TRƯỜNG" in cleaned_response:
+                # Tìm vị trí xuất hiện lần thứ 2 của "TỔNG QUAN THỊ TRƯỜNG"
+                parts = cleaned_response.split("TỔNG QUAN THỊ TRƯỜNG")
+                if len(parts) > 2:
+                    # Chỉ giữ phần đầu tiên
+                    cleaned_response = "TỔNG QUAN THỊ TRƯỜNG" + parts[1]
             
-            # Đảm bảo format đúng
-            formatted_response = self._ensure_proper_format(cleaned_response)
-            
-            # Nếu vẫn quá ngắn hoặc rỗng, dùng fallback
-            if len(formatted_response) < 100:
-                logger.warning("Formatted response too short, using fallback")
-                return self._format_basic_industry_stats(
-                    industry_name=industry['name'],
-                    total_jobs=stats['total_jobs'],
-                    total_companies=stats['total_companies'],
-                    top_skills=top_skills,
-                    top_companies=top_companies,
-                    salary_stats=salary_stats
-                )
-            
-            return formatted_response
+            return cleaned_response
             
         except Exception as e:
             logger.error(f"LLM analysis error: {str(e)}")
+            # Fallback: chỉ dùng khi LLM thực sự lỗi
             return self._format_basic_industry_stats(
                 industry_name=industry['name'],
                 total_jobs=stats['total_jobs'],
@@ -3107,6 +3223,149 @@ Hãy viết một phân tích CHUYÊN NGHIỆP, CHI TIẾT, CÓ CẤU TRÚC về
                 top_companies=top_companies,
                 salary_stats=salary_stats
             )
+    
+    def _build_industry_analysis_prompt(self, industry_name: str, total_jobs: int, 
+                                    total_companies: int, top_skills: List, 
+                                    top_companies: List, salary_stats: Dict,
+                                    sample_jobs: List) -> str:
+        """Xây dựng prompt phân tích ngành - LỜI KHUYÊN DỰA TRÊN DỮ LIỆU THỰC TẾ"""
+        
+        # Format top skills
+        skills_text = ""
+        if top_skills:
+            for i, skill in enumerate(top_skills[:10], 1):
+                skills_text += f"{i}. **{skill['skill']}**: {skill['count']} tin tuyển dụng\n"
+        else:
+            skills_text = "Đang cập nhật dữ liệu kỹ năng\n"
+        
+        # Format top companies
+        companies_text = ""
+        for comp in top_companies[:10]:
+            companies_text += f"* {comp['company']}\n"
+        
+        if not companies_text:
+            companies_text = "* Đang cập nhật\n"
+        
+        # Format top jobs by salary
+        top_salary_jobs = sorted(sample_jobs, key=lambda x: self._parse_salary_value(x.get('salary', '')), reverse=True)[:5]
+        jobs_by_salary_text = ""
+        for job in top_salary_jobs:
+            salary = job.get('salary', 'Thương lượng')
+            title = job.get('title', 'N/A')[:60]
+            company = job.get('company', 'N/A')
+            jobs_by_salary_text += f"* **{title}** tại {company} - {salary}\n"
+        
+        if not jobs_by_salary_text:
+            jobs_by_salary_text = "* Đang cập nhật dữ liệu\n"
+        
+        # Format salary table
+        salary_table = ""
+        level_order = ["Fresher", "Junior", "Mid", "Senior", "Leader/Quản lý"]
+        
+        # Lọc và chuẩn hóa salary_stats
+        normalized_stats = {}
+        for level, data in salary_stats.items():
+            avg_salary = data.get('avg', 0)
+            if level == "Leader/Quản lý" and avg_salary < 25:
+                avg_salary = 35
+            normalized_stats[level] = avg_salary
+        
+        for level in level_order:
+            if level in normalized_stats:
+                avg_salary = normalized_stats[level]
+                salary_table += f"| {level} | ~{avg_salary:,} triệu/tháng |\n"
+            else:
+                if level == "Fresher":
+                    salary_table += "| Fresher | ~8-12 triệu/tháng |\n"
+                elif level == "Junior":
+                    salary_table += "| Junior | ~12-18 triệu/tháng |\n"
+                elif level == "Mid":
+                    salary_table += "| Mid | ~18-28 triệu/tháng |\n"
+                elif level == "Senior":
+                    salary_table += "| Senior | ~28-45 triệu/tháng |\n"
+                elif level == "Leader/Quản lý":
+                    salary_table += "| Leader/Quản lý | ~35-60 triệu/tháng |\n"
+        
+        # Xây dựng phần lời khuyên dựa trên dữ liệu thực tế
+        advice_data = ""
+        
+        # Nếu có top_skills, đưa ra lời khuyên về kỹ năng
+        if top_skills:
+            top_3_skills = [s['skill'] for s in top_skills[:3]]
+            advice_data += f"\n- Kỹ năng quan trọng nhất: {', '.join(top_3_skills)}"
+        
+        # Nếu có salary_stats, đưa ra lời khuyên về mức lương kỳ vọng
+        if salary_stats:
+            if "Senior" in salary_stats:
+                senior_salary = salary_stats["Senior"].get('avg', 0)
+                advice_data += f"\n- Mức lương Senior tham khảo: ~{senior_salary:,} triệu/tháng"
+        
+        # Nếu có top_companies, đưa ra lời khuyên về công ty mục tiêu
+        if top_companies:
+            top_company = top_companies[0]['company']
+            advice_data += f"\n- Công ty hàng đầu trong ngành: {top_company}"
+        
+        prompt = f"""Bạn là chuyên gia phân tích thị trường lao động Việt Nam với 10 năm kinh nghiệm.
+
+    DỮ LIỆU THỰC TẾ từ {total_jobs} tin tuyển dụng ngành {industry_name}:
+    - Tổng số việc làm: {total_jobs}
+    - Số công ty tuyển dụng: {total_companies}
+
+    Top kỹ năng được yêu cầu:
+    {skills_text}
+
+    Top công ty tuyển dụng nhiều nhất:
+    {companies_text}
+
+    Top 5 việc làm có mức lương cao nhất ngành:
+    {jobs_by_salary_text}
+
+    Mức lương theo cấp bậc:
+    {salary_table}
+
+    DỮ LIỆU THỰC TẾ ĐỂ ĐƯA RA LỜI KHUYÊN:
+    {advice_data}
+
+    QUY TẮC QUAN TRỌNG:
+    1. **TRẢ LỜI BẰNG TIẾNG VIỆT** - Không dùng tiếng Anh
+    2. Số liệu phải từ dữ liệu trên, không bịa đặt
+    3. Lời khuyên phải DỰA TRÊN DỮ LIỆU THỰC TẾ, không chung chung
+
+    Hãy viết phân tích xu hướng ngành {industry_name} theo MẪU DƯỚI ĐÂY:
+
+    TỔNG QUAN THỊ TRƯỜNG
+    (Viết 2-3 câu bằng tiếng Việt về nhu cầu tuyển dụng, với {total_jobs} việc làm từ {total_companies} công ty)
+
+    KỸ NĂNG HOT NHẤT
+    (Dựa vào top kỹ năng trên, liệt kê 5-7 kỹ năng quan trọng nhất, mỗi kỹ năng có giải thích ngắn)
+
+    MỨC LƯƠNG THAM KHẢO
+    (Bảng lương theo cấp bậc)
+
+    | Cấp bậc | Mức lương |
+    | --- | --- |
+    {salary_table}
+
+    CƠ HỘI VIỆC LÀM
+    **Các công ty đang tuyển dụng nhiều nhất:**
+    {companies_text}
+
+    **Các vị trí có mức lương cao nhất ngành:**
+    {jobs_by_salary_text}
+
+    LỜI KHUYÊN (DỰA TRÊN DỮ LIỆU THỰC TẾ)
+    (Viết 3-4 câu bằng tiếng Việt, sử dụng số liệu từ dữ liệu trên để đưa ra lời khuyên cụ thể về:
+    - Kỹ năng cần ưu tiên học (dựa vào top kỹ năng)
+    - Mức lương kỳ vọng phù hợp (dựa vào bảng lương)
+    - Công ty mục tiêu nên nhắm đến (dựa vào top công ty)
+    - Lộ trình thăng tiến trong ngành)
+
+    QUAN TRỌNG: 
+    - CHỈ TRẢ LỜI BẰNG TIẾNG VIỆT
+    - LỜI KHUYÊN PHẢI DỰA TRÊN SỐ LIỆU CỤ THỂ TỪ DỮ LIỆU TRÊN
+    - BẮT ĐẦU NGAY VỚI "TỔNG QUAN THỊ TRƯỜNG"""
+
+        return prompt
     
     async def _extract_industry_from_text(self, message: str) -> Optional[str]:
         """Trích xuất tên ngành từ câu hỏi của user"""
@@ -3320,57 +3579,34 @@ Hãy viết một phân tích CHUYÊN NGHIỆP, CHI TIẾT, CÓ CẤU TRÚC về
         return result
 
     def _clean_trend_response(self, response: str) -> str:
-        """Làm sạch và format lại câu trả lời xu hướng - Đảm bảo tiếng Việt"""
+        """Làm sạch và format lại câu trả lời xu hướng - LOẠI BỎ PHẦN TRÙNG LẶP"""
         
-        # Nếu response quá ngắn, trả về nguyên bản
-        if len(response) < 50:
+        if not response or len(response) < 50:
             return response
         
-        # Đếm số từ tiếng Anh
-        english_words_count = 0
-        total_words = 0
-        for word in response.split():
-            if word.isalpha():
-                total_words += 1
-                if word[0].isascii() and not any(viet_char in word for viet_char in 'áàảãạăắằẳẵặâấầẩẫậđéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ'):
-                    english_words_count += 1
+        # Tìm phần bị trùng lặp "TỔNG QUAN THỊ TRƯỜNG" xuất hiện lần thứ 2
+        parts = response.split("TỔNG QUAN THỊ TRƯỜNG")
+        if len(parts) > 2:
+            # Chỉ giữ phần đầu tiên
+            response = "TỔNG QUAN THỊ TRƯỜNG" + parts[1]
         
-        # Nếu quá 50% là tiếng Anh, trả về response gốc (sẽ dùng fallback ở ngoài)
-        if total_words > 10 and english_words_count / total_words > 0.5:
-            logger.warning(f"Response has {english_words_count}/{total_words} English words")
-            return response  # Trả về nguyên bản, để ngoài xử lý
-        
-        # Loại bỏ các dòng chứa từ khóa rác
+        # Loại bỏ các dòng "Đang cập nhật thông tin" thừa ở cuối
         lines = response.split('\n')
         cleaned_lines = []
-        skip_mode = False
+        found_end = False
         
         for line in lines:
-            line_lower = line.lower().strip()
-            
-            # Bỏ qua các dòng chứa từ khóa rác
-            if any(keyword in line_lower for keyword in ['quy tắc', 'lưu ý', 'yêu cầu', 'hướng dẫn', 'quan trọng', 
-                                                        'rule', 'note', 'important', 'based on', 'according to',
-                                                        'the current', 'this indicates', 'in the market']):
-                skip_mode = True
+            if "Đang cập nhật thông tin" in line and found_end:
                 continue
-            
-            if skip_mode and (line_lower.startswith(('tổng quan', 'kỹ năng', 'mức lương', 'cơ hội', 'lời khuyên', '1.', '2.', '3.'))):
-                skip_mode = False
-            
-            if not skip_mode:
-                cleaned_lines.append(line)
+            if "Đang cập nhật dữ liệu" in line and found_end:
+                continue
+            if line.strip() == "" and found_end:
+                continue
+            if "LỜI KHUYÊN" in line:
+                found_end = True
+            cleaned_lines.append(line)
         
-        if not cleaned_lines:
-            return response
-        
-        result = '\n'.join(cleaned_lines).strip()
-        
-        # Đảm bảo có nội dung
-        if len(result) < 50:
-            return response
-        
-        return result
+        return '\n'.join(cleaned_lines).strip()
 
     def _get_fallback_trend_response(self) -> str:
         """Trả về response mặc định khi không thể clean"""
@@ -3599,3 +3835,616 @@ Hãy viết một phân tích CHUYÊN NGHIỆP, CHI TIẾT, CÓ CẤU TRÚC về
             # Lấy giá trị trung bình
             return (values[0] + values[1]) / 2
         return values[0]
+
+
+    async def _handle_jd_upload_or_text(self, user_id: str, jd_text: str, filename: str = None) -> Dict[str, Any]:
+        """Xử lý JD (Job Description) từ text - LƯU VÀO SESSION"""
+        try:
+            logger.info(f"JD processing started for user {user_id}, length={len(jd_text)}")
+            
+            # Lưu JD text vào session
+            self.session_manager.set_jd_text(user_id, jd_text)
+            
+            # Phân tích JD để trích xuất thông tin quan trọng
+            jd_analysis = await self._analyze_jd(jd_text)
+            
+            # Sinh câu hỏi phỏng vấn dựa trên JD
+            questions = await self._generate_interview_questions_from_jd(jd_analysis)
+            
+            # Lưu kết quả vào session
+            self.session_manager.set_jd_analysis(user_id, jd_analysis)
+            self.session_manager.set_jd_questions(user_id, questions)
+            
+            # Lấy CV từ session nếu có
+            cv_analysis = self.session_manager.get_cv_analysis(user_id)
+            has_cv = cv_analysis is not None
+            
+            # Nếu đã có CV, tạo câu hỏi cá nhân hóa luôn
+            if has_cv:
+                personalized_questions = await self._generate_personalized_questions_from_jd_and_cv(jd_analysis, cv_analysis)
+                response = self._format_interview_questions_response(personalized_questions, jd_analysis, True)
+            else:
+                response = self._format_jd_response(jd_analysis, questions)
+            
+            return {
+                "type": "interview_questions",
+                "success": True,
+                "response": response,
+                "position": jd_analysis.get("position", "Vị trí"),
+                "has_cv": has_cv,
+            }
+            
+        except Exception as e:
+            logger.error(f"JD processing error: {str(e)}")
+            return {
+                "type": "error",
+                "success": False,
+                "message": f"Xử lý JD thất bại: {str(e)}"
+            }
+
+    async def _analyze_jd(self, jd_text: str) -> Dict[str, Any]:
+        """Phân tích JD để trích xuất thông tin quan trọng"""
+        
+        prompt = f"""Bạn là chuyên gia tuyển dụng. Hãy phân tích Job Description (JD) sau đây và trả về JSON.
+
+    JD:
+    \"\"\"
+    {jd_text[:4000]}
+    \"\"\"
+
+    Trả về JSON với cấu trúc:
+    {{
+    "position": "Tên vị trí công việc",
+    "requirements": ["danh sách yêu cầu chính", "mỗi yêu cầu là một string"],
+    "skills": ["kỹ năng cứng cần có", "kỹ năng mềm cần có"],
+    "responsibilities": ["trách nhiệm chính của công việc"],
+    "experience": "yêu cầu kinh nghiệm",
+    "education": "yêu cầu bằng cấp",
+    "key_metrics": ["các chỉ số/chỉ tiêu quan trọng"]
+    }}
+
+    Chỉ trả về JSON, không giải thích thêm."""
+        
+        try:
+            result = await asyncio.wait_for(
+                self.rag_engine.llm.extract_json(prompt, temperature=0.3),
+                timeout=20.0
+            )
+            return result
+        except Exception as e:
+            logger.error(f"JD analysis error: {str(e)}")
+            return {
+                "position": "Vị trí chưa xác định",
+                "requirements": [],
+                "skills": [],
+                "responsibilities": [],
+                "experience": "",
+                "education": "",
+                "key_metrics": []
+            }
+
+
+    async def _generate_interview_questions_from_jd(self, jd_analysis: Dict[str, Any]) -> List[Dict[str, str]]:
+        """Sinh câu hỏi và câu trả lời mẫu dựa trên nội dung JD"""
+        
+        position = jd_analysis.get("position", "vị trí này")
+        requirements = jd_analysis.get("requirements", [])
+        skills = jd_analysis.get("skills", [])
+        responsibilities = jd_analysis.get("responsibilities", [])
+        experience = jd_analysis.get("experience", "")
+        
+        # Xây dựng prompt sinh câu hỏi và câu trả lời
+        req_text = "\n".join([f"- {r}" for r in requirements[:5]]) if requirements else "Chưa có thông tin chi tiết"
+        skill_text = ", ".join(skills[:8]) if skills else "chưa xác định"
+        resp_text = "\n".join([f"- {r}" for r in responsibilities[:3]]) if responsibilities else "Chưa có thông tin"
+        
+        prompt = f"""Bạn là chuyên gia phỏng vấn với 10 năm kinh nghiệm. Dựa trên JD sau, hãy tạo 8-10 câu hỏi phỏng vấn và câu trả lời mẫu CỤ THỂ, KHÁC NHAU cho từng câu hỏi.
+
+    Vị trí: {position}
+    Yêu cầu kinh nghiệm: {experience}
+
+    Yêu cầu chính:
+    {req_text}
+
+    Kỹ năng cần có: {skill_text}
+
+    Trách nhiệm chính:
+    {resp_text}
+
+    YÊU CẦU QUAN TRỌNG:
+    1. Mỗi câu hỏi phải CỤ THỂ, LIÊN QUAN TRỰC TIẾP đến JD
+    2. Mỗi câu hỏi phải có câu trả lời mẫu KHÁC NHAU, không lặp lại
+    3. Câu trả lời phải THỰC TẾ, CÓ GIÁ TRỊ, dài 2-3 câu
+    4. Bao gồm câu hỏi về kỹ năng chuyên môn, kinh nghiệm, xử lý tình huống
+    5. Câu trả lời phải thể hiện được kinh nghiệm và cách xử lý tình huống
+
+    Trả về JSON array, mỗi phần tử có dạng:
+    {{"question": "nội dung câu hỏi", "answer": "câu trả lời mẫu cụ thể", "type": "technical|experience|situation|behavioral"}}
+
+    Chỉ trả về JSON array, không giải thích thêm."""
+        
+        try:
+            result = await asyncio.wait_for(
+                self.rag_engine.llm.extract_json(prompt, temperature=0.6),
+                timeout=30.0
+            )
+            if isinstance(result, list) and result:
+                # Đảm bảo mỗi câu hỏi đều có answer
+                for q in result:
+                    if not q.get("answer"):
+                        q["answer"] = "Hãy trả lời dựa trên kinh nghiệm thực tế của bạn."
+                return result
+        except Exception as e:
+            logger.error(f"Generate questions error: {str(e)}")
+        
+        # Fallback: câu hỏi mặc định dựa trên JD
+        return self._get_fallback_questions_with_answers(jd_analysis)
+
+
+    def _get_fallback_questions_with_answers(self, jd_analysis: Dict[str, Any]) -> List[Dict[str, str]]:
+        """Fallback khi không thể sinh câu hỏi từ LLM - có câu trả lời cụ thể"""
+        
+        position = jd_analysis.get("position", "vị trí này")
+        responsibilities = jd_analysis.get("responsibilities", [])
+        
+        questions = [
+            {
+                "question": f"Hãy giới thiệu về bản thân và kinh nghiệm của bạn liên quan đến {position}.",
+                "answer": f"Tôi đã có X năm kinh nghiệm trong lĩnh vực bán hàng. Tôi từng làm việc tại [tên công ty] và đạt được [thành tích cụ thể]. Tôi tự tin với khả năng giao tiếp và thuyết phục khách hàng.",
+                "type": "experience"
+            },
+            {
+                "question": "Bạn sẽ làm gì để tìm kiếm và tiếp cận khách hàng mới?",
+                "answer": "Tôi sẽ nghiên cứu kỹ thị trường mục tiêu, sử dụng các kênh như mạng xã hội, gọi điện, gặp trực tiếp. Tôi cũng sẽ tận dụng mối quan hệ từ khách hàng cũ để giới thiệu thêm khách hàng mới.",
+                "type": "situation"
+            },
+            {
+                "question": "Hãy mô tả cách bạn tư vấn sản phẩm/dịch vụ cho khách hàng.",
+                "answer": "Tôi lắng nghe nhu cầu của khách hàng trước, sau đó phân tích và đề xuất giải pháp phù hợp nhất. Tôi luôn đưa ra lợi ích cụ thể mà sản phẩm/dịch vụ mang lại cho khách hàng.",
+                "type": "technical"
+            },
+            {
+                "question": "Bạn xử lý thế nào khi khách hàng phàn nàn hoặc không hài lòng?",
+                "answer": "Tôi bình tĩnh lắng nghe, xin lỗi vì sự bất tiện và tìm hiểu nguyên nhân. Sau đó tôi đề xuất giải pháp khắc phục nhanh chóng và báo cáo với quản lý nếu cần.",
+                "type": "situation"
+            },
+            {
+                "question": "Làm thế nào để bạn duy trì mối quan hệ lâu dài với khách hàng?",
+                "answer": "Tôi thường xuyên liên lạc, hỏi thăm và cập nhật thông tin sản phẩm mới. Tôi cũng ghi nhớ những dịp đặc biệt của khách hàng để gửi lời chúc hoặc ưu đãi phù hợp.",
+                "type": "behavioral"
+            },
+            {
+                "question": f"Theo bạn, điều gì quan trọng nhất khi làm việc ở vị trí {position}?",
+                "answer": "Theo tôi, kỹ năng giao tiếp và thấu hiểu khách hàng là quan trọng nhất. Ngoài ra cần có sự kiên trì, chịu được áp lực và khả năng làm việc nhóm tốt.",
+                "type": "behavioral"
+            }
+        ]
+        
+        # Thêm câu hỏi về trách nhiệm chính nếu có
+        if responsibilities:
+            for resp in responsibilities[:2]:
+                questions.append({
+                    "question": f"Hãy chia sẻ kinh nghiệm của bạn về việc {resp.lower()}?",
+                    "answer": f"Trong công việc trước đây, tôi đã từng {resp.lower()}. Tôi luôn đảm bảo hoàn thành đúng tiến độ và phối hợp tốt với các bộ phận liên quan.",
+                    "type": "experience"
+                })
+        
+        return questions
+
+    async def _handle_interview_question_with_answer(self, user_id: str, message: str, position: str = None) -> str:
+        """Xử lý yêu cầu câu hỏi và câu trả lời phỏng vấn"""
+        
+        # Lấy CV từ session
+        cv_analysis = self.session_manager.get_cv_analysis(user_id)
+        has_cv = cv_analysis is not None
+        
+        # Lấy JD đã lưu từ session
+        jd_analysis = self.session_manager.get_jd_analysis(user_id)
+        jd_questions = self.session_manager.get_jd_questions(user_id)
+        
+        # Nếu có cả JD và CV -> tạo câu hỏi cá nhân hóa
+        if jd_analysis and has_cv:
+            logger.info("Creating personalized questions from JD + CV")
+            personalized_questions = await self._generate_personalized_questions_from_jd_and_cv(jd_analysis, cv_analysis)
+            return self._format_interview_questions_response(personalized_questions, jd_analysis, True)
+        
+        # Nếu chỉ có JD
+        elif jd_questions:
+            logger.info("Using existing JD questions")
+            return self._format_interview_questions_response(jd_questions, jd_analysis, has_cv)
+        
+        # Nếu chỉ có CV
+        elif has_cv:
+            position = cv_analysis.suitable_job_titles[0] if cv_analysis.suitable_job_titles else "vị trí phù hợp"
+            return self._get_interview_questions_with_cv(position, cv_analysis)
+        
+        else:
+            return "Vui lòng cung cấp Job Description (JD) hoặc upload CV để tôi tạo câu hỏi phỏng vấn cho bạn!"
+
+    def _extract_question_text(self, message: str) -> Optional[str]:
+        """Trích xuất nội dung câu hỏi cần trả lời"""
+        msg_lower = message.lower()
+        
+        # Pattern: "trả lời câu hỏi X"
+        patterns = [
+            r'trả lời\s+câu hỏi\s+["\']?([^"\']+)["\']?',
+            r'câu trả lời\s+cho\s+câu hỏi\s+["\']?([^"\']+)["\']?',
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, msg_lower)
+            if match:
+                return match.group(1).strip()
+        
+        # Các câu hỏi phổ biến
+        if 'giới thiệu bản thân' in msg_lower:
+            return "Hãy giới thiệu về bản thân bạn"
+        if 'điểm yếu' in msg_lower:
+            return "Điểm yếu của bạn là gì"
+        if 'điểm mạnh' in msg_lower:
+            return "Điểm mạnh của bạn là gì"
+        
+        return None
+
+
+    def _get_answer_for_question_text(self, question_text: str, cv_analysis: Optional[CVAnalysis]) -> str:
+        """Lấy câu trả lời cho câu hỏi cụ thể"""
+        
+        has_cv = cv_analysis is not None
+        question_lower = question_text.lower()
+        
+        if "giới thiệu" in question_lower:
+            if has_cv:
+                exp = cv_analysis.experience_years or 0
+                skills = ", ".join(cv_analysis.extracted_skills[:5]) if cv_analysis.extracted_skills else "các kỹ năng chuyên môn"
+                return f"""Em tên là [Tên của bạn], hiện đã có {exp} năm kinh nghiệm làm việc. Em thành thạo các kỹ năng: {skills}. Em mong muốn được đóng góp và phát triển cùng công ty.
+
+    💡 *Hãy thay [Tên của bạn] bằng tên thật và thêm một dự án cụ thể.*"""
+            else:
+                return """Em tên là [Tên của bạn], tốt nghiệp chuyên ngành [Tên ngành] tại [Tên trường]. Em có [số năm] năm kinh nghiệm trong lĩnh vực [Tên lĩnh vực]. Em mong muốn được đóng góp và phát triển cùng công ty."""
+        
+        elif "điểm yếu" in question_lower:
+            if has_cv:
+                return """Điểm yếu của em là đôi khi quá cầu toàn trong công việc, nhưng em đang học cách cân bằng giữa chất lượng và thời gian. Em cũng đang tích cực cải thiện thêm các kỹ năng mới thông qua các khóa học online."""
+            else:
+                return """Điểm yếu của em là đôi khi quá cầu toàn trong công việc, nhưng em đang học cách cân bằng và cải thiện qua từng dự án."""
+        
+        elif "điểm mạnh" in question_lower:
+            if has_cv and cv_analysis.strengths:
+                return f"""Điểm mạnh của em là {cv_analysis.strengths[0]}. Trong quá trình làm việc, em luôn cố gắng phát huy điều này và đã đạt được nhiều kết quả tích cực."""
+            else:
+                return """Điểm mạnh của em là khả năng học hỏi nhanh, làm việc nhóm tốt và chịu được áp lực cao trong công việc."""
+        
+        else:
+            return """Hãy trả lời một cách trung thực, ngắn gọn, tập trung vào kinh nghiệm và kỹ năng của bạn. Nên đưa ra ví dụ cụ thể để minh họa cho câu trả lời của mình."""
+        
+    def _extract_question_to_answer(self, message: str) -> Optional[str]:
+        """Trích xuất câu hỏi mà người dùng muốn trả lời"""
+        msg_lower = message.lower()
+        
+        patterns = [
+            r'trả lời\s+câu hỏi\s+["\']?([^"\']+)["\']?',
+            r'câu trả lời\s+cho\s+câu hỏi\s+["\']?([^"\']+)["\']?',
+            r'giải đáp\s+câu hỏi\s+["\']?([^"\']+)["\']?',
+            r'trả lời\s+câu\s+hỏi\s+số\s+(\d+)',
+            r'câu hỏi\s+số\s+(\d+)',
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, msg_lower, re.IGNORECASE)
+            if match:
+                return match.group(1).strip()
+        
+        # Các câu hỏi phổ biến không cần trích xuất
+        if 'giới thiệu bản thân' in msg_lower:
+            return "giới thiệu bản thân"
+        if 'điểm yếu' in msg_lower:
+            return "điểm yếu của bạn là gì"
+        if 'điểm mạnh' in msg_lower:
+            return "điểm mạnh của bạn là gì"
+        if 'tại sao bạn muốn làm việc' in msg_lower:
+            return "tại sao bạn muốn làm việc tại đây"
+        
+        return None
+
+    async def _extract_position_from_message(self, message: str) -> Optional[str]:
+        """Trích xuất vị trí công việc từ câu hỏi phỏng vấn"""
+        msg_lower = message.lower()
+        
+        patterns = [
+            r'phỏng vấn\s+(?:vị trí|cho)\s+([a-zA-Z\sàáảãạăắằẳẵặâấầẩẫậđéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ]+)',
+            r'interview\s+(?:for|as)\s+([a-zA-Z\s]+)',
+            r'vị trí\s+([a-zA-Z\sàáảãạăắằẳẵặâấầẩẫậđéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ]+)',
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, msg_lower)
+            if match:
+                position = match.group(1).strip()
+                if len(position) > 2 and len(position) < 50:
+                    return position
+        
+        return None
+
+    def _get_interview_questions(self, position: str) -> str:
+        """Đưa ra câu hỏi và câu trả lời mẫu cho vị trí bất kỳ - MỖI CÂU HỎI CÓ CÂU TRẢ LỜI LIỀN KỀ"""
+        
+        position_clean = position.strip().title()
+        
+        return f"""## 🎯 Câu hỏi phỏng vấn và câu trả lời tham khảo cho vị trí {position_clean}
+
+    **1. Hãy giới thiệu về bản thân và kinh nghiệm làm việc của bạn.**
+
+    💡 **Câu trả lời tham khảo:**
+    "Em tên là [Tên của bạn], tốt nghiệp chuyên ngành [Tên ngành] tại [Tên trường]. Em có [số năm] năm kinh nghiệm trong lĩnh vực [Tên lĩnh vực] với các kỹ năng chính như [liệt kê 3-5 kỹ năng]. Em mong muốn được đóng góp và phát triển cùng công ty."
+
+    ---
+
+    **2. Vì sao bạn ứng tuyển vào vị trí {position_clean}?**
+
+    💡 **Câu trả lời tham khảo:**
+    "Em ấn tượng với sản phẩm/văn hóa công ty và thấy vị trí này phù hợp với kỹ năng cũng như định hướng phát triển của em. Em muốn được học hỏi và đóng góp vào sự phát triển chung của công ty."
+
+    ---
+
+    **3. Điểm mạnh và điểm yếu của bạn là gì?**
+
+    💡 **Câu trả lời tham khảo:**
+    "Điểm mạnh của em là khả năng học hỏi nhanh, làm việc nhóm tốt và chịu được áp lực cao. Điểm yếu của em là đôi khi quá cầu toàn trong công việc, nhưng em đang học cách cân bằng và cải thiện qua từng dự án."
+
+    ---
+
+    **4. Hãy kể về một thành tích nổi bật nhất trong công việc của bạn.**
+
+    💡 **Câu trả lời tham khảo:**
+    "Trong thời gian làm việc tại [công ty cũ], em đã tham gia dự án [tên dự án] và đạt được [kết quả cụ thể]. Em đã [hành động cụ thể] để đóng góp vào thành công chung của đội nhóm."
+
+    ---
+
+    **5. Mục tiêu nghề nghiệp của bạn trong 3-5 năm tới là gì?**
+
+    💡 **Câu trả lời tham khảo:**
+    "Em muốn phát triển chuyên sâu trong lĩnh vực {position_clean} và trở thành chuyên gia hàng đầu. Em cũng mong muốn được học hỏi và đảm nhận thêm các trách nhiệm quản lý trong tương lai."
+
+    ---
+    📎 **Để có câu trả lời cá nhân hóa, hãy upload CV của bạn!**"""
+
+    async def _generate_interview_answer(self, user_id: str, question: Dict, cv_analysis: Optional[CVAnalysis]) -> str:
+        """Tạo câu trả lời phỏng vấn - cá nhân hóa nếu có CV"""
+        
+        question_text = question.get('question', '')
+        question_type = question.get('type', 'general')
+        
+        has_cv = cv_analysis is not None
+        
+        # Nếu có CV, xây dựng câu trả lời cá nhân hóa
+        if has_cv:
+            experience = cv_analysis.experience_years or 0
+            skills = cv_analysis.extracted_skills or []
+            level = cv_analysis.suitable_level or "Junior"
+            strengths = cv_analysis.strengths or []
+            
+            skills_text = ", ".join(skills[:5]) if skills else "các kỹ năng chuyên môn"
+            strength_text = strengths[0] if strengths else "khả năng học hỏi nhanh"
+            
+            # Câu trả lời cá nhân hóa dựa trên loại câu hỏi
+            if "giới thiệu" in question_text.lower() or "introduce" in question_text.lower():
+                return f"""Dựa trên CV của bạn, đây là câu trả lời gợi ý:
+
+    "Em tên là [Tên của bạn], hiện đã có {experience} năm kinh nghiệm làm việc. Em thành thạo các kỹ năng: {skills_text}. 
+    Điểm mạnh của em là {strength_text}. Em mong muốn được đóng góp và phát triển cùng công ty."
+
+    💡 *Hãy thay [Tên của bạn] bằng tên thật và thêm một dự án cụ thể để tạo ấn tượng.*"""
+            
+            elif "điểm yếu" in question_text.lower() or "weakness" in question_text.lower():
+                return f"""Dựa trên phân tích CV, câu trả lời gợi ý:
+
+    "Điểm yếu của em là đôi khi quá cầu toàn trong công việc, nhưng em đang học cách cân bằng giữa chất lượng và thời gian. 
+    Em cũng đang tích cực cải thiện thêm kỹ năng [tên kỹ năng] thông qua các khóa học online."
+
+    💡 *Hãy chọn một điểm yếu có thật và nêu cách bạn đang khắc phục.*"""
+            
+            elif "điểm mạnh" in question_text.lower() or "strength" in question_text.lower():
+                return f"""Dựa trên CV của bạn, câu trả lời gợi ý:
+
+    "Điểm mạnh của em là {strength_text}. Trong quá trình làm việc, em luôn cố gắng phát huy điều này, ví dụ như [nêu một thành tích cụ thể]."
+
+    💡 *Hãy thêm một ví dụ cụ thể về thành tích liên quan đến điểm mạnh này.*"""
+            
+            elif "kinh nghiệm" in question_text.lower() or "experience" in question_text.lower():
+                return f"""Dựa trên CV của bạn với {experience} năm kinh nghiệm:
+
+    "Em đã có {experience} năm làm việc trong lĩnh vực này. Các kỹ năng chính của em bao gồm {skills_text}. 
+    Trong thời gian qua, em đã đạt được [nêu một thành tích nổi bật]."
+
+    💡 *Hãy chuẩn bị sẵn một câu chuyện thành công cụ thể để kể.*"""
+            
+            else:
+                # Câu trả lời chung nhưng có gợi ý từ CV
+                return f"""Dựa trên thông tin CV của bạn, đây là gợi ý trả lời:
+
+    "Hãy trả lời một cách trung thực, tập trung vào kinh nghiệm {experience} năm của bạn và kỹ năng {skills_text}. 
+    Nếu có thể, hãy đưa ra một ví dụ cụ thể từ công việc trước đây của bạn để minh họa."
+
+    💡 *Câu trả lời của bạn nên ngắn gọn, đi thẳng vào vấn đề và có dẫn chứng cụ thể.*"""
+        
+        else:
+            # Không có CV - câu trả lời chung chung
+            if "giới thiệu" in question_text.lower():
+                return """Chưa có thông tin CV, đây là câu trả lời mẫu:
+
+    "Em tên là [Tên của bạn], tốt nghiệp chuyên ngành [Tên ngành] tại [Tên trường]. 
+    Em có [số năm] năm kinh nghiệm trong lĩnh vực [Tên lĩnh vực] với các kỹ năng chính như [liệt kê 3-5 kỹ năng].
+
+    💡 *Hãy điền thông tin thật của bạn và thêm một thành tích nổi bật.*"""
+            
+            elif "điểm yếu" in question_text.lower():
+                return """Câu trả lời mẫu cho câu hỏi điểm yếu:
+
+    "Điểm yếu của em là đôi khi quá cầu toàn trong công việc, nhưng em đang học cách cân bằng. 
+    Em cũng đang tích cực cải thiện kỹ năng [tên kỹ năng] thông qua các khóa học online.
+
+    💡 *Hãy chọn điểm yếu có thật và nêu cách khắc phục.*"""
+            
+            elif "điểm mạnh" in question_text.lower():
+                return """Câu trả lời mẫu cho câu hỏi điểm mạnh:
+
+    "Điểm mạnh của em là khả năng học hỏi nhanh, làm việc nhóm tốt và chịu được áp lực cao. 
+    Em luôn chủ động tìm hiểu và áp dụng kiến thức mới vào công việc.
+
+    💡 *Hãy thêm một ví dụ cụ thể để chứng minh điểm mạnh của bạn.*"""
+            
+            else:
+                return """Câu trả lời mẫu:
+
+    Hãy trả lời một cách trung thực, ngắn gọn, tập trung vào kinh nghiệm và kỹ năng của bạn. 
+    Nên đưa ra ví dụ cụ thể để minh họa cho câu trả lời của mình.
+
+    💡 *Upload CV để tôi có thể gợi ý câu trả lời được cá nhân hóa theo đúng hồ sơ của bạn!*"""
+
+
+    def _format_interview_questions_response(self, questions: List[Dict], jd_analysis: Dict, has_cv: bool) -> str:
+        """Format danh sách câu hỏi và câu trả lời cụ thể từ JD"""
+        
+        position = jd_analysis.get("position", "vị trí này") if jd_analysis else "vị trí này"
+        
+        response = f"""## 🎯 Câu hỏi phỏng vấn và câu trả lời tham khảo cho {position}
+
+    """
+        for i, q in enumerate(questions[:10], 1):
+            type_icon = "💻" if q.get("type") == "technical" else "📋" if q.get("type") == "experience" else "🎭"
+            question = q.get("question", "")
+            answer = q.get("answer", "Hãy trả lời dựa trên kinh nghiệm thực tế của bạn.")
+            
+            response += f"**{i}. {type_icon} {question}**\n\n"
+            response += f"💡 **Câu trả lời tham khảo:**\n{answer}\n\n"
+            response += "---\n\n"
+        
+        if not has_cv:
+            response += """
+    📎 **Để có câu trả lời cá nhân hóa dựa trên CV của bạn, hãy upload CV lên ngay!**"""
+        else:
+            response += """
+    ✅ **Bạn đã có CV! Để có câu trả lời cá nhân hóa hơn, hãy upload CV mới nếu thông tin thay đổi.**"""
+        
+        return response
+
+    def _get_fallback_questions_from_jd(self, jd_analysis: Dict[str, Any]) -> List[Dict[str, str]]:
+        """Fallback khi không thể sinh câu hỏi từ LLM"""
+        
+        position = jd_analysis.get("position", "vị trí này")
+        skills = jd_analysis.get("skills", [])
+        
+        questions = [
+            {"question": f"Hãy giới thiệu về bản thân và kinh nghiệm của bạn liên quan đến {position}.", "type": "experience"},
+            {"question": f"Theo bạn, điều gì quan trọng nhất khi làm việc ở {position}?", "type": "behavioral"},
+        ]
+        
+        # Thêm câu hỏi về kỹ năng
+        for skill in skills[:4]:
+            questions.append({
+                "question": f"Bạn có kinh nghiệm gì với {skill}? Hãy mô tả chi tiết.",
+                "type": "technical"
+            })
+        
+        questions.append({
+            "question": f"Bạn sẽ xử lý thế nào nếu gặp khó khăn khi thực hiện {jd_analysis.get('responsibilities', ['công việc'])[0]}?",
+            "type": "situation"
+        })
+        questions.append({
+            "question": "Bạn có câu hỏi gì cho chúng tôi về vị trí này?",
+            "type": "behavioral"
+        })
+        
+        return questions
+
+
+    def _format_jd_response(self, jd_analysis: Dict[str, Any], questions: List[Dict[str, str]]) -> str:
+        """Format response sau khi phân tích JD - MỖI CÂU HỎI CÓ CÂU TRẢ LỜI CỤ THỂ TỪ LLM"""
+        
+        position = jd_analysis.get("position", "Vị trí")
+        requirements = jd_analysis.get("requirements", [])
+        skills = jd_analysis.get("skills", [])
+        
+        response = f"""## 📋 Phân tích Job Description - {position}
+
+    ### 📌 Yêu cầu chính:
+    """
+        for req in requirements[:5]:
+            response += f"• {req}\n"
+        
+        response += f"""
+    ### 🔧 Kỹ năng cần có:
+    """
+        for skill in skills[:8]:
+            response += f"• {skill}\n"
+        
+        response += f"""
+    ### 🎯 Câu hỏi phỏng vấn và câu trả lời tham khảo:
+
+    """
+        for i, q in enumerate(questions[:10], 1):
+            type_icon = "💻" if q.get("type") == "technical" else "📋" if q.get("type") == "experience" else "🎭"
+            question = q.get("question", "")
+            answer = q.get("answer", "Hãy trả lời dựa trên kinh nghiệm thực tế của bạn.")
+            
+            response += f"**{i}. {type_icon} {question}**\n\n"
+            response += f"💡 **Câu trả lời tham khảo:**\n{answer}\n\n"
+            response += "---\n\n"
+        
+        response += """
+    📎 **Để có câu trả lời cá nhân hóa dựa trên CV của bạn, hãy upload CV lên ngay!**"""
+        
+        return response
+
+
+    async def _generate_personalized_questions_from_jd_and_cv(self, jd_analysis: Dict, cv_analysis: CVAnalysis) -> List[Dict[str, str]]:
+        """Tạo câu hỏi phỏng vấn cá nhân hóa dựa trên cả JD và CV"""
+        
+        position = jd_analysis.get("position", "vị trí này")
+        requirements = jd_analysis.get("requirements", [])
+        skills = jd_analysis.get("skills", [])
+        responsibilities = jd_analysis.get("responsibilities", [])
+        
+        cv_skills = cv_analysis.extracted_skills or []
+        cv_exp = cv_analysis.experience_years or 0
+        cv_strengths = cv_analysis.strengths or []
+        
+        req_text = "\n".join([f"- {r}" for r in requirements[:5]]) if requirements else "Chưa có"
+        skill_text = ", ".join(skills[:8]) if skills else "chưa xác định"
+        resp_text = "\n".join([f"- {r}" for r in responsibilities[:3]]) if responsibilities else "Chưa có"
+        cv_skills_text = ", ".join(cv_skills[:8]) if cv_skills else "chưa xác định"
+        
+        prompt = f"""Bạn là chuyên gia phỏng vấn. Dựa trên JD và CV của ứng viên, hãy tạo 8-10 câu hỏi phỏng vấn và câu trả lời mẫu CÁ NHÂN HÓA cho ứng viên này.
+
+    THÔNG TIN CÔNG VIỆC (JD):
+    - Vị trí: {position}
+    - Yêu cầu chính: {req_text}
+    - Kỹ năng cần có: {skill_text}
+    - Trách nhiệm: {resp_text}
+
+    THÔNG TIN ỨNG VIÊN (từ CV):
+    - Kinh nghiệm: {cv_exp} năm
+    - Kỹ năng hiện có: {cv_skills_text}
+    - Điểm mạnh: {', '.join(cv_strengths[:3]) if cv_strengths else 'chưa xác định'}
+
+    YÊU CẦU:
+    1. Câu hỏi phải LIÊN QUAN TRỰC TIẾP đến JD
+    2. Câu trả lời phải CÁ NHÂN HÓA dựa trên thông tin CV của ứng viên
+    3. Mỗi câu trả lời nên tận dụng kinh nghiệm và kỹ năng thực tế của ứng viên
+    4. Câu trả lời dài 2-3 câu, cụ thể, có giá trị
+
+    Trả về JSON array, mỗi phần tử: {{"question": "câu hỏi", "answer": "câu trả lời cá nhân hóa", "type": "technical|experience|situation|behavioral"}}"""
+        
+        try:
+            result = await asyncio.wait_for(
+                self.rag_engine.llm.extract_json(prompt, temperature=0.6),
+                timeout=30.0
+            )
+            if isinstance(result, list) and result:
+                return result
+        except Exception as e:
+            logger.error(f"Generate personalized questions error: {str(e)}")
+        
+        # Fallback
+        return self._get_fallback_questions_with_answers(jd_analysis)

@@ -364,6 +364,80 @@ function ErrorMessage({ message }) {
     );
 }
 
+
+// ── Inline CV Uploader (dùng trong interview_questions, không cần triggerFileUpload) ──
+function InlineCVUploader({ onFile }) {
+    const [dragging, setDragging] = useState(false);
+    const [fileName, setFileName] = useState(null);
+
+    const ALLOWED = [
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/msword',
+    ];
+
+    const validate = (file) => {
+        if (!ALLOWED.includes(file.type)) return 'Chỉ hỗ trợ PDF và DOCX';
+        if (file.size > 10 * 1024 * 1024) return 'File quá lớn (tối đa 10MB)';
+        return null;
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setDragging(false);
+        const file = e.dataTransfer.files[0];
+        if (!file) return;
+        const err = validate(file);
+        if (err) { alert(err); return; }
+        setFileName(file.name);
+        onFile(file);
+    };
+
+    const handleChange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const err = validate(file);
+        if (err) { alert(err); return; }
+        setFileName(file.name);
+        onFile(file);
+        e.target.value = '';
+    };
+
+    return (
+        <div
+            className={`ai-inline-cv-drop${dragging ? ' dragging' : ''}`}
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={handleDrop}
+        >
+            <label className="ai-inline-cv-label">
+                <input
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    style={{ display: 'none' }}
+                    onChange={handleChange}
+                />
+                {fileName ? (
+                    <div className="ai-inline-cv-selected">
+                        <span className="ai-inline-cv-icon">📄</span>
+                        <span className="ai-inline-cv-name">{fileName}</span>
+                        <span className="ai-inline-cv-processing">⏳ Đang xử lý...</span>
+                    </div>
+                ) : (
+                    <div className="ai-inline-cv-idle">
+                        <span className="ai-inline-cv-icon">📎</span>
+                        <div className="ai-inline-cv-text">
+                            <strong>Kéo thả CV vào đây</strong>
+                            <span>hoặc <u>click để chọn file</u></span>
+                            <span className="ai-inline-cv-hint">PDF, DOCX · tối đa 10MB</span>
+                        </div>
+                    </div>
+                )}
+            </label>
+        </div>
+    );
+}
+
 function InlineJobCard({ job }) {
     return (
         <div className="ai-job-card">
@@ -460,6 +534,7 @@ export default function AIAssistantScreen({ onNavigate }) {
     const [quickPrompts, setQuickPrompts] = useState(DEFAULT_QUICK_PROMPTS);
     const [initialLoadDone, setInitialLoadDone] = useState(false);
     const navigate = useNavigate()
+    const [hasCv, setHasCv] = useState(false);
 
     const messagesRef = useRef(messages);
     useEffect(() => {
@@ -611,8 +686,6 @@ export default function AIAssistantScreen({ onNavigate }) {
         [currentSessionId]
     );
 
-
-
     // ========== LOAD MESSAGES ==========
     useEffect(() => {
         if (!userID) return;
@@ -642,6 +715,14 @@ export default function AIAssistantScreen({ onNavigate }) {
                         setMessages(parsed);
                         setInitialLoadDone(true);
                         setTimeout(() => { isRestoringRef.current = false; }, 100);
+
+                        const lastCvMsg = parsed.slice().reverse().find(
+                            (m) => m.analysis || m.type === 'cv_analysis'
+                        );
+                        if (lastCvMsg) {
+                            setCvAnalysis(lastCvMsg.analysis || null);
+                            setHasCv(true);
+                        }
 
                         // Đồng bộ sessions từ API nếu chưa có trong storage
                         if (!savedSessions) {
@@ -686,7 +767,10 @@ export default function AIAssistantScreen({ onNavigate }) {
                     setCurrentSessionId(targetSession.id);
                     localStorage.setItem(`ai_last_session_${userID}`, String(targetSession.id));
                     const lastA = msgs.slice().reverse().find((m) => m.metadata?.analysis);
-                    if (lastA) setCvAnalysis(lastA.metadata.analysis);
+                    if (lastA) {
+                        setCvAnalysis(lastA.metadata.analysis);
+                        setHasCv(true);
+                    }
                 } else {
                     setMessages(INITIAL_MESSAGES);
                     setCurrentSessionId(null);
@@ -746,6 +830,7 @@ export default function AIAssistantScreen({ onNavigate }) {
         setMessages(INITIAL_MESSAGES);
         setCvAnalysis(null);
         setUploadedCV(null);
+        setHasCv(false);
         setInput('');
         if (userID) {
             sessionStorage.removeItem(`ai_messages_${userID}`);
@@ -766,6 +851,7 @@ export default function AIAssistantScreen({ onNavigate }) {
         localStorage.setItem(`ai_last_session_${userID}`, String(sessionID));
         const lastA = msgs.slice().reverse().find((m) => m.metadata?.analysis);
         setCvAnalysis(lastA?.metadata?.analysis || null);
+        setHasCv(!!lastA);
         setLoadingHistory(false);
     }, [userID, fetchMessages]);
 
@@ -843,6 +929,24 @@ export default function AIAssistantScreen({ onNavigate }) {
                         cached: data.cached || false,
                     };
                     setMessages((prev) => [...prev, assistantMsg]);
+                    if (sessionId) await saveMessageToHistory(sessionId, assistantMsg);
+                } // Trong phần xử lý response của sendMessage, thêm case cho interview_questions:
+                else if (data.type === 'interview_questions') {
+                    const assistantMsg = {
+                        id: userMsgId + 1,
+                        role: 'assistant',
+                        content: data.response || data.message || data.content || '',
+                        type: 'interview_questions',
+                        cached: data.cached || false,
+                    };
+                    setMessages((prev) => {
+                        // Kiểm tra xem đã có message trùng chưa
+                        const lastMsg = prev[prev.length - 1];
+                        if (lastMsg && lastMsg.type === 'interview_questions' && lastMsg.content === assistantMsg.content) {
+                            return prev;
+                        }
+                        return [...prev, assistantMsg];
+                    });
                     if (sessionId) await saveMessageToHistory(sessionId, assistantMsg);
                 }
                 else {
@@ -983,25 +1087,28 @@ export default function AIAssistantScreen({ onNavigate }) {
                 const data = await response.json();
                 if (!data.success) throw new Error(data.message || 'Upload failed');
 
-                if (data.analysis) setCvAnalysis(data.analysis);
+                if (data.analysis) {
+                    setCvAnalysis(data.analysis);
+                    setHasCv(true);
+                }
 
                 let displayMessage = data.message || '';
                 if (data.analysis) {
                     const a = data.analysis;
                     displayMessage = `✅ **Phân tích CV hoàn tất!**
 
-**Đánh giá tổng quan:**
-• Điểm format: **${a.format_score}/10**
-• Cấp bậc phù hợp: **${a.suitable_level}**
-• Kinh nghiệm: **${a.experience_years} năm**
+                        **Đánh giá tổng quan:**
+                        • Điểm format: **${a.format_score}/10**
+                        • Cấp bậc phù hợp: **${a.suitable_level}**
+                        • Kinh nghiệm: **${a.experience_years} năm**
 
-**Điểm mạnh:**
-${a.strengths?.map((s) => `• ${s}`).join('\n') || '• Chưa có thông tin'}
+                        **Điểm mạnh:**
+                        ${a.strengths?.map((s) => `• ${s}`).join('\n') || '• Chưa có thông tin'}
 
-**Cần cải thiện:**
-${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
+                        **Cần cải thiện:**
+                        ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
 
-**Kỹ năng nhận diện:** ${a.extracted_skills?.join(', ') || 'Chưa nhận diện được'}`;
+                        **Kỹ năng nhận diện:** ${a.extracted_skills?.join(', ') || 'Chưa nhận diện được'}`;
                 }
 
                 const analysisMsg = {
@@ -1054,6 +1161,124 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
     const triggerFileUpload = () => {
         fileInputRef.current?.click();
     };
+
+
+    const handleInterviewCVUpload = useCallback(async (file) => {
+        if (!file) return;
+
+        const allowedTypes = [
+            'application/pdf',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/msword',
+        ];
+        if (!allowedTypes.includes(file.type)) {
+            alert('Chỉ hỗ trợ file PDF và DOCX');
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            alert('File quá lớn (tối đa 10MB)');
+            return;
+        }
+
+        let sessionId = currentSessionId;
+        if (!sessionId) {
+            const session = await createSession('Phân tích CV');
+            if (session) {
+                sessionId = session.id;
+                setCurrentSessionId(sessionId);
+                localStorage.setItem(`ai_last_session_${userID}`, sessionId);
+                setSessions((prev) => [session, ...prev]);
+            }
+        }
+
+        // Hiện CV attachment trong chat
+        const blobUrl = URL.createObjectURL(file);
+        setUploadedCV({ name: file.name, size: file.size, type: file.type, url: blobUrl });
+        const uploadMsg = {
+            id: Date.now(),
+            role: 'user',
+            content: null,
+            type: 'cv_upload',
+            fileName: file.name,
+            fileUrl: blobUrl,
+            fileSize: file.size,
+        };
+        setMessages((prev) => [...prev, uploadMsg]);
+        if (sessionId) await saveMessageToHistory(sessionId, uploadMsg);
+
+        setIsUploading(true);
+        setTyping(true);
+
+        try {
+            // Upload CV
+            const formData = new FormData();
+            formData.append('userID', userID);
+            formData.append('file', file);
+
+            const uploadRes = await fetchWithTimeout(`${API_BASE_URL}/chatbot/upload-cv`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${getToken()}` },
+                body: formData,
+            }, 600000);
+
+            const uploadData = await uploadRes.json();
+            if (!uploadData.success) throw new Error(uploadData.message || 'Upload failed');
+
+            if (uploadData.analysis) {
+                setCvAnalysis(uploadData.analysis);
+                setHasCv(true);
+            }
+
+            // 🔥 QUAN TRỌNG: Gửi message yêu cầu câu hỏi phỏng vấn dựa trên CV và JD đã có
+            // Sử dụng message này để backend biết cần kết hợp JD + CV
+            const chatParams = new URLSearchParams();
+            chatParams.append('userID', userID);
+            chatParams.append('message', 'Hãy đưa ra câu hỏi phỏng vấn và câu trả lời cho vị trí trong JD trước đó, dựa trên CV của tôi');
+            chatParams.append('stream', 'false');
+
+            const chatRes = await fetchWithTimeout(`${API_BASE_URL}/chatbot/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: chatParams.toString(),
+            });
+
+            const chatData = await chatRes.json();
+
+            console.log('Chat response:', chatData);
+
+            let personalizedContent = '';
+            if (chatData.type === 'interview_questions') {
+                personalizedContent = chatData.response || chatData.message || chatData.content || '';
+            } else {
+                personalizedContent = chatData.response || chatData.message || chatData.content || '';
+            }
+
+            const personalizedMsg = {
+                id: Date.now() + 1,
+                role: 'assistant',
+                content: personalizedContent || 'Đã phân tích CV xong. Bạn có thể yêu cầu "Hãy đưa ra câu hỏi phỏng vấn cho vị trí trong JD" để nhận câu hỏi cá nhân hóa.',
+                type: 'interview_questions',
+                personalized: true,
+                cached: chatData.cached || false,
+            };
+            setMessages((prev) => [...prev, personalizedMsg]);
+            if (sessionId) await saveMessageToHistory(sessionId, personalizedMsg);
+
+        } catch (error) {
+            console.error('Interview CV upload error:', error);
+            const errMsg = {
+                id: Date.now(),
+                role: 'assistant',
+                content: `❌ Lỗi xử lý CV: ${error.message}`,
+                type: 'error',
+            };
+            setMessages((prev) => [...prev, errMsg]);
+            if (sessionId) await saveMessageToHistory(sessionId, errMsg);
+        } finally {
+            setIsUploading(false);
+            setTyping(false);
+        }
+    }, [userID, currentSessionId, createSession, saveMessageToHistory]);
 
     // ✅ MỚI
     const handleJobClick = useCallback(async (job) => {
@@ -1483,6 +1708,32 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                                                 ))}
                                             </div>
                                         </>
+                                    )}
+
+
+                                    {msg.type === 'interview_questions' && (
+                                        <div className="ai-interview-section">
+                                            <MdText text={msg.content} />
+                                            {msg.personalized && (
+                                                <div className="ai-personalized-badge">
+                                                    ✨ Đã cá nhân hóa theo CV của bạn
+                                                </div>
+                                            )}
+                                            {!hasCv && !typing ? (
+                                                <div className="ai-upload-cv-prompt">
+                                                    <div className="ai-upload-cv-header">
+                                                        <span className="ai-upload-cv-title">🎯 Cá nhân hóa câu trả lời theo CV của bạn</span>
+                                                        <p className="ai-upload-cv-desc">Upload CV để AI tạo câu trả lời phỏng vấn phù hợp chính xác với kinh nghiệm và kỹ năng của bạn</p>
+                                                    </div>
+                                                    <InlineCVUploader onFile={handleInterviewCVUpload} />
+                                                </div>
+                                            ) : hasCv ? (
+                                                <div className="ai-cv-ready">
+                                                    {/* ✅ Đã có CV! Câu trả lời đã được cá nhân hóa dựa trên hồ sơ của bạn. */}
+                                                    <InlineCVUploader onFile={handleInterviewCVUpload} />
+                                                </div>
+                                            ) : null}
+                                        </div>
                                     )}
                                 </div>
                                 {msg.role === 'user' && (
