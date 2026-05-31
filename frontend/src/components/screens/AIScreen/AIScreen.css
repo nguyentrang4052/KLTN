@@ -1838,3 +1838,154 @@
     border-radius: 8px 8px 0 0;
     width: 100%;
 }
+
+/* Interview Questions Styles */
+.ai-interview-question {
+    font-weight: 600;
+    color: #1a73e8;
+    margin-top: 16px;
+    margin-bottom: 6px;
+    font-size: 15px;
+    line-height: 1.4;
+}
+.ai-interview-question .question-prefix {
+    color: #1a73e8;  /* Màu xanh dương cho "Câu hỏi X:" */
+    font-weight: 600;
+}
+
+.ai-interview-answer {
+    color: #333;
+    margin-bottom: 14px;
+    padding-left: 16px;
+    border-left: 3px solid #1a73e8;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.ai-interview-answer .answer-prefix {
+    font-weight: 600;
+    color: black;  /* Màu xanh lá cho "Câu trả lời:" */
+}
+
+.ai-interview-separator {
+    margin: 16px 0;
+    border: none;
+    border-top: 1px solid #e5e7eb;
+}
+
+.ai-advice-title {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    font-size: 15px;
+    color: #10b981;
+}
+
+.ai-personalized-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-top: 16px;
+    margin-bottom: 12px;
+}
+
+.ai-upload-cv-prompt {
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 16px;
+    padding: 20px;
+    margin-top: 20px;
+    text-align: center;
+}
+
+.ai-upload-cv-header {
+    margin-bottom: 16px;
+}
+
+.ai-upload-cv-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e293b;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.ai-upload-cv-desc {
+    font-size: 13px;
+    color: #64748b;
+    margin: 0;
+}
+
+.ai-inline-cv-drop {
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    padding: 16px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ai-inline-cv-drop.dragging {
+    border-color: #1a73e8;
+    background: #f0f7ff;
+}
+
+.ai-inline-cv-label {
+    cursor: pointer;
+    display: block;
+}
+
+.ai-inline-cv-idle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.ai-inline-cv-icon {
+    font-size: 24px;
+}
+
+.ai-inline-cv-text {
+    text-align: left;
+}
+
+.ai-inline-cv-text strong {
+    display: block;
+    font-size: 14px;
+    color: #1e293b;
+}
+
+.ai-inline-cv-text span {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.ai-inline-cv-hint {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-left: 8px;
+}
+
+.ai-inline-cv-selected {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.ai-inline-cv-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1e293b;
+}
+
+.ai-inline-cv-processing {
+    font-size: 12px;
+    color: #f59e0b;
+}

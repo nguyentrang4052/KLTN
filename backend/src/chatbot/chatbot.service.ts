@@ -211,6 +211,7 @@ export class ChatbotService {
 
             // Xử lý interview_questions
             if (pythonData.type === 'interview_questions') {
+                this.logger.log(`📋 Python interview_questions response: ${JSON.stringify(pythonData)}`);
                 return {
                     type: 'interview_questions',
                     response: pythonData.response || pythonData.content || '',

@@ -88,7 +88,6 @@ async def chat(
         )
         logger.info("chat_result", type=result.get("type"), error=result.get("error"))
 
-        # Nếu result có error=True, vẫn trả 200 OK nhưng với success=false
         if result.get("error"):
             return JSONResponse(
                 status_code=200,
@@ -107,23 +106,33 @@ async def chat(
                 yield f"data: {json.dumps({'done': True})}\n\n"
             return StreamingResponse(event_stream(), media_type="text/event-stream")
 
-        # 🔥 QUAN TRỌNG: Xây dựng response dựa trên type từ result
         response_content = {
             "success": True,
             "cached": result.get("cached", False),
         }
         
-        # Nếu là job_list, ưu tiên trả về jobs array
-        if result.get("type") == "job_list":
+        # 🔥 THÊM XỬ LÝ CHO interview_questions
+        if result.get("type") == "interview_questions":
+            response_content["type"] = "interview_questions"
+            # Ưu tiên lấy response field (từ _handle_jd_upload_or_text)
+            response_content["response"] = result.get("response") or result.get("message") or result.get("content", "")
+            logger.info(f"📤 Returning interview_questions, response length: {len(response_content['response'])}")
+        
+        elif result.get("type") == "job_list":
             response_content["type"] = "job_list"
             response_content["jobs"] = result.get("jobs", [])
             response_content["content"] = result.get("content", result.get("message", ""))
+        
+        elif result.get("type") == "cv_analysis_complete":
+            response_content["type"] = "cv_analysis_complete"
+            response_content["message"] = result.get("message") or result.get("content", "")
+            response_content["analysis"] = result.get("analysis")
+            response_content["job_matches"] = result.get("job_matches", [])
+        
         else:
-            # type = text, cv_analysis_complete, error...
             response_content["type"] = result.get("type", "text")
             response_content["response"] = result.get("message") or result.get("content", "")
             
-            # Thêm analysis và job_matches nếu có
             if result.get("analysis"):
                 response_content["analysis"] = result.get("analysis")
             if result.get("job_matches"):

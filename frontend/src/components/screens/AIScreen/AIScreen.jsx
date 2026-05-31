@@ -84,30 +84,76 @@ const formatDate = (iso) => {
 function MdText({ text }) {
     if (text == null) return null;
 
-    // Ép chắc chắn thành string
-    const safeText =
-        typeof text === 'string'
-            ? text
-            : JSON.stringify(text, null, 2);
-
+    const safeText = typeof text === 'string' ? text : JSON.stringify(text, null, 2);
     const lines = safeText.split('\n');
+
+    // Helper: phát hiện các dòng đặc biệt - LOOSER MATCH
+    const isQuestionLine = (line) => {
+        // Loại bỏ khoảng trắng đầu dòng rồi kiểm tra
+        const trimmed = line.trim();
+        return /^C[âa]u hỏi \d+:/i.test(trimmed);
+    };
+    
+    const isAnswerLine = (line) => {
+        const trimmed = line.trim();
+        return /^C[âa]u trả lời:/i.test(trimmed);
+    };
+    
+    const isSeparatorLine = (line) => line.trim() === '---';
+    const isLoiKhuyenLine = (line) => /^Lời khuyên dành cho bạn:/i.test(line.trim());
 
     return (
         <div className="ai-md">
             {lines.map((line, i) => {
-                if (!line) return <br key={i} />;
+                if (!line.trim()) return <br key={i} />;
 
-                const parsed = line
-                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-                    .replace(/`(.+?)`/g, '<code>$1</code>');
+                const trimmedLine = line.trim();
+                
+                // 🔥 Xử lý dòng câu hỏi - dùng trimmedLine để kiểm tra
+                if (isQuestionLine(line)) {
+                    // Tìm vị trí dấu : trong dòng gốc
+                    const colonIndex = line.indexOf(':');
+                    const prefix = line.substring(0, colonIndex);
+                    const content = line.substring(colonIndex + 1).trim();
+                    
+                    return (
+                        <div key={i} className="ai-interview-question">
+                            <strong className="question-prefix">{prefix}:</strong> {content}
+                        </div>
+                    );
+                }
 
-                if (/^\|[-:]+/.test(line)) return null;
+                // Xử lý dòng câu trả lời
+                if (isAnswerLine(line)) {
+                    const colonIndex = line.indexOf(':');
+                    const prefix = line.substring(0, colonIndex);
+                    const content = line.substring(colonIndex + 1).trim();
+                    
+                    return (
+                        <div key={i} className="ai-interview-answer">
+                            <strong className="answer-prefix">{prefix}:</strong> {content}
+                        </div>
+                    );
+                }
 
-                if (line.startsWith('|')) {
+                // Xử lý dòng Lời khuyên
+                if (isLoiKhuyenLine(line)) {
+                    return (
+                        <div key={i} className="ai-advice-title">
+                            <strong>💡 {line.trim()}</strong>
+                        </div>
+                    );
+                }
+
+                // Xử lý dòng separator
+                if (isSeparatorLine(line)) {
+                    return <hr key={i} className="ai-interview-separator" />;
+                }
+
+                // Xử lý bảng markdown
+                if (trimmedLine.startsWith('|')) {
                     const cells = line.split('|').filter((c) => c.trim());
-                    const isHeader = lines[i + 1]?.startsWith('|---');
-
+                    const isHeader = lines[i + 1]?.trim().startsWith('|---');
                     return (
                         <div
                             key={i}
@@ -126,25 +172,31 @@ function MdText({ text }) {
                     );
                 }
 
-                if (line.startsWith('• ')) {
+                // Xử lý bullet points
+                if (trimmedLine.startsWith('• ') || trimmedLine.startsWith('- ')) {
+                    const content = line.replace(/^[•-] /, '');
                     return (
                         <div key={i} className="ai-list-item">
                             <span className="ai-bullet">•</span>
                             <span
                                 dangerouslySetInnerHTML={{
-                                    __html: parsed.replace(/^• /, ''),
+                                    __html: content
+                                        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                                        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                                        .replace(/`(.+?)`/g, '<code>$1</code>'),
                                 }}
                             />
                         </div>
                     );
                 }
 
-                return (
-                    <p
-                        key={i}
-                        dangerouslySetInnerHTML={{ __html: parsed }}
-                    />
-                );
+                // Xử lý markdown cơ bản cho dòng thường
+                const parsed = line
+                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                    .replace(/`(.+?)`/g, '<code>$1</code>');
+
+                return <p key={i} dangerouslySetInnerHTML={{ __html: parsed }} />;
             })}
         </div>
     );
@@ -932,6 +984,11 @@ export default function AIAssistantScreen({ onNavigate }) {
                     if (sessionId) await saveMessageToHistory(sessionId, assistantMsg);
                 } // Trong phần xử lý response của sendMessage, thêm case cho interview_questions:
                 else if (data.type === 'interview_questions') {
+                    console.log('📋 Interview questions data:', data);
+                    console.log('📋 Response content:', data.response);
+                    console.log('📋 Message content:', data.message);
+                    console.log('📋 Content:', data.content);
+
                     const assistantMsg = {
                         id: userMsgId + 1,
                         role: 'assistant',
@@ -1230,10 +1287,10 @@ export default function AIAssistantScreen({ onNavigate }) {
             }
 
             // 🔥 QUAN TRỌNG: Gửi message yêu cầu câu hỏi phỏng vấn dựa trên CV và JD đã có
-            // Sử dụng message này để backend biết cần kết hợp JD + CV
+            // Lấy JD từ session (lưu khi user dán JD)
             const chatParams = new URLSearchParams();
             chatParams.append('userID', userID);
-            chatParams.append('message', 'Hãy đưa ra câu hỏi phỏng vấn và câu trả lời cho vị trí trong JD trước đó, dựa trên CV của tôi');
+            chatParams.append('message', 'Đưa ra danh sách câu hỏi dựa theo JD trước đó + câu trả lời cá nhân hóa theo CV vừa upload');
             chatParams.append('stream', 'false');
 
             const chatRes = await fetchWithTimeout(`${API_BASE_URL}/chatbot/chat`, {
@@ -1244,8 +1301,7 @@ export default function AIAssistantScreen({ onNavigate }) {
 
             const chatData = await chatRes.json();
 
-            console.log('Chat response:', chatData);
-
+            // Lấy nội dung từ response
             let personalizedContent = '';
             if (chatData.type === 'interview_questions') {
                 personalizedContent = chatData.response || chatData.message || chatData.content || '';
@@ -1253,12 +1309,18 @@ export default function AIAssistantScreen({ onNavigate }) {
                 personalizedContent = chatData.response || chatData.message || chatData.content || '';
             }
 
+            // Nếu không có nội dung, hiển thị thông báo mặc định
+            if (!personalizedContent) {
+                personalizedContent = '✅ Đã phân tích CV xong. Vui lòng yêu cầu "Đưa ra câu hỏi phỏng vấn" để nhận câu trả lời cá nhân hóa.';
+            }
+
             const personalizedMsg = {
                 id: Date.now() + 1,
                 role: 'assistant',
-                content: personalizedContent || 'Đã phân tích CV xong. Bạn có thể yêu cầu "Hãy đưa ra câu hỏi phỏng vấn cho vị trí trong JD" để nhận câu hỏi cá nhân hóa.',
+                content: personalizedContent,
                 type: 'interview_questions',
                 personalized: true,
+                hasCv: true,
                 cached: chatData.cached || false,
             };
             setMessages((prev) => [...prev, personalizedMsg]);
@@ -1713,13 +1775,18 @@ export default function AIAssistantScreen({ onNavigate }) {
 
                                     {msg.type === 'interview_questions' && (
                                         <div className="ai-interview-section">
+                                            {/* Hiển thị nội dung markdown từ backend */}
                                             <MdText text={msg.content} />
+
+                                            {/* Badge cá nhân hóa */}
                                             {msg.personalized && (
                                                 <div className="ai-personalized-badge">
                                                     ✨ Đã cá nhân hóa theo CV của bạn
                                                 </div>
                                             )}
-                                            {!hasCv && !typing ? (
+
+                                            {/* Chỉ hiển thị phần upload CV khi chưa có CV và chưa được cá nhân hóa */}
+                                            {!hasCv && !msg.personalized && (
                                                 <div className="ai-upload-cv-prompt">
                                                     <div className="ai-upload-cv-header">
                                                         <span className="ai-upload-cv-title">🎯 Cá nhân hóa câu trả lời theo CV của bạn</span>
@@ -1727,14 +1794,10 @@ export default function AIAssistantScreen({ onNavigate }) {
                                                     </div>
                                                     <InlineCVUploader onFile={handleInterviewCVUpload} />
                                                 </div>
-                                            ) : hasCv ? (
-                                                <div className="ai-cv-ready">
-                                                    {/* ✅ Đã có CV! Câu trả lời đã được cá nhân hóa dựa trên hồ sơ của bạn. */}
-                                                    <InlineCVUploader onFile={handleInterviewCVUpload} />
-                                                </div>
-                                            ) : null}
+                                            )}
                                         </div>
                                     )}
+
                                 </div>
                                 {msg.role === 'user' && (
                                     <div className="ai-msg-av-wrap">
