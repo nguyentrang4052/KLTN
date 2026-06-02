@@ -129,6 +129,12 @@ export class JobsController {
     return this.jobsService.getIndustryTrends();
   }
 
+  @Get('viewed')
+  @UseGuards(JwtAuthGuard)
+  getViewedJobs(@Query() dto: QueryJobsDto, @GetUser() user: JwtUser) {
+    return this.jobsService.getViewedJobs(dto, user.sub);
+  }
+
   @Get(':id')
   getJobById(@Param('id', ParseIntPipe) id: number) {
     return this.jobsService.getJobById(id);
@@ -185,4 +191,5 @@ export class JobsController {
   ) {
     return this.jobsService.unsaveJob(user.sub, jobID);
   }
+
 }

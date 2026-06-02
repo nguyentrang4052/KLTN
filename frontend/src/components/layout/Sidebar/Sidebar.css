@@ -28,10 +28,11 @@
 .sb-section {
   font-size: 14px;
   color: black;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.2px;
-  padding: 0px 2px;
+  padding: 10px 2px;
+  font-family: "Roboto", serif;
 }
 
 .sb-divider {

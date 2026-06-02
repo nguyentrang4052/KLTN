@@ -1127,4 +1127,40 @@ export class JobsService {
       jobSalary: job.salary ?? null,
     };
   }
+
+  async getViewedJobs(dto: QueryJobsDto, accountID: number) {
+    const user = await this.prisma.user.findUnique({ where: { accountID } });
+
+    const { page = 1, limit = 9 } = dto;
+
+    if (!user) throw new Error('User not found');
+
+    const skip = (page - 1) * limit;
+
+    const total = await this.prisma.userBehavior.count({
+      where: {
+        userID: user.userID,
+        action: 'view',
+      },
+    });
+
+    const viewedJobs = await this.prisma.userBehavior.findMany({
+      where: {
+        userID: user.userID,
+        action: 'view',
+      },
+      include: {
+        job: {
+          include: { company: true },
+        }
+      },
+      skip,
+      take: limit,
+    });
+
+    return {
+      data: viewedJobs,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
+  }
 }

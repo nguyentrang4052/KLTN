@@ -1,6 +1,14 @@
 .cv-container {
   min-height: 100vh;
   background: #f2f1ee;
+  display: flex;
+  margin-top: -22px;
+}
+
+.cv-main {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
 }
 
 /* HEADER */

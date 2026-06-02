@@ -454,29 +454,6 @@ function PreviewSection({ label, children }) {
 }
 
 function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
-  // const [cvList, setCvList] = useState(() => {
-  //   try {
-  //     const key = profile?.userID ? `cv_builder_state_${profile.userID}` : 'cv_builder_state'
-  //     const raw = localStorage.getItem(key)
-  //     const state = raw ? JSON.parse(raw) : {}
-  //     const list = state._cvList
-  //     return Array.isArray(list) && list.length > 0 ? list : cvListProp
-  //   } catch { return cvListProp }
-  // })
-  // useEffect(() => {
-  //   const sync = () => {
-  //     try {
-  //       const key = profile?.userID ? `cv_builder_state_${profile.userID}` : 'cv_builder_state'
-  //       const raw = localStorage.getItem(key)
-  //       const state = raw ? JSON.parse(raw) : {}
-  //       if (Array.isArray(state._cvList)) setCvList(state._cvList)
-  //     } catch { }
-  //   }
-  //   window.addEventListener('storage', sync)
-  //   window.addEventListener('focus', sync)
-  //   return () => { window.removeEventListener('storage', sync); window.removeEventListener('focus', sync) }
-  // }, [])
-
   const [cvList, setCvList] = useState(cvListProp)
   const [profile, setProfile] = useState(null)
   const [stats, setStats] = useState(null)

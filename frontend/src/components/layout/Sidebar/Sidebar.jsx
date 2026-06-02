@@ -13,6 +13,7 @@ function Sidebar() {
   const navItems = [
     { id: 'profile', icon: '👤', label: 'Hồ sơ của tôi', path: '/profile' },
     { id: 'save-jobs', icon: '⭐', label: 'Việc đã lưu', path: '/saved-jobs' },
+    { id: 'viewed-jobs', icon: '👀', label: 'Việc đã xem', path: '/viewed-jobs' },
     { id: 'my-cv', icon: '📄', label: 'CV của tôi', path: '/my-cv' },
   ];
 
