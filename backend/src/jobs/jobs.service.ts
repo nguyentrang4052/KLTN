@@ -68,6 +68,7 @@ export class JobsService {
     }
 
     if (industryId) where.industryID = industryId;
+
     if (experience)
       where.experienceYear = { contains: experience, mode: 'insensitive' };
     if (source) where.sourcePlatform = source;

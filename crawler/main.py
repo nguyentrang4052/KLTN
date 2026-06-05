@@ -11,7 +11,9 @@ from fastapi.responses import StreamingResponse
 
 # Load .env TRƯỚC mọi thứ
 from dotenv import load_dotenv
-load_dotenv()
+# load_dotenv()
+load_dotenv(override=True)
+print(f"[Debug] DATABASE_URL = {os.getenv('DATABASE_URL')}")
 
 # ⚠️ FIX: Windows + Playwright cần ProactorEventLoop
 if sys.platform == "win32":

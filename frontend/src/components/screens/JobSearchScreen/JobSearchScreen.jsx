@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 import { getToken } from '../../../utils/auth';
 import './JobSearchScreen.css';
 import { useJobsSocket } from '../../../hook/useJobsSocket';
-import {API} from '../../../config/api'
+import { API } from '../../../config/api'
 
 
 function LoginModal({ onClose }) {
@@ -674,6 +674,14 @@ function JobSearchScreen() {
     (!keyword.trim() && searchHistory.length > 0)
   );
 
+  const toggleIndustry = (value) => {
+    setActiveFilters(prev => ({
+      ...prev,
+      industry: prev.industry.includes(value) ? [] : [value]
+    }));
+    goToPage(1, true);
+  };
+
   return (
     <div className="app">
       {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
@@ -737,7 +745,7 @@ function JobSearchScreen() {
                 : dynamicFilters.industries.length === 0
                   ? <div style={{ fontSize: '12px', color: 'var(--ink4)' }}>Không có dữ liệu</div>
                   : dynamicFilters.industries.map(item => (
-                    <div key={item.id} className="ck-row" onClick={() => toggleFilter('industry', String(item.id))}>
+                    <div key={item.id} className="ck-row" onClick={() => toggleIndustry(String(item.id))}>
                       <div className={`ck ${activeFilters.industry.includes(String(item.id)) ? 'on' : ''}`}>
                         {activeFilters.industry.includes(String(item.id)) ? '✓' : ''}
                       </div>
@@ -909,6 +917,7 @@ function JobSearchScreen() {
                     if (chip.cat === 'source') toggleSource(chip.value);
                     else if (chip.cat === 'jobType') toggleJobType(chip.value);
                     else if (chip.cat === 'experience') toggleExperience(chip.value);
+                    else if (chip.cat === 'industry') toggleIndustry(chip.value);
                     else toggleFilter(chip.cat, chip.value);
                   }}>
                   {chip.label} <span className="af-x">×</span>
