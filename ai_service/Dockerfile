@@ -4,7 +4,7 @@ RUN apt-get update && apt-get install -y \
     gcc g++ \
     tesseract-ocr \
     poppler-utils \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -14,7 +14,6 @@ COPY requirement.txt .
 RUN pip install --no-cache-dir -r requirement.txt
 
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-small-en-v1.5')"
-
 
 COPY . .
 
