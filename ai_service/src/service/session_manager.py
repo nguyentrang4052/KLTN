@@ -213,11 +213,11 @@ class SessionManager:
             del self._sessions[uid]
             logger.debug("session_expired", user_id=uid)
     
-    def clear_session(self, user_id: str):
-        """Clear user session"""
-        if user_id in self._sessions:
-            del self._sessions[user_id]
-            logger.info("session_cleared", user_id=user_id)
+    # def clear_session(self, user_id: str):
+    #     """Clear user session"""
+    #     if user_id in self._sessions:
+    #         del self._sessions[user_id]
+    #         logger.info("session_cleared", user_id=user_id)
 
     def get_formatted_cv_summary(self, user_id: str) -> str:
         """Format CV summary cho LLM context"""
@@ -308,4 +308,9 @@ class SessionManager:
         """Lấy kết quả phân tích JD từ session"""
         session = self.get_or_create(user_id)
         return getattr(session, 'jd_analysis', None)
+
+    def get_matched_jobs(self, user_id: str) -> List[Dict[str, Any]]:
+        """Lấy danh sách matched jobs từ session"""
+        session = self.get_or_create(user_id)
+        return session.matched_jobs
     

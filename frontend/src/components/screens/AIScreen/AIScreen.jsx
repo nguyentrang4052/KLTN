@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { getToken } from '../../../utils/auth';
 import { useLocation } from 'react-router-dom';
 import useUserStore from '../../../store/userStore';
+import { FaTrash } from "react-icons/fa6";
 
 const API_BASE_URL = 'http://localhost:3000/api';
 
@@ -87,20 +88,20 @@ function MdText({ text }) {
     const safeText = typeof text === 'string' ? text : JSON.stringify(text, null, 2);
     const lines = safeText.split('\n');
 
-    // Helper: phát hiện các dòng đặc biệt - LOOSER MATCH
+    // Helper functions
     const isQuestionLine = (line) => {
-        // Loại bỏ khoảng trắng đầu dòng rồi kiểm tra
         const trimmed = line.trim();
-        return /^C[âa]u hỏi \d+:/i.test(trimmed);
+        return /^C[âa]u hỏi \d+:/i.test(trimmed) || /^\d+\.\s*\*\*C[âa]u hỏi/.test(trimmed);
     };
-    
+
     const isAnswerLine = (line) => {
         const trimmed = line.trim();
-        return /^C[âa]u trả lời:/i.test(trimmed);
+        return /^C[âa]u trả lời:/i.test(trimmed) || /^\*\*C[âa]u trả lời/.test(trimmed);
     };
-    
+
     const isSeparatorLine = (line) => line.trim() === '---';
     const isLoiKhuyenLine = (line) => /^Lời khuyên dành cho bạn:/i.test(line.trim());
+    const isSectionHeader = (line) => /^###\s+/.test(line.trim());
 
     return (
         <div className="ai-md">
@@ -108,14 +109,19 @@ function MdText({ text }) {
                 if (!line.trim()) return <br key={i} />;
 
                 const trimmedLine = line.trim();
-                
-                // 🔥 Xử lý dòng câu hỏi - dùng trimmedLine để kiểm tra
+
+                // Section header
+                if (isSectionHeader(line)) {
+                    const content = line.replace(/^###\s+/, '');
+                    return <h3 key={i} className="ai-section-header">{content}</h3>;
+                }
+
+                // Question line
                 if (isQuestionLine(line)) {
-                    // Tìm vị trí dấu : trong dòng gốc
                     const colonIndex = line.indexOf(':');
-                    const prefix = line.substring(0, colonIndex);
-                    const content = line.substring(colonIndex + 1).trim();
-                    
+                    const prefix = colonIndex > 0 ? line.substring(0, colonIndex) : line.substring(0, line.indexOf('**') + 2);
+                    const content = colonIndex > 0 ? line.substring(colonIndex + 1).trim() : line.replace(prefix, '').replace(':', '').trim();
+
                     return (
                         <div key={i} className="ai-interview-question">
                             <strong className="question-prefix">{prefix}:</strong> {content}
@@ -123,20 +129,20 @@ function MdText({ text }) {
                     );
                 }
 
-                // Xử lý dòng câu trả lời
+                // Answer line
                 if (isAnswerLine(line)) {
                     const colonIndex = line.indexOf(':');
-                    const prefix = line.substring(0, colonIndex);
+                    const prefix = line.substring(0, colonIndex + 1);
                     const content = line.substring(colonIndex + 1).trim();
-                    
+
                     return (
                         <div key={i} className="ai-interview-answer">
-                            <strong className="answer-prefix">{prefix}:</strong> {content}
+                            <strong className="answer-prefix">{prefix}</strong> {content}
                         </div>
                     );
                 }
 
-                // Xử lý dòng Lời khuyên
+                // Loi khuyen line
                 if (isLoiKhuyenLine(line)) {
                     return (
                         <div key={i} className="ai-advice-title">
@@ -145,52 +151,41 @@ function MdText({ text }) {
                     );
                 }
 
-                // Xử lý dòng separator
+                // Separator
                 if (isSeparatorLine(line)) {
                     return <hr key={i} className="ai-interview-separator" />;
                 }
 
-                // Xử lý bảng markdown
+                // Table handling
                 if (trimmedLine.startsWith('|')) {
-                    const cells = line.split('|').filter((c) => c.trim());
+                    const cells = line.split('|').filter(c => c.trim());
                     const isHeader = lines[i + 1]?.trim().startsWith('|---');
                     return (
-                        <div
-                            key={i}
-                            className={`ai-table-row${isHeader ? ' ai-table-head' : ''}`}
-                        >
+                        <div key={i} className={`ai-table-row${isHeader ? ' ai-table-head' : ''}`}>
                             {cells.map((c, j) => (
-                                <span
-                                    key={j}
-                                    className="ai-table-cell"
-                                    dangerouslySetInnerHTML={{
-                                        __html: c.trim(),
-                                    }}
-                                />
+                                <span key={j} className="ai-table-cell" dangerouslySetInnerHTML={{ __html: c.trim() }} />
                             ))}
                         </div>
                     );
                 }
 
-                // Xử lý bullet points
+                // Bullet points
                 if (trimmedLine.startsWith('• ') || trimmedLine.startsWith('- ')) {
                     const content = line.replace(/^[•-] /, '');
                     return (
                         <div key={i} className="ai-list-item">
-                            <span className="ai-bullet">•</span>
-                            <span
-                                dangerouslySetInnerHTML={{
-                                    __html: content
-                                        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                                        .replace(/\*(.+?)\*/g, '<em>$1</em>')
-                                        .replace(/`(.+?)`/g, '<code>$1</code>'),
-                                }}
-                            />
+                            {/* <span className="ai-bullet">•</span> */}
+                            <span dangerouslySetInnerHTML={{
+                                __html: content
+                                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                                    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                                    .replace(/`(.+?)`/g, '<code>$1</code>')
+                            }} />
                         </div>
                     );
                 }
 
-                // Xử lý markdown cơ bản cho dòng thường
+                // Regular text with markdown
                 const parsed = line
                     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
                     .replace(/\*(.+?)\*/g, '<em>$1</em>')
@@ -570,6 +565,7 @@ export default function AIAssistantScreen({ onNavigate }) {
     const [uploadedCV, setUploadedCV] = useState(null);
 
     const [editingSessionId, setEditingSessionId] = useState(null);
+    const [openMenuId, setOpenMenuId] = useState(null);
     const [editTitle, setEditTitle] = useState('');
     const [renaming, setRenaming] = useState(false);
 
@@ -592,6 +588,14 @@ export default function AIAssistantScreen({ onNavigate }) {
     useEffect(() => {
         messagesRef.current = messages;
     }, [messages]);
+
+    useEffect(() => {
+        const el = inputRef.current;
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+        el.style.overflowY = el.scrollHeight > 200 ? 'auto' : 'hidden';
+    }, [input]);
 
 
     const saveCurrentMessages = useCallback(() => {
@@ -688,6 +692,17 @@ export default function AIAssistantScreen({ onNavigate }) {
         async (sessionID, msg) => {
             if (!sessionID) return;
             try {
+                // 🔥 TẠO METADATA ĐẦY ĐỦ
+                const metadata = {};
+
+                if (msg.analysis) metadata.analysis = msg.analysis;
+                if (msg.jobMatches) metadata.jobMatches = msg.jobMatches;
+                if (msg.jobs) metadata.jobs = msg.jobs;  // 🔥 QUAN TRỌNG: LƯU JOBS
+                if (msg.fileName) metadata.fileName = msg.fileName;
+                if (msg.fileUrl) metadata.fileUrl = msg.fileUrl;
+                if (msg.fileSize) metadata.fileSize = msg.fileSize;
+                if (msg.cached) metadata.cached = msg.cached;
+
                 await fetchWithTimeout(`${API_BASE_URL}/chat-history/save-messages`, {
                     method: 'POST',
                     headers: {
@@ -700,21 +715,14 @@ export default function AIAssistantScreen({ onNavigate }) {
                         role: msg.role,
                         content: typeof msg.content === 'string' ? msg.content : '',
                         type: msg.type || 'text',
-                        metadata: {
-                            analysis: msg.analysis,
-                            jobMatches: msg.jobMatches,
-                            fileName: msg.fileName,
-                            fileUrl: msg.fileUrl,
-                            fileSize: msg.fileSize,
-                            cached: msg.cached,
-                        }
+                        metadata: metadata  // 🔥 DÙNG BIẾN metadata ĐÃ TẠO
                     }),
                 });
             } catch (err) {
                 console.error('Save message error:', err);
             }
         },
-        []
+        [token]
     );
 
     const deleteSession = useCallback(
@@ -896,7 +904,37 @@ export default function AIAssistantScreen({ onNavigate }) {
         setLoadingHistory(true);
         const msgs = await fetchMessages(sessionID);
         const ui = msgs.length > 0
-            ? msgs.map((m) => ({ id: m.id || Date.now() + Math.random(), role: m.role, content: m.content, type: m.type || 'text', ...(m.metadata || {}) }))
+            ? msgs.map((m, idx) => {
+                // 🔥 ĐẢM BẢO GIỮ NGUYÊN jobs DATA KHI LOAD LẠI
+                const msgObj = {
+                    id: m.id || `msg-${sessionID}-${idx}`,
+                    role: m.role,
+                    content: m.content,
+                    type: m.type || 'text',
+                };
+
+                // 🔥 KHÔI PHỤC METADATA
+                if (m.metadata) {
+                    if (m.metadata.analysis) msgObj.analysis = m.metadata.analysis;
+                    if (m.metadata.jobMatches) msgObj.jobMatches = m.metadata.jobMatches;
+                    if (m.metadata.jobs) msgObj.jobs = m.metadata.jobs;  // 🔥 KHÔI PHỤC JOBS
+                    if (m.metadata.cached) msgObj.cached = m.metadata.cached;
+                    if (m.metadata.fileName) msgObj.fileName = m.metadata.fileName;
+                    if (m.metadata.fileUrl) msgObj.fileUrl = m.metadata.fileUrl;
+                    if (m.metadata.fileSize) msgObj.fileSize = m.metadata.fileSize;
+                }
+
+                // 🔥 NẾU LÀ job_list TỪ API CŨ, cũng cố gắng lấy jobs
+                if (m.type === 'job_list' && !msgObj.jobs && m.jobs) {
+                    msgObj.jobs = m.jobs;
+                }
+                if (m.type === 'cv_analysis' && !msgObj.analysis && m.analysis) {
+                    msgObj.analysis = m.analysis;
+                    msgObj.jobMatches = m.jobMatches || [];
+                }
+
+                return msgObj;
+            })
             : INITIAL_MESSAGES;
         setMessages(ui);
         setCurrentSessionId(sessionID);
@@ -1539,32 +1577,49 @@ export default function AIAssistantScreen({ onNavigate }) {
 
                 <div className="ai-history-actions">
                     <button
-                        className="ai-history-pin"
+                        className="ai-history-menu-btn"
                         onClick={(e) => {
                             e.stopPropagation();
-                            pinSession(session.id, session.isPinned);
+                            setOpenMenuId(openMenuId === session.id ? null : session.id);
                         }}
-                        title={session.isPinned ? 'Bỏ ghim' : 'Ghim'}
+                        title="Tùy chọn"
                     >
-                        {session.isPinned ? '📌' : '📍'}
+                        ⋮
                     </button>
-                    <button
-                        className="ai-history-rename"
-                        onClick={(e) => startRename(session, e)}
-                        title="Đổi tên"
-                    >
-                        ✏️
-                    </button>
-                    <button
-                        className="ai-history-delete"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            deleteSession(session.id);
-                        }}
-                        title="Xóa"
-                    >
-                        🗑
-                    </button>
+                    {openMenuId === session.id && (
+                        <div className="ai-history-dropdown" onClick={(e) => e.stopPropagation()}>
+                            <button
+                                className="ai-history-dropdown-item"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    pinSession(session.id, session.isPinned);
+                                    setOpenMenuId(null);
+                                }}
+                            >
+                                {session.isPinned ? '📌 Bỏ ghim' : '📍 Ghim'}
+                            </button>
+                            <button
+                                className="ai-history-dropdown-item"
+                                onClick={(e) => {
+                                    startRename(session, e);
+                                    setOpenMenuId(null);
+                                }}
+                            >
+                                ✏️ Đổi tên
+                            </button>
+                            <button
+                                className="ai-history-dropdown-item danger"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteSession(session.id);
+                                    setOpenMenuId(null);
+                                }}
+                            >
+                                <FaTrash/>
+                                Xóa
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         );
@@ -1592,13 +1647,18 @@ export default function AIAssistantScreen({ onNavigate }) {
             <div className="ai-header">
                 <div className="ai-header-inner">
                     <div className="ai-header-brand">
+                        {!showHistory && (
+                            <button
+                                className="ai-panel-toggle"
+                                onClick={() => setShowHistory(true)}
+                                title="Hiện lịch sử"
+                            >
+                                ☰
+                            </button>
+                        )}
                         <div className="ai-header-av">🤖</div>
                         <div>
                             <div className="ai-header-name">GZConnect AI Assistant</div>
-                            <div className="ai-header-status">
-                                <span className="ai-status-dot" />
-                                {typing ? 'Đang trả lời...' : 'Sẵn sàng'}
-                            </div>
                         </div>
                     </div>
                     <div className="ai-header-actions">
@@ -1625,6 +1685,13 @@ export default function AIAssistantScreen({ onNavigate }) {
                         <div className="ai-history-header">
                             <button className="ai-new-chat-btn" onClick={() => startNewChat(true)}>
                                 <span>+</span> New Chat
+                            </button>
+                            <button
+                                className="ai-panel-toggle"
+                                onClick={() => setShowHistory(false)}
+                                title="Ẩn lịch sử"
+                            >
+                                ☰
                             </button>
                         </div>
                         <div className="ai-history-list">

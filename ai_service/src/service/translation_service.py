@@ -39,9 +39,8 @@ class TranslationService:
                    cache_size=self._cache_max_size)
         
     
-    # Trong translation_service.py, sửa method detect_language
     def detect_language(self, text: str) -> Language:
-        """Phát hiện ngôn ngữ của văn bản - CẢI THIỆN"""
+        """Phát hiện ngôn ngữ của văn bản - ƯU TIÊN TIẾNG VIỆT"""
         if not text:
             return Language.VIETNAMESE
         
@@ -50,41 +49,66 @@ class TranslationService:
         # Bộ ký tự tiếng Việt có dấu
         vietnamese_chars = set("áàảãạăắằẳẵặâấầẩẫậđéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ")
         
-        # Từ tiếng Việt phổ biến (không dấu)
+        # Từ tiếng Việt phổ biến
         viet_words = [
             "tôi", "bạn", "chào", "cảm ơn", "xin", "làm ơn", "việc", "lương", 
             "gì", "nào", "sao", "thế", "này", "kia", "đó", "ạ", "nhé", "nhỉ",
             "của", "với", "cho", "về", "mà", "thì", "là", "một", "những",
             "được", "không", "có", "sẽ", "đang", "rất", "hơn", "như", "các",
             "nhưng", "hoặc", "khi", "nếu", "vì", "nên", "vẫn", "lại", "ra",
-            "vào", "lên", "xuống", "theo", "qua", "lại", "chỉ", "còn"
+            "vào", "lên", "xuống", "theo", "qua", "lại", "chỉ", "còn",
+            "phỏng vấn", "câu hỏi", "trả lời", "ứng viên", "tuyển dụng",
+            "kinh nghiệm", "kỹ năng", "công ty", "vị trí"
         ]
         
-        # Đếm số ký tự và từ tiếng Việt
+        # Từ tiếng Anh phổ biến (để phân biệt)
+        english_words = [
+            "the", "and", "of", "to", "in", "for", "on", "with", "by", 
+            "that", "is", "are", "was", "were", "be", "been", "being",
+            "have", "has", "had", "having", "do", "does", "did", "doing",
+            "a", "an", "this", "these", "those", "it", "they", "we", "you",
+            "what", "where", "when", "why", "how", "which", "who", "whom",
+            "interview", "question", "answer", "job", "position", "company"
+        ]
+        
+        # Đếm số lượng từ trong text
+        words = re.findall(r'\b[a-zàáảãạăắằẳẵặâấầẩẫậđéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ]+\b', text_lower)
+        
+        viet_count = 0
+        eng_count = 0
+        
+        for w in words:
+            if w in viet_words:
+                viet_count += 1
+            if w in english_words:
+                eng_count += 1
+        
+        # Kiểm tra dấu tiếng Việt
         has_vietnamese_diacritics = any(c in text_lower for c in vietnamese_chars)
-        has_viet_words = any(word in text_lower for word in viet_words)
         
-        # Kiểm tra tiếng Anh
-        eng_indicators = ["the", "and", "of", "to", "in", "for", "on", "with", "by", 
-                        "that", "is", "are", "was", "were", "be", "been", "being",
-                        "have", "has", "had", "having", "do", "does", "did", "doing",
-                        "a", "an", "this", "these", "those", "it", "they", "we", "you",
-                        "what", "where", "when", "why", "how", "which", "who", "whom"]
-        
-        words = re.findall(r'\b[a-z]+\b', text_lower)
-        eng_word_count = sum(1 for w in words if w in eng_indicators)
-        
-        # Quyết định ngôn ngữ
-        if has_vietnamese_diacritics or has_viet_words:
-            logger.debug(f"Detected Vietnamese: diacritics={has_vietnamese_diacritics}, viet_words={has_viet_words}")
+        # 🔥 QUAN TRỌNG: Ưu tiên nhận diện tiếng Việt
+        # Nếu có dấu tiếng Việt -> chắc chắn là tiếng Việt
+        if has_vietnamese_diacritics:
+            logger.debug(f"Detected Vietnamese: has diacritics")
             return Language.VIETNAMESE
-        elif eng_word_count > len(words) * 0.3:  # Hơn 30% từ là tiếng Anh
-            logger.debug(f"Detected English: eng_words={eng_word_count}/{len(words)}")
-            return Language.ENGLISH
-        elif len(text) > 0 and text[0].isascii():
-            # Mặc định với text ASCII
+        
+        # Nếu có nhiều từ tiếng Việt hơn tiếng Anh
+        if viet_count > eng_count and viet_count >= 1:
+            logger.debug(f"Detected Vietnamese: viet_words={viet_count}, eng_words={eng_count}")
+            return Language.VIETNAMESE
+        
+        # Nếu text dài và có ít nhất 1 từ tiếng Việt
+        if len(words) > 3 and viet_count >= 1:
+            logger.debug(f"Detected Vietnamese: has Vietnamese words")
+            return Language.VIETNAMESE
+        
+        # Mặc định: text ASCII -> tiếng Anh
+        if len(text) > 0 and all(ord(c) < 128 for c in text):
+            logger.debug(f"Detected English: ASCII text")
             return Language.ENGLISH
         
+        # Fallback: tiếng Việt
+        logger.debug(f"Defaulting to Vietnamese")
         return Language.VIETNAMESE
     
     async def translate(
@@ -300,3 +324,44 @@ def get_translation_service() -> TranslationService:
     if _translation_service is None:
         _translation_service = TranslationService()
     return _translation_service
+
+async def translate_on_request(
+    self,
+    text: str,
+    source_lang: Optional[Language] = None,
+    target_lang: Optional[Language] = None,
+    user_request: str = ""
+) -> str:
+    """
+    Dịch text KHI ĐƯỢC YÊU CẦU
+    Nếu không có yêu cầu rõ ràng, trả về text gốc
+    """
+    if not user_request:
+        return text
+    
+    user_lower = user_request.lower()
+    
+    # Kiểm tra yêu cầu dịch sang tiếng Anh
+    to_english = any(phrase in user_lower for phrase in [
+        "dịch sang tiếng anh", "translate to english",
+        "bằng tiếng anh", "in english", "english please",
+        "trả lời bằng tiếng anh", "answer in english"
+    ])
+    
+    # Kiểm tra yêu cầu dịch sang tiếng Việt
+    to_vietnamese = any(phrase in user_lower for phrase in [
+        "dịch sang tiếng việt", "translate to vietnamese",
+        "bằng tiếng việt", "in vietnamese",
+        "trả lời bằng tiếng việt", "answer in vietnamese"
+    ])
+    
+    if to_english:
+        logger.info("Translating to English as requested")
+        return await self.translate(text, Language.VIETNAMESE, Language.ENGLISH)
+    
+    if to_vietnamese:
+        logger.info("Translating to Vietnamese as requested")
+        return await self.translate(text, Language.ENGLISH, Language.VIETNAMESE)
+    
+    # Không có yêu cầu, trả về gốc
+    return text

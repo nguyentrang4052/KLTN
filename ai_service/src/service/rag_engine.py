@@ -151,6 +151,11 @@ class RAGEngine:
                 self.llm.extract_json(prompt, temperature=0.2),
                 timeout=35.0
             )
+
+                        # 🔥 LOG ĐỂ DEBUG
+            logger.info(f"CV Analysis result - skills: {data.get('extracted_skills', [])[:10]}")
+            logger.info(f"CV Analysis result - experience: {data.get('experience_years', 0)}")
+            logger.info(f"CV Analysis result - level: {data.get('suitable_level', 'N/A')}")
             return CVAnalysis(**data)
         except asyncio.TimeoutError:
             logger.error("rag_analyze_cv_llm_timeout")
@@ -159,10 +164,10 @@ class RAGEngine:
             logger.error("rag_analyze_cv_error", error=str(e))
             raise
 
-    async def analyze_skill_gap(self, cv_analysis: dict, target_job: dict) -> dict:
-        prompt = Prompts.skill_gap_analysis(cv_analysis, target_job)
-        data = await self.llm.extract_json(prompt, temperature=0.2)
-        return data
+    # async def analyze_skill_gap(self, cv_analysis: dict, target_job: dict) -> dict:
+    #     prompt = Prompts.skill_gap_analysis(cv_analysis, target_job)
+    #     data = await self.llm.extract_json(prompt, temperature=0.2)
+    #     return data
 
     async def suggest_jobs(self, cv_analysis: CVAnalysis, user_id: Optional[str] = None) -> List[Dict]:
         """Suggest jobs based on CV analysis - FIXED"""
@@ -281,49 +286,49 @@ class RAGEngine:
                 cleaned[k] = str(v)
         return cleaned
 
-    async def ingest_cv(self, user_id: str, chunks: list, analysis: CVAnalysis):
-        docs = [c["content"] for c in chunks]
-        metas = []
-        for c in chunks:
-            meta = {
-                **c["metadata"],
-                "user_id": user_id,
-                "doc_type": "user_cv"
-            }
-            metas.append(self._clean_meta(meta))
-        self.vector_store.add_documents(docs, metas)
+    # async def ingest_cv(self, user_id: str, chunks: list, analysis: CVAnalysis):
+    #     docs = [c["content"] for c in chunks]
+    #     metas = []
+    #     for c in chunks:
+    #         meta = {
+    #             **c["metadata"],
+    #             "user_id": user_id,
+    #             "doc_type": "user_cv"
+    #         }
+    #         metas.append(self._clean_meta(meta))
+    #     self.vector_store.add_documents(docs, metas)
 
     def _get_history(self, user_id: str):
         return self.conversation_history.get(user_id, [])
 
-    def add_to_history(self, user_id: str, message: ChatMessage):
-        history = self._get_history(user_id)
-        history.append(message)
-        if len(history) > 20:
-            history.pop(0)
-        self.conversation_history[user_id] = history
+    # def add_to_history(self, user_id: str, message: ChatMessage):
+    #     history = self._get_history(user_id)
+    #     history.append(message)
+    #     if len(history) > 20:
+    #         history.pop(0)
+    #     self.conversation_history[user_id] = history
 
-    async def _fallback_cv_analysis(self, cv_text: str) -> CVAnalysis:
-        import re
-        years = 0
-        year_matches = re.findall(r'(\d+)\s*năm\s*kinh\s*nghiệm', cv_text, re.IGNORECASE)
-        if year_matches:
-            years = max([int(y) for y in year_matches])
+    # async def _fallback_cv_analysis(self, cv_text: str) -> CVAnalysis:
+    #     import re
+    #     years = 0
+    #     year_matches = re.findall(r'(\d+)\s*năm\s*kinh\s*nghiệm', cv_text, re.IGNORECASE)
+    #     if year_matches:
+    #         years = max([int(y) for y in year_matches])
         
-        common_skills = ['python', 'java', 'javascript', 'react', 'node', 'sql', 'aws', 'docker']
-        found_skills = [s for s in common_skills if s.lower() in cv_text.lower()]
+    #     common_skills = ['python', 'java', 'javascript', 'react', 'node', 'sql', 'aws', 'docker']
+    #     found_skills = [s for s in common_skills if s.lower() in cv_text.lower()]
         
-        return CVAnalysis(
-            strengths=["Có kinh nghiệm làm việc"],
-            weaknesses=["Cần cải thiện chi tiết CV"],
-            missing_skills=["Tiếng Anh"],
-            format_score=5,
-            suggestions=["Thêm metrics định lượng", "Làm rõ mục tiêu nghề nghiệp"],
-            suitable_industries=["IT"],
-            suitable_level="Junior" if years < 2 else "Mid",
-            extracted_skills=found_skills,
-            experience_years=years
-        )
+    #     return CVAnalysis(
+    #         strengths=["Có kinh nghiệm làm việc"],
+    #         weaknesses=["Cần cải thiện chi tiết CV"],
+    #         missing_skills=["Tiếng Anh"],
+    #         format_score=5,
+    #         suggestions=["Thêm metrics định lượng", "Làm rõ mục tiêu nghề nghiệp"],
+    #         suitable_industries=["IT"],
+    #         suitable_level="Junior" if years < 2 else "Mid",
+    #         extracted_skills=found_skills,
+    #         experience_years=years
+    #     )
 
     def get_data_version(self) -> str:
         return self.data_version
