@@ -546,11 +546,11 @@ export default function CompaniesScreen() {
                     onClick={() => goToCompany(c.companyID)}
                     style={{ cursor: 'pointer' }}
                   >
-                    <div className="cs-feat-logo" style={{ background: getLogoColor(c.name) }}>
+                    <div className="cs-feat-logo" style={{ background: c.logo ? '#fff' : getLogoColor(c.name) }}>
                       {c.logo
                         ? <img src={c.logo} alt={c.name}
                           style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '10px' }}
-                          onError={e => { e.target.style.display = 'none' }} />
+                          onError={e => { e.target.style.display = 'none'; e.target.parentElement.style.background = getLogoColor(c.name) }} />
                         : c.name?.[0]?.toUpperCase() ?? '?'
                       }
                     </div>

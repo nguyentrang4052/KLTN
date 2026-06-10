@@ -9,8 +9,9 @@ export class MailService {
   constructor(private config: ConfigService) {
     this.transporter = nodemailer.createTransport({
       host: config.get('MAIL_HOST'),
-      port: config.get<number>('MAIL_PORT'),
-      secure: config.get<number>('MAIL_PORT') == 465,
+      port: Number(config.get('MAIL_PORT')),
+      secure: Number(config.get('MAIL_PORT')) === 465,
+      family: 4,
       auth: {
         user: config.get('MAIL_USER'),
         pass: config.get('MAIL_PASS'),
