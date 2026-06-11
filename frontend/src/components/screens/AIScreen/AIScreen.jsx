@@ -6,7 +6,7 @@ import { useLocation } from 'react-router-dom';
 import useUserStore from '../../../store/userStore';
 import { FaTrash } from "react-icons/fa6";
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const DEFAULT_QUICK_PROMPTS = [
     // '💰 Mức lương thị trường cho React Dev',
@@ -636,7 +636,7 @@ export default function AIAssistantScreen({ onNavigate }) {
 
     const fetchSessions = useCallback(async () => {
         try {
-            const res = await fetchWithTimeout(`${API_BASE_URL}/chat-history/get-sessions`, {
+            const res = await fetchWithTimeout(`${API}/chat-history/get-sessions`, {
                 method: 'GET',
                 credentials: 'include',
                 headers: {
@@ -654,7 +654,7 @@ export default function AIAssistantScreen({ onNavigate }) {
     const createSession = useCallback(
         async (title = 'New Chat') => {
             try {
-                const res = await fetchWithTimeout(`${API_BASE_URL}/chat-history/create-sessions`, {
+                const res = await fetchWithTimeout(`${API}/chat-history/create-sessions`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -673,7 +673,7 @@ export default function AIAssistantScreen({ onNavigate }) {
 
     const fetchMessages = useCallback(async (sessionID) => {
         try {
-            const res = await fetchWithTimeout(`${API_BASE_URL}/chat-history/sessions/${sessionID}/messages`, {
+            const res = await fetchWithTimeout(`${API}/chat-history/sessions/${sessionID}/messages`, {
                 method: 'GET',
                 credentials: 'include',
                 headers: {
@@ -703,7 +703,7 @@ export default function AIAssistantScreen({ onNavigate }) {
                 if (msg.fileSize) metadata.fileSize = msg.fileSize;
                 if (msg.cached) metadata.cached = msg.cached;
 
-                await fetchWithTimeout(`${API_BASE_URL}/chat-history/save-messages`, {
+                await fetchWithTimeout(`${API}/chat-history/save-messages`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -729,7 +729,7 @@ export default function AIAssistantScreen({ onNavigate }) {
         async (sessionID) => {
             if (!sessionID) return;
             try {
-                await fetchWithTimeout(`${API_BASE_URL}/chat-history/delete-session/${sessionID}`, {
+                await fetchWithTimeout(`${API}/chat-history/delete-session/${sessionID}`, {
                     method: 'POST',
                     credentials: 'include',
                     headers: {
@@ -983,7 +983,7 @@ export default function AIAssistantScreen({ onNavigate }) {
                 formData.append('message', msgText);
                 formData.append('stream', 'false');
 
-                const response = await fetchWithTimeout(`${API_BASE_URL}/chatbot/chat`, {
+                const response = await fetchWithTimeout(`${API}/chatbot/chat`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: formData.toString(),
@@ -1159,7 +1159,7 @@ export default function AIAssistantScreen({ onNavigate }) {
                 formData.append('userID', userID);
                 formData.append('file', file);
 
-                const response = await fetchWithTimeout(`${API_BASE_URL}/chatbot/upload-cv`, {
+                const response = await fetchWithTimeout(`${API}/chatbot/upload-cv`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${getToken()}`,
@@ -1310,7 +1310,7 @@ export default function AIAssistantScreen({ onNavigate }) {
             formData.append('userID', userID);
             formData.append('file', file);
 
-            const uploadRes = await fetchWithTimeout(`${API_BASE_URL}/chatbot/upload-cv`, {
+            const uploadRes = await fetchWithTimeout(`${API}/chatbot/upload-cv`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${getToken()}` },
                 body: formData,
@@ -1331,7 +1331,7 @@ export default function AIAssistantScreen({ onNavigate }) {
             chatParams.append('message', 'Đưa ra danh sách câu hỏi dựa theo JD trước đó + câu trả lời cá nhân hóa theo CV vừa upload');
             chatParams.append('stream', 'false');
 
-            const chatRes = await fetchWithTimeout(`${API_BASE_URL}/chatbot/chat`, {
+            const chatRes = await fetchWithTimeout(`${API}/chatbot/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: chatParams.toString(),
@@ -1429,7 +1429,7 @@ export default function AIAssistantScreen({ onNavigate }) {
             formData.append('message', queryMessage);
             formData.append('stream', 'false');
 
-            const response = await fetchWithTimeout(`${API_BASE_URL}/chatbot/chat`, {
+            const response = await fetchWithTimeout(`${API}/chatbot/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: formData.toString(),
@@ -1468,7 +1468,7 @@ export default function AIAssistantScreen({ onNavigate }) {
 
         setRenaming(true);
         try {
-            const response = await fetchWithTimeout(`${API_BASE_URL}/chat-history/rename-session/${sessionId}`, {
+            const response = await fetchWithTimeout(`${API}/chat-history/rename-session/${sessionId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1497,7 +1497,7 @@ export default function AIAssistantScreen({ onNavigate }) {
     // ========== PIN SESSION ==========
     const pinSession = useCallback(async (sessionId, isPinned) => {
         try {
-            const response = await fetchWithTimeout(`${API_BASE_URL}/chat-history/pin-session/${sessionId}`, {
+            const response = await fetchWithTimeout(`${API}/chat-history/pin-session/${sessionId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1615,7 +1615,7 @@ export default function AIAssistantScreen({ onNavigate }) {
                                     setOpenMenuId(null);
                                 }}
                             >
-                                <FaTrash/>
+                                <FaTrash />
                                 Xóa
                             </button>
                         </div>
