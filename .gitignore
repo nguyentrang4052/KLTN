@@ -92,3 +92,4 @@ chroma_db/
 chroma_db_cache/
 *.sqlite3
 *.pickle
+

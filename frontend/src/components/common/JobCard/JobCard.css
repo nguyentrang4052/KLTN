@@ -103,6 +103,7 @@
 
 .jcard-co-name:hover {
   color: rgb(35, 42, 162);
+  text-decoration: underline;
 }
 
 .jcard-tags {

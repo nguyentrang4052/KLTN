@@ -16,6 +16,7 @@ import AboutScreen from './components/screens/AboutScreen/AboutScreen'
 import AccountSettingScreen from './components/screens/AccountSettingScreen/AccountSettingScreen'
 import SavedJobScreen from './components/screens/SavedJobScreen/SavedJobScreen'
 import CreatedCVScreen from './components/screens/CreatedCVScreen/CreatedCVScreen'
+import ViewedJobScreen from './components/screens/ViewedJobScreen/ViewedJobScreen'
 
 import AIScreen from './components/screens/AIScreen/AIScreen'
 import PricingScreen from './components/screens/PricingScreen/PricingScreen'
@@ -174,6 +175,21 @@ function JobDetailForSavedJobs({ backPath, savedJobPath }) {
   )
 }
 
+function JobDetailForViewedJobs({ backPath, viewedJobPath }) {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const token = getToken()
+  return (
+    <JobDetailScreen
+      jobID={Number(id)}
+      onBack={() => navigate(backPath)}
+      token={token}
+      onViewedJobClick={(jobID) => navigate(`${viewedJobPath}${jobID}`)}
+    />
+  )
+}
+
+
 function CVScreenWrapper({ initialScreen }) {
   return <CreatedCVScreen initialScreen={initialScreen} />
 }
@@ -282,6 +298,25 @@ function App() {
               <JobDetailForSavedJobs
                 backPath="/saved-jobs"
                 savedJobPath="/saved-jobs/job/"
+              />
+            }
+          />
+
+          <Route
+            path="/viewed-jobs"
+            element={
+              <ProtectedRoute>
+                <ViewedJobScreen />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/viewed-jobs/job/:id"
+            element={
+              <JobDetailForViewedJobs
+                backPath="/viewed-jobs"
+                viewedJobPath="/viewed-jobs/job/"
               />
             }
           />

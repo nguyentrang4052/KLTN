@@ -174,8 +174,8 @@ class JobAdvisor:
             
             # Tính experience score
             cv_exp = cv_analysis.experience_years or 0
-            job_exp_str = job.get('experience_year', '')
-            import re
+            job_exp_str = job.get('experience_year') or ''
+            
             numbers = re.findall(r'\d+', job_exp_str)
             job_exp = int(numbers[0]) if numbers else 0
             

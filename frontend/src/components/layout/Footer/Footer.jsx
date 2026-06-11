@@ -130,11 +130,11 @@ export default function Footer() {
         <div className="f__contact">
           <div className="f__contact-item">
             <span className="f__contact-icon"><IconMail /></span>
-            <a href="mailto:gzconnect.team@gmail.com">gzconnect.team@gmail.com</a>
+            <p>gzconnect.team@gmail.com</p>
           </div>
           <div className="f__contact-item">
             <span className="f__contact-icon"><IconPhone /></span>
-            <a href="tel:+842812345678">0123 456 789</a>
+            <p>0123 456 789</p>
           </div>
           <div className="f__contact-item">
             <span className="f__contact-icon"><IconMapPin /></span>
@@ -156,7 +156,7 @@ export default function Footer() {
       <div className="f__wrap">
         <div className="f__bottom">
           <div className="f__copy">
-            © {year} <strong>GZCONNECT</strong>. Bảo lưu mọi quyền. Được tạo với ♥ tại Việt Nam.
+            © {year} <strong>GZCONNECT</strong>. Bảo lưu mọi quyền. 
           </div>
           <div className="f__bottom-links">
             {BOTTOM_LINKS.map((l) => (

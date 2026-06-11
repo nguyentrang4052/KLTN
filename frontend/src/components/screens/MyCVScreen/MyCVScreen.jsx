@@ -1,7 +1,9 @@
 import "./MyCVScreen.css";
 import { useState } from "react";
+import Sidebar from "../../layout/Sidebar/Sidebar";
+import {useNavigate} from "react-router-dom";
 
-export default function MyCVScreen({ cvList = [], onNew, onEdit, onDelete }) {
+export default function MyCVScreen({onNavigate, cvList = [], onNew, onEdit, onDelete }) {
   const [cvToDelete, setCvToDelete] = useState(null);
 
   const handleDeleteClick = (cv) => {
@@ -20,6 +22,8 @@ export default function MyCVScreen({ cvList = [], onNew, onEdit, onDelete }) {
   };
   return (
     <div className="cv-container">
+        <Sidebar activeItem="my-cv" onNavigate={onNavigate} />
+      <main className ="cv-main">
       <div className="cv-header">
         <div>
           <h1 className="cv-title">CV của tôi</h1>
@@ -105,6 +109,7 @@ export default function MyCVScreen({ cvList = [], onNew, onEdit, onDelete }) {
           </div>
         </div>
       )}
+      </main>
     </div>
   );
 }

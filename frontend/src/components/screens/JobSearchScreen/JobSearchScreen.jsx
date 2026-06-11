@@ -988,7 +988,7 @@ function JobSearchScreen() {
                         <div className="jc-title">{job.title}</div>
                         <div className="jc-company"
                           onClick={(e) => openCompanyDetail(job.companyID, e)}
-                          style={{ cursor: 'pointer', textDecorationLine: 'underline', textDecorationStyle: 'dotted' }}>
+                          style={{ cursor: 'pointer', textDecorationLine: 'underline', textDecorationStyle: 'solid' }}>
                           {job.companyName} <span className="verified">✓</span>
                         </div>
                         <div className="jc-meta">

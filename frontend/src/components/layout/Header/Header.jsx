@@ -55,6 +55,7 @@ export default function Header({ notifCount = 0 }) {
       items: [
         { ico: '👤', label: 'Hồ sơ của tôi', path: '/profile' },
         { ico: '⭐', label: 'Việc đã lưu', path: '/saved-jobs', tag: savedCount > 0 ? `${savedCount}` : null },
+        { ico: '👁️', label: 'Việc đã xem', path: '/viewed-jobs', tag: unreadCount > 0 ? `${unreadCount}` : null },
         { ico: '📄', label: 'CV của tôi', path: '/my-cv' },
         { ico: '🤖', label: 'AI Assistant', path: '/ai-assistant' },
       ],

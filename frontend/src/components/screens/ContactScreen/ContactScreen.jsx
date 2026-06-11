@@ -8,15 +8,15 @@ const faqs = [
     questions: [
       {
         q: "Làm thế nào để tạo tài khoản GZCONNECT?",
-        a: "Nhấn nút 'Bắt đầu miễn phí' ở trang chủ, điền email và mật khẩu, sau đó xác nhận qua email. Chỉ mất khoảng 1 phút để hoàn tất đăng ký.",
+        a: "Nhấn nút 'Đăng nhập' ở trang chủ sau đó nhấn nút 'Đăng ký ngay', điền email và mật khẩu, sau đó xác nhận qua email. Chỉ mất khoảng 1 phút để hoàn tất đăng ký.",
       },
       {
         q: "Tôi có thể đăng nhập bằng tài khoản mạng xã hội không?",
-        a: "Có, GZCONNECT hỗ trợ đăng nhập qua Google và Facebook. Bạn cũng có thể liên kết nhiều phương thức đăng nhập trong phần Cài đặt tài khoản.",
+        a: "Có, GZCONNECT hỗ trợ đăng nhập qua Google.",
       },
       {
         q: "Tôi quên mật khẩu phải làm gì?",
-        a: "Nhấn 'Quên mật khẩu?' trên trang đăng nhập, nhập email đăng ký — bạn sẽ nhận được link đặt lại mật khẩu trong vòng vài phút.",
+        a: "Nhấn 'Quên mật khẩu' trên trang đăng nhập, nhập email đăng ký sau đó nhập vào mã xác minh được gửi đến email của bạn. Sau đó bạn có thể đặt lại mật khẩu mới.",
       },
     ],
   },
@@ -26,16 +26,12 @@ const faqs = [
     questions: [
       {
         q: "AI gợi ý việc làm hoạt động như thế nào?",
-        a: "Hệ thống AI phân tích hồ sơ, hành vi tìm kiếm (việc làm đã xem, lưu, click) và thông tin cá nhân để học và dự đoán những công việc phù hợp nhất. Càng dùng nhiều, AI càng hiểu bạn hơn.",
+        a: "Hệ thống AI phân tích hồ sơ, hành vi tìm kiếm (việc làm đã xem, lưu, click) và thông tin cá nhân để học và dự đoán những công việc phù hợp nhất. Càng tương tác nhiều, gợi ý càng chính xác.",
       },
       {
         q: "Dữ liệu được tổng hợp từ bao nhiêu nền tảng?",
-        a: "GZCONNECT hiện tổng hợp tin tuyển dụng từ TopCV, CareerLink, CareerViet và nhiều nền tảng khác. Tổng cộng hơn 50,000 tin tuyển dụng được cập nhật hàng ngày.",
-      },
-      {
-        q: "Tôi có thể tắt tính năng theo dõi hành vi không?",
-        a: "Có. Vào Cài đặt → Quyền riêng tư → Tắt 'Theo dõi hành vi để cá nhân hóa'. Lưu ý điều này sẽ làm giảm độ chính xác của gợi ý AI.",
-      },
+        a: "GZCONNECT hiện tổng hợp tin tuyển dụng từ TopCV, CareerLink, CareerViet. ",
+      }
     ],
   },
   {
@@ -48,31 +44,17 @@ const faqs = [
       },
       {
         q: "Tôi có thể theo dõi trạng thái ứng tuyển không?",
-        a: "Có, vào mục 'Đơn ứng tuyển' để xem lịch sử các vị trí bạn đã click Apply. Trạng thái chi tiết cần kiểm tra trực tiếp trên từng nền tảng gốc.",
+        a: "Hiện tại GZCONNECT không có tính năng theo dõi trạng thái ứng tuyển. Chúng tôi khuyến khích bạn kiểm tra email và trang tuyển dụng gốc để cập nhật thông tin.",
       },
     ],
-  },
-  {
-    category: "CV Builder",
-    icon: "📄",
-    questions: [
-      {
-        q: "Công cụ tạo CV có gì đặc biệt?",
-        a: "CV Builder của GZCONNECT có 20+ mẫu chuyên nghiệp, hỗ trợ ATS optimization, gợi ý từ khóa theo ngành, dịch CV Anh–Việt và xuất PDF chuẩn.",
-      },
-      {
-        q: "Tôi có thể tạo bao nhiêu CV?",
-        a: "Tài khoản miễn phí tạo được tối đa 2 CV. Tài khoản Premium không giới hạn và cho phép tạo nhiều phiên bản cho từng vị trí ứng tuyển.",
-      },
-    ],
-  },
+  }
 ];
 
 const contactCards = [
   {
     icon: "📧",
     title: "Email hỗ trợ",
-    desc: "support@gzconnect.vn",
+    desc: "gzconnect.team@gmail.com",
     accentLight: "rgba(192,65,42,0.08)",
     accentBorder: "rgba(192,65,42,0.2)",
     accentText: "var(--rust2)",

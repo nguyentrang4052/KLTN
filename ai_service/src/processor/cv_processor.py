@@ -1,159 +1,3 @@
-# import fitz  # PyMuPDF
-# from docx import Document
-# from typing import List, Dict, Any
-# import re
-# import structlog
-# from io import BytesIO
-
-# logger = structlog.get_logger()
-
-# class CVProcessor:
-#     def __init__(self):
-#         self.chunk_size = 1500
-#         self.chunk_overlap = 300
-#         self.max_text_length = 50000  # KHÔNG ĐƯỢC THIẾU
-    
-#     async def extract_text(self, file_bytes: bytes, mime_type: str) -> str:
-#         """Extract text với giới hạn kích thước"""
-#         try:
-#             # Kiểm tra file rỗng
-#             if not file_bytes or len(file_bytes) == 0:
-#                 logger.error("Empty file provided")
-#                 raise ValueError("File trống")
-            
-#             # Kiểm tra kích thước file
-#             if len(file_bytes) > 10 * 1024 * 1024:
-#                 raise ValueError("File quá lớn (>10MB)")
-            
-#             logger.info(f"Extracting text from file type: {mime_type}, size: {len(file_bytes)} bytes")
-            
-#             # Xử lý theo loại file
-#             if mime_type == "application/pdf":
-#                 text = await self._extract_pdf(file_bytes)
-#             elif mime_type in ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"]:
-#                 text = await self._extract_docx(file_bytes)
-#             else:
-#                 raise ValueError(f"Không hỗ trợ định dạng file: {mime_type}")
-            
-#             # Kiểm tra text rỗng
-#             if not text or len(text.strip()) < 50:
-#                 logger.warning(f"Extracted text too short: {len(text)} chars")
-#                 raise ValueError("Không đọc được nội dung từ file")
-            
-#             # Giới hạn độ dài
-#             if len(text) > self.max_text_length:
-#                 text = text[:self.max_text_length] + "\n...[Đã cắt ngắn]..."
-            
-#             logger.info(f"Successfully extracted {len(text)} characters")
-#             return text
-            
-#         except Exception as e:
-#             logger.error(f"extract_text_error: {str(e)}")
-#             raise
-    
-#     async def _extract_pdf(self, file_bytes: bytes) -> str:
-#         """Extract text từ PDF"""
-#         text = ""
-#         try:
-#             # Mở PDF từ bytes
-#             doc = fitz.open(stream=file_bytes, filetype="pdf")
-            
-#             for i, page in enumerate(doc):
-#                 if i >= 50:  # Giới hạn 50 trang
-#                     break
-#                 page_text = page.get_text()
-#                 if page_text:
-#                     text += page_text + "\n"
-            
-#             doc.close()
-            
-#             if not text.strip():
-#                 logger.warning("PDF has no extractable text (might be scanned image)")
-#                 raise ValueError("PDF không có text (có thể là file scan)")
-            
-#             return self._clean_text(text)
-            
-#         except Exception as e:
-#             logger.error(f"PDF extraction error: {str(e)}")
-#             raise ValueError(f"Không đọc được file PDF: {str(e)}")
-    
-    
-#     async def _extract_docx(self, file_bytes: bytes) -> str:
-#         """Extract text từ DOCX"""
-#         try:
-#             doc = Document(BytesIO(file_bytes))
-#             text = "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
-            
-#             # Cũng lấy text từ bảng nếu có
-#             for table in doc.tables:
-#                 for row in table.rows:
-#                     for cell in row.cells:
-#                         if cell.text.strip():
-#                             text += "\n" + cell.text
-            
-#             if not text.strip():
-#                 logger.warning("DOCX has no extractable text")
-#                 raise ValueError("DOCX không có nội dung text")
-            
-#             return self._clean_text(text)
-            
-#         except Exception as e:
-#             logger.error(f"DOCX extraction error: {str(e)}")
-#             raise ValueError(f"Không đọc được file DOCX: {str(e)}")
-    
-#     def create_chunks(self, text: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
-#         sentences = re.split(r'(?<=[.!?])\s+', text)
-#         chunks = []
-#         current_chunk = []
-#         current_length = 0
-        
-#         for sentence in sentences:
-#             sentence_length = len(sentence)
-#             if current_length + sentence_length > self.chunk_size and current_chunk:
-#                 chunks.append({
-#                     "content": " ".join(current_chunk),
-#                     "metadata": {**metadata, "chunk_index": len(chunks)}
-#                 })
-#                 overlap = current_chunk[-3:] if len(current_chunk) > 3 else []
-#                 current_chunk = overlap + [sentence]
-#                 current_length = sum(len(s) for s in overlap) + sentence_length
-#             else:
-#                 current_chunk.append(sentence)
-#                 current_length += sentence_length
-        
-#         if current_chunk:
-#             chunks.append({
-#                 "content": " ".join(current_chunk),
-#                 "metadata": {**metadata, "chunk_index": len(chunks)}
-#             })
-        
-#         return chunks
-    
-#     def extract_sections(self, text: str) -> Dict[str, str]:
-#         sections = {}
-#         patterns = {
-#             "experience": r'((kinh nghiệm|experience)[\s\S]*?)(?=(học vấn|education|$))',
-#             "education": r'((học vấn|education)[\s\S]*?)(?=(kinh nghiệm|experience|$))',
-#             "skills": r'((kỹ năng|skills)[\s\S]*?)(?=(kinh nghiệm|experience|$))',
-#         }
-#         for section, pattern in patterns.items():
-#             match = re.search(pattern, text, re.IGNORECASE)
-#             if match:
-#                 sections[section] = match.group(1).strip()[:2000]
-#         return sections
-    
-#     def _clean_text(self, text: str) -> str:
-#         """Làm sạch text"""
-#         if not text:
-#             return ""
-#         # Loại bỏ khoảng trắng thừa
-#         text = re.sub(r'\s+', ' ', text)
-#         # Loại bỏ các ký tự đặc biệt không cần thiết
-#         text = re.sub(r'[^\w\s\.,;:?!@#$%^&*()\-+=/\\|<>\[\]{}~`\'"áàảãạăắằẳẵặâấầẩẫậđéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ]', ' ', text)
-#         text = re.sub(r'\s+', ' ', text).strip()
-#         return text
-
-
 import fitz  # PyMuPDF
 from docx import Document
 from typing import List, Dict, Any
@@ -343,43 +187,43 @@ class CVProcessor:
         return text
     
 
-    def create_chunks(self, text: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
-        sentences = re.split(r'(?<=[.!?])\s+', text)
-        chunks = []
-        current_chunk = []
-        current_length = 0
+    # def create_chunks(self, text: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
+    #     sentences = re.split(r'(?<=[.!?])\s+', text)
+    #     chunks = []
+    #     current_chunk = []
+    #     current_length = 0
         
-        for sentence in sentences:
-            sentence_length = len(sentence)
-            if current_length + sentence_length > self.chunk_size and current_chunk:
-                chunks.append({
-                    "content": " ".join(current_chunk),
-                    "metadata": {**metadata, "chunk_index": len(chunks)}
-                })
-                overlap = current_chunk[-3:] if len(current_chunk) > 3 else []
-                current_chunk = overlap + [sentence]
-                current_length = sum(len(s) for s in overlap) + sentence_length
-            else:
-                current_chunk.append(sentence)
-                current_length += sentence_length
+    #     for sentence in sentences:
+    #         sentence_length = len(sentence)
+    #         if current_length + sentence_length > self.chunk_size and current_chunk:
+    #             chunks.append({
+    #                 "content": " ".join(current_chunk),
+    #                 "metadata": {**metadata, "chunk_index": len(chunks)}
+    #             })
+    #             overlap = current_chunk[-3:] if len(current_chunk) > 3 else []
+    #             current_chunk = overlap + [sentence]
+    #             current_length = sum(len(s) for s in overlap) + sentence_length
+    #         else:
+    #             current_chunk.append(sentence)
+    #             current_length += sentence_length
         
-        if current_chunk:
-            chunks.append({
-                "content": " ".join(current_chunk),
-                "metadata": {**metadata, "chunk_index": len(chunks)}
-            })
+    #     if current_chunk:
+    #         chunks.append({
+    #             "content": " ".join(current_chunk),
+    #             "metadata": {**metadata, "chunk_index": len(chunks)}
+    #         })
         
-        return chunks
+    #     return chunks
     
-    def extract_sections(self, text: str) -> Dict[str, str]:
-        sections = {}
-        patterns = {
-            "experience": r'((kinh nghiệm|experience)[\s\S]*?)(?=(học vấn|education|$))',
-            "education": r'((học vấn|education)[\s\S]*?)(?=(kinh nghiệm|experience|$))',
-            "skills": r'((kỹ năng|skills)[\s\S]*?)(?=(kinh nghiệm|experience|$))',
-        }
-        for section, pattern in patterns.items():
-            match = re.search(pattern, text, re.IGNORECASE)
-            if match:
-                sections[section] = match.group(1).strip()[:2000]
-        return sections
+    # def extract_sections(self, text: str) -> Dict[str, str]:
+    #     sections = {}
+    #     patterns = {
+    #         "experience": r'((kinh nghiệm|experience)[\s\S]*?)(?=(học vấn|education|$))',
+    #         "education": r'((học vấn|education)[\s\S]*?)(?=(kinh nghiệm|experience|$))',
+    #         "skills": r'((kỹ năng|skills)[\s\S]*?)(?=(kinh nghiệm|experience|$))',
+    #     }
+    #     for section, pattern in patterns.items():
+    #         match = re.search(pattern, text, re.IGNORECASE)
+    #         if match:
+    #             sections[section] = match.group(1).strip()[:2000]
+    #     return sections

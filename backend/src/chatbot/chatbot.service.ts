@@ -9,7 +9,7 @@ import { Readable } from 'stream';
 export interface ChatResult {
     response?: string;
     content?: string;
-    type: 'text' | 'stream' | 'error' | 'job_list' | 'cv_analysis_complete';
+    type: 'text' | 'stream' | 'error' | 'job_list' | 'cv_analysis_complete' | 'interview_questions';
     cached?: boolean;
     analysis?: any;
     job_matches?: any[];
@@ -173,9 +173,11 @@ export class ChatbotService {
             }
 
             const pythonData = response.data;
+            // Thêm ngay sau: const pythonData = response.data;
+            this.logger.log(`🐍 Python raw response: ${JSON.stringify(pythonData).substring(0, 500)}`);
 
             if (pythonData.error === true || pythonData.success === false) {
-                const errMsg = pythonData.message || pythonData.detail || 'Lỗi từ Python';
+                const errMsg = pythonData.message || "Hiện tại chưa có thông tin mà bạn cần tìm";
                 return {
                     type: 'error',
                     response: `❌ ${errMsg}`,
@@ -185,7 +187,7 @@ export class ChatbotService {
             }
 
             // 🔥 QUAN TRỌNG: Kiểm tra type từ Python và chuyển tiếp đầy đủ dữ liệu
-            if(pythonData.type === 'job_list') {
+            if (pythonData.type === 'job_list') {
                 return {
                     type: 'job_list',
                     content: pythonData.content ?? '',
@@ -202,6 +204,17 @@ export class ChatbotService {
                     response: pythonData.message || pythonData.content || '',
                     analysis: pythonData.analysis,
                     job_matches: pythonData.job_matches || [],
+                    cached: pythonData.cached || false,
+                    success: true,
+                };
+            }
+
+            // Xử lý interview_questions
+            if (pythonData.type === 'interview_questions') {
+                this.logger.log(`📋 Python interview_questions response: ${JSON.stringify(pythonData)}`);
+                return {
+                    type: 'interview_questions',
+                    response: pythonData.response || pythonData.content || '',
                     cached: pythonData.cached || false,
                     success: true,
                 };
@@ -236,7 +249,7 @@ export class ChatbotService {
 
             return {
                 type: 'error',
-                response: `❌ ${error?.message || 'Lỗi không xác định'}`,
+                response: "Hiện tại chưa có thông tin mà bạn cần tìm. Vui lòng thử lại với câu hỏi khác!",
                 error: true,
                 success: false,
             };

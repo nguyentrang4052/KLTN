@@ -208,11 +208,11 @@ class JobMatcher:
         # Log chi tiết - cần kiểm tra req_exp có tồn tại không
         req_exp_display = req_exp if 'req_exp' in locals() else 'N/A'  # 🔥 TRÁNH LỖI
         
-        logger.info(f"Job: {job.get('title', '')[:30]}")
-        logger.info(f"  Skill: {int(skill_score*100)}% (overlap: {len(overlap)}/{len(job_skills) if job_skills else 0})")
-        logger.info(f"  Exp: {int(exp_score*100)}% (cv={cv_experience}, req={req_exp_display})")
-        logger.info(f"  Level: {int(level_score*100)}% (cv={cv_level}, job={job_title_lower[:30]})")
-        logger.info(f"  Total: {final_percent}%")
+        # logger.info(f"Job: {job.get('title', '')[:30]}")
+        # logger.info(f"  Skill: {int(skill_score*100)}% (overlap: {len(overlap)}/{len(job_skills) if job_skills else 0})")
+        # logger.info(f"  Exp: {int(exp_score*100)}% (cv={cv_experience}, req={req_exp_display})")
+        # logger.info(f"  Level: {int(level_score*100)}% (cv={cv_level}, job={job_title_lower[:30]})")
+        # logger.info(f"  Total: {final_percent}%")
         
         return final_percent
     
@@ -416,110 +416,110 @@ class JobMatcher:
             logger.error("fallback_match_error", error=str(e))
             return []
     
-    def calculate_match_score(
-        self,
-        cv_skills: set,
-        cv_certifications: List[str],
-        cv_title: str,
-        cv_dict: Dict,  # Thêm tham số cv_dict
-        job: Dict,
-        additional_requirements: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """
-        Tính match_score với công thức:
-        - Skills: 60%
-        - Certifications: 10%
-        - Position match: 20%
-        - Other (experience, level, etc.): 10%
-        """
+    # def calculate_match_score(
+    #     self,
+    #     cv_skills: set,
+    #     cv_certifications: List[str],
+    #     cv_title: str,
+    #     cv_dict: Dict,  # Thêm tham số cv_dict
+    #     job: Dict,
+    #     additional_requirements: Optional[str] = None
+    # ) -> Dict[str, Any]:
+    #     """
+    #     Tính match_score với công thức:
+    #     - Skills: 60%
+    #     - Certifications: 10%
+    #     - Position match: 20%
+    #     - Other (experience, level, etc.): 10%
+    #     """
         
-        job_skills = set([s.lower() for s in job.get('skills', [])])
-        job_title = job.get('title', '').lower()
-        job_requirements = job.get('requirements', '').lower()
-        cv_exp = cv_dict.get('experience_years', 0)
-        cv_level = cv_dict.get('suitable_level', 'Junior')
+    #     job_skills = set([s.lower() for s in job.get('skills', [])])
+    #     job_title = job.get('title', '').lower()
+    #     job_requirements = job.get('requirements', '').lower()
+    #     cv_exp = cv_dict.get('experience_years', 0)
+    #     cv_level = cv_dict.get('suitable_level', 'Junior')
         
-        # Log để debug
-        logger.info(f"=== CALCULATING MATCH SCORE for {job.get('title')} ===")
-        logger.info(f"CV skills: {cv_skills}")
-        logger.info(f"Job skills: {job_skills}")
+    #     # Log để debug
+    #     logger.info(f"=== CALCULATING MATCH SCORE for {job.get('title')} ===")
+    #     logger.info(f"CV skills: {cv_skills}")
+    #     logger.info(f"Job skills: {job_skills}")
         
-        # 1. SKILLS SCORE (60%)
-        if job_skills:
-            overlap = cv_skills & job_skills
-            skill_ratio = len(overlap) / len(job_skills) if job_skills else 0
+    #     # 1. SKILLS SCORE (60%)
+    #     if job_skills:
+    #         overlap = cv_skills & job_skills
+    #         skill_ratio = len(overlap) / len(job_skills) if job_skills else 0
             
-            # Bonus cho kỹ năng quan trọng
-            important_skills = ["python", "java", "sql", "react", "javascript", "golang", "aws", "docker", "postgresql", "mongodb", "git"]
-            important_bonus = sum(0.02 for s in overlap if s in important_skills)
-            important_bonus = min(important_bonus, 0.1)
+    #         # Bonus cho kỹ năng quan trọng
+    #         important_skills = ["python", "java", "sql", "react", "javascript", "golang", "aws", "docker", "postgresql", "mongodb", "git"]
+    #         important_bonus = sum(0.02 for s in overlap if s in important_skills)
+    #         important_bonus = min(important_bonus, 0.1)
             
-            skills_score = min(1.0, skill_ratio + important_bonus)
+    #         skills_score = min(1.0, skill_ratio + important_bonus)
             
-            logger.info(f"  Skills overlap: {len(overlap)}/{len(job_skills)} = {skill_ratio:.2f}, bonus={important_bonus:.2f}, score={skills_score:.2f}")
-        else:
-            skills_score = 0.5
-            overlap = set()
+    #         logger.info(f"  Skills overlap: {len(overlap)}/{len(job_skills)} = {skill_ratio:.2f}, bonus={important_bonus:.2f}, score={skills_score:.2f}")
+    #     else:
+    #         skills_score = 0.5
+    #         overlap = set()
         
-        # 2. CERTIFICATION SCORE (10%)
-        cert_score = 0.5
-        cert_keywords = ["certification", "certified", "chứng chỉ", "chứng nhận", "ccna", "aws", "azure", "scrum", "pmp"]
+    #     # 2. CERTIFICATION SCORE (10%)
+    #     cert_score = 0.5
+    #     cert_keywords = ["certification", "certified", "chứng chỉ", "chứng nhận", "ccna", "aws", "azure", "scrum", "pmp"]
         
-        # Tìm certifications trong requirements
-        required_certs = []
-        for cert in cert_keywords:
-            if cert in job_requirements:
-                required_certs.append(cert)
+    #     # Tìm certifications trong requirements
+    #     required_certs = []
+    #     for cert in cert_keywords:
+    #         if cert in job_requirements:
+    #             required_certs.append(cert)
         
-        # Tìm certifications trong CV
-        cv_certs_lower = [c.lower() for c in cv_certifications]
-        matching_certs = []
-        for cert in required_certs:
-            if any(cert in cv_cert or cv_cert in cert for cv_cert in cv_certs_lower):
-                matching_certs.append(cert)
+    #     # Tìm certifications trong CV
+    #     cv_certs_lower = [c.lower() for c in cv_certifications]
+    #     matching_certs = []
+    #     for cert in required_certs:
+    #         if any(cert in cv_cert or cv_cert in cert for cv_cert in cv_certs_lower):
+    #             matching_certs.append(cert)
         
-        if required_certs:
-            cert_score = len(matching_certs) / len(required_certs)
-        else:
-            cert_score = 0.8  # Không yêu cầu certification -> 80% điểm
+    #     if required_certs:
+    #         cert_score = len(matching_certs) / len(required_certs)
+    #     else:
+    #         cert_score = 0.8  # Không yêu cầu certification -> 80% điểm
         
-        logger.info(f"  Cert required: {required_certs}, matched: {matching_certs}, score={cert_score:.2f}")
+    #     logger.info(f"  Cert required: {required_certs}, matched: {matching_certs}, score={cert_score:.2f}")
         
-        # 3. POSITION MATCH SCORE (20%)
-        position_score = self._calculate_position_match(cv_title, job_title, job_requirements)
-        logger.info(f"  Position match: {position_score:.2f}")
+    #     # 3. POSITION MATCH SCORE (20%)
+    #     position_score = self._calculate_position_match(cv_title, job_title, job_requirements)
+    #     logger.info(f"  Position match: {position_score:.2f}")
         
-        # 4. OTHER SCORE (10%) - Experience + Level
-        other_score = self._calculate_other_score_from_dict(cv_exp, cv_level, job)
-        logger.info(f"  Other score: {other_score:.2f}")
+    #     # 4. OTHER SCORE (10%) - Experience + Level
+    #     other_score = self._calculate_other_score_from_dict(cv_exp, cv_level, job)
+    #     logger.info(f"  Other score: {other_score:.2f}")
         
-        # TÍNH TỔNG
-        total_score = (
-            skills_score * 0.6 +
-            cert_score * 0.1 +
-            position_score * 0.2 +
-            other_score * 0.1
-        )
+    #     # TÍNH TỔNG
+    #     total_score = (
+    #         skills_score * 0.6 +
+    #         cert_score * 0.1 +
+    #         position_score * 0.2 +
+    #         other_score * 0.1
+    #     )
         
-        total_percent = int(total_score * 100)
+    #     total_percent = int(total_score * 100)
         
-        logger.info(f"  TOTAL SCORE: {total_percent}%")
+    #     logger.info(f"  TOTAL SCORE: {total_percent}%")
         
-        # Tạo skill_gap chi tiết
-        skill_gap = list(job_skills - cv_skills)
+    #     # Tạo skill_gap chi tiết
+    #     skill_gap = list(job_skills - cv_skills)
         
-        return {
-            "total_score": total_percent,
-            "skill_score": int(skills_score * 100),
-            "cert_score": int(cert_score * 100),
-            "position_score": int(position_score * 100),
-            "other_score": int(other_score * 100),
-            "skill_overlap": list(overlap),
-            "skill_gap": skill_gap,
-            "required_certs": required_certs,
-            "matching_certs": matching_certs,
-            "missing_certs": [c for c in required_certs if c not in matching_certs]
-        }
+    #     return {
+    #         "total_score": total_percent,
+    #         "skill_score": int(skills_score * 100),
+    #         "cert_score": int(cert_score * 100),
+    #         "position_score": int(position_score * 100),
+    #         "other_score": int(other_score * 100),
+    #         "skill_overlap": list(overlap),
+    #         "skill_gap": skill_gap,
+    #         "required_certs": required_certs,
+    #         "matching_certs": matching_certs,
+    #         "missing_certs": [c for c in required_certs if c not in matching_certs]
+    #     }
         
     
 
@@ -614,24 +614,29 @@ class JobMatcher:
         return 0.5
 
 
-    def _calculate_other_score(self, cv: CVAnalysis, job: Dict) -> float:
-        """Tính điểm cho các yếu tố khác (experience, level)"""
-        cv_exp = cv.experience_years or 0
-        job_exp_str = job.get('experience_year', '')
-        job_exp = self._extract_experience_years(job_exp_str)
+    # def _calculate_other_score(self, cv: CVAnalysis, job: Dict) -> float:
+    #     """Tính điểm cho các yếu tố khác (experience, level)"""
+    #     cv_exp = cv.experience_years or 0
+    #     job_exp_str = job.get('experience_year', '')
+    #     job_exp = self._extract_experience_years(job_exp_str)
         
-        # Experience score
-        if job_exp > 0:
-            if cv_exp >= job_exp:
-                exp_score = 1.0
-            elif cv_exp >= job_exp * 0.7:
-                exp_score = 0.7
-            else:
-                exp_score = max(0.2, cv_exp / job_exp)
-        else:
-            exp_score = 0.8
+    #     # Experience score
+    #     if job_exp > 0:
+    #         if cv_exp >= job_exp:
+    #             exp_score = 1.0
+    #         elif cv_exp >= job_exp * 0.7:
+    #             exp_score = 0.7
+    #         else:
+    #             exp_score = max(0.2, cv_exp / job_exp)
+    #     else:
+    #         exp_score = 0.8
         
-        # Level score
-        level_score = self._calculate_level_score(cv.suitable_level, job.get('title', ''))
+    #     # Level score
+    #     level_score = self._calculate_level_score(cv.suitable_level, job.get('title', ''))
         
-        return (exp_score + level_score) / 2
+    #     return (exp_score + level_score) / 2
+    
+
+    async def _match_jobs_for_cv_with_formula(self, cv_analysis: CVAnalysis, limit: int = 10) -> List[Dict[str, Any]]:
+        """Alias for match_jobs_for_cv - giữ tương thích với chatbot"""
+        return await self.match_jobs_for_cv(cv_analysis, limit)

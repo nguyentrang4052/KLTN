@@ -24,7 +24,6 @@
   align-items: center;
   gap: 6px;
   margin-top: 20px;
-  background:   ;
   border: 1px solid rgba(35,42,162,0.25);
   border-radius: 20px;
   padding: 5px 14px;
@@ -35,7 +34,7 @@
 
 /* TOC */
 .pp-toc-label {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.2px;
@@ -68,7 +67,7 @@
 
 .pp-toc-num {
   font-family: 'Roboto', serif;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: #527CE6;
   opacity: 0.7;
@@ -76,7 +75,7 @@
 }
 
 .pp-toc-text {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ink3);
   font-weight: 500;
 }
@@ -121,6 +120,13 @@
   flex-shrink: 0;
 }
 
+.intro-step-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: rgb(35,42,162);
+  margin-top: 15px;
+}
+
 .pp-items {
   padding: 20px 28px;
   display: flex;
@@ -138,8 +144,14 @@
   border-bottom: none;
 }
 
+.intro-eyebrow{
+  font-size: 14px;
+  font-weight: 600;
+  color: rgb(35,42,162);
+}
+
 .pp-item-sub {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   color: rgb(35,42,162);
   margin-bottom: 6px;

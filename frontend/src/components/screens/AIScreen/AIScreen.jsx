@@ -4,11 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { getToken } from '../../../utils/auth';
 import { useLocation } from 'react-router-dom';
 import useUserStore from '../../../store/userStore';
+import { FaTrash } from "react-icons/fa6";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL = 'http://localhost:3000/api';
 
 const DEFAULT_QUICK_PROMPTS = [
-    '💰 Mức lương thị trường cho React Dev',
+    // '💰 Mức lương thị trường cho React Dev',
     '🔍 Tìm việc Remote 100%',
     '📈 Tips để tăng match score',
     '🤝 Chuẩn bị phỏng vấn',
@@ -20,7 +21,7 @@ const generateQuickPrompts = (profile) => {
     const prompts = [];
 
     if (profile.jobTitle) {
-        prompts.push(`💰 Mức lương ${profile.jobTitle}`);
+        prompts.push(`💰 Mức lương của ${profile.jobTitle}`);
         prompts.push(`📋 Tìm việc ${profile.jobTitle}`);
     }
 
@@ -84,67 +85,113 @@ const formatDate = (iso) => {
 function MdText({ text }) {
     if (text == null) return null;
 
-    // Ép chắc chắn thành string
-    const safeText =
-        typeof text === 'string'
-            ? text
-            : JSON.stringify(text, null, 2);
-
+    const safeText = typeof text === 'string' ? text : JSON.stringify(text, null, 2);
     const lines = safeText.split('\n');
+
+    // Helper functions
+    const isQuestionLine = (line) => {
+        const trimmed = line.trim();
+        return /^C[âa]u hỏi \d+:/i.test(trimmed) || /^\d+\.\s*\*\*C[âa]u hỏi/.test(trimmed);
+    };
+
+    const isAnswerLine = (line) => {
+        const trimmed = line.trim();
+        return /^C[âa]u trả lời:/i.test(trimmed) || /^\*\*C[âa]u trả lời/.test(trimmed);
+    };
+
+    const isSeparatorLine = (line) => line.trim() === '---';
+    const isLoiKhuyenLine = (line) => /^Lời khuyên dành cho bạn:/i.test(line.trim());
+    const isSectionHeader = (line) => /^###\s+/.test(line.trim());
 
     return (
         <div className="ai-md">
             {lines.map((line, i) => {
-                if (!line) return <br key={i} />;
+                if (!line.trim()) return <br key={i} />;
 
-                const parsed = line
-                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-                    .replace(/`(.+?)`/g, '<code>$1</code>');
+                const trimmedLine = line.trim();
 
-                if (/^\|[-:]+/.test(line)) return null;
+                // Section header
+                if (isSectionHeader(line)) {
+                    const content = line.replace(/^###\s+/, '');
+                    return <h3 key={i} className="ai-section-header">{content}</h3>;
+                }
 
-                if (line.startsWith('|')) {
-                    const cells = line.split('|').filter((c) => c.trim());
-                    const isHeader = lines[i + 1]?.startsWith('|---');
+                // Question line
+                if (isQuestionLine(line)) {
+                    const colonIndex = line.indexOf(':');
+                    const prefix = colonIndex > 0 ? line.substring(0, colonIndex) : line.substring(0, line.indexOf('**') + 2);
+                    const content = colonIndex > 0 ? line.substring(colonIndex + 1).trim() : line.replace(prefix, '').replace(':', '').trim();
 
                     return (
-                        <div
-                            key={i}
-                            className={`ai-table-row${isHeader ? ' ai-table-head' : ''}`}
-                        >
+                        <div key={i} className="ai-interview-question">
+                            <strong className="question-prefix">{prefix}:</strong> {content}
+                        </div>
+                    );
+                }
+
+                // Answer line
+                if (isAnswerLine(line)) {
+                    const colonIndex = line.indexOf(':');
+                    const prefix = line.substring(0, colonIndex + 1);
+                    const content = line.substring(colonIndex + 1).trim();
+
+                    return (
+                        <div key={i} className="ai-interview-answer">
+                            <strong className="answer-prefix">{prefix}</strong> {content}
+                        </div>
+                    );
+                }
+
+                // Loi khuyen line
+                if (isLoiKhuyenLine(line)) {
+                    return (
+                        <div key={i} className="ai-advice-title">
+                            <strong>💡 {line.trim()}</strong>
+                        </div>
+                    );
+                }
+
+                // Separator
+                if (isSeparatorLine(line)) {
+                    return <hr key={i} className="ai-interview-separator" />;
+                }
+
+                // Table handling
+                if (trimmedLine.startsWith('|')) {
+                    const cells = line.split('|').filter(c => c.trim());
+                    const isHeader = lines[i + 1]?.trim().startsWith('|---');
+                    return (
+                        <div key={i} className={`ai-table-row${isHeader ? ' ai-table-head' : ''}`}>
                             {cells.map((c, j) => (
-                                <span
-                                    key={j}
-                                    className="ai-table-cell"
-                                    dangerouslySetInnerHTML={{
-                                        __html: c.trim(),
-                                    }}
-                                />
+                                <span key={j} className="ai-table-cell" dangerouslySetInnerHTML={{ __html: c.trim() }} />
                             ))}
                         </div>
                     );
                 }
 
-                if (line.startsWith('• ')) {
+                // Bullet points
+                if (trimmedLine.startsWith('• ') || trimmedLine.startsWith('- ')) {
+                    const content = line.replace(/^[•-] /, '');
                     return (
                         <div key={i} className="ai-list-item">
-                            <span className="ai-bullet">•</span>
-                            <span
-                                dangerouslySetInnerHTML={{
-                                    __html: parsed.replace(/^• /, ''),
-                                }}
-                            />
+                            {/* <span className="ai-bullet">•</span> */}
+                            <span dangerouslySetInnerHTML={{
+                                __html: content
+                                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                                    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                                    .replace(/`(.+?)`/g, '<code>$1</code>')
+                            }} />
                         </div>
                     );
                 }
 
-                return (
-                    <p
-                        key={i}
-                        dangerouslySetInnerHTML={{ __html: parsed }}
-                    />
-                );
+                // Regular text with markdown
+                const parsed = line
+                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                    .replace(/`(.+?)`/g, '<code>$1</code>');
+
+                return <p key={i} dangerouslySetInnerHTML={{ __html: parsed }} />;
             })}
         </div>
     );
@@ -348,6 +395,96 @@ function JobMatchCard({ job, onSelect }) {
     );
 }
 
+function ErrorMessage({ message }) {
+    return (
+        <div className="ai-error-message">
+            <div className="ai-error-text">{message || " ⚠️ Hiện tại chưa có thông tin mà bạn cần tìm"}</div>
+            <div className="ai-error-suggestion">
+                💡 Bạn có thể thử:
+                <ul>
+                    <li>Hỏi về việc làm theo kỹ năng của bạn</li>
+                    <li>Upload CV để được phân tích</li>
+                    <li>Hỏi về mức lương của một vị trí cụ thể</li>
+                </ul>
+            </div>
+        </div>
+    );
+}
+
+
+// ── Inline CV Uploader (dùng trong interview_questions, không cần triggerFileUpload) ──
+function InlineCVUploader({ onFile }) {
+    const [dragging, setDragging] = useState(false);
+    const [fileName, setFileName] = useState(null);
+
+    const ALLOWED = [
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/msword',
+    ];
+
+    const validate = (file) => {
+        if (!ALLOWED.includes(file.type)) return 'Chỉ hỗ trợ PDF và DOCX';
+        if (file.size > 10 * 1024 * 1024) return 'File quá lớn (tối đa 10MB)';
+        return null;
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setDragging(false);
+        const file = e.dataTransfer.files[0];
+        if (!file) return;
+        const err = validate(file);
+        if (err) { alert(err); return; }
+        setFileName(file.name);
+        onFile(file);
+    };
+
+    const handleChange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const err = validate(file);
+        if (err) { alert(err); return; }
+        setFileName(file.name);
+        onFile(file);
+        e.target.value = '';
+    };
+
+    return (
+        <div
+            className={`ai-inline-cv-drop${dragging ? ' dragging' : ''}`}
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={handleDrop}
+        >
+            <label className="ai-inline-cv-label">
+                <input
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    style={{ display: 'none' }}
+                    onChange={handleChange}
+                />
+                {fileName ? (
+                    <div className="ai-inline-cv-selected">
+                        <span className="ai-inline-cv-icon">📄</span>
+                        <span className="ai-inline-cv-name">{fileName}</span>
+                        <span className="ai-inline-cv-processing">⏳ Đang xử lý...</span>
+                    </div>
+                ) : (
+                    <div className="ai-inline-cv-idle">
+                        <span className="ai-inline-cv-icon">📎</span>
+                        <div className="ai-inline-cv-text">
+                            <strong>Kéo thả CV vào đây</strong>
+                            <span>hoặc <u>click để chọn file</u></span>
+                            <span className="ai-inline-cv-hint">PDF, DOCX · tối đa 10MB</span>
+                        </div>
+                    </div>
+                )}
+            </label>
+        </div>
+    );
+}
+
 function InlineJobCard({ job }) {
     return (
         <div className="ai-job-card">
@@ -428,12 +565,14 @@ export default function AIAssistantScreen({ onNavigate }) {
     const [uploadedCV, setUploadedCV] = useState(null);
 
     const [editingSessionId, setEditingSessionId] = useState(null);
+    const [openMenuId, setOpenMenuId] = useState(null);
     const [editTitle, setEditTitle] = useState('');
     const [renaming, setRenaming] = useState(false);
 
     const bottomRef = useRef();
     const inputRef = useRef();
     const fileInputRef = useRef();
+    const messagesContainerRef = useRef(null);
 
     const userStr = localStorage.getItem('user');
     const user = userStr ? JSON.parse(userStr) : null;
@@ -443,6 +582,20 @@ export default function AIAssistantScreen({ onNavigate }) {
     const [quickPrompts, setQuickPrompts] = useState(DEFAULT_QUICK_PROMPTS);
     const [initialLoadDone, setInitialLoadDone] = useState(false);
     const navigate = useNavigate()
+    const [hasCv, setHasCv] = useState(false);
+
+    const messagesRef = useRef(messages);
+    useEffect(() => {
+        messagesRef.current = messages;
+    }, [messages]);
+
+    useEffect(() => {
+        const el = inputRef.current;
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+        el.style.overflowY = el.scrollHeight > 200 ? 'auto' : 'hidden';
+    }, [input]);
 
 
     const saveCurrentMessages = useCallback(() => {
@@ -458,7 +611,19 @@ export default function AIAssistantScreen({ onNavigate }) {
     const isRestoringRef = useRef(false);
 
     useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (messagesContainerRef.current && bottomRef.current) {
+            const container = messagesContainerRef.current;
+            const threshold = 200; // Chỉ auto-scroll nếu user đang ở gần dưới
+            const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+
+            if (distanceFromBottom < threshold || typing) {
+                // Dùng scrollTo trên container thay vì scrollIntoView
+                container.scrollTo({
+                    top: container.scrollHeight,
+                    behavior: 'smooth'
+                });
+            }
+        }
     }, [messages, typing]);
 
     useEffect(() => {
@@ -527,6 +692,17 @@ export default function AIAssistantScreen({ onNavigate }) {
         async (sessionID, msg) => {
             if (!sessionID) return;
             try {
+                // 🔥 TẠO METADATA ĐẦY ĐỦ
+                const metadata = {};
+
+                if (msg.analysis) metadata.analysis = msg.analysis;
+                if (msg.jobMatches) metadata.jobMatches = msg.jobMatches;
+                if (msg.jobs) metadata.jobs = msg.jobs;  // 🔥 QUAN TRỌNG: LƯU JOBS
+                if (msg.fileName) metadata.fileName = msg.fileName;
+                if (msg.fileUrl) metadata.fileUrl = msg.fileUrl;
+                if (msg.fileSize) metadata.fileSize = msg.fileSize;
+                if (msg.cached) metadata.cached = msg.cached;
+
                 await fetchWithTimeout(`${API_BASE_URL}/chat-history/save-messages`, {
                     method: 'POST',
                     headers: {
@@ -539,21 +715,14 @@ export default function AIAssistantScreen({ onNavigate }) {
                         role: msg.role,
                         content: typeof msg.content === 'string' ? msg.content : '',
                         type: msg.type || 'text',
-                        metadata: {
-                            analysis: msg.analysis,
-                            jobMatches: msg.jobMatches,
-                            fileName: msg.fileName,
-                            fileUrl: msg.fileUrl,
-                            fileSize: msg.fileSize,
-                            cached: msg.cached,
-                        }
+                        metadata: metadata  // 🔥 DÙNG BIẾN metadata ĐÃ TẠO
                     }),
                 });
             } catch (err) {
                 console.error('Save message error:', err);
             }
         },
-        []
+        [token]
     );
 
     const deleteSession = useCallback(
@@ -582,17 +751,14 @@ export default function AIAssistantScreen({ onNavigate }) {
         if (!userID) return;
 
         const loadMessages = async () => {
-            // Load từ sessionStorage trước
             const savedMessages = sessionStorage.getItem(`ai_messages_${userID}`);
             const savedSessions = sessionStorage.getItem(`ai_sessions_${userID}`);
-            const list = await fetchSessions();
-            setSessions(list);
 
-            // Khôi phục sessions trước
+            // Khôi phục sessions từ sessionStorage nếu có
             if (savedSessions) {
                 try {
                     const parsedSessions = JSON.parse(savedSessions);
-                    if (parsedSessions && parsedSessions.length > 0) {
+                    if (parsedSessions?.length > 0) {
                         setSessions(parsedSessions);
                     }
                 } catch (e) {
@@ -600,32 +766,44 @@ export default function AIAssistantScreen({ onNavigate }) {
                 }
             }
 
-            // Khôi phục messages
+            // Khôi phục messages từ sessionStorage nếu có
             if (savedMessages) {
                 try {
                     const parsed = JSON.parse(savedMessages);
-                    if (parsed && parsed.length > 0) {
-
+                    if (parsed?.length > 0) {
                         isRestoringRef.current = true;
                         setMessages(parsed);
                         setInitialLoadDone(true);
+                        setTimeout(() => { isRestoringRef.current = false; }, 100);
 
-                        setTimeout(() => {
-                            isRestoringRef.current = false;
-                        }, 100);
+                        const lastCvMsg = parsed.slice().reverse().find(
+                            (m) => m.analysis || m.type === 'cv_analysis'
+                        );
+                        if (lastCvMsg) {
+                            setCvAnalysis(lastCvMsg.analysis || null);
+                            setHasCv(true);
+                        }
+
+                        // Đồng bộ sessions từ API nếu chưa có trong storage
+                        if (!savedSessions) {
+                            const list = await fetchSessions();
+                            setSessions(list);
+                            if (list.length > 0) {
+                                sessionStorage.setItem(`ai_sessions_${userID}`, JSON.stringify(list));
+                            }
+                        }
                         return;
                     }
                 } catch (e) {
                     console.error('Failed to parse saved messages:', e);
                 }
             }
-            setLoadingHistory(true);
 
+            // Nếu không có trong storage, load từ API
+            setLoadingHistory(true);
             try {
                 const list = await fetchSessions();
                 setSessions(list);
-
-                // Lưu sessions vừa load vào sessionStorage
                 if (list.length > 0) {
                     sessionStorage.setItem(`ai_sessions_${userID}`, JSON.stringify(list));
                 }
@@ -635,14 +813,24 @@ export default function AIAssistantScreen({ onNavigate }) {
 
                 if (targetSession) {
                     const msgs = await fetchMessages(targetSession.id);
+                    // === SỬA 5: ID ổn định, tránh remount ===
                     const ui = msgs.length > 0
-                        ? msgs.map((m) => ({ id: m.id || Date.now() + Math.random(), role: m.role, content: m.content, type: m.type || 'text', ...(m.metadata || {}) }))
+                        ? msgs.map((m, idx) => ({
+                            id: m.id || `msg-${targetSession.id}-${idx}`,
+                            role: m.role,
+                            content: m.content,
+                            type: m.type || 'text',
+                            ...(m.metadata || {})
+                        }))
                         : INITIAL_MESSAGES;
                     setMessages(ui);
                     setCurrentSessionId(targetSession.id);
                     localStorage.setItem(`ai_last_session_${userID}`, String(targetSession.id));
                     const lastA = msgs.slice().reverse().find((m) => m.metadata?.analysis);
-                    if (lastA) setCvAnalysis(lastA.metadata.analysis);
+                    if (lastA) {
+                        setCvAnalysis(lastA.metadata.analysis);
+                        setHasCv(true);
+                    }
                 } else {
                     setMessages(INITIAL_MESSAGES);
                     setCurrentSessionId(null);
@@ -702,6 +890,7 @@ export default function AIAssistantScreen({ onNavigate }) {
         setMessages(INITIAL_MESSAGES);
         setCvAnalysis(null);
         setUploadedCV(null);
+        setHasCv(false);
         setInput('');
         if (userID) {
             sessionStorage.removeItem(`ai_messages_${userID}`);
@@ -715,13 +904,44 @@ export default function AIAssistantScreen({ onNavigate }) {
         setLoadingHistory(true);
         const msgs = await fetchMessages(sessionID);
         const ui = msgs.length > 0
-            ? msgs.map((m) => ({ id: m.id || Date.now() + Math.random(), role: m.role, content: m.content, type: m.type || 'text', ...(m.metadata || {}) }))
+            ? msgs.map((m, idx) => {
+                // 🔥 ĐẢM BẢO GIỮ NGUYÊN jobs DATA KHI LOAD LẠI
+                const msgObj = {
+                    id: m.id || `msg-${sessionID}-${idx}`,
+                    role: m.role,
+                    content: m.content,
+                    type: m.type || 'text',
+                };
+
+                // 🔥 KHÔI PHỤC METADATA
+                if (m.metadata) {
+                    if (m.metadata.analysis) msgObj.analysis = m.metadata.analysis;
+                    if (m.metadata.jobMatches) msgObj.jobMatches = m.metadata.jobMatches;
+                    if (m.metadata.jobs) msgObj.jobs = m.metadata.jobs;  // 🔥 KHÔI PHỤC JOBS
+                    if (m.metadata.cached) msgObj.cached = m.metadata.cached;
+                    if (m.metadata.fileName) msgObj.fileName = m.metadata.fileName;
+                    if (m.metadata.fileUrl) msgObj.fileUrl = m.metadata.fileUrl;
+                    if (m.metadata.fileSize) msgObj.fileSize = m.metadata.fileSize;
+                }
+
+                // 🔥 NẾU LÀ job_list TỪ API CŨ, cũng cố gắng lấy jobs
+                if (m.type === 'job_list' && !msgObj.jobs && m.jobs) {
+                    msgObj.jobs = m.jobs;
+                }
+                if (m.type === 'cv_analysis' && !msgObj.analysis && m.analysis) {
+                    msgObj.analysis = m.analysis;
+                    msgObj.jobMatches = m.jobMatches || [];
+                }
+
+                return msgObj;
+            })
             : INITIAL_MESSAGES;
         setMessages(ui);
         setCurrentSessionId(sessionID);
         localStorage.setItem(`ai_last_session_${userID}`, String(sessionID));
         const lastA = msgs.slice().reverse().find((m) => m.metadata?.analysis);
         setCvAnalysis(lastA?.metadata?.analysis || null);
+        setHasCv(!!lastA);
         setLoadingHistory(false);
     }, [userID, fetchMessages]);
 
@@ -799,6 +1019,29 @@ export default function AIAssistantScreen({ onNavigate }) {
                         cached: data.cached || false,
                     };
                     setMessages((prev) => [...prev, assistantMsg]);
+                    if (sessionId) await saveMessageToHistory(sessionId, assistantMsg);
+                } // Trong phần xử lý response của sendMessage, thêm case cho interview_questions:
+                else if (data.type === 'interview_questions') {
+                    console.log('📋 Interview questions data:', data);
+                    console.log('📋 Response content:', data.response);
+                    console.log('📋 Message content:', data.message);
+                    console.log('📋 Content:', data.content);
+
+                    const assistantMsg = {
+                        id: userMsgId + 1,
+                        role: 'assistant',
+                        content: data.response || data.message || data.content || '',
+                        type: 'interview_questions',
+                        cached: data.cached || false,
+                    };
+                    setMessages((prev) => {
+                        // Kiểm tra xem đã có message trùng chưa
+                        const lastMsg = prev[prev.length - 1];
+                        if (lastMsg && lastMsg.type === 'interview_questions' && lastMsg.content === assistantMsg.content) {
+                            return prev;
+                        }
+                        return [...prev, assistantMsg];
+                    });
                     if (sessionId) await saveMessageToHistory(sessionId, assistantMsg);
                 }
                 else {
@@ -939,25 +1182,28 @@ export default function AIAssistantScreen({ onNavigate }) {
                 const data = await response.json();
                 if (!data.success) throw new Error(data.message || 'Upload failed');
 
-                if (data.analysis) setCvAnalysis(data.analysis);
+                if (data.analysis) {
+                    setCvAnalysis(data.analysis);
+                    setHasCv(true);
+                }
 
                 let displayMessage = data.message || '';
                 if (data.analysis) {
                     const a = data.analysis;
                     displayMessage = `✅ **Phân tích CV hoàn tất!**
 
-**Đánh giá tổng quan:**
-• Điểm format: **${a.format_score}/10**
-• Cấp bậc phù hợp: **${a.suitable_level}**
-• Kinh nghiệm: **${a.experience_years} năm**
+                        **Đánh giá tổng quan:**
+                        • Điểm format: **${a.format_score}/10**
+                        • Cấp bậc phù hợp: **${a.suitable_level}**
+                        • Kinh nghiệm: **${a.experience_years} năm**
 
-**Điểm mạnh:**
-${a.strengths?.map((s) => `• ${s}`).join('\n') || '• Chưa có thông tin'}
+                        **Điểm mạnh:**
+                        ${a.strengths?.map((s) => `• ${s}`).join('\n') || '• Chưa có thông tin'}
 
-**Cần cải thiện:**
-${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
+                        **Cần cải thiện:**
+                        ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
 
-**Kỹ năng nhận diện:** ${a.extracted_skills?.join(', ') || 'Chưa nhận diện được'}`;
+                        **Kỹ năng nhận diện:** ${a.extracted_skills?.join(', ') || 'Chưa nhận diện được'}`;
                 }
 
                 const analysisMsg = {
@@ -1011,23 +1257,210 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
         fileInputRef.current?.click();
     };
 
+
+    const handleInterviewCVUpload = useCallback(async (file) => {
+        if (!file) return;
+
+        const allowedTypes = [
+            'application/pdf',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/msword',
+        ];
+        if (!allowedTypes.includes(file.type)) {
+            alert('Chỉ hỗ trợ file PDF và DOCX');
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            alert('File quá lớn (tối đa 10MB)');
+            return;
+        }
+
+        let sessionId = currentSessionId;
+        if (!sessionId) {
+            const session = await createSession('Phân tích CV');
+            if (session) {
+                sessionId = session.id;
+                setCurrentSessionId(sessionId);
+                localStorage.setItem(`ai_last_session_${userID}`, sessionId);
+                setSessions((prev) => [session, ...prev]);
+            }
+        }
+
+        // Hiện CV attachment trong chat
+        const blobUrl = URL.createObjectURL(file);
+        setUploadedCV({ name: file.name, size: file.size, type: file.type, url: blobUrl });
+        const uploadMsg = {
+            id: Date.now(),
+            role: 'user',
+            content: null,
+            type: 'cv_upload',
+            fileName: file.name,
+            fileUrl: blobUrl,
+            fileSize: file.size,
+        };
+        setMessages((prev) => [...prev, uploadMsg]);
+        if (sessionId) await saveMessageToHistory(sessionId, uploadMsg);
+
+        setIsUploading(true);
+        setTyping(true);
+
+        try {
+            // Upload CV
+            const formData = new FormData();
+            formData.append('userID', userID);
+            formData.append('file', file);
+
+            const uploadRes = await fetchWithTimeout(`${API_BASE_URL}/chatbot/upload-cv`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${getToken()}` },
+                body: formData,
+            }, 600000);
+
+            const uploadData = await uploadRes.json();
+            if (!uploadData.success) throw new Error(uploadData.message || 'Upload failed');
+
+            if (uploadData.analysis) {
+                setCvAnalysis(uploadData.analysis);
+                setHasCv(true);
+            }
+
+            // 🔥 QUAN TRỌNG: Gửi message yêu cầu câu hỏi phỏng vấn dựa trên CV và JD đã có
+            // Lấy JD từ session (lưu khi user dán JD)
+            const chatParams = new URLSearchParams();
+            chatParams.append('userID', userID);
+            chatParams.append('message', 'Đưa ra danh sách câu hỏi dựa theo JD trước đó + câu trả lời cá nhân hóa theo CV vừa upload');
+            chatParams.append('stream', 'false');
+
+            const chatRes = await fetchWithTimeout(`${API_BASE_URL}/chatbot/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: chatParams.toString(),
+            });
+
+            const chatData = await chatRes.json();
+
+            // Lấy nội dung từ response
+            let personalizedContent = '';
+            if (chatData.type === 'interview_questions') {
+                personalizedContent = chatData.response || chatData.message || chatData.content || '';
+            } else {
+                personalizedContent = chatData.response || chatData.message || chatData.content || '';
+            }
+
+            // Nếu không có nội dung, hiển thị thông báo mặc định
+            if (!personalizedContent) {
+                personalizedContent = '✅ Đã phân tích CV xong. Vui lòng yêu cầu "Đưa ra câu hỏi phỏng vấn" để nhận câu trả lời cá nhân hóa.';
+            }
+
+            const personalizedMsg = {
+                id: Date.now() + 1,
+                role: 'assistant',
+                content: personalizedContent,
+                type: 'interview_questions',
+                personalized: true,
+                hasCv: true,
+                cached: chatData.cached || false,
+            };
+            setMessages((prev) => [...prev, personalizedMsg]);
+            if (sessionId) await saveMessageToHistory(sessionId, personalizedMsg);
+
+        } catch (error) {
+            console.error('Interview CV upload error:', error);
+            const errMsg = {
+                id: Date.now(),
+                role: 'assistant',
+                content: `❌ Lỗi xử lý CV: ${error.message}`,
+                type: 'error',
+            };
+            setMessages((prev) => [...prev, errMsg]);
+            if (sessionId) await saveMessageToHistory(sessionId, errMsg);
+        } finally {
+            setIsUploading(false);
+            setTyping(false);
+        }
+    }, [userID, currentSessionId, createSession, saveMessageToHistory]);
+
     // ✅ MỚI
-    const handleJobClick = useCallback((job) => {
+    const handleJobClick = useCallback(async (job) => {
         saveCurrentMessages();
+
+        // Nếu là card công ty -> chuyển sang trang công ty
         if (job.is_company_card) {
             if (job.company_id) {
                 navigate(`/companies/${job.company_id}`);
             } else {
-                // fallback nếu chưa có company_id: tìm theo tên
                 navigate(`/jobs?company=${encodeURIComponent(job.company)}`);
             }
             return;
         }
-        // Job thường: điền vào input như cũ
-        const focusMessage = `Cho tôi biết thêm về job "${job.job_title}" tại ${job.company}`;
-        setInput(focusMessage);
-        inputRef.current?.focus();
-    }, [saveCurrentMessages, navigate]);
+
+        // Tạo câu hỏi để gửi lên chatbot
+        const queryMessage = `Cho tôi biết thêm về job "${job.job_title}" tại ${job.company}`;
+
+        setTyping(true);
+
+        // Tạo session mới nếu chưa có
+        let sessionId = currentSessionId;
+        if (!sessionId) {
+            const session = await createSession(queryMessage.slice(0, 50));
+            if (session) {
+                sessionId = session.id;
+                setCurrentSessionId(sessionId);
+                localStorage.setItem(`ai_last_session_${userID}`, sessionId);
+                setSessions((prev) => [session, ...prev]);
+            }
+        }
+
+        // Thêm tin nhắn user
+        const userMsgId = Date.now();
+        const userMsg = {
+            id: userMsgId,
+            role: 'user',
+            content: queryMessage,
+            type: 'text',
+        };
+        setMessages((prev) => [...prev, userMsg]);
+        if (sessionId) await saveMessageToHistory(sessionId, userMsg);
+
+        // Gọi API chat
+        try {
+            const formData = new URLSearchParams();
+            formData.append('userID', userID);
+            formData.append('message', queryMessage);
+            formData.append('stream', 'false');
+
+            const response = await fetchWithTimeout(`${API_BASE_URL}/chatbot/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString(),
+            });
+
+            const data = await response.json();
+            let responseText = data.response || data.message || data.content || JSON.stringify(data);
+
+            const assistantMsg = {
+                id: userMsgId + 1,
+                role: 'assistant',
+                content: responseText,
+                type: data.type === 'error' ? 'error' : 'text',
+                cached: data.cached || false,
+            };
+            setMessages((prev) => [...prev, assistantMsg]);
+            if (sessionId) await saveMessageToHistory(sessionId, assistantMsg);
+        } catch (error) {
+            console.error('Job detail error:', error);
+            const errMsg = {
+                id: userMsgId + 1,
+                role: 'assistant',
+                content: `❌ Không thể lấy thông tin chi tiết: ${error.message}`,
+                type: 'error',
+            };
+            setMessages((prev) => [...prev, errMsg]);
+            if (sessionId) await saveMessageToHistory(sessionId, errMsg);
+        } finally {
+            setTyping(false);
+        }
+    }, [saveCurrentMessages, navigate, userID, currentSessionId, createSession, saveMessageToHistory]);
 
     // ========== RENAME SESSION ==========
     const renameSession = useCallback(async (sessionId, newTitle) => {
@@ -1144,32 +1577,49 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
 
                 <div className="ai-history-actions">
                     <button
-                        className="ai-history-pin"
+                        className="ai-history-menu-btn"
                         onClick={(e) => {
                             e.stopPropagation();
-                            pinSession(session.id, session.isPinned);
+                            setOpenMenuId(openMenuId === session.id ? null : session.id);
                         }}
-                        title={session.isPinned ? 'Bỏ ghim' : 'Ghim'}
+                        title="Tùy chọn"
                     >
-                        {session.isPinned ? '📌' : '📍'}
+                        ⋮
                     </button>
-                    <button
-                        className="ai-history-rename"
-                        onClick={(e) => startRename(session, e)}
-                        title="Đổi tên"
-                    >
-                        ✏️
-                    </button>
-                    <button
-                        className="ai-history-delete"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            deleteSession(session.id);
-                        }}
-                        title="Xóa"
-                    >
-                        🗑
-                    </button>
+                    {openMenuId === session.id && (
+                        <div className="ai-history-dropdown" onClick={(e) => e.stopPropagation()}>
+                            <button
+                                className="ai-history-dropdown-item"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    pinSession(session.id, session.isPinned);
+                                    setOpenMenuId(null);
+                                }}
+                            >
+                                {session.isPinned ? '📌 Bỏ ghim' : '📍 Ghim'}
+                            </button>
+                            <button
+                                className="ai-history-dropdown-item"
+                                onClick={(e) => {
+                                    startRename(session, e);
+                                    setOpenMenuId(null);
+                                }}
+                            >
+                                ✏️ Đổi tên
+                            </button>
+                            <button
+                                className="ai-history-dropdown-item danger"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteSession(session.id);
+                                    setOpenMenuId(null);
+                                }}
+                            >
+                                <FaTrash/>
+                                Xóa
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         );
@@ -1197,13 +1647,18 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
             <div className="ai-header">
                 <div className="ai-header-inner">
                     <div className="ai-header-brand">
+                        {!showHistory && (
+                            <button
+                                className="ai-panel-toggle"
+                                onClick={() => setShowHistory(true)}
+                                title="Hiện lịch sử"
+                            >
+                                ☰
+                            </button>
+                        )}
                         <div className="ai-header-av">🤖</div>
                         <div>
                             <div className="ai-header-name">GZConnect AI Assistant</div>
-                            <div className="ai-header-status">
-                                <span className="ai-status-dot" />
-                                {typing ? 'Đang trả lời...' : 'Sẵn sàng'}
-                            </div>
                         </div>
                     </div>
                     <div className="ai-header-actions">
@@ -1230,6 +1685,13 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                         <div className="ai-history-header">
                             <button className="ai-new-chat-btn" onClick={() => startNewChat(true)}>
                                 <span>+</span> New Chat
+                            </button>
+                            <button
+                                className="ai-panel-toggle"
+                                onClick={() => setShowHistory(false)}
+                                title="Ẩn lịch sử"
+                            >
+                                ☰
                             </button>
                         </div>
                         <div className="ai-history-list">
@@ -1283,13 +1745,18 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                                         </div>
                                     )}
 
-                                    {(msg.type === 'text' || msg.type === 'error') && msg.content && (
+                                    {msg.type === 'text' && msg.content && (
                                         <>
                                             <MdText text={msg.content} />
                                             {msg.streaming && <span className="ai-cursor">▊</span>}
                                             {msg.cached && <span className="ai-cached-badge">⚡ Cached</span>}
                                         </>
                                     )}
+
+                                    {msg.type == 'error' && (
+                                        <ErrorMessage message={msg.content} />
+                                    )}
+
 
                                     {msg.type === 'cv_upload' && (
                                         <CVAttachment
@@ -1371,6 +1838,33 @@ ${a.weaknesses?.map((w) => `• ${w}`).join('\n') || '• Chưa có thông tin'}
                                             </div>
                                         </>
                                     )}
+
+
+                                    {msg.type === 'interview_questions' && (
+                                        <div className="ai-interview-section">
+                                            {/* Hiển thị nội dung markdown từ backend */}
+                                            <MdText text={msg.content} />
+
+                                            {/* Badge cá nhân hóa */}
+                                            {msg.personalized && (
+                                                <div className="ai-personalized-badge">
+                                                    ✨ Đã cá nhân hóa theo CV của bạn
+                                                </div>
+                                            )}
+
+                                            {/* Chỉ hiển thị phần upload CV khi chưa có CV và chưa được cá nhân hóa */}
+                                            {!hasCv && !msg.personalized && (
+                                                <div className="ai-upload-cv-prompt">
+                                                    <div className="ai-upload-cv-header">
+                                                        <span className="ai-upload-cv-title">🎯 Cá nhân hóa câu trả lời theo CV của bạn</span>
+                                                        <p className="ai-upload-cv-desc">Upload CV để AI tạo câu trả lời phỏng vấn phù hợp chính xác với kinh nghiệm và kỹ năng của bạn</p>
+                                                    </div>
+                                                    <InlineCVUploader onFile={handleInterviewCVUpload} />
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
                                 </div>
                                 {msg.role === 'user' && (
                                     <div className="ai-msg-av-wrap">

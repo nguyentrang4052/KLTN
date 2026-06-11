@@ -39,6 +39,15 @@ class LLMClient:
         response_format: Optional[Dict] = None,
         system_message: Optional[str] = None
     ) -> str:
+        if system_message is None:
+            system_message = """Bạn là trợ lý AI chuyên nghiệp, thân thiện. 
+                QUY TẮC QUAN TRỌNG:
+                1. Trả lời TRỰC TIẾP câu hỏi, KHÔNG lặp lại hướng dẫn hay quy tắc trong câu trả lời
+                2. KHÔNG thêm các cụm từ như "Dựa trên yêu cầu của bạn", "Theo hướng dẫn", "Như bạn đã yêu cầu"
+                3. KHÔNG liệt kê các quy tắc hoặc điều kiện trong câu trả lời
+                4. Chỉ xuất ra nội dung câu trả lời thuần túy
+                5. Sử dụng ngôn ngữ tự nhiên, dễ hiểu"""
+
         messages = []
         if system_message:
             messages.append({"role": "system", "content": system_message})

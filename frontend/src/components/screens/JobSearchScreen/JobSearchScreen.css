@@ -1228,7 +1228,7 @@ input[type=range] {
 
 .side-title {
     font-family: 'Roboto', serif;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     margin-bottom: 14px;
     display: flex;
@@ -1350,7 +1350,7 @@ input[type=range] {
 
 .alert-title {
     font-family: 'Roboto', serif;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     margin-bottom: 6px;
 }

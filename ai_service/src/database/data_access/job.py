@@ -355,25 +355,50 @@ class JobDataAccess:
         location: Optional[str] = None,
         limit: int = 10
     ) -> List[Dict[str, Any]]:
-        """Tìm kiếm job theo từ khóa - CHỈ JOB CHƯA HẾT HẠN"""
+        """Tìm kiếm job theo từ khóa - CHỈ LẤY JOB CHƯA HẾT HẠN"""
         if not keywords:
             return []
         
-        search_conditions = []
         params = []
         param_idx = 1
         
-        for kw in keywords:
-            search_conditions.append(f"(j.title ILIKE ${param_idx} OR j.description ILIKE ${param_idx} OR c.\"companyName\" ILIKE ${param_idx})")
-            params.append(f"%{kw}%")
-            param_idx += 1
+        # 🔥 QUAN TRỌNG: Tìm chính xác cụm từ trong title
+        # Ví dụ: "thực tập sinh pháp lý" -> tìm title chứa chính xác cụm này
         
+        # Điều kiện tìm trong title (ưu tiên cao nhất)
+        title_conditions = []
+        for kw in keywords:
+            # Nếu keyword có khoảng trắng (cụm từ), tìm chính xác cả cụm
+            if ' ' in kw:
+                title_conditions.append(f"j.title ILIKE ${param_idx}")
+                params.append(f"%{kw}%")
+                param_idx += 1
+            else:
+                title_conditions.append(f"j.title ILIKE ${param_idx}")
+                params.append(f"%{kw}%")
+                param_idx += 1
+        
+        # Điều kiện tìm trong description/company (ưu tiên thấp hơn)
+        other_conditions = []
+        for kw in keywords:
+            if ' ' in kw:
+                other_conditions.append(f"(j.description ILIKE ${param_idx} OR c.\"companyName\" ILIKE ${param_idx})")
+                params.append(f"%{kw}%")
+                param_idx += 1
+            else:
+                other_conditions.append(f"(j.description ILIKE ${param_idx} OR c.\"companyName\" ILIKE ${param_idx})")
+                params.append(f"%{kw}%")
+                param_idx += 1
+        
+        # Location filter
         if location:
-            search_conditions.append(f"(j.location ILIKE ${param_idx} OR j.\"shortLocation\" ILIKE ${param_idx})")
+            other_conditions.append(f"(j.location ILIKE ${param_idx} OR j.\"shortLocation\" ILIKE ${param_idx})")
             params.append(f"%{location}%")
             param_idx += 1
         
-        where_clause = " AND ".join(search_conditions) if search_conditions else "1=1"
+        # 🔥 Build query với ưu tiên title match
+        title_clause = " OR ".join(title_conditions) if title_conditions else "1=0"
+        other_clause = " OR ".join(other_conditions) if other_conditions else "1=0"
         
         query = f"""
             SELECT 
@@ -393,17 +418,23 @@ class JobDataAccess:
                 j.deadline,
                 j."isActive" as is_active,
                 i.name as industry,
-                array_agg(DISTINCT s.name) as skills
+                array_agg(DISTINCT s.name) as skills,
+                -- Điểm ưu tiên: title match = 100, description/company match = 50
+                CASE 
+                    WHEN ({title_clause}) THEN 100
+                    WHEN ({other_clause}) THEN 50
+                    ELSE 0
+                END as priority_score
             FROM "Job" j
             JOIN "Company" c ON j."companyID" = c."companyID"
             LEFT JOIN "Industry" i ON j."industryID" = i.id
             LEFT JOIN "JobSkill" js ON j."jobID" = js."jobID"
             LEFT JOIN "Skill" s ON js."skillID" = s."skillID"
             WHERE j."isActive" = true 
-              AND (j.deadline IS NULL OR j.deadline > NOW())
-              AND {where_clause}
+            AND (j.deadline IS NULL OR j.deadline > NOW())
+            AND (({title_clause}) OR ({other_clause}))
             GROUP BY j."jobID", c."companyID", c."companyName", i.name
-            ORDER BY j."postedAt" DESC NULLS LAST
+            ORDER BY priority_score DESC, j."postedAt" DESC NULLS LAST
             LIMIT ${param_idx}
         """
         params.append(limit)
@@ -608,3 +639,299 @@ class JobDataAccess:
         if row:
             return self._format_row(dict(row))
         return None
+
+    async def search_jobs_by_exact_phrase(
+        self,
+        phrase: str,
+        level: Optional[str] = None,
+        location: Optional[str] = None,
+        limit: int = 10
+    ) -> List[Dict[str, Any]]:
+        """Tìm kiếm job theo cụm từ chính xác + cấp bậc"""
+        
+        conditions = []
+        params = []
+        param_idx = 1
+        
+        # 🔥 Tìm chính xác cụm từ trong title
+        conditions.append(f"j.title ILIKE ${param_idx}")
+        params.append(f"%{phrase}%")
+        param_idx += 1
+        
+        # Level filter (nếu có)
+        if level:
+            level_keywords = {
+                "intern": ["thực tập sinh", "intern", "internship"],
+                "fresher": ["fresher", "mới tốt nghiệp", "entry"],
+                "junior": ["junior", "jr", "nhân viên"],
+                "mid": ["mid", "middle", "chuyên viên"],
+                "senior": ["senior", "sr", "trưởng nhóm"],
+                "manager": ["manager", "quản lý", "trưởng phòng"],
+            }
+            level_kws = level_keywords.get(level, [level])
+            
+            level_conditions = []
+            for kw in level_kws:
+                level_conditions.append(f"j.title ILIKE ${param_idx}")
+                params.append(f"%{kw}%")
+                param_idx += 1
+            conditions.append(f"({' OR '.join(level_conditions)})")
+        
+        # Location filter
+        if location:
+            conditions.append(f"(j.location ILIKE ${param_idx} OR j.\"shortLocation\" ILIKE ${param_idx})")
+            params.append(f"%{location}%")
+            param_idx += 1
+        
+        where_clause = " AND ".join(conditions)
+        
+        query = f"""
+            SELECT 
+                j."jobID" as id,
+                j.title,
+                c."companyName" as company,
+                c."companyID" as company_id,
+                j.location,
+                j.salary,
+                j.description,
+                j.requirement as requirements,
+                j.benefit,
+                j."jobType" as job_type,
+                j."workingTime" as working_time,
+                j."experienceYear" as experience_year,
+                j.deadline,
+                array_agg(DISTINCT s.name) as skills
+            FROM "Job" j
+            JOIN "Company" c ON j."companyID" = c."companyID"
+            LEFT JOIN "JobSkill" js ON j."jobID" = js."jobID"
+            LEFT JOIN "Skill" s ON js."skillID" = s."skillID"
+            WHERE j."isActive" = true 
+            AND (j.deadline IS NULL OR j.deadline > NOW())
+            AND {where_clause}
+            GROUP BY j."jobID", c."companyID", c."companyName"
+            ORDER BY j."postedAt" DESC NULLS LAST
+            LIMIT ${param_idx}
+        """
+        params.append(limit)
+        
+        rows = await db.fetch(query, *params)
+        return [self._format_row(dict(row)) for row in rows]
+    
+    async def search_jobs_by_level_and_title(
+        self,
+        level: str,  # intern, fresher, junior, mid, senior
+        title_keywords: List[str],
+        limit: int = 10
+    ) -> List[Dict[str, Any]]:
+        """Tìm kiếm job theo cấp bậc và tiêu đề"""
+        
+        # Map level sang từ khóa
+        level_keywords = {
+            "intern": ["thực tập sinh", "intern", "internship", "thực tập"],
+            "fresher": ["fresher", "mới tốt nghiệp", "entry", "entry level"],
+            "junior": ["junior", "jr", "nhân viên"],
+            "mid": ["mid", "middle", "chuyên viên"],
+            "senior": ["senior", "sr", "trưởng nhóm", "lead"],
+            "manager": ["manager", "quản lý", "trưởng phòng", "head"],
+        }
+        
+        level_kws = level_keywords.get(level.lower(), [level.lower()])
+        
+        conditions = []
+        params = []
+        param_idx = 1
+        
+        # Điều kiện cấp bậc (trong title)
+        level_conditions = []
+        for kw in level_kws:
+            level_conditions.append(f"j.title ILIKE ${param_idx}")
+            params.append(f"%{kw}%")
+            param_idx += 1
+        
+        if level_conditions:
+            conditions.append(f"({' OR '.join(level_conditions)})")
+        
+        # Điều kiện từ khóa vị trí
+        if title_keywords:
+            title_conditions = []
+            for kw in title_keywords:
+                # Nếu keyword có khoảng trắng, tìm cả cụm
+                if ' ' in kw:
+                    title_conditions.append(f"j.title ILIKE ${param_idx}")
+                    params.append(f"%{kw}%")
+                    param_idx += 1
+                else:
+                    title_conditions.append(f"j.title ILIKE ${param_idx}")
+                    params.append(f"%{kw}%")
+                    param_idx += 1
+            
+            if title_conditions:
+                conditions.append(f"({' OR '.join(title_conditions)})")
+        
+        if not conditions:
+            return []
+        
+        where_clause = " AND ".join(conditions)
+        
+        query = f"""
+            SELECT 
+                j."jobID" as id,
+                j.title,
+                c."companyName" as company,
+                c."companyID" as company_id,
+                j.location,
+                j.salary,
+                j.description,
+                j.requirement as requirements,
+                j.benefit,
+                j."jobType" as job_type,
+                j."workingTime" as working_time,
+                j."experienceYear" as experience_year,
+                j."postedAt" as posted_at,
+                j.deadline,
+                array_agg(DISTINCT s.name) as skills
+            FROM "Job" j
+            JOIN "Company" c ON j."companyID" = c."companyID"
+            LEFT JOIN "JobSkill" js ON j."jobID" = js."jobID"
+            LEFT JOIN "Skill" s ON js."skillID" = s."skillID"
+            WHERE j."isActive" = true 
+            AND (j.deadline IS NULL OR j.deadline > NOW())
+            AND {where_clause}
+            GROUP BY j."jobID", c."companyID", c."companyName"
+            ORDER BY j."postedAt" DESC NULLS LAST
+            LIMIT ${param_idx}
+        """
+        params.append(limit)
+        
+        try:
+            rows = await db.fetch(query, *params)
+            return [self._format_row(dict(row)) for row in rows]
+        except Exception as e:
+            print(f"Error in search_jobs_by_level_and_title: {e}")
+            return []
+    
+
+    async def get_industry_trends(self, industry_name: str = None, limit: int = 100) -> Dict[str, Any]:
+        """
+        Lấy dữ liệu thống kê xu hướng ngành từ database
+        - Số lượng job theo ngành
+        - Mức lương trung bình theo cấp bậc
+        - Kỹ năng hot trong ngành
+        - Top công ty tuyển dụng nhiều
+        """
+        
+        params = []
+        param_idx = 1
+        
+        # Điều kiện lọc theo ngành
+        industry_filter = ""
+        if industry_name:
+            industry_filter = f"AND i.name ILIKE ${param_idx}"
+            params.append(f"%{industry_name}%")
+            param_idx += 1
+        
+        # Query thống kê tổng quan
+        stats_query = f"""
+            SELECT 
+                i.name as industry,
+                COUNT(DISTINCT j."jobID") as total_jobs,
+                COUNT(DISTINCT c."companyID") as total_companies,
+                AVG(CASE 
+                    WHEN j.salary ~ '[0-9]+' THEN 
+                        CAST(REGEXP_REPLACE(REGEXP_REPLACE(j.salary, '[^0-9]', '', 'g'), '^0+', '') AS INTEGER)
+                    ELSE NULL 
+                END) as avg_salary
+            FROM "Job" j
+            JOIN "Industry" i ON j."industryID" = i.id
+            JOIN "Company" c ON j."companyID" = c."companyID"
+            WHERE j."isActive" = true 
+            AND (j.deadline IS NULL OR j.deadline > NOW())
+            {industry_filter}
+            GROUP BY i.name
+            ORDER BY total_jobs DESC
+            LIMIT 10
+        """
+        
+        # Query kỹ năng hot theo ngành
+        skills_query = f"""
+            SELECT 
+                s.name as skill,
+                COUNT(DISTINCT j."jobID") as job_count,
+                i.name as industry
+            FROM "Job" j
+            JOIN "Industry" i ON j."industryID" = i.id
+            JOIN "JobSkill" js ON j."jobID" = js."jobID"
+            JOIN "Skill" s ON js."skillID" = s."skillID"
+            WHERE j."isActive" = true 
+            AND (j.deadline IS NULL OR j.deadline > NOW())
+            {industry_filter}
+            GROUP BY s.name, i.name
+            ORDER BY job_count DESC
+            LIMIT 20
+        """
+        
+        # Query lương theo cấp bậc
+        level_salary_query = f"""
+            SELECT 
+                i.name as industry,
+                j."experienceYear" as level,
+                AVG(CAST(REGEXP_REPLACE(REGEXP_REPLACE(j.salary, '[^0-9]', '', 'g'), '^0+', '') AS INTEGER)) as avg_salary,
+                COUNT(*) as job_count
+            FROM "Job" j
+            JOIN "Industry" i ON j."industryID" = i.id
+            WHERE j."isActive" = true 
+            AND (j.deadline IS NULL OR j.deadline > NOW())
+            AND j.salary IS NOT NULL
+            AND j.salary != ''
+            {industry_filter}
+            GROUP BY i.name, j."experienceYear"
+            HAVING COUNT(*) >= 3
+            ORDER BY i.name, 
+                CASE 
+                    WHEN j."experienceYear" ILIKE '%intern%' THEN 1
+                    WHEN j."experienceYear" ILIKE '%fresher%' THEN 2
+                    WHEN j."experienceYear" ILIKE '%junior%' THEN 3
+                    WHEN j."experienceYear" ILIKE '%mid%' THEN 4
+                    WHEN j."experienceYear" ILIKE '%senior%' THEN 5
+                    WHEN j."experienceYear" ILIKE '%lead%' THEN 6
+                    ELSE 7
+                END
+            LIMIT 30
+        """
+        
+        # Query top công ty theo ngành
+        companies_query = f"""
+            SELECT 
+                c."companyName" as company,
+                COUNT(j."jobID") as job_count,
+                i.name as industry
+            FROM "Job" j
+            JOIN "Industry" i ON j."industryID" = i.id
+            JOIN "Company" c ON j."companyID" = c."companyID"
+            WHERE j."isActive" = true 
+            AND (j.deadline IS NULL OR j.deadline > NOW())
+            {industry_filter}
+            GROUP BY c."companyName", i.name
+            ORDER BY job_count DESC
+            LIMIT 10
+        """
+        
+        try:
+            stats = await db.fetch(stats_query, *params)
+            skills = await db.fetch(skills_query, *params)
+            level_salaries = await db.fetch(level_salary_query, *params)
+            companies = await db.fetch(companies_query, *params)
+            
+            return {
+                "stats": [dict(row) for row in stats],
+                "hot_skills": [dict(row) for row in skills],
+                "salary_by_level": [dict(row) for row in level_salaries],
+                "top_companies": [dict(row) for row in companies],
+            }
+        except Exception as e:
+            return {
+                "stats": [],
+                "hot_skills": [],
+                "salary_by_level": [],
+                "top_companies": [],
+            }

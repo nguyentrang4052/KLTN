@@ -131,8 +131,8 @@ function JobCard({ job, showMatch = true, showActions = true, token, onSave, onC
                 onClick={handleCompanyClick}
                 style={onCompanyClick && job.companyID ? {
                   cursor: 'pointer',
-                  textDecorationLine: 'underline',
-                  textDecorationStyle: 'dotted',
+                  // textDecorationLine: 'underline',
+                  textDecorationStyle: 'solid',
                 } : {}}
               >
                 {job.company}

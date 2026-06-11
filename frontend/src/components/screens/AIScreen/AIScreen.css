@@ -98,8 +98,15 @@
 }
 
 @keyframes aipulse {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: .3; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: .3;
+    }
 }
 
 .ai-header-actions {
@@ -157,10 +164,6 @@
     transition: transform 0.3s;
 }
 
-.ai-history-header {
-    padding: 16px;
-    border-bottom: 1px solid var(--border);
-}
 
 .ai-new-chat-btn {
     width: 100%;
@@ -192,7 +195,10 @@
     scrollbar-color: var(--border) transparent;
 }
 
-.ai-history-list::-webkit-scrollbar { width: 4px; }
+.ai-history-list::-webkit-scrollbar {
+    width: 4px;
+}
+
 .ai-history-list::-webkit-scrollbar-thumb {
     background: var(--border);
     border-radius: 3px;
@@ -259,6 +265,110 @@
 .ai-history-item:hover .ai-history-actions {
     opacity: 1;
 }
+
+/* ── History item: nút ··· và dropdown ── */
+.ai-history-menu-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 6px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-muted);
+    border-radius: 5px;
+    line-height: 1;
+    transition: all var(--transition);
+}
+
+.ai-history-menu-btn:hover {
+    background: rgba(192, 65, 42, .1);
+    color: var(--accent);
+}
+
+.ai-history-dropdown {
+    position: absolute;
+    right: 8px;
+    top: calc(100% - 4px);
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 6px 20px rgba(0,0,0,.12);
+    z-index: 100;
+    min-width: 140px;
+    overflow: hidden;
+    animation: dropdownIn .12s ease-out;
+}
+
+@keyframes dropdownIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.ai-history-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: 100%;
+    padding: 9px 13px;
+    background: none;
+    border: none;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    text-align: left;
+    transition: background var(--transition);
+}
+
+.ai-history-dropdown-item:hover {
+    background: var(--bg-muted);
+}
+
+.ai-history-dropdown-item.danger {
+    color: var(--accent);
+}
+
+.ai-history-dropdown-item.danger:hover {
+    background: rgba(192, 65, 42, .07);
+}
+
+/* ── Panel toggle button ── */
+.ai-panel-toggle {
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    color: var(--text-muted);
+    transition: all var(--transition);
+    flex-shrink: 0;
+    font-weight: 600;
+}
+
+.ai-panel-toggle:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(192, 65, 42, .05);
+}
+
+/* ── Panel header: toggle + new chat cạnh nhau ── */
+.ai-history-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ai-new-chat-btn {
+    flex: 1;
+}
+
 
 .ai-history-delete,
 .ai-history-rename,
@@ -327,7 +437,10 @@
     scrollbar-color: var(--border) transparent;
 }
 
-.ai-messages::-webkit-scrollbar { width: 4px; }
+.ai-messages::-webkit-scrollbar {
+    width: 4px;
+}
+
 .ai-messages::-webkit-scrollbar-thumb {
     background: var(--border);
     border-radius: 3px;
@@ -342,8 +455,15 @@
 }
 
 @keyframes aimsgIn {
-    from { opacity: 0; transform: translateY(6px); }
-    to   { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .ai-msg-wrap.user {
@@ -532,12 +652,25 @@
     animation: aitype 1.2s infinite;
 }
 
-.ai-typing span:nth-child(2) { animation-delay: .2s; }
-.ai-typing span:nth-child(3) { animation-delay: .4s; }
+.ai-typing span:nth-child(2) {
+    animation-delay: .2s;
+}
+
+.ai-typing span:nth-child(3) {
+    animation-delay: .4s;
+}
 
 @keyframes aitype {
-    0%, 60%, 100% { transform: translateY(0); }
-    30%            { transform: translateY(-6px); }
+
+    0%,
+    60%,
+    100% {
+        transform: translateY(0);
+    }
+
+    30% {
+        transform: translateY(-6px);
+    }
 }
 
 /* ── Streaming cursor ── */
@@ -549,8 +682,16 @@
 }
 
 @keyframes aiblink {
-    0%, 50%   { opacity: 1; }
-    51%, 100% { opacity: 0; }
+
+    0%,
+    50% {
+        opacity: 1;
+    }
+
+    51%,
+    100% {
+        opacity: 0;
+    }
 }
 
 /* ── Cached badge ── */
@@ -898,7 +1039,9 @@
     scrollbar-width: none;
 }
 
-.ai-quick-bar::-webkit-scrollbar { display: none; }
+.ai-quick-bar::-webkit-scrollbar {
+    display: none;
+}
 
 .ai-quick-chip {
     padding: 6px 13px;
@@ -930,12 +1073,13 @@
 .ai-input-box {
     display: flex;
     align-items: flex-end;
-    gap: 10px;
+    gap: 8px;
+    width: 100%;
     background: var(--bg-card);
     border: 1.5px solid var(--border);
-    border-radius: 14px;
-    padding: 12px 12px 12px 16px;
-    transition: border-color .2s;
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    transition: border-color var(--transition);
 }
 
 .ai-input-box:focus-within {
@@ -951,8 +1095,10 @@
     color: var(--text-primary);
     outline: none;
     resize: none;
-    max-height: 120px;
+    /* height, overflow-y điều khiển bởi JS auto-resize */
+    min-height: 24px;
     line-height: 1.5;
+    width: 100%;
 }
 
 .ai-input::placeholder {
@@ -1037,7 +1183,10 @@
     scrollbar-color: var(--border) transparent;
 }
 
-.ai-side::-webkit-scrollbar { width: 4px; }
+.ai-side::-webkit-scrollbar {
+    width: 4px;
+}
+
 .ai-side::-webkit-scrollbar-thumb {
     background: var(--border);
     border-radius: 3px;
@@ -1248,9 +1397,17 @@
     line-height: 1.55;
 }
 
-.ai-insight-row.good .ai-insight-text { color: var(--accent-green); }
-.ai-insight-row.warn .ai-insight-text { color: var(--accent-amber); }
-.ai-insight-row.tip  .ai-insight-text { color: #1A3A6A; }
+.ai-insight-row.good .ai-insight-text {
+    color: var(--accent-green);
+}
+
+.ai-insight-row.warn .ai-insight-text {
+    color: var(--accent-amber);
+}
+
+.ai-insight-row.tip .ai-insight-text {
+    color: #1A3A6A;
+}
 
 /* ── Responsive ── */
 @media (max-width: 820px) {
@@ -1289,7 +1446,7 @@
 .cv-modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.6);
+    background: rgba(0, 0, 0, 0.6);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -1596,4 +1753,476 @@
 .ai-company-view-btn:hover {
     background: #232aa2;
     color: white;
+}
+
+/* Error Message Styles */
+.ai-error-message {
+    background: linear-gradient(135deg, #fff5f5 0%, #ffe8e8 100%);
+    border-left: 4px solid #f56565;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin: 8px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ai-error-icon {
+    font-size: 24px;
+    margin-right: 12px;
+}
+
+.ai-error-text {
+    font-size: 15px;
+    color: #c53030;
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.ai-error-suggestion {
+    font-size: 13px;
+    color: #4a5568;
+    background: white;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-top: 4px;
+}
+
+.ai-error-suggestion ul {
+    margin: 8px 0 0 0;
+    padding-left: 20px;
+}
+
+.ai-error-suggestion li {
+    margin: 4px 0;
+    color: #2d3748;
+}
+
+.ai-upload-cv-prompt {
+    display: flex;
+    align-items: flex-start;
+    /* đổi từ center → flex-start */
+    gap: 16px;
+    background: linear-gradient(135deg, #e8f4fd 0%, #d9effc 100%);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-top: 16px;
+    border: 1px solid #b8dff5;
+}
+
+.ai-upload-icon {
+    font-size: 32px;
+}
+
+.ai-upload-text p {
+    margin: 4px 0 12px 0;
+    font-size: 14px;
+    color: #2c5282;
+}
+
+.ai-upload-cv-btn {
+    background: #3182ce;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.ai-upload-cv-btn:hover {
+    background: #2b6cb0;
+    transform: translateY(-1px);
+}
+
+.ai-cv-ready {
+    background: #e6f7e6;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 12px;
+    color: #2e7d32;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ai-upload-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ai-upload-text strong {
+    font-size: 14px;
+    color: #1a365d;
+}
+
+/* ══ Inline CV Uploader (interview_questions block) ══════════════════ */
+.ai-upload-cv-prompt {
+    margin-top: 16px;
+    border-radius: 12px;
+    border: 1px solid #b8dff5;
+    background: linear-gradient(135deg, #e8f4fd 0%, #d9effc 100%);
+    overflow: hidden;
+}
+
+.ai-upload-cv-header {
+    padding: 14px 18px 10px;
+}
+
+.ai-upload-cv-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a365d;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.ai-upload-cv-desc {
+    margin: 0;
+    font-size: 13px;
+    color: #2c5282;
+    line-height: 1.5;
+}
+
+/* ── Drop zone ── */
+.ai-inline-cv-drop {
+    margin: 0 14px 14px;
+    border: 2px dashed #90cdf4;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.6);
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.ai-inline-cv-drop.dragging,
+.ai-inline-cv-drop:hover {
+    border-color: #3182ce;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.15);
+}
+
+.ai-inline-cv-label {
+    display: block;
+    cursor: pointer;
+    padding: 16px;
+}
+
+.ai-inline-cv-idle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ai-inline-cv-icon {
+    font-size: 28px;
+    flex-shrink: 0;
+}
+
+.ai-inline-cv-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ai-inline-cv-text strong {
+    font-size: 13.5px;
+    color: #1a365d;
+}
+
+.ai-inline-cv-text span {
+    font-size: 12.5px;
+    color: #4a6fa5;
+}
+
+.ai-inline-cv-hint {
+    font-size: 11.5px !important;
+    color: #718096 !important;
+}
+
+.ai-inline-cv-selected {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ai-inline-cv-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #2b6cb0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ai-inline-cv-processing {
+    font-size: 12px;
+    color: #718096;
+    flex-shrink: 0;
+}
+
+/* ── Personalized badge ── */
+.ai-personalized-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #276749;
+    background: rgba(39, 103, 73, 0.1);
+    border: 1px solid rgba(39, 103, 73, 0.25);
+    border-radius: 20px;
+    padding: 3px 10px;
+    margin-bottom: 12px;
+}
+
+/* ── CV ready block khi đã có CV nhưng muốn update ── */
+.ai-cv-ready {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0;
+    background: transparent;
+    margin-top: 12px;
+    gap: 0;
+}
+
+.ai-cv-ready> :first-child {
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #276749;
+    background: #e6f7e6;
+    border-radius: 8px 8px 0 0;
+    width: 100%;
+}
+
+/* Interview Questions Styles */
+.ai-interview-question {
+    font-weight: 600;
+    color: #1a73e8;
+    margin-top: 16px;
+    margin-bottom: 6px;
+    font-size: 15px;
+    line-height: 1.4;
+}
+
+.ai-interview-question .question-prefix {
+    color: #1a73e8;
+    /* Màu xanh dương cho "Câu hỏi X:" */
+    font-weight: 600;
+}
+
+.ai-interview-answer {
+    color: #333;
+    margin-bottom: 14px;
+    padding-left: 16px;
+    border-left: 3px solid #1a73e8;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.ai-interview-answer .answer-prefix {
+    font-weight: 600;
+    color: black;
+    /* Màu xanh lá cho "Câu trả lời:" */
+}
+
+.ai-interview-separator {
+    margin: 16px 0;
+    border: none;
+    border-top: 1px solid #e5e7eb;
+}
+
+.ai-advice-title {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    font-size: 15px;
+    color: #10b981;
+}
+
+.ai-personalized-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-top: 16px;
+    margin-bottom: 12px;
+}
+
+.ai-upload-cv-prompt {
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 16px;
+    padding: 20px;
+    margin-top: 20px;
+    text-align: center;
+}
+
+.ai-upload-cv-header {
+    margin-bottom: 16px;
+}
+
+.ai-upload-cv-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e293b;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.ai-upload-cv-desc {
+    font-size: 13px;
+    color: #64748b;
+    margin: 0;
+}
+
+.ai-inline-cv-drop {
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    padding: 16px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ai-inline-cv-drop.dragging {
+    border-color: #1a73e8;
+    background: #f0f7ff;
+}
+
+.ai-inline-cv-label {
+    cursor: pointer;
+    display: block;
+}
+
+.ai-inline-cv-idle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.ai-inline-cv-icon {
+    font-size: 24px;
+}
+
+.ai-inline-cv-text {
+    text-align: left;
+}
+
+.ai-inline-cv-text strong {
+    display: block;
+    font-size: 14px;
+    color: #1e293b;
+}
+
+.ai-inline-cv-text span {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.ai-inline-cv-hint {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-left: 8px;
+}
+
+.ai-inline-cv-selected {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.ai-inline-cv-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1e293b;
+}
+
+.ai-inline-cv-processing {
+    font-size: 12px;
+    color: #f59e0b;
+}
+
+/* Interview questions styling */
+.ai-interview-question {
+    background: #f0f7ff;
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin: 8px 0;
+    border-left: 4px solid #3b82f6;
+}
+
+.ai-interview-answer {
+    padding: 8px 12px;
+    margin: 8px 0 16px 0;
+    color: #374151;
+}
+
+.question-prefix,
+.answer-prefix {
+    color: #1f2937;
+    font-weight: 600;
+}
+
+.ai-advice-title {
+    background: #fef3c7;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin: 16px 0;
+    border-left: 4px solid #f59e0b;
+}
+
+.ai-section-header {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 16px 0 8px 0;
+    padding-bottom: 4px;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.ai-interview-separator {
+    margin: 16px 0;
+    border: none;
+    border-top: 1px dashed #d1d5db;
+}
+
+/* Table styling */
+.ai-table-row {
+    display: flex;
+    gap: 16px;
+    padding: 8px 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.ai-table-head {
+    background: #f3f4f6;
+    font-weight: 600;
+    border-radius: 6px;
+    margin-top: 8px;
+}
+
+.ai-table-cell {
+    flex: 1;
+    padding: 4px 8px;
+}
+
+/* Personalization badge */
+.ai-personalized-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    margin-top: 12px;
 }

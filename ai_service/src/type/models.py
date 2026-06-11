@@ -185,3 +185,20 @@ class TranslationResponse(BaseModel):
     target_lang: str
     from_cache: bool = False
     error: Optional[str] = None
+
+
+class SessionContext(BaseModel):
+    """Lưu context cho multi-turn conversation"""
+    user_id: str
+    title: str = "New Chat"
+    cv_analysis: Optional[CVAnalysis] = None
+    matched_jobs: List[Dict[str, Any]] = Field(default_factory=list)
+    current_focus_job: Optional[Dict[str, Any]] = None
+    conversation_history: List[ChatMessage] = Field(default_factory=list)
+    last_updated: float = Field(default_factory=lambda: __import__('time').time())
+    search_result_jobs: List[Dict[str, Any]] = Field(default_factory=list)
+    
+    # Thêm field cho JD
+    jd_text: Optional[str] = None
+    jd_analysis: Optional[Dict[str, Any]] = None
+    jd_questions: List[Dict[str, Any]] = Field(default_factory=list)

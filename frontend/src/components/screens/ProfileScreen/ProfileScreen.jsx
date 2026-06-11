@@ -454,29 +454,6 @@ function PreviewSection({ label, children }) {
 }
 
 function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
-  // const [cvList, setCvList] = useState(() => {
-  //   try {
-  //     const key = profile?.userID ? `cv_builder_state_${profile.userID}` : 'cv_builder_state'
-  //     const raw = localStorage.getItem(key)
-  //     const state = raw ? JSON.parse(raw) : {}
-  //     const list = state._cvList
-  //     return Array.isArray(list) && list.length > 0 ? list : cvListProp
-  //   } catch { return cvListProp }
-  // })
-  // useEffect(() => {
-  //   const sync = () => {
-  //     try {
-  //       const key = profile?.userID ? `cv_builder_state_${profile.userID}` : 'cv_builder_state'
-  //       const raw = localStorage.getItem(key)
-  //       const state = raw ? JSON.parse(raw) : {}
-  //       if (Array.isArray(state._cvList)) setCvList(state._cvList)
-  //     } catch { }
-  //   }
-  //   window.addEventListener('storage', sync)
-  //   window.addEventListener('focus', sync)
-  //   return () => { window.removeEventListener('storage', sync); window.removeEventListener('focus', sync) }
-  // }, [])
-
   const [cvList, setCvList] = useState(cvListProp)
   const [profile, setProfile] = useState(null)
   const [stats, setStats] = useState(null)
@@ -780,7 +757,7 @@ function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
         return
       } else {
         // CV local: data nằm trong cv_builder_state[cv.id].data
-        const cvData = getCVData(cv.id)
+        const cvData = cv.data?.cvData || {};
         const personalInfo = cvData.personalInfo || {}
         const experiences = Array.isArray(cvData.experiences) ? cvData.experiences : []
 
@@ -938,16 +915,20 @@ function ProfileScreen({ onNavigate, cvList: cvListProp = [] }) {
                       <div className="profile-section-title" style={{ marginBottom: 12 }}>📊 Hoạt động của bạn</div>
                       <div style={{ display: 'flex' }}>
                         {[
-                          { label: 'Đã xem', value: stats.viewCount, icon: '👁' },
-                          { label: 'Đã lưu', value: stats.saveCount, icon: '🔖' }
+                          { label: 'Đã xem', value: stats.viewCount, icon: '👁', path: '/viewed-jobs' },
+                          { label: 'Đã lưu', value: stats.saveCount, icon: '🔖', path: '/saved-jobs' }
                         ].map((s, i) => (
-                          <div key={i} style={{
-                            flex: 1, textAlign: 'center',
-                            borderRight: i < 3 ? '1px solid var(--border)' : 'none',
-                            padding: '4px 0',
-                          }}>
+                          <div key={i}
+                            onClick={() => navigate(s.path)}
+                            style={{
+                              flex: 1,
+                              textAlign: 'center',
+                              borderRight: i < 3 ? '1px solid var(--border)' : 'none',
+                              padding: '4px 0',
+                              cursor: 'pointer',
+                            }}>
                             <div style={{ fontSize: 18 }}>{s.icon}</div>
-                            <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Fraunces', serif" }}>{s.value}</div>
+                            <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Roboto', serif" }}>{s.value}</div>
                             <div style={{ fontSize: 11, color: 'var(--ink4)' }}>{s.label}</div>
                           </div>
                         ))}
