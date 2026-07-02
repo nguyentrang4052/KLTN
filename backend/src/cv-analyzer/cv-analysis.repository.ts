@@ -33,27 +33,25 @@ export class CVAnalysisRepository {
     }
 
     // cv-analysis.repository.ts
-    async mapToUserProfile(cvBuilderId: number, userId: number) {
+    async mapToUserProfile(cvAnalysisId: number, userId: number) {
         // Query đúng bảng CVBuilder thay vì CVAnalysis
-        const cv = await this.prisma.cVBuilder.findUnique({
-            where: { id: cvBuilderId }
+        const cv = await this.prisma.cVAnalysis.findUnique({
+            where: { id: cvAnalysisId }
         });
 
-        if (!cv) throw new Error('CV Builder not found');
+        if (!cv) throw new Error('CV Analysis not found');
 
-        // Parse data từ trường Json
-        const cvData = cv.data as any || {};
-        const result = cvData.cvData || cvData || {};
+        if (cv.userID !== userId) throw new Error('Unauthorized');
+
+        const result = cv.result as any || {};
 
         const info = result.personalInfo || {};
         const exps = result.experiences || [];
 
-        // ── Career fields ──
         const jobTitle = exps[0]?.position || null;
         const experienceYear = this.calculateExperienceYears(exps);
         const careerLevel = this.calculateCareerLevel(exps);
 
-        // ── Personal fields: chỉ ghi đè nếu có data ──
         const userUpdate: Record<string, any> = {};
         if (info.fullName) userUpdate.fullName = info.fullName;
         if (info.phone) userUpdate.phone = info.phone;

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import './Register.css'
 import { useNavigate } from "react-router-dom"
-import {API} from '../../../config/api'
+import { API } from '../../../config/api'
 
 const IconMail = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -308,12 +308,12 @@ export default function Register() {
             <>
               <h2 className="rg-card-title">Tạo tài khoản</h2>
               <p className="rg-card-sub">Đã có tài khoản? <a onClick={() => navigate("/login")}>Đăng nhập →</a></p>
-              <div className="rg-socials">
+              {/* <div className="rg-socials">
                 <button className="rg-social-btn" onClick={() => window.location.href = `${API}/auth/google`}>
                   <IconGoogle /> Google
                 </button>
               </div>
-              <div className="rg-divider"><span>hoặc đăng ký bằng email</span></div>
+              <div className="rg-divider"><span>hoặc đăng ký bằng email</span></div> */}
               <div className="rg-form">
                 {error && <div className="rg-error">⚠ {error}</div>}
                 <div className="rg-field">

@@ -68,9 +68,7 @@ export class JobsService {
     }
 
     if (industryId) where.industryID = industryId;
-
-    if (experience)
-      where.experienceYear = { contains: experience, mode: 'insensitive' };
+    if (experience) where.experienceYear = { contains: experience, mode: 'insensitive' };
     if (source) where.sourcePlatform = source;
 
     if (jobType) {
@@ -101,6 +99,103 @@ export class JobsService {
     let orderBy: Prisma.JobOrderByWithRelationInput = { postedAt: 'desc' };
     if (sort === 'deadline') orderBy = { deadline: 'asc' };
 
+    const hasSalaryFilter = salaryMin != null || salaryMax != null;
+
+    const parseSalaryNum = (salary: string | null): number => {
+      const s = salary ?? '';
+      const nums = s.replace(/,/g, '').match(/\d+(\.\d+)?/g);
+      if (!nums) return 0;
+      const first = parseFloat(nums[0]);
+      return first >= 1_000_000 ? Math.round(first / 1_000_000) : first;
+    };
+
+    if (hasSalaryFilter) {
+      const allSalaryJobs = await this.prisma.job.findMany({
+        where,
+        select: { jobID: true, salary: true },
+        orderBy,
+      });
+
+      const filtered = allSalaryJobs.filter((j) => {
+        const num = parseSalaryNum(j.salary);
+        if (salaryMin != null && num < salaryMin) return false;
+        if (salaryMax != null && num > salaryMax) return false;
+        return true;
+      });
+
+      const filteredTotal = filtered.length;
+      const pageJobIds = filtered.slice(skip, skip + limit).map((j) => j.jobID);
+
+      const [jobs, matchMapResult] = await Promise.all([
+        this.prisma.job.findMany({
+          where: { jobID: { in: pageJobIds } },
+          orderBy,
+          include: {
+            company: {
+              select: { companyID: true, companyName: true, companyLogo: true },
+            },
+            industry: { select: { name: true } },
+            skills: { include: { skill: { select: { name: true } } }, take: 5 },
+          },
+        }),
+        (async (): Promise<Record<number, number>> => {
+          if (!accountID) return {};
+          const user = await this.prisma.user.findFirst({
+            where: { accountID },
+            select: { userID: true },
+          });
+          if (!user) return {};
+          const recs = await this.prisma.jobRecommendation.findMany({
+            where: { userID: user.userID, jobID: { in: pageJobIds } },
+            select: { jobID: true, matchPercent: true },
+          });
+          return Object.fromEntries(recs.map((r) => [r.jobID, r.matchPercent]));
+        })(),
+      ]);
+
+      const jobMap = new Map(jobs.map((j) => [j.jobID, j]));
+
+      let jobList = pageJobIds
+        .map((id) => jobMap.get(id))
+        .filter((j): j is NonNullable<typeof j> => j != null)
+        .map((j) => ({
+          jobID: j.jobID,
+          title: j.title,
+          companyID: j.company.companyID,
+          companyName: j.company.companyName,
+          companyLogo: j.company.companyLogo,
+          location: j.location,
+          shortLocation: j.shortLocation,
+          experienceYear: j.experienceYear,
+          salary: j.salary,
+          jobType: j.jobType,
+          sourcePlatform: j.sourcePlatform,
+          sourceLink: j.sourceLink,
+          postedAt: j.postedAt,
+          deadline: j.deadline,
+          industry: j.industry?.name,
+          skills: j.skills.map((s) => s.skill.name),
+          matchPercent: matchMapResult[j.jobID] ?? null,
+          _salaryNum: parseSalaryNum(j.salary),
+        }));
+
+      if (sort === 'salary')
+        jobList = jobList.sort((a, b) => b._salaryNum - a._salaryNum);
+      if (sort === 'match')
+        jobList = jobList.sort((a, b) => (b.matchPercent ?? 0) - (a.matchPercent ?? 0));
+
+      return {
+        data: jobList.map(({ _salaryNum, ...j }) => j),
+        meta: {
+          total: filteredTotal,
+          page,
+          limit,
+          totalPages: Math.ceil(filteredTotal / limit),
+        },
+      };
+    }
+
+    // Không có salary filter — flow bình thường
     const [jobs, total] = await Promise.all([
       this.prisma.job.findMany({
         where,
@@ -138,10 +233,6 @@ export class JobsService {
       }
     }
 
-    // const filteredJobs = jobs.filter(j =>
-    //   j.deadline && new Date(j.deadline) > new Date()
-    // );
-
     let jobList = jobs.map((j) => ({
       jobID: j.jobID,
       title: j.title,
@@ -160,15 +251,9 @@ export class JobsService {
       industry: j.industry?.name,
       skills: j.skills.map((s) => s.skill.name),
       matchPercent: matchMap[j.jobID] ?? null,
-      _salaryNum: parseInt((j.salary ?? '0').replace(/\D.*/, '')) || 0,
+      _salaryNum: parseSalaryNum(j.salary),
     }));
 
-    if (salaryMin != null) {
-      jobList = jobList.filter((j) => j._salaryNum >= salaryMin);
-    }
-    if (salaryMax != null) {
-      jobList = jobList.filter((j) => j._salaryNum <= salaryMax);
-    }
     if (sort === 'newest' && !keyword) {
       for (let i = jobList.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -178,9 +263,7 @@ export class JobsService {
     if (sort === 'salary')
       jobList = jobList.sort((a, b) => b._salaryNum - a._salaryNum);
     if (sort === 'match')
-      jobList = jobList.sort(
-        (a, b) => (b.matchPercent ?? 0) - (a.matchPercent ?? 0),
-      );
+      jobList = jobList.sort((a, b) => (b.matchPercent ?? 0) - (a.matchPercent ?? 0));
 
     return {
       data: jobList.map(({ _salaryNum, ...j }) => j),
