@@ -78,7 +78,7 @@ export class JobAlertService {
     });
   }
 
-  @Cron('0 8 * * *')
+  @Cron('* * * * *')
   async sendDailyAlerts() {
     const activeAlerts = await this.prisma.jobAlert.findMany({
       where: { active: true },
@@ -94,7 +94,7 @@ export class JobAlertService {
     });
     if (activeAlerts.length === 0) return;
 
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    // const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const today = new Date().toISOString().slice(0, 10);
 
     for (const alert of activeAlerts) {
@@ -102,7 +102,7 @@ export class JobAlertService {
         const jobs = await this.prisma.job.findMany({
           where: {
             isActive: true,
-            postedAt: { gte: since },
+            // postedAt: { gte: since },
             OR: [{ deadline: null }, { deadline: { gt: new Date() } }],
             AND: [
               {
