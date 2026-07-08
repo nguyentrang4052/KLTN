@@ -4,7 +4,7 @@
     "value": "eyJjayI6InVuZGVmaW5lZCIsInV1aWQiOiJjYWY1ZjY0Ny03ZDg3LTQyMTktYmE0YS03ZjJhYzFmNTkzMDMiLCJ2aXNpdCI6InJldHVybmluZyJ9",
     "domain": "careerviet.vn",
     "path": "/",
-    "expires": 1818046149.877221,
+    "expires": 1818046291.845675,
     "httpOnly": false,
     "secure": true,
     "sameSite": "Lax"
@@ -14,7 +14,7 @@
     "value": "ImViMDQ1ZDc4ZDI3MzEwNzM0OGIwMzAwYzAxZDI5Yjc1NTJkNjIyYWJiYzZmYWY4MWIzZWM1NTM1OWFhOTk1MGMi",
     "domain": "careerviet.vn",
     "path": "/",
-    "expires": 1818046149.887277,
+    "expires": 1818046291.851217,
     "httpOnly": false,
     "secure": true,
     "sameSite": "Lax"
@@ -24,7 +24,7 @@
     "value": "59a707096c0076c09ef1143702437da2",
     "domain": "ads.careerviet.vn",
     "path": "/",
-    "expires": 1815022150.040966,
+    "expires": 1815022291.728788,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
@@ -44,7 +44,7 @@
     "value": "5WPl.551412794.3.O-mmGRpnuRk65JoRlF7XkxpnuRkyyU6xlO02yzRnuRi",
     "domain": ".zalo.me",
     "path": "/",
-    "expires": 1784090950.48234,
+    "expires": 1784091092.598561,
     "httpOnly": true,
     "secure": true,
     "sameSite": "None"
@@ -54,7 +54,7 @@
     "value": "0",
     "domain": ".zalo.me",
     "path": "/",
-    "expires": 1784090950.482459,
+    "expires": 1784091092.598778,
     "httpOnly": false,
     "secure": true,
     "sameSite": "None"
@@ -140,7 +140,7 @@
     "value": "fb.1.1783226107940.813799612130894444",
     "domain": ".careerviet.vn",
     "path": "/",
-    "expires": 1791262150,
+    "expires": 1791262291,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
@@ -150,7 +150,7 @@
     "value": "f5cbb02e-0cec-477f-84b0-78ff9c34a3a5",
     "domain": ".criteo.com",
     "path": "/",
-    "expires": 1817182150.043448,
+    "expires": 1817182291.678283,
     "httpOnly": false,
     "secure": true,
     "sameSite": "None"
@@ -160,7 +160,7 @@
     "value": "2000.SSZzejyD2DyiZwEqqGn1pJ75lh39JHN1E8Yy_zm36zbwrAxraqyVs3ITg_QHGXhPDjckyfeD6jW_tQxmCJat.1",
     "domain": ".zalo.me",
     "path": "/",
-    "expires": 1818046150.216169,
+    "expires": 1818046292.292318,
     "httpOnly": false,
     "secure": true,
     "sameSite": "None"
@@ -1066,7 +1066,7 @@
     "value": "GA1.2.1591326804.1783480604",
     "domain": ".careerviet.vn",
     "path": "/",
-    "expires": 1783572549,
+    "expires": 1783572691,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
@@ -1174,81 +1174,11 @@
     "sameSite": "None"
   },
   {
-    "name": "__stgeo",
-    "value": "IjEi",
-    "domain": "careerviet.vn",
-    "path": "/",
-    "expires": 1783572549,
-    "httpOnly": false,
-    "secure": true,
-    "sameSite": "Lax"
-  },
-  {
-    "name": "strSearchJobRecent",
-    "value": "{%2222_1783486148784%22:%22eyJzaW1pbGFyIjowLCJvd25lciI6ImtpZW12aWVjIiwiY291bnRfc2VhcmNoIjp0cnVlLCJpbmR1c3RyeSI6IjIyIiwiYXJyX2luZHVzdHJ5IjpbIjIyIl0sImluZHVzdHJ5X2tleV92biI6Im5oYW4tc3UiLCJpbmR1c3RyeV9uYW1lIjpbeyJpbmR1c3RyeV9pZCI6IjIyIiwiaW5kdXN0cnlfbmFtZSI6Ik5oXHUwMGUybiBzXHUxZWYxIn1dLCJsZXZlbCI6IiIsImxldmVsX25hbWUiOltdLCJsYXN0X21vZGlmeSI6MTc4MzQ4NjE0ODc4NH0=%22%2C%2222_1783486148763%22:%22eyJzaW1pbGFyIjowLCJvd25lciI6ImtpZW12aWVjIiwiY291bnRfc2VhcmNoIjp0cnVlLCJpbmR1c3RyeSI6IjIyIiwiYXJyX2luZHVzdHJ5IjpbIjIyIl0sImluZHVzdHJ5X2tleV92biI6Im5oYW4tc3UiLCJpbmR1c3RyeV9uYW1lIjpbeyJpbmR1c3RyeV9pZCI6IjIyIiwiaW5kdXN0cnlfbmFtZSI6Ik5oXHUwMGUybiBzXHUxZWYxIn1dLCJsZXZlbCI6IiIsImxldmVsX25hbWUiOltdLCJsYXN0X21vZGlmeSI6MTc4MzQ4NjE0ODc2M30=%22%2C%2222_1783486142224%22:%22eyJzaW1pbGFyIjowLCJvd25lciI6ImtpZW12aWVjIiwiY291bnRfc2VhcmNoIjp0cnVlLCJpbmR1c3RyeSI6IjIyIiwiYXJyX2luZHVzdHJ5IjpbIjIyIl0sImluZHVzdHJ5X2tleV92biI6Im5oYW4tc3UiLCJpbmR1c3RyeV9uYW1lIjpbeyJpbmR1c3RyeV9pZCI6IjIyIiwiaW5kdXN0cnlfbmFtZSI6Ik5oXHUwMGUybiBzXHUxZWYxIn1dLCJsZXZlbCI6IiIsImxldmVsX25hbWUiOltdLCJsYXN0X21vZGlmeSI6MTc4MzQ4NjE0MjIyNH0=%22}",
-    "domain": "careerviet.vn",
-    "path": "/",
-    "expires": 1815022148,
-    "httpOnly": false,
-    "secure": false,
-    "sameSite": "Lax"
-  },
-  {
-    "name": "_ga_649BTQ328X",
-    "value": "GS2.1.s1783483704$o6$g1$t1783486149$j60$l0$h1879199292",
-    "domain": ".careerviet.vn",
-    "path": "/",
-    "expires": 1818046149.412266,
-    "httpOnly": false,
-    "secure": false,
-    "sameSite": "Lax"
-  },
-  {
-    "name": "_ga_9WDL9JQ84J",
-    "value": "GS2.1.s1783483704$o6$g1$t1783486149$j60$l0$h0",
-    "domain": ".careerviet.vn",
-    "path": "/",
-    "expires": 1818046149.656948,
-    "httpOnly": false,
-    "secure": false,
-    "sameSite": "Lax"
-  },
-  {
-    "name": "_ga_6ZG50DXMHR",
-    "value": "GS2.1.s1783483704$o6$g1$t1783486149$j60$l0$h0",
-    "domain": ".careerviet.vn",
-    "path": "/",
-    "expires": 1818046149.74592,
-    "httpOnly": false,
-    "secure": false,
-    "sameSite": "Lax"
-  },
-  {
-    "name": "__rtbh.lid",
-    "value": "%7B%22eventType%22%3A%22lid%22%2C%22id%22%3A%22MleBp7qT0XwQ80uMB6H3%22%2C%22expiryDate%22%3A%222027-07-08T04%3A49%3A09.752Z%22%7D",
-    "domain": "careerviet.vn",
-    "path": "/",
-    "expires": 1815022149,
-    "httpOnly": false,
-    "secure": true,
-    "sameSite": "None"
-  },
-  {
-    "name": "_ga",
-    "value": "GA1.2.396209460.1783226106",
-    "domain": ".careerviet.vn",
-    "path": "/",
-    "expires": 1818046149.775587,
-    "httpOnly": false,
-    "secure": false,
-    "sameSite": "Lax"
-  },
-  {
     "name": "_gat_UA-29093916-1",
     "value": "1",
     "domain": ".careerviet.vn",
     "path": "/",
-    "expires": 1783486209,
+    "expires": 1783486340,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
@@ -1258,7 +1188,7 @@
     "value": "1",
     "domain": ".careerviet.vn",
     "path": "/",
-    "expires": 1783486209,
+    "expires": 1783486340,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
@@ -1268,27 +1198,97 @@
     "value": "1",
     "domain": ".careerviet.vn",
     "path": "/",
-    "expires": 1783486209,
+    "expires": 1783486340,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "__stgeo",
+    "value": "IjEi",
+    "domain": "careerviet.vn",
+    "path": "/",
+    "expires": 1783572691,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "strSearchJobRecent",
+    "value": "{%222_1783486290597%22:%22eyJzaW1pbGFyIjowLCJvd25lciI6ImtpZW12aWVjIiwiY291bnRfc2VhcmNoIjp0cnVlLCJpbmR1c3RyeSI6IjIiLCJhcnJfaW5kdXN0cnkiOlsiMiJdLCJpbmR1c3RyeV9rZXlfdm4iOiJrZS10b2FuLWtpZW0tdG9hbiIsImluZHVzdHJ5X25hbWUiOlt7ImluZHVzdHJ5X2lkIjoiMiIsImluZHVzdHJ5X25hbWUiOiJLXHUxZWJmIHRvXHUwMGUxbiBcLyBLaVx1MWVjM20gdG9cdTAwZTFuIn1dLCJsZXZlbCI6IiIsImxldmVsX25hbWUiOltdLCJsYXN0X21vZGlmeSI6MTc4MzQ4NjI5MDU5N30=%22%2C%222_1783486290528%22:%22eyJzaW1pbGFyIjowLCJvd25lciI6ImtpZW12aWVjIiwiY291bnRfc2VhcmNoIjp0cnVlLCJpbmR1c3RyeSI6IjIiLCJhcnJfaW5kdXN0cnkiOlsiMiJdLCJpbmR1c3RyeV9rZXlfdm4iOiJrZS10b2FuLWtpZW0tdG9hbiIsImluZHVzdHJ5X25hbWUiOlt7ImluZHVzdHJ5X2lkIjoiMiIsImluZHVzdHJ5X25hbWUiOiJLXHUxZWJmIHRvXHUwMGUxbiBcLyBLaVx1MWVjM20gdG9cdTAwZTFuIn1dLCJsZXZlbCI6IiIsImxldmVsX25hbWUiOltdLCJsYXN0X21vZGlmeSI6MTc4MzQ4NjI5MDUyOH0=%22%2C%222_1783486283802%22:%22eyJzaW1pbGFyIjowLCJvd25lciI6ImtpZW12aWVjIiwiY291bnRfc2VhcmNoIjp0cnVlLCJpbmR1c3RyeSI6IjIiLCJhcnJfaW5kdXN0cnkiOlsiMiJdLCJpbmR1c3RyeV9rZXlfdm4iOiJrZS10b2FuLWtpZW0tdG9hbiIsImluZHVzdHJ5X25hbWUiOlt7ImluZHVzdHJ5X2lkIjoiMiIsImluZHVzdHJ5X25hbWUiOiJLXHUxZWJmIHRvXHUwMGUxbiBcLyBLaVx1MWVjM20gdG9cdTAwZTFuIn1dLCJsZXZlbCI6IiIsImxldmVsX25hbWUiOltdLCJsYXN0X21vZGlmeSI6MTc4MzQ4NjI4MzgwMn0=%22}",
+    "domain": "careerviet.vn",
+    "path": "/",
+    "expires": 1815022290,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_ga_649BTQ328X",
+    "value": "GS2.1.s1783483704$o6$g1$t1783486291$j48$l0$h1879199292",
+    "domain": ".careerviet.vn",
+    "path": "/",
+    "expires": 1818046291.168079,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_ga_6ZG50DXMHR",
+    "value": "GS2.1.s1783483704$o6$g1$t1783486291$j48$l0$h0",
+    "domain": ".careerviet.vn",
+    "path": "/",
+    "expires": 1818046291.358351,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_ga_9WDL9JQ84J",
+    "value": "GS2.1.s1783483704$o6$g1$t1783486291$j48$l0$h0",
+    "domain": ".careerviet.vn",
+    "path": "/",
+    "expires": 1818046291.422415,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "__rtbh.lid",
+    "value": "%7B%22eventType%22%3A%22lid%22%2C%22id%22%3A%22MleBp7qT0XwQ80uMB6H3%22%2C%22expiryDate%22%3A%222027-07-08T04%3A51%3A31.432Z%22%7D",
+    "domain": "careerviet.vn",
+    "path": "/",
+    "expires": 1815022291,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "None"
+  },
+  {
+    "name": "_ga",
+    "value": "GA1.2.396209460.1783226106",
+    "domain": ".careerviet.vn",
+    "path": "/",
+    "expires": 1818046291.460616,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
   },
   {
     "name": "__sts",
-    "value": "eyJzaWQiOjE3ODM0ODM3MDUyNDEsInR4IjoxNzgzNDg2MTQ5ODM3LCJ1cmwiOiJodHRwcyUzQSUyRiUyRmNhcmVlcnZpZXQudm4lMkZ2aWVjLWxhbSUyRm5oYW4tc3UtYzIyLXRyYW5nLTE0LXZpLmh0bWwiLCJwZXQiOjE3ODM0ODYxNDk4MzcsInNldCI6MTc4MzQ4MzcwNTI0MSwicFVybCI6Imh0dHBzJTNBJTJGJTJGY2FyZWVydmlldC52biUyRnZpZWMtbGFtJTJGbmhhbi1zdS1jMjItdHJhbmctMTMtdmkuaHRtbCIsInBQZXQiOjE3ODM0ODYxNDM4NjcsInBUeCI6MTc4MzQ4NjE0Mzg2N30%3D",
+    "value": "eyJzaWQiOjE3ODM0ODM3MDUyNDEsInR4IjoxNzgzNDg2MjkxNTM2LCJ1cmwiOiJodHRwcyUzQSUyRiUyRmNhcmVlcnZpZXQudm4lMkZ2aWVjLWxhbSUyRmtlLXRvYW4ta2llbS10b2FuLWMyLXRyYW5nLTQtdmkuaHRtbCIsInBldCI6MTc4MzQ4NjI5MTUzNiwic2V0IjoxNzgzNDgzNzA1MjQxLCJwVXJsIjoiaHR0cHMlM0ElMkYlMkZjYXJlZXJ2aWV0LnZuJTJGdmllYy1sYW0lMkZrZS10b2FuLWtpZW0tdG9hbi1jMi10cmFuZy0zLXZpLmh0bWwiLCJwUGV0IjoxNzgzNDg2Mjg0ODYwLCJwVHgiOjE3ODM0ODYyODQ4NjB9",
     "domain": "careerviet.vn",
     "path": "/",
-    "expires": 1783487949,
+    "expires": 1783488091,
     "httpOnly": false,
     "secure": true,
     "sameSite": "Lax"
   },
   {
     "name": "cto_bundle",
-    "value": "GsN86V9TQ1lQQzY1MG8yNjBBWjVsNkI5U3IlMkZONDVUTDZUSUR5MkY5SGFycVE5Umd5NzZhdElrRW8xTm1WTFhmdEZpWiUyRjJSUGxOcFlRYXRGVmVhMDhmemhmTHNMSGxCU05ydTNLbWZCT3VDOWc5djN3NlhFN3ZsRXNkdnBRWlhkRXdLaHExbU9KdDZJaHElMkJSTURXbFQ3Vm15M0ElM0QlM0Q",
+    "value": "Mhas119NaEM4TXMxampRQjJaOWpTZG50aGxOc1dwTlUwenIlMkJWbDJ2cFFUT2NXc29tQU84Q3ZwTzY3ZnFaQTVIdjMxMVl3SEZLeXU1N285cDElMkJwU3pFRmpTcjJuQm5VY21DbUJ5VzBCZ0ZhQTc0WVd6VkRtZVpIcG1nY1VBU0MlMkJLeFBGb0FnZG0zaVU5JTJGMEMyVDBwRHZRc3RlZyUzRCUzRA",
     "domain": ".criteo.com",
     "path": "/",
-    "expires": 1817182150.134523,
+    "expires": 1817182291.765228,
     "httpOnly": false,
     "secure": true,
     "sameSite": "None",
@@ -1297,20 +1297,20 @@
   },
   {
     "name": "cto_bundle",
-    "value": "3vjpiV96YVFtaTNhNFlJTmVVT092bHFzTHdKWiUyQlVnYzdUYTlvNU01TmZ2dzlxODB6UFVrTSUyRkxtbjhOVkgyNEJkcG5xRXpLRWpRRTZZNHV3TTE0aiUyRk56Rm1DZ1VaRU9CcVAlMkZJMGNjVDVTcDZRbFdqQkRVY2ZDSHVYa0UyczkzV0t1cVA3WUs2V2FFeFNaang3VFc0RjRjNGcwZyUzRCUzRA",
+    "value": "-QTGrF96YVFtaTNhNFlJTmVVT092bHFzTHdMVWg0QiUyQkx6dk5OazFlSlgyQmpYJTJGYkpWUTJQMldRUjJCU0JOU2FwZG5KV3V4SHp6cHFGNjdTcnl1VzhBM3VOa3V5S2JVV1ZMQkNpc0clMkZKQ3JIck40b2dKOVVMS0klMkJiS3kzeWZLUiUyQnZEUm1VUHM4ODFmaXEyT3lEJTJGOWtiMTB3ZmclM0QlM0Q",
     "domain": ".careerviet.vn",
     "path": "/",
-    "expires": 1817650150,
+    "expires": 1817650291,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
   },
   {
     "name": "g_state",
-    "value": "{\"i_l\":0,\"i_ll\":1783486150250,\"i_b\":\"pAso32otZSWBnZ1Vf2IbXfu7t0w136qSKmmlTKlxJFM\",\"i_e\":{\"enable_itp_optimization\":24},\"i_et\":1783486150250}",
+    "value": "{\"i_l\":0,\"i_ll\":1783486292101,\"i_b\":\"pAso32otZSWBnZ1Vf2IbXfu7t0w136qSKmmlTKlxJFM\",\"i_e\":{\"enable_itp_optimization\":24},\"i_et\":1783486292101}",
     "domain": "careerviet.vn",
     "path": "/",
-    "expires": 1799038150,
+    "expires": 1799038292,
     "httpOnly": false,
     "secure": false,
     "sameSite": "Lax"
